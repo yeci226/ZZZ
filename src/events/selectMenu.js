@@ -81,6 +81,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             name: data.user.nickname ?? "",
           })
           .setTitle(`${data.post.subject ?? `${tr("none")}`}`)
+          .setURL(`https://www.hoyolab.com/article/${data.post.post_id}`)
           .setDescription(
             `${
               data.post.content.length < 2000
