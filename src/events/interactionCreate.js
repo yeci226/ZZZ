@@ -63,7 +63,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
           )
           .addField(
             cmd.name,
-            `> ${interaction.options?._subcommand}` ?? "\u200b",
+            `${
+              interaction.options._subcommand
+                ? `> ${interaction.options._subcommand}`
+                : "\u200b"
+            }`,
             true
           ),
       ],
