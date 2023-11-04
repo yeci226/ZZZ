@@ -1,5 +1,10 @@
 const client = require("../index");
-const { WebhookClient, EmbedBuilder, Events } = require("discord.js");
+const {
+  WebhookClient,
+  EmbedBuilder,
+  Events,
+  ActivityType,
+} = require("discord.js");
 const moment = require("moment-timezone");
 const webhook = new WebhookClient({ url: process.env.JLWEBHOOK });
 
