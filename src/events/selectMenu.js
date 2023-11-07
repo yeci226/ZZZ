@@ -72,6 +72,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const [type, index] = interaction.values[0].split("-");
     const newsData = await getNews(interaction.locale.toLowerCase(), type);
     const data = newsData.data.list[index];
+    const date = new Date(data.post.created_at * 1000);
 
     return interaction.message.edit({
       embeds: [
@@ -90,6 +91,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
                   `${tr("none")}`
             }`
           )
+          .setFooter({
+            text: `${date.getUTCFullYear()} ${tr("year")} ${
+              date.getUTCMonth() + 1
+            } ${tr("month")} ${date.getUTCDate()} ${tr("day")}`,
+          })
           .setImage(data.image_list[0]?.url ?? data.cover_list[0]?.url),
       ],
     });
