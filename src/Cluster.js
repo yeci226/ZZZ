@@ -1,14 +1,15 @@
-const dotenv = require("dotenv");
-const { ClusterManager, HeartbeatManager } = require("discord-hybrid-sharding");
-const log = require("./util/logger");
-const logger = new log("Shard");
-dotenv.config();
+import dotenv from "dotenv";
+import fs from "fs";
+Object.assign(process.env, dotenv.parse(fs.readFileSync("./.env")));
+
+import { ClusterManager, HeartbeatManager } from "discord-hybrid-sharding";
+import { Logger } from "./services/logger.js";
 
 const manager = new ClusterManager(`${process.cwd()}/src/index.js`, {
   totalShards: "auto",
-  totalClusters: "auto",
-  shardsPerClusters: 20,
-  mode: "process",
+  totalClusters: 5,
+  shardsPerClusters: 5,
+  mode: "worker",
   token:
     process.env.NODE_ENV === "dev" ? process.env.TESTOKEN : process.env.TOKEN,
   restarts: {
@@ -26,12 +27,23 @@ manager.extend(
 
 manager.on("clusterCreate", (cluster) => {
   cluster.on("ready", () => {
-    logger.success(`Launched Cluster ${cluster.id}`);
+    new Logger("分片").info(`已啟動 Cluster #${cluster.id}`);
   });
 
   cluster.on("reconnecting", () => {
-    logger.success(`Reconnecting Cluster ${cluster.id} to discord WS`);
+    new Logger("分片").info(`重新連接集群 #${cluster.id} 至 Discord WS`);
+  });
+
+  cluster.on("death", () => {
+    new Logger("分片").info(`重新聚類集群 ${cluster.id}`);
+    manager.recluster?.start();
   });
 });
 
-manager.spawn({ timeout: -1 });
+manager.spawn().then(() => {
+  setInterval(async () => {
+    await manager.broadcastEval(
+      `this.ws.status && this.isReady() ? this.ws.reconnect() : 0`
+    );
+  }, 60000);
+});

@@ -1,5 +1,6 @@
-const client = require("../index");
-const { Events } = require("discord.js");
+import { client } from "../index.js";
+import { Events } from "discord.js";
+import emoji from "../assets/emoji.js";
 
 client.on(Events.MessageCreate, async (message) => {
   const prefix = `<@${client.user.id}>`;
@@ -17,10 +18,8 @@ client.on(Events.MessageCreate, async (message) => {
     .split(/ +/g);
 
   const command =
-    client.commands.get(cmd.toLowerCase()) ||
-    client.commands.find((c) => c.alias?.includes(cmd.toLowerCase()));
+    client.commands.message.get(cmd.toLowerCase()) ||
+    client.commands.message.find((c) => c.alias?.includes(cmd.toLowerCase()));
 
-  if (!command) return;
-
-  await command.execute(client, message, args);
+  if (command) await command.execute(client, message, args, emoji);
 });

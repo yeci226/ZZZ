@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+import { EmbedBuilder } from "discord.js";
 
 Object.defineProperties(EmbedBuilder.prototype, {
   addField: {

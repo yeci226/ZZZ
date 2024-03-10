@@ -1,30 +1,33 @@
-const client = require("../index.js");
-const { WebhookClient, EmbedBuilder, Events } = require("discord.js");
-const moment = require("moment");
+import { client } from "../index.js";
+import { WebhookClient, EmbedBuilder } from "discord.js";
+import { Logger } from "../services/logger.js";
+
 const webhook = new WebhookClient({
   url: process.env.ERRWEBHOOK,
 });
 
-client.on(Events.Error, (error) => {
+client.on("error", (error) => {
   console.log(error);
+  new Logger("系統").error(`錯誤訊息：${error.message}`);
   webhook.send({
     embeds: [
-      new EmbedBuilder().setDescription(`\`\`\`${error}\`\`\``).setFooter({
-        text: `${moment().tz("Asia/Taipei").format("h:mm:ss a")}`,
-      }),
+      new EmbedBuilder().setTimestamp().setDescription(`${error.message}`),
     ],
   });
 });
 
-process.on(Events.UnhandledRejection, (error) => {
-  console.log("Unhandled promise rejection:", error);
+client.on("warn", (error) => {
+  new Logger("系統").warn(`警告訊息：${error.message}`);
+});
+
+process.on("unhandledRejection", (error) => {
+  console.log(error);
+  new Logger("系統").error(`錯誤訊息：${error.message}`);
   webhook.send({
     embeds: [
-      new EmbedBuilder().setDescription(`\`\`\`${error}\`\`\``).setFooter({
-        text: `${moment().tz("Asia/Taipei").format("h:mm:ss a")}`,
-      }),
+      new EmbedBuilder().setTimestamp().setDescription(`${error.message}`),
     ],
   });
 });
 
-process.on(Events.UncaughtException, console.error);
+process.on("uncaughtException", console.error);

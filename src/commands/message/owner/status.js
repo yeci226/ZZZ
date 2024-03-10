@@ -1,11 +1,15 @@
-const { EmbedBuilder } = require("discord.js");
-const ms = require("ms");
+import { Client, Message, EmbedBuilder } from "discord.js";
+import ms from "ms";
 
-module.exports = {
+export default {
   name: "status",
-  owner: true,
-
-  execute: async (client, message, args, emoji, db) => {
+  /**
+   *
+   * @param {Client} client
+   * @param {Message} message
+   * @param {String[]} args
+   */
+  execute: async (client, message, args) => {
     const res = await client.cluster.broadcastEval((c) => {
       return {
         clusterId: c.cluster.id,
@@ -56,7 +60,7 @@ module.exports = {
     for (const shardData of shardDataArr) {
       embed.addField(
         `#${shardData.shardId}`,
-        `延遲: ${shardData.ping} 毫秒\nUptime: ${ms(
+        `延遲: ${shardData.ping} 毫秒\n上線時間: ${ms(
           shardData.uptime
         )}\n伺服器: ${shardData.guilds} 個伺服器\n使用者: ${
           shardData.members
@@ -68,21 +72,5 @@ module.exports = {
     message.reply({
       embeds: [embed],
     });
-
-    /**
-     * Guild Shard Status
-     */
-    // const shard = shardDataArr[message.guild.shardId];
-    // message.reply({
-    //   embeds: [
-    //     new EmbedBuilder().setConfig()
-    //       .setTitle("All shards status")
-    //       .addField("ID", `${shard.shardId}`, true)
-    //       .addField("Ping", `${shard.ping} ms`, true)
-    //       .addField("Uptime", `${ms(shard.uptime)}`, true)
-    //       .addField("Guilds", `${shard.guilds} guilds`, true)
-    //       .addField("Members", `${shard.members} users`, true),
-    //   ],
-    // });
   },
 };

@@ -1,17 +1,28 @@
-const { ActionRowBuilder, StringSelectMenuBuilder } = require("discord.js");
+import {
+  CommandInteraction,
+  SlashCommandBuilder,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+} from "discord.js";
 
-module.exports = {
-  name: "news",
-  description: "Get the latest news from the offical",
-  name_localizations: {
-    "zh-TW": "新聞",
-  },
-  description_localizations: {
-    "zh-TW": "從官方獲取最新消息",
-  },
-
-  run: async (client, interaction, args, tr) => {
-    interaction.reply({
+export default {
+  data: new SlashCommandBuilder()
+    .setName("news")
+    .setDescription("Get the latest news from the offical")
+    .setNameLocalizations({
+      "zh-TW": "新聞",
+    })
+    .setDescriptionLocalizations({
+      "zh-TW": "從官方獲取最新消息",
+    }),
+  /**
+   *
+   * @param {Client} client
+   * @param {CommandInteraction} interaction
+   * @param {String[]} args
+   */
+  async execute(client, interaction, args, tr) {
+    await interaction.editReply({
       components: [
         new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()

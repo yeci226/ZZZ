@@ -10,4 +10,4 @@ const langs = {
   day: "日",
 };
 
-module.exports = langs;
+export default langs;

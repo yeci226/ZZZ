@@ -1,12 +1,12 @@
-const client = require("../index");
-const {
+import { client } from "../index.js";
+import {
   Events,
   ActionRowBuilder,
   StringSelectMenuBuilder,
   EmbedBuilder,
-} = require("discord.js");
-const { getNews } = require("../util/request");
-const { i18nMixin, toI18nLang } = require("../util/i18n");
+} from "discord.js";
+import { getNews } from "../services/request.js";
+import { i18nMixin, toI18nLang } from "../services/i18n.js";
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isStringSelectMenu()) return;
@@ -72,6 +72,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const [type, index] = interaction.values[0].split("-");
     const newsData = await getNews(interaction.locale.toLowerCase(), type);
     const data = newsData.data.list[index];
+    console.log(data);
     const date = new Date(data.post.created_at * 1000);
 
     return interaction.message.edit({

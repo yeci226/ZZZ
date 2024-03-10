@@ -1,11 +1,6 @@
-const client = require("../index");
-const {
-  WebhookClient,
-  EmbedBuilder,
-  Events,
-  ActivityType,
-} = require("discord.js");
-const moment = require("moment-timezone");
+import { client } from "../index.js";
+import { Events, WebhookClient, EmbedBuilder, ActivityType } from "discord.js";
+import moment from "moment";
 const webhook = new WebhookClient({ url: process.env.JLWEBHOOK });
 
 client.on(Events.GuildDelete, async (guild) => {
@@ -14,24 +9,22 @@ client.on(Events.GuildDelete, async (guild) => {
   );
   const totalGuilds = results.reduce((prev, val) => prev + val, 0);
 
-  client.user.setPresence({
-    activities: [
-      {
-        name: `${totalGuilds} 個伺服器`,
-        type: ActivityType.Playing,
-      },
-    ],
-    status: "online",
-  });
-
   webhook.send({
     embeds: [
       new EmbedBuilder()
-        .setConfig("#E74C3C")
+        .setColor("#E74C3C")
         .setThumbnail(guild.iconURL())
         .setTitle("已離開伺服器")
-        .addFields({ name: "名稱", value: `\`${guild.name}\``, inline: false })
-        .addFields({ name: "ID", value: `\`${guild.id}\``, inline: false })
+        .addFields({
+          name: "名稱",
+          value: `\`${guild.name}\``,
+          inline: false,
+        })
+        .addFields({
+          name: "ID",
+          value: `\`${guild.id}\``,
+          inline: false,
+        })
         .addFields({
           name: "擁有者",
           value: `<@${guild.ownerId}>`,

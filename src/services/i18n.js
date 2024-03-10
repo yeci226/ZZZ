@@ -1,41 +1,35 @@
-const en = require("../languages/en.js");
-const tw = require("../languages/tw.js");
-const cn = require("../languages/cn.js");
-
-const defaultLang = "tw"
+import en from "../assets/languages/en.js";
+import tw from "../assets/languages/tw.js";
+import cn from "../assets/languages/cn.js";
 
 const langs = { en, tw, cn };
 
-function i18nMixin(lang) {
+export function i18nMixin(lang) {
   if (!Object.keys(langs).includes(lang))
     throw new Error("No lang specified found!");
   return function i18n(string, options, ...args) {
-    let str = langs[lang][string] ?? langs["tw"][string];
-    if (str == undefined) return null;
+    let str = langs[lang][string] ?? langs["en"][string];
+    if (str == undefined) return void 0;
     if (typeof str == "function") return str(options, ...args);
     else if (typeof str != "string") return str;
     else {
       if (options && isObj(options))
         for (let [key, value] of Object.entries(options))
-          str = str.replaceAll(`<${key}>`, `${value}`);
+          str = str.replace(`<${key}>`, `${value}`);
       if (typeof options == "string") args.push(options);
       if (args) {
         for (let [index, value] of Object.entries(args))
           str = str
-            .replaceAll("%s", `${value}`)
+            .replace("%s", `${value}`)
             .replaceAll(`%${index}%`, `${value}`);
       }
     }
     return str;
   };
 }
-
-function toI18nLang(str) {
+export function toI18nLang(str) {
   if (str.startsWith("zh")) return "tw";
 }
-
 function isObj(k) {
   return Object.prototype.toString.call(k) === "[object Object]";
 }
-
-module.exports = { toI18nLang, i18nMixin };
