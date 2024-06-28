@@ -1,13 +1,14 @@
 const langs = {
-  news_notice: "通知",
-  news_events: "活動",
-  news_info: "資訊",
-  news_seltype: "請選擇一種新聞類別",
-  news_selpost: "🐣 請選擇一篇文章",
+  news_Notice: "公告",
+  news_Events: "活動",
+  news_Info: "資訊",
+  news_SelectType: "請選擇一種新聞類別",
+  news_SelectPost: "🐣 請選擇一篇文章",
 
-  year: "年",
-  month: "月",
-  day: "日",
+  None: "無",
+  Year: "年",
+  Month: "月",
+  Day: "日",
 };
 
 export default langs;

@@ -1,9 +1,9 @@
 import { client } from "../index.js";
 import { ApplicationCommandOptionType } from "discord.js";
-import { i18nMixin, toI18nLang } from "../services/i18n.js";
+import { i18nMixin, toI18nLang } from "../utilities/core/i18n.js";
 import { Events, EmbedBuilder, WebhookClient, ChannelType } from "discord.js";
 import emoji from "../assets/emoji.js";
-import { Logger } from "../services/logger.js";
+import { Logger } from "../utilities/core/logger.js";
 
 const db = client.db;
 const webhook = new WebhookClient({ url: process.env.CMDWEBHOOK });
@@ -29,12 +29,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         ephemeral: true,
       });
 
-    await interaction
-      .deferReply({
-        /*ephemeral: false*/
-      })
-      .catch(() => {});
-
     const args = [];
 
     for (let option of interaction.options.data) {
@@ -59,7 +53,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       webhook.send({
         embeds: [
           new EmbedBuilder()
-            .setConfig(null, time)
             .setTimestamp()
             .setAuthor({
               iconURL: interaction.user.displayAvatarURL({

@@ -1,6 +1,6 @@
 import { client } from "../index.js";
 import { Events, ActivityType } from "discord.js";
-import { Logger } from "../services/logger.js";
+import { Logger } from "../utilities/core/logger.js";
 
 async function updatePresence() {
   const results = await client.cluster.broadcastEval(

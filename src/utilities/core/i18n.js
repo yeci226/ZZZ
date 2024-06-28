@@ -1,6 +1,6 @@
-import en from "../assets/languages/en.js";
-import tw from "../assets/languages/tw.js";
-import cn from "../assets/languages/cn.js";
+import en from "../../assets/languages/en.js";
+import tw from "../../assets/languages/tw.js";
+import cn from "../../assets/languages/cn.js";
 
 const langs = { en, tw, cn };
 

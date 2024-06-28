@@ -26,23 +26,23 @@ export default {
       components: [
         new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
-            .setPlaceholder(`${tr("news_seltype")}`)
+            .setPlaceholder(tr("news_SelectType"))
             .setCustomId("news_type")
             .setMinValues(1)
             .setMaxValues(1)
             .addOptions(
               {
-                label: `${tr("news_notice")}`,
+                label: tr("news_Notice"),
                 emoji: "🔔",
                 value: "1",
               },
               {
-                label: `${tr("news_events")}`,
+                label: tr("news_Events"),
                 emoji: "🔥",
                 value: "2",
               },
               {
-                label: `${tr("news_info")}`,
+                label: tr("news_Info"),
                 emoji: "🗞️",
                 value: "3",
               }

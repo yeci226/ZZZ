@@ -56,7 +56,7 @@ export default {
       (a, b) => a.shardId - b.shardId
     );
 
-    const embed = new EmbedBuilder().setConfig().setTitle("分片狀態");
+    const embed = new EmbedBuilder().setTitle("分片狀態");
     for (const shardData of shardDataArr) {
       embed.addField(
         `#${shardData.shardId}`,

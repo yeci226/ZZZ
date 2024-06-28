@@ -1,13 +1,13 @@
 const langs = {
-  news_notice: "Notice",
-  news_events: "Events",
-  news_info: "Infomation",
-  news_seltype: "Please select a news category",
-  news_selpost: "🐣 Please select a post",
+  news_Notice: "Notice",
+  news_Events: "Events",
+  news_Info: "Infomation",
+  news_SelectType: "Please select a news category",
+  news_SelectPost: "🐣 Please select a post",
 
-  year: "/",
-  month: "/",
-  day: "/",
+  Year: "/",
+  Month: "/",
+  Day: "/",
 };
 
 export default langs;

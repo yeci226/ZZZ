@@ -11,9 +11,4 @@ Object.defineProperties(EmbedBuilder.prototype, {
     },
     enumerable: false,
   },
-  setConfig: {
-    value: function (color) {
-      return this.setColor(color || "#B2C8BA");
-    },
-  },
 });
