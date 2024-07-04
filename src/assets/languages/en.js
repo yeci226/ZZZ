@@ -9,8 +9,8 @@ const langs = {
   isSet: "already set",
   isNotSet: "Not set",
   NoSetAccount:
-    "This ropemaker has not yet set up an account, so this command cannot be used!",
-  AccountNotFound: "The ropemaker cannot be found!",
+    "This proxy has not yet set up an account, so this command cannot be used!",
+  AccountNotFound: "The proxy cannot be found!",
   AccountNotFoundDesc:
     "### Please confirm whether the following information has been set and correct\n- Cookie: `<hasCookie>`\n- UID: `<hasUid>`",
 
@@ -22,7 +22,7 @@ const langs = {
   news_SelectPost: "🐣 Please select an article",
 
   daily_Failed: "Sign-in failed",
-  daily_Signed: "Ropemaker, you have already signed in today~",
+  daily_Signed: "Proxy, you have already signed in today~",
   daily_SignSuccess: "Sign in successfully!",
   daily_Description: "You have received today's reward <a>",
   daily_DescriptionTmr: "Tomorrow's reward is <b>",
