@@ -80,6 +80,9 @@ const langs = {
   note_VHS_NotDoing: "等待营业",
   note_Card_Done: "已完成",
   note_Card_NotDone: "未完成",
+  note_Error: "User information is not public!",
+  note_Error_Description:
+    "Please go to [Record](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) and set it in the upper right corner to view game data!",
 };
 
 export default langs;

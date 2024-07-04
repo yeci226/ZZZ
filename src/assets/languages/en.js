@@ -84,6 +84,9 @@ const langs = {
   note_VHS_NotDoing: "Waiting for business",
   note_Card_Done: "Done",
   note_Card_NotDone: "Not completed",
+  note_Error: "使用者资料未公开！",
+  note_Error_Description:
+    "请至 [战绩](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) 右上角设定开启查看游戏资料！",
 };
 
 export default langs;
