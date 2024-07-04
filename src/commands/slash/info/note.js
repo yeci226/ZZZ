@@ -88,7 +88,10 @@ export default {
             name: emoji.battery + tr("note_Energy"),
             value:
               res.energy.progress.current != res.energy.progress.max
-                ? res.energy.progress.current + "/" + res.energy.progress.max
+                ? res.energy.progress.current +
+                  "/" +
+                  res.energy.progress.max +
+                  ` - <t:${moment(new Date()).unix() + res.energy.restore}:R>`
                 : tr("note_Energy_Full"),
             inline: false,
           },
