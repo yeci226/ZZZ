@@ -165,7 +165,6 @@ export async function getUserZZZData(interaction, tr, userId) {
 
     return zzz;
   } catch (error) {
-    console.log(error);
     const isHoyoAPIError = error instanceof HoyoAPIError;
     const errorCode = isHoyoAPIError ? error.code : error;
 

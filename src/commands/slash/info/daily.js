@@ -118,13 +118,6 @@ export default {
   async execute(client, interaction, args, tr, db, emoji) {
     await interaction.deferReply({ ephemeral: true });
 
-    await db.set(`${interaction.user.id}.account`, [
-      {
-        uid: "1300007596",
-        cookie:
-          "ltoken_v2=v2_CAISDGNpZWF6NGVwZDV2axokMWE4Mzg1MjgtMTQwYy00Yjk0LTgzMmItNjg4MTdhMTg2ZmEwIOHf0bIGKO-a9YEGMJn3758BQgpuYXBfZ2xvYmFs.sA2CZgAAAAAB.MEQCIDmszTF63UbfV6Bkf2FolrlRZoSHEzgqMHScd9uQx1nNAiAbgGCeC_ofR53-WLy-0L4T-NN8GKz1DEYuMIiq-0oIRA; ltuid_v2=335281049",
-      },
-    ]);
     const haveAccount = await db.get(`${interaction.user.id}.account`);
     if (!haveAccount) {
       return interaction.editReply({
