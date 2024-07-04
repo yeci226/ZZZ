@@ -122,7 +122,7 @@ export default {
         embed.setTitle(tr("note_EnergyFull"));
 
       interaction.reply({
-        embeds: [],
+        embeds: [embed],
       });
     }
   },
