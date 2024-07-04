@@ -1,6 +1,8 @@
 import { client } from "../index.js";
 import axios from "axios";
 import emoji from "../assets/emoji.js";
+import { EmbedBuilder } from "discord.js";
+import { ZenlessZoneZero, LanguageEnum, HoyoAPIError } from "hoyoapi";
 const db = client.db;
 const BASE_URL = "https://bbs-api-os.hoyolab.com/community/post/wapi/";
 
@@ -108,6 +110,131 @@ export function getRandomColor() {
   for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
 
   return color;
+}
+
+const color = {
+  0: "#AAC8A7",
+  60: "#C3EDC0",
+  100: "#FDFFAE",
+  140: "#FFCF96",
+  180: "#FF8080",
+  220: "#BB2525",
+};
+
+export function getStaminaColor(stamina) {
+  let selectedColor = null;
+
+  for (const key in color)
+    if (stamina >= parseInt(key)) selectedColor = color[key];
+
+  return selectedColor;
+}
+
+export async function failedReply(interaction, title = "", description = "") {
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setColor("#E76161")
+    .setThumbnail(
+      "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
+    );
+
+  if (description) embed.setDescription(description);
+
+  interaction.reply({
+    embeds: [embed],
+    ephemeral: true,
+    fetchReply: true,
+  });
+}
+
+export async function getUserZZZData(interaction, tr, userId) {
+  const [cookie, userLang, uid] = await Promise.all([
+    getUserCookie(userId),
+    getUserLang(userId),
+    getUserUid(userId),
+  ]);
+
+  const lang =
+    userLang === "tw" || interaction.locale === "zh-TW"
+      ? LanguageEnum.TRADIIONAL_CHINESE
+      : LanguageEnum.ENGLISH;
+
+  try {
+    const zzz = new ZenlessZoneZero({ cookie, lang, uid });
+    await zzz.daily.info();
+
+    return zzz;
+  } catch (error) {
+    console.log(error);
+    const isHoyoAPIError = error instanceof HoyoAPIError;
+    const errorCode = isHoyoAPIError ? error.code : error;
+
+    checkAccount(
+      interaction,
+      tr,
+      userId,
+      isHoyoAPIError && error.code == 10035
+        ? {
+            ErrorCode: error.code,
+          }
+        : {
+            hasCookie: cookie != null,
+            Lang: lang,
+            hasUid: uid != null,
+            ErrorCode: errorCode,
+          }
+    );
+    return null;
+  }
+}
+
+export function checkAccount(interaction, tr, userId, data) {
+  if (data.ErrorCode == 10035) {
+    replyOrfollowUp(interaction, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor("#FFE9D0")
+          .setTitle("請先通過 Geetest 來繼續使用指令！")
+          .setURL(`http://yeci.rocks:3000/geetest/${userId}`),
+      ],
+      ephemeral: true,
+    });
+  } else if (interaction.user.id == userId) {
+    const accountStats = data;
+    replyOrfollowUp(interaction, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor("#E76161")
+          .setThumbnail(
+            "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png/revision/latest?cb=20220617042016"
+          )
+          .setTitle(tr("AccountNotFound"))
+          .setDescription(
+            tr("AccountNotFoundDesc", {
+              hasCookie: tr(accountStats.hasCookie ? "isSet" : "isNotSet"),
+              hasUid: tr(accountStats.hasUid ? "isSet" : "isNotSet"),
+            }) +
+              "\n\n" +
+              "`" +
+              accountStats.ErrorCode +
+              "`"
+          ),
+      ],
+      ephemeral: true,
+    });
+  } else {
+    replyOrfollowUp(interaction, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor("#E76161")
+          .setThumbnail(
+            "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
+          )
+          .setTitle(tr("NoSetAccount")),
+      ],
+      ephemeral: true,
+    });
+  }
 }
 
 global.replyOrfollowUp = async function (interaction, ...args) {
