@@ -17,7 +17,7 @@ const langs = {
   //Commands
   news_Notice: "Announcement",
   news_Events: "Activities",
-  news_Info: "information",
+  news_Info: "Information",
   news_SelectType: "Please select a news category",
   news_SelectPost: "🐣 Please select an article",
 
@@ -36,8 +36,8 @@ const langs = {
   autoDaily_Time: "Automatic check-in time: <time>",
   autoDaily_Tag: "Mention when checking in: <z>",
 
-  account_Linked: "Already bound",
-  account_NotLinked: "Not bound",
+  account_Linked: "Linked",
+  account_NotLinked: "Not linked",
   account_ListOfAccount: "<Username> Account that has been set",
   account_SelectAccountSetCookie: "Please select an account to set Cookie",
   account_SelectAccountEdit: "Please select an account to edit",
@@ -74,12 +74,12 @@ const langs = {
   admin_NoData: "There is no data in the database",
 
   note_Title: "Instant Note",
-  note_Vitality: "Today's activity",
+  note_Vitality: "Engagement Today",
   note_Energy: "Electricity",
-  note_Energy_Full: "All restored",
-  note_EnergyFull: "The battery will be fully restored soon!",
-  note_Card: "Scratch-off",
-  note_VHS: "Video store management",
+  note_Energy_Full: "Fully Recovered",
+  note_EnergyFull: "The battery will be fully recovered soon!",
+  note_Card: "Scratch Card Mania",
+  note_VHS: "Video Store Management",
   note_VHS_Doing: "Opening",
   note_VHS_NotDoing: "Waiting for business",
   note_Card_Done: "Done",
