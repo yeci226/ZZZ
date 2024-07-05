@@ -68,6 +68,7 @@ const langs = {
   admin_MoveFail: "移動失敗",
   admin_MoveNoPermission: "我在 <channel> 缺少了 `發送訊息` 的權限",
   admin_MoveSuccess: "移動成功",
+  admin_MoveNoUser: "沒有使用者訊息通知設定在此伺服器",
   admin_MoveSuccessMessage: "已將 `<count>` 位使用者的訊息通知移動至 <channel>",
   admin_MoveFailMessage: "無法設置訊息通知至 <channel>",
   admin_NoData: "資料庫中沒有資料",

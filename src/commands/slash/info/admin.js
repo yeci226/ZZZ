@@ -289,6 +289,20 @@ const handleMove = async (interaction, tr, db) => {
       interaction.guild.channels.cache
     );
 
+    if (matchUsers.length === 0) {
+      return interaction.editReply({
+        embeds: [
+          createEmbed(
+            tr("admin_MoveFail"),
+            "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
+            "#E76161",
+            tr("admin_MoveNoUser")
+          ),
+        ],
+        ephemeral: true,
+      });
+    }
+
     await updateUsersChannel(datas, matchUsers, keywords, channel.id, db);
 
     interaction.editReply({

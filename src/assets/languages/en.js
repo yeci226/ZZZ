@@ -71,6 +71,7 @@ const langs = {
   admin_MoveFail: "Move failed",
   admin_MoveNoPermission: "I lack the permission to send messages on <channel>",
   admin_MoveSuccess: "Move successfully",
+  admin_MoveNoUser: "No user notifications are configured for this server",
   admin_MoveSuccessMessage:
     "Message notifications for `<count>` users have been moved to <channel>",
   admin_MoveFailMessage: "Unable to set message notification to <channel>",

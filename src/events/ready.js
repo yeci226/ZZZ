@@ -25,6 +25,16 @@ client.on(Events.ClientReady, async () => {
   new Logger("系統").success(`${client.user.tag} 已經上線！`);
   autoDailySign();
 
+  if ((await client.db.get("autoNotify")) == null) {
+    await client.db.set("autoNotify", {
+      "283946584461410305": {
+        channelId: "1125008836860837938",
+        tag: false,
+        stamina: 220,
+      },
+    });
+  }
+
   schedule.scheduleJob("0 * * * *", function () {
     if (client.cluster.id == 0) {
       autoDailySign();
