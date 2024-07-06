@@ -90,7 +90,7 @@ async function dailySign(dailyData, userId, uid, cookie) {
             .setTitle(uid + " " + tr("Auto") + tr("daily_SignSuccess"))
             .setThumbnail(todaySign?.icon)
             .setDescription(
-              `${tr("daily_Description", { a: `\`${todaySign?.name}x${todaySign?.cnt}\`` })}${info.month_last_day ? "" : `\n\n<@${id}> ${tr("daily_DescriptionTmr", { b: `\`${tmrSign?.name}x${tmrSign?.cnt}\`` })}`}`
+              `${tr("daily_Description", { a: `\`${todaySign?.name}x${todaySign?.cnt}\`` })}${info.month_last_day ? "" : `\n\n<@${userId}> ${tr("daily_DescriptionTmr", { b: `\`${tmrSign?.name}x${tmrSign?.cnt}\`` })}`}`
             )
             .addFields(
               {
@@ -117,6 +117,7 @@ async function dailySign(dailyData, userId, uid, cookie) {
       }).catch(() => {});
     }
   } catch (error) {
+    console.log("簽到錯誤：" + error);
     failed++;
   }
 }

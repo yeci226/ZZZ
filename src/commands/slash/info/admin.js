@@ -39,18 +39,11 @@ export default {
               "zh-TW": "選擇要刪除使用者的功能",
             })
             .setRequired(true)
-            .addChoices(
-              {
-                name: "autodaily",
-                name_localizations: { "zh-TW": "自動簽到" },
-                value: "autoDaily",
-              },
-              {
-                name: "autonotify",
-                name_localizations: { "zh-TW": "自動通知" },
-                value: "autoNotify",
-              }
-            )
+            .addChoices({
+              name: "autodaily",
+              name_localizations: { "zh-TW": "自動簽到" },
+              value: "autoDaily",
+            })
         )
         .addUserOption((option) =>
           option
@@ -108,11 +101,6 @@ export default {
                 name: "autodaily",
                 name_localizations: { "zh-TW": "自動簽到" },
                 value: "autoDaily",
-              },
-              {
-                name: "autonotify",
-                name_localizations: { "zh-TW": "自動通知" },
-                value: "autoNotify",
               }
             )
         )
