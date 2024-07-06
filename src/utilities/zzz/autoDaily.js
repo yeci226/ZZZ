@@ -1,13 +1,13 @@
-import { client } from "../index.js";
+import { client } from "../../index.js";
 import { EmbedBuilder, WebhookClient } from "discord.js";
-import { Logger } from "../utilities/core/logger.js";
+import { Logger } from "../core/logger.js";
 import {
   getUserCookie,
   getUserLang,
   getUserUid,
   getRandomColor,
-} from "../utilities/utilities.js";
-import { i18nMixin } from "../utilities/core/i18n.js";
+} from "../utilities.js";
+import { i18nMixin } from "../core/i18n.js";
 import { ZenlessZoneZero, LanguageEnum } from "hoyoapi";
 
 const webhook = new WebhookClient({ url: process.env.LOGWEBHOOK });

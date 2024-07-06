@@ -3,8 +3,20 @@ import axios from "axios";
 import emoji from "../assets/emoji.js";
 import { EmbedBuilder } from "discord.js";
 import { ZenlessZoneZero, LanguageEnum, HoyoAPIError } from "hoyoapi";
+import { load } from "cheerio";
 const db = client.db;
 const BASE_URL = "https://bbs-api-os.hoyolab.com/community/post/wapi/";
+
+const codeRewardIcon = [
+  {
+    name: "polychromes",
+    url: "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png",
+  },
+  {
+    name: "dennies",
+    url: "https://static.wikia.nocookie.net/zenless-zone-zero/images/a/a2/Item_Denny.png",
+  },
+];
 
 export async function getNewsList(lang, type) {
   return await axios({
@@ -64,6 +76,59 @@ export async function parsePostContent(content) {
   // content = content.replace(/\n\s*\n/g, "\n");
 
   return content;
+}
+
+export async function getRedeemCodes() {
+  const res = await axios.get("https://www.prydwen.gg/zenless/", {
+    responseType: "text",
+  });
+
+  const codes = [];
+  const $ = load(res.data);
+  const $codes = $(".codes .box");
+
+  $codes.each((index, element) => {
+    codes.push($(element).text().trim());
+  });
+
+  for (let i = 0; i < $codes.length; i++) {
+    const $code = $($codes[i]);
+    const code = $code
+      .find(".code")
+      .text()
+      .replace(" NEW!", "")
+      .split("/")[0]
+      .replace(" ", "");
+    const rewardsText = $code.find(".rewards").text();
+
+    const rewards = rewardsText.split("+").map((reward) => {
+      const parts = reward.trim().split(" ");
+      let count = null;
+      let rewardName = null;
+
+      if (parts.length == 1) {
+        rewardName = parts[0].toLowerCase();
+      } else {
+        count = parseInt(parts[0], 10);
+        rewardName = parts.slice(1).join(" ").toLowerCase();
+      }
+
+      rewardName = rewardName.replace(" ", "");
+      const picture = codeRewardIcon.find((pic) =>
+        rewardName.includes(pic.name)
+      );
+      return {
+        reward: rewardName,
+        icon: picture ? picture.url : null,
+        count: isNaN(count) ? null : count,
+      };
+    });
+
+    codes.push({ code, rewards });
+  }
+
+  const filteredCodes = codes.filter((item) => typeof item === "object");
+  return filteredCodes;
 }
 
 export function secondsToHms(d, tr) {
@@ -140,7 +205,7 @@ export async function failedReply(interaction, title = "", description = "") {
 
   if (description) embed.setDescription(description);
 
-  interaction.reply({
+  replyOrfollowUp(interaction, {
     embeds: [embed],
     ephemeral: true,
     fetchReply: true,

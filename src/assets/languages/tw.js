@@ -11,6 +11,11 @@ const langs = {
   Auto: "自動",
   isSet: "已設置",
   isNotSet: "未設置",
+  NewLocale: "語言已設定為 <locale>",
+  Optional: "可選",
+  polychromes: "菲林",
+  dennies: "丁尼",
+  materials: "材料",
   NoSetAccount: "這位繩匠尚未設置帳號，所以無法使用此指令！",
   AccountNotFound: "找不到這位繩匠！",
   AccountNotFoundDesc:
@@ -87,6 +92,13 @@ const langs = {
   note_Error: "使用者資料未公開！",
   note_Error_Description:
     "請至 [戰績](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) 右上角設定開啟查看遊戲資料！",
+
+  redeem_Success: "兌換成功，請稍後前往信箱領取",
+  redeem_Failed: "兌換失敗",
+  redeen_NoCookie: "尚未設定 CookieToken 或 AccountMid",
+  autoRedeem_Off: "已關閉自動兌換",
+  autoRedeem_On: "已開啟自動兌換",
+  autoRedeem_Tag: "兌換時提及：<z>",
 };
 
 export default langs;

@@ -98,6 +98,29 @@ async function handleAccountAction(interaction, tr, customId, value) {
           )
       );
     } else if (type == "cookie") {
+      const userAccountCookie = accountData.cookie;
+      const cookieObject = {
+        ltoken: "",
+        ltuid: "",
+        cookieToken: "",
+        accountMid: "",
+      };
+
+      const keyMap = {
+        ltoken_v2: "ltoken",
+        ltuid_v2: "ltuid",
+        cookie_token_v2: "cookieToken",
+        account_mid_v2: "accountMid",
+      };
+
+      userAccountCookie.split("; ").reduce((obj, cookie) => {
+        const [key, value] = cookie.split("=");
+        if (key in keyMap) {
+          obj[keyMap[key]] = value;
+        }
+        return obj;
+      }, cookieObject);
+
       await interaction.showModal(
         new ModalBuilder()
           .setCustomId(`cookie_set-${accountIndex}`)
@@ -108,9 +131,10 @@ async function handleAccountAction(interaction, tr, customId, value) {
                 .setCustomId("ltoken")
                 .setLabel("ltoken_2")
                 .setPlaceholder("v2_...")
+                .setValue(cookieObject.ltoken || "")
                 .setStyle(TextInputStyle.Short)
                 .setRequired(false)
-                .setMinLength(10)
+                .setMinLength(0)
                 .setMaxLength(1000)
             ),
             new ActionRowBuilder().addComponents(
@@ -118,9 +142,32 @@ async function handleAccountAction(interaction, tr, customId, value) {
                 .setCustomId("ltuid")
                 .setLabel("ltuid_v2")
                 .setPlaceholder("30...")
+                .setValue(cookieObject.ltuid || "")
                 .setStyle(TextInputStyle.Short)
                 .setRequired(false)
-                .setMinLength(1)
+                .setMinLength(0)
+                .setMaxLength(30)
+            ),
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId("cookieToken")
+                .setLabel(tr("Optional") + " " + "cookie_token_v2")
+                .setPlaceholder("v2_...")
+                .setValue(cookieObject.cookieToken || "")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(false)
+                .setMinLength(0)
+                .setMaxLength(1000)
+            ),
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId("accountMid")
+                .setLabel(tr("Optional") + " " + "account_mid_v2")
+                .setPlaceholder("1lyq...")
+                .setValue(cookieObject.accountMid || "")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(false)
+                .setMinLength(0)
                 .setMaxLength(30)
             )
           )
@@ -153,6 +200,28 @@ async function handleAccountAction(interaction, tr, customId, value) {
     return;
   } else if (interaction.customId == "account_SetUserCookieSelect") {
     const accountIndex = value;
+    const userAccountCookie = account[accountIndex].cookie;
+    const cookieObject = {
+      ltoken: "",
+      ltuid: "",
+      cookieToken: "",
+      accountMid: "",
+    };
+
+    const keyMap = {
+      ltoken_v2: "ltoken",
+      ltuid_v2: "ltuid",
+      cookie_token_v2: "cookieToken",
+      account_mid_v2: "accountMid",
+    };
+
+    userAccountCookie.split("; ").reduce((obj, cookie) => {
+      const [key, value] = cookie.split("=");
+      if (key in keyMap) {
+        obj[keyMap[key]] = value;
+      }
+      return obj;
+    }, cookieObject);
 
     await interaction.showModal(
       new ModalBuilder()
@@ -164,9 +233,10 @@ async function handleAccountAction(interaction, tr, customId, value) {
               .setCustomId("ltoken")
               .setLabel("ltoken_2")
               .setPlaceholder("v2_...")
+              .setValue(cookieObject.ltoken || "")
               .setStyle(TextInputStyle.Short)
               .setRequired(false)
-              .setMinLength(10)
+              .setMinLength(0)
               .setMaxLength(1000)
           ),
           new ActionRowBuilder().addComponents(
@@ -174,9 +244,32 @@ async function handleAccountAction(interaction, tr, customId, value) {
               .setCustomId("ltuid")
               .setLabel("ltuid_v2")
               .setPlaceholder("30...")
+              .setValue(cookieObject.ltuid || "")
               .setStyle(TextInputStyle.Short)
               .setRequired(false)
-              .setMinLength(1)
+              .setMinLength(0)
+              .setMaxLength(30)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("cookieToken")
+              .setLabel(tr("Optional") + " " + "cookie_token_v2")
+              .setPlaceholder("v2_...")
+              .setValue(cookieObject.cookieToken || "")
+              .setStyle(TextInputStyle.Short)
+              .setRequired(false)
+              .setMinLength(0)
+              .setMaxLength(1000)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("accountMid")
+              .setLabel(tr("Optional") + " " + "account_mid_v2")
+              .setPlaceholder("1lyq...")
+              .setValue(cookieObject.accountMid || "")
+              .setStyle(TextInputStyle.Short)
+              .setRequired(false)
+              .setMinLength(0)
               .setMaxLength(30)
           )
         )

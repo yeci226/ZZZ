@@ -8,9 +8,14 @@ const langs = {
   Year: "/",
   Month: "/",
   Day: "/",
-  Auto: "automatic",
+  Auto: "Auto ",
   isSet: "already set",
   isNotSet: "Not set",
+  NewLocale: "The language has been set to <locale>",
+  Optional: "Optional",
+  polychromes: "Polychromes",
+  dennies: "Dennies",
+  materials: "Materials",
   NoSetAccount:
     "This proxy has not yet set up an account, so this command cannot be used!",
   AccountNotFound: "The proxy cannot be found!",
@@ -91,6 +96,14 @@ const langs = {
   note_Error: "使用者资料未公开！",
   note_Error_Description:
     "请至 [战绩](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) 右上角设定开启查看游戏资料！",
+
+  redeem_Success:
+    "Redeem successful, please go to the mailbox to collect it later",
+  redeem_Failed: "Redeem failed",
+  redeen_NoCookie: "CookieToken or AccountMid has not been set yet",
+  autoRedeem_Off: "Auto-redeem is turned off",
+  autoRedeem_On: "Automatic redemption is turned on",
+  autoRedeem_Tag: "Mention when redeeming: <z>",
 };
 
 export default langs;

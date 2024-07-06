@@ -39,7 +39,7 @@ export default {
       option
         .setName("autosign")
         .setDescription(
-          "Automatic check-in at 10am every morning, messages will be sent wherever command used!"
+          "Automatic check-in every day, messages will be sent wherever command used!"
         )
         .setNameLocalizations({
           "zh-TW": "自動簽到",
@@ -82,7 +82,7 @@ export default {
       option
         .setName("tag")
         .setDescription(
-          "Whether mark in the automatic check-in, turn on this also turn on the automatic check-in"
+          "Whether tag in the automatic check-in, turn on this also turn on the automatic check-in"
         )
         .setNameLocalizations({
           "zh-TW": "標註",

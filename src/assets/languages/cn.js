@@ -11,6 +11,7 @@ const langs = {
   Auto: "自动",
   isSet: "已设置",
   isNotSet: "未设置",
+  NewLocale: "语言已设定为 <locale>",
   NoSetAccount: "这位绳匠尚未设置帐号，所以无法使用此指令！",
   AccountNotFound: "找不到这位绳匠！",
   AccountNotFoundDesc:
@@ -87,6 +88,13 @@ const langs = {
   note_Error: "User information is not public!",
   note_Error_Description:
     "Please go to [Record](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) and set it in the upper right corner to view game data!",
+
+  redeem_Success: "兑换成功，请稍后前往信箱领取",
+  redeem_Failed: "兑换失败",
+  redeen_NoCookie: "尚未设定 CookieToken 或 AccountMid",
+  autoRedeem_Off: "已关闭自动兑换",
+  autoRedeem_On: "已开启自动兑换",
+  autoRedeem_Tag: "兑换时提及：<z>",
 };
 
 export default langs;
