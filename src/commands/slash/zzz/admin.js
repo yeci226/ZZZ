@@ -39,11 +39,20 @@ export default {
               "zh-TW": "選擇要刪除使用者的功能",
             })
             .setRequired(true)
-            .addChoices({
-              name: "autodaily",
-              name_localizations: { "zh-TW": "自動簽到" },
-              value: "autoDaily",
-            })
+            .addChoices(
+              {
+                name: "autodaily",
+                name_localizations: { "zh-TW": "自動簽到" },
+                value: "autoDaily",
+              },
+              {
+                name: "autoredeem",
+                name_localizations: {
+                  "zh-TW": "自動兌換",
+                },
+                value: "autoRedeem",
+              }
+            )
         )
         .addUserOption((option) =>
           option
@@ -101,6 +110,13 @@ export default {
                 name: "autodaily",
                 name_localizations: { "zh-TW": "自動簽到" },
                 value: "autoDaily",
+              },
+              {
+                name: "autoredeem",
+                name_localizations: {
+                  "zh-TW": "自動兌換",
+                },
+                value: "autoRedeem",
               }
             )
         )
@@ -269,7 +285,7 @@ const handleMove = async (interaction, tr, db) => {
     await interaction.deferReply({ ephemeral: true });
 
     const keywords =
-      feature === "all" ? ["autoDaily", "autoNotify"] : [feature];
+      feature === "all" ? ["autoDaily", "autoRedeem"] : [feature];
     const datas = await fetchData(db, keywords);
 
     const matchUsers = findMatchedUsers(
@@ -322,14 +338,14 @@ const handleMove = async (interaction, tr, db) => {
 };
 
 const fetchData = async (db, keywords) => {
-  const [autoDailyData, autoNotifyData] = await Promise.all([
+  const [autoDailyData, autoRedeemData] = await Promise.all([
     db.get("autoDaily"),
-    db.get("autoNotify"),
+    db.get("autoRedeem"),
   ]);
 
   return {
     autoDaily: autoDailyData,
-    autoNotify: autoNotifyData,
+    autoRedeem: autoRedeemData,
   };
 };
 
