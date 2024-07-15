@@ -35,7 +35,6 @@ export default async function autoRedeem() {
   for (const id of autoRedeem) {
     const accounts = await db.get(`${id}.account`);
     if (!accounts || !Array.isArray(accounts) || accounts.length <= 0) continue;
-    new Logger("自動執行 - 自動兌換").info(`已開始 ${id} 的自動兌換`);
     for (const account of accounts) {
       let accountIndex = 0;
       if (getUserCookie(id, accountIndex) && getUserUid(id, accountIndex))
