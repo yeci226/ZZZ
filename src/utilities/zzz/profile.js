@@ -24,7 +24,8 @@ const drawQueue = new Queue({ autostart: true });
 const offsetCharacter = {
   1121: 0, // Ben
   1281: 0, // Piper
-  1211: 0,
+  1211: 0, // Rina
+  1181: -55, // Grace
 };
 const elementId = {
   200: "physic",
