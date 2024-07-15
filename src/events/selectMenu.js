@@ -53,7 +53,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const { locale, customId, values } = interaction;
   const userLocale =
     (await getUserLang(interaction.user.id)) || toI18nLang(locale) || "en";
-  const tr = i18nMixin(userLocale);
+  const tr = createTranslator(userLocale);
 
   if (!customId.startsWith("account"))
     await interaction.update({ fetchReply: true }).catch(() => {});
