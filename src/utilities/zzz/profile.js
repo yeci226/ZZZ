@@ -24,6 +24,7 @@ const drawQueue = new Queue({ autostart: true });
 const offsetCharacter = {
   1121: 0, // Ben
   1281: 0, // Piper
+  1211: 0,
 };
 const elementId = {
   200: "physic",
@@ -698,7 +699,6 @@ export async function drawCharacterImage(
 
       // Draw Disk Driver Main Prop
       equip.main_properties?.forEach((prop) => {
-        console.log(prop);
         const image = propertyImageMap[propertiesId[prop.property_id]];
         ctx.drawImage(image, 1334 + offset_x, 126 + offset_y, 40, 40);
         ctx.font = `36px ${userLocale === "tw" ? "TW" : "EN"}`;
