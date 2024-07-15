@@ -145,13 +145,7 @@ export default {
       !interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild)
     ) {
       return interaction.reply({
-        embeds: [
-          createEmbed(
-            tr("admin_NoPermission"),
-            "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
-            "#E76161"
-          ),
-        ],
+        embeds: [createEmbed(tr("admin_NoPermission"), "sob", "#E76161")],
         ephemeral: true,
       });
     }
@@ -169,10 +163,7 @@ export default {
 };
 
 const createEmbed = (title, thumbnail, color, description = "") => {
-  const embed = new EmbedBuilder()
-    .setThumbnail(thumbnail)
-    .setColor(color)
-    .setTitle(title);
+  const embed = new EmbedBuilder().setConfig(color, thumbnail).setTitle(title);
   if (description) embed.setDescription(description);
 
   return embed;
@@ -187,13 +178,7 @@ const handleRemove = async (interaction, tr, db) => {
 
   if (!userid) {
     return interaction.reply({
-      embeds: [
-        createEmbed(
-          tr("admin_RemoveFail"),
-          "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
-          "#E76161"
-        ),
-      ],
+      embeds: [createEmbed(tr("admin_RemoveFail"), "sob", "#E76161")],
       ephemeral: true,
     });
   }
@@ -203,7 +188,7 @@ const handleRemove = async (interaction, tr, db) => {
       embeds: [
         createEmbed(
           tr("admin_RemoveFail"),
-          "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
+          "sob",
           "#E76161",
           tr("admin_UserNotSet", { user: `<@${userid}>` })
         ),
@@ -222,7 +207,7 @@ const handleRemove = async (interaction, tr, db) => {
       embeds: [
         createEmbed(
           tr("admin_RemoveFail"),
-          "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
+          "sob",
           "#E76161",
           tr("admin_RemoveFailUserOtherServer", {
             user: `<@${userid}>`,
@@ -237,7 +222,7 @@ const handleRemove = async (interaction, tr, db) => {
     embeds: [
       createEmbed(
         tr("admin_RemoveSuccess"),
-        "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bd/Sticker_Set_1_Billy_wiggle.png/revision/latest?cb=20220617042050",
+        "wiggle",
         "#F6F1F1",
         tr("admin_RemoveSuccessMessage", {
           user: `<@${userid}>`,
@@ -263,7 +248,7 @@ const handleMove = async (interaction, tr, db) => {
       embeds: [
         createEmbed(
           tr("admin_MoveFail"),
-          "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
+          "sob",
           "#E76161",
           tr("admin_MoveNoPermission", {
             channel: `<#${channel.id}>`,
@@ -298,7 +283,7 @@ const handleMove = async (interaction, tr, db) => {
         embeds: [
           createEmbed(
             tr("admin_MoveFail"),
-            "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
+            "sob",
             "#E76161",
             tr("admin_MoveNoUser")
           ),
@@ -313,7 +298,7 @@ const handleMove = async (interaction, tr, db) => {
       embeds: [
         createEmbed(
           tr("admin_MoveSuccess"),
-          "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bd/Sticker_Set_1_Billy_wiggle.png/revision/latest?cb=20220617042050",
+          "wiggle",
           "#F6F1F1",
           tr("admin_MoveSuccessMessage", {
             count: matchUsers.length,
@@ -327,7 +312,7 @@ const handleMove = async (interaction, tr, db) => {
       embeds: [
         createEmbed(
           tr("admin_MoveFail"),
-          "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
+          "sob",
           "#E76161",
           tr("admin_MoveFailMessage", { channel: `<#${channel.id}>` })
         ),

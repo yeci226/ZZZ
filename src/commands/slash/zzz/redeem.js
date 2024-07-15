@@ -178,14 +178,14 @@ export default {
       const zzz = await getUserZZZData(interaction, tr, targetUser.id);
       if (!zzz) return;
 
+      let userRedeemedCodes =
+        (await db.get(`${targetUser.id}.redeemedCodes`)) || [];
+
       try {
         const res = await zzz.redeem.claim(code);
-        if (res.code == 0) {
-          const codesList = await getRedeemCodes();
-          const matchCode = codesList.find((c) => c.code == code);
-          const userRedeemedCodes =
-            (await db.get(`${targetUser.id}.redeemedCodes`)) || [];
-          userRedeemedCodes.push(code);
+        if (res.retcode == 0 || res.message == "OK") {
+          if (!userRedeemedCodes.includes(code)) userRedeemedCodes.push(code);
+          userRedeemedCodes = Array.from(new Set(userRedeemedCodes));
           await db.set(`${targetUser.id}.redeemedCodes`, userRedeemedCodes);
 
           interaction.editReply({
@@ -193,19 +193,17 @@ export default {
               new EmbedBuilder()
                 .setColor(getRandomColor())
                 .setTitle(tr("redeem_Success"))
-                .setThumbnail(matchCode.rewards[0].icon || "")
-                .setDescription(
-                  matchCode.rewards
-                    .map((reward, index) => {
-                      return `${index}. \`${tr(reward.reward)}${
-                        reward.count != null ? ` x${reward.count}` : ""
-                      }\``;
-                    })
-                    .join("\n")
+                .setThumbnail(
+                  "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png"
                 ),
             ],
             ephemeral: true,
           });
+        } else if (res.retcode == -2017) {
+          if (!userRedeemedCodes.includes(code)) userRedeemedCodes.push(code);
+          userRedeemedCodes = Array.from(new Set(userRedeemedCodes));
+          await db.set(`${targetUser.id}.redeemedCodes`, userRedeemedCodes);
+          failedReply(interaction, res.message);
         } else {
           failedReply(interaction, res.message);
         }
@@ -235,7 +233,7 @@ export default {
         return interaction.editReply({
           embeds: [
             new EmbedBuilder()
-              .setColor("#A2CDB0")
+              .setConfig("#A2CDB0", "smirk")
               .setTitle(tr("autoRedeem_On"))
               .setDescription(
                 tr("autoRedeem_Tag", {
@@ -244,9 +242,6 @@ export default {
                       ? "`" + tr("True") + "`"
                       : "`" + tr("False") + "`",
                 })
-              )
-              .setThumbnail(
-                "https://static.wikia.nocookie.net/zenless-zone-zero/images/3/37/Sticker_Set_1_Nicole_smirk.png"
               ),
           ],
         });
@@ -255,11 +250,9 @@ export default {
         return interaction.editReply({
           embeds: [
             new EmbedBuilder()
+              .setConfig("#E76161", "smirk")
               .setColor("#E76161")
-              .setTitle(tr("autoDaily_Off"))
-              .setThumbnail(
-                "https://static.wikia.nocookie.net/zenless-zone-zero/images/3/37/Sticker_Set_1_Nicole_smirk.png"
-              ),
+              .setTitle(tr("autoDaily_Off")),
           ],
         });
       }

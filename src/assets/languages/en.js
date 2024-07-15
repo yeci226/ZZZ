@@ -21,6 +21,22 @@ const langs = {
   AccountNotFound: "The proxy cannot be found!",
   AccountNotFoundDesc:
     "### Please confirm whether the following information has been set and correct\n- Cookie: `<hasCookie>`\n- UID: `<hasUid>`",
+  Searching: "Searching for information, please wait~",
+  DrawInQueue: "In queue, current queue position: <position>",
+  DrawError: "Drawing failed",
+  MainPage: "Home Page",
+  CostTime:
+    "Time spent: Request <requestTime> seconds • Draw <drawTime> seconds",
+  levelFormat: "Lv. <level>",
+  levelFormat2: "Level <level>",
+  MindScape: "Show cinema effect",
+  InterKnot: "Inter-Knot Comm.",
+  Agents: "My Agents",
+  Bangboo: "My Bangboo",
+  Showmore: "Show More",
+  ActiveDays: "Active Days",
+  PeriodZoneLayer: "Shiyu Defense Frontiers",
+  InterKnotReputation: "Inter-Knot Reputation",
 
   //Commands
   news_Notice: "Announcement",
@@ -82,7 +98,7 @@ const langs = {
   admin_MoveFailMessage: "Unable to set message notification to <channel>",
   admin_NoData: "There is no data in the database",
 
-  note_Title: "Instant Note",
+  note_Title: "Sticky Note",
   note_Vitality: "Engagement Today",
   note_Energy: "Electricity",
   note_Energy_Full: "Fully Recovered",
@@ -104,6 +120,10 @@ const langs = {
   autoRedeem_Off: "Auto-redeem is turned off",
   autoRedeem_On: "Automatic redemption is turned on",
   autoRedeem_Tag: "Mention when redeeming: <z>",
+
+  profile_SelectCharacter: "Select a character to view",
+  profile_NoImageData: "Unable to obtain image data",
+  profile_CharactersFormat: "Level <level> • Imagery <rank>",
 };
 
 export default langs;

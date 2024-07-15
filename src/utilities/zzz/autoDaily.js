@@ -7,7 +7,7 @@ import {
   getUserUid,
   getRandomColor,
 } from "../utilities.js";
-import { i18nMixin } from "../core/i18n.js";
+import { createTranslator } from "../core/i18n.js";
 import { ZenlessZoneZero, LanguageEnum } from "hoyoapi";
 
 const webhook = new WebhookClient({ url: process.env.LOGWEBHOOK });
@@ -36,12 +36,19 @@ export default async function autoDailySign() {
     const time = dailyData[id]?.time ? dailyData[id].time : "13";
 
     if (parseInt(time) == nowTime) {
-      const accounts = await db.get(`${id}.account`);
-      for (const account of accounts) {
-        let accountIndex = 0;
-        if (getUserCookie(id, accountIndex) && getUserUid(id, accountIndex))
-          await dailySign(dailyData, id, account.uid, account.cookie);
-        accountIndex++;
+      try {
+        const accounts = await db.get(`${id}.account`);
+        if (!accounts || !Array.isArray(accounts) || accounts.length <= 0)
+          continue;
+        for (const account of accounts) {
+          let accountIndex = 0;
+          if (getUserCookie(id, accountIndex) && getUserUid(id, accountIndex))
+            await dailySign(dailyData, id, account.uid, account.cookie);
+          accountIndex++;
+        }
+      } catch (e) {
+        console.log("自動簽到錯誤" + e);
+        continue;
       }
     }
   }
@@ -52,21 +59,16 @@ export default async function autoDailySign() {
 
 async function dailySign(dailyData, userId, uid, cookie) {
   total++;
-  const locale = await getUserLang(userId);
-  const tr = i18nMixin(locale || "en");
+  const userLocale = (await getUserLang(userId)) || "en";
+  const tr = createTranslator(userLocale);
   const channelId = dailyData[userId].channelId;
   const tag = dailyData[userId].tag === "true" ? "<@" + userId + ">" : "";
-  let channel;
-
-  try {
-    channel = await client.channels.fetch(channelId);
-  } catch (e) {}
 
   try {
     const zzz = new ZenlessZoneZero({
       cookie,
       lang:
-        locale === "tw"
+        userLocale === "tw"
           ? LanguageEnum.TRADIIONAL_CHINESE
           : LanguageEnum.ENGLISH,
     });
@@ -74,7 +76,8 @@ async function dailySign(dailyData, userId, uid, cookie) {
     const info = await zzz.daily.info();
     const reward = await zzz.daily.reward();
     const rewards = await zzz.daily.rewards();
-    const todaySign = rewards.awards[info.total_sign_day - 1];
+    const todaySign =
+      rewards.awards[info.total_sign_day - 1] || rewards.awards[0];
     const tmrSign = rewards.awards[info.total_sign_day];
     const res = await zzz.daily.claim();
 

@@ -4,7 +4,7 @@ import cn from "../../assets/languages/cn.js";
 
 const langs = { en, tw, cn };
 
-export function i18nMixin(lang) {
+export function createTranslator(lang) {
   if (!Object.keys(langs).includes(lang))
     throw new Error("No lang specified found!");
   return function i18n(string, options, ...args) {

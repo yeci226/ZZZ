@@ -5,8 +5,11 @@ import {
   StringSelectMenuBuilder,
   EmbedBuilder,
   ModalBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   TextInputBuilder,
   TextInputStyle,
+  AttachmentBuilder,
 } from "discord.js";
 import {
   getUserLang,
@@ -14,23 +17,198 @@ import {
   getPostFull,
   parsePostContent,
   getRandomColor,
+  getUserZZZData,
+  drawInQueueReply,
+  getUserHoyolabData,
 } from "../utilities/utilities.js";
-import { i18nMixin, toI18nLang } from "../utilities/core/i18n.js";
-
+import { drawMainImage, drawCharacterImage } from "../utilities/zzz/profile.js";
+import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
+import Queue from "queue";
+import emoji from "../assets/emoji.js";
 const db = client.db;
+const drawQueue = new Queue({ autostart: true });
+const elementId = {
+  200: "physic",
+  201: "fire",
+  202: "ice",
+  203: "thunder",
+  205: "ether",
+};
+
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isButton()) return;
+  await interaction.update({ fetchReply: true }).catch(() => {});
+  const { locale, customId } = interaction;
+  const userLocale =
+    (await getUserLang(interaction.user.id)) || toI18nLang(locale) || "en";
+  const tr = createTranslator(userLocale);
+
+  if (customId == "profile_CharacterMindScape") {
+    handleMindScapeChange(interaction, tr);
+  }
+});
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isStringSelectMenu()) return;
   const { locale, customId, values } = interaction;
-  const userLocale = await getUserLang(interaction.user.id);
-  const tr = i18nMixin(userLocale || toI18nLang(locale) || "en");
+  const userLocale =
+    (await getUserLang(interaction.user.id)) || toI18nLang(locale) || "en";
+  const tr = i18nMixin(userLocale);
 
   if (!customId.startsWith("account"))
     await interaction.update({ fetchReply: true }).catch(() => {});
   if (customId.startsWith("news")) handleNews(interaction, tr, values[0]);
   if (customId.startsWith("account"))
     handleAccountAction(interaction, tr, customId, values[0]);
+  if (customId == "profile_SelectCharacter")
+    handleSelectCharacter(interaction, tr, values[0], userLocale);
 });
+
+async function handleMindScapeChange(interaction) {
+  const [row1, row2] = interaction.message.components;
+
+  const mindScapeKey = `${interaction.user.id}.mindscape`;
+  const mindScape = (await db.get(mindScapeKey)) ?? true;
+
+  row2.components = row2.components.map((button) =>
+    button.customId === interaction.customId
+      ? ButtonBuilder.from(button).setStyle(
+          mindScape ? ButtonStyle.Secondary : ButtonStyle.Success
+        )
+      : button
+  );
+
+  await interaction.message.edit({ components: [row1, row2] });
+  await db.set(mindScapeKey, !mindScape);
+}
+
+async function handleSelectCharacter(interaction, tr, value, userLocale) {
+  const drawTask = async () => {
+    try {
+      interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(tr("Searching"))
+            .setColor(getRandomColor())
+            .setImage(
+              "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+            ),
+        ],
+        components: [],
+        fetchReply: true,
+      });
+
+      const requestStartTime = Date.now();
+      const [userId, characterId] = value.split("-");
+      const zzz = await getUserZZZData(interaction, tr, userId, userLocale);
+      if (!zzz) return;
+
+      const characters = await zzz.record.characters();
+      const requestEndTime = Date.now();
+      const drawStartTime = Date.now();
+      let imageBuffer;
+
+      if (characterId == "main") {
+        const record = await zzz.record.records();
+        const userData = await getUserHoyolabData(interaction, tr, userId);
+        imageBuffer = await drawMainImage(tr, userLocale, userData, record);
+      } else {
+        imageBuffer = await drawCharacterImage(
+          interaction,
+          tr,
+          userLocale,
+          zzz.uid,
+          (await zzz.record.character(characterId))[0]
+        );
+      }
+
+      if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
+      const drawEndTime = Date.now();
+
+      const image = new AttachmentBuilder(imageBuffer, {
+        name: `CharacterPage_${zzz.uid}.png`,
+      });
+
+      const userMindScape =
+        (await db.get(`${interaction.user.id}.mindscape`)) ?? true;
+      const rowSelect = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setPlaceholder(tr("profile_SelectCharacter"))
+          .setCustomId("profile_SelectCharacter")
+          .setMinValues(1)
+          .setMaxValues(1)
+          .addOptions(
+            characterId === "main"
+              ? characters.map((character) => ({
+                  emoji: emoji[elementId[character.element_type]],
+                  label: `${character.name_mi18n}`,
+                  value: `${userId}-${character.id}`,
+                }))
+              : [
+                  {
+                    emoji: emoji.avatarIcon,
+                    label: tr("MainPage"),
+                    value: `${userId}-main`,
+                  },
+                  ...characters.map((character) => ({
+                    emoji: emoji[elementId[character.element_type]],
+                    label: `${character.name_mi18n}`,
+                    description: `${tr("profile_CharactersFormat", {
+                      level: character.level,
+                      rank: character.rank,
+                    })}`,
+                    value: `${userId}-${character.id}`,
+                  })),
+                ]
+          )
+      );
+      const rowMindScape = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("profile_CharacterMindScape")
+          .setLabel(tr("MindScape"))
+          .setStyle(userMindScape ? ButtonStyle.Success : ButtonStyle.Secondary)
+      );
+
+      interaction.editReply({
+        embeds: [
+          new EmbedBuilder().setImage(`attachment://${image.name}`).setFooter({
+            text: tr("CostTime", {
+              requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
+                2
+              ),
+              drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
+            }),
+          }),
+        ],
+        components: [rowSelect, rowMindScape],
+        files: [image],
+      });
+    } catch (error) {
+      console.log(error);
+      interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor("#E76161")
+            .setTitle(tr("DrawError"))
+            .setDescription(`\`${error}\``)
+            .setThumbnail(
+              "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
+            ),
+        ],
+        fetchReply: true,
+      });
+    }
+  };
+
+  drawQueue.push(drawTask);
+
+  if (drawQueue.length !== 1) {
+    drawInQueueReply(
+      interaction,
+      tr("DrawInQueue", { position: drawQueue.length - 1 })
+    );
+  }
+}
 
 async function handleAccountAction(interaction, tr, customId, value) {
   const account = await db.get(`${interaction.user.id}.account`);
@@ -38,10 +216,7 @@ async function handleAccountAction(interaction, tr, customId, value) {
     return interaction.reply({
       embeds: [
         new EmbedBuilder()
-          .setColor("#E76161")
-          .setThumbnail(
-            "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-          )
+          .setConfig("#E76161", "sob")
           .setTitle(`${tr("account_nonAcc")}`),
       ],
       ephemeral: true,
@@ -188,10 +363,7 @@ async function handleAccountAction(interaction, tr, customId, value) {
     interaction.editReply({
       embeds: [
         new EmbedBuilder()
-          .setColor("#F6F1F1")
-          .setThumbnail(
-            "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bd/Sticker_Set_1_Billy_wiggle.png/revision/latest?cb=20220617042050"
-          )
+          .setConfig("#F6F1F1", "wiggle")
           .setTitle(`${tr("account_DeletedSuccess")} \`${uid}\``),
       ],
       components: [],

@@ -3,7 +3,7 @@ import {
   SlashCommandBuilder,
   EmbedBuilder,
 } from "discord.js";
-import { i18nMixin, toI18nLang } from "../../../utilities/core/i18n.js";
+import { createTranslator, toI18nLang } from "../../../utilities/core/i18n.js";
 import { getRandomColor, getUserLang } from "../../../utilities/utilities.js";
 
 export default {
@@ -63,25 +63,20 @@ export default {
     await db.set(`${interaction.user.id}.locale`, locale);
 
     const userLocale = await getUserLang(interaction.user.id);
-    const newTr = i18nMixin(userLocale || toI18nLang(locale) || "en");
+    const newTr = createTranslator(userLocale || toI18nLang(locale) || "en");
 
     interaction.reply({
       embeds: [
-        new EmbedBuilder()
-          .setColor(getRandomColor())
-          .setTitle(
-            newTr("NewLocale", {
-              locale:
-                locale === "en"
-                  ? "English"
-                  : locale === "tw"
-                    ? "中文(台灣)"
-                    : "中文(中國)",
-            })
-          )
-          .setThumbnail(
-            "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bd/Sticker_Set_1_Billy_wiggle.png/revision/latest?cb=20220617042050"
-          ),
+        new EmbedBuilder().setConfig(getRandomColor(), "wiggle").setTitle(
+          newTr("NewLocale", {
+            locale:
+              locale === "en"
+                ? "English"
+                : locale === "tw"
+                  ? "中文(台灣)"
+                  : "中文(中國)",
+          })
+        ),
       ],
       ephemeral: true,
     });

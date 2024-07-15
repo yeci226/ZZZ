@@ -2,21 +2,9 @@ import { client } from "../index.js";
 import axios from "axios";
 import emoji from "../assets/emoji.js";
 import { EmbedBuilder } from "discord.js";
-import { ZenlessZoneZero, LanguageEnum, HoyoAPIError } from "hoyoapi";
-import { load } from "cheerio";
+import { ZenlessZoneZero, LanguageEnum, HoyoAPIError, Hoyolab } from "hoyoapi";
 const db = client.db;
 const BASE_URL = "https://bbs-api-os.hoyolab.com/community/post/wapi/";
-
-const codeRewardIcon = [
-  {
-    name: "polychromes",
-    url: "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png",
-  },
-  {
-    name: "dennies",
-    url: "https://static.wikia.nocookie.net/zenless-zone-zero/images/a/a2/Item_Denny.png",
-  },
-];
 
 export async function getNewsList(lang, type) {
   return await axios({
@@ -79,56 +67,11 @@ export async function parsePostContent(content) {
 }
 
 export async function getRedeemCodes() {
-  const res = await axios.get("https://www.prydwen.gg/zenless/", {
-    responseType: "text",
-  });
+  const res = await axios
+    .get("https://hoyo-codes.seriaati.xyz/codes?game=nap")
+    .then((response) => response.data);
 
-  const codes = [];
-  const $ = load(res.data);
-  const $codes = $(".codes .box");
-
-  $codes.each((index, element) => {
-    codes.push($(element).text().trim());
-  });
-
-  for (let i = 0; i < $codes.length; i++) {
-    const $code = $($codes[i]);
-    const code = $code
-      .find(".code")
-      .text()
-      .replace(" NEW!", "")
-      .split("/")[0]
-      .replace(" ", "");
-    const rewardsText = $code.find(".rewards").text();
-
-    const rewards = rewardsText.split("+").map((reward) => {
-      const parts = reward.trim().split(" ");
-      let count = null;
-      let rewardName = null;
-
-      if (parts.length == 1) {
-        rewardName = parts[0].toLowerCase();
-      } else {
-        count = parseInt(parts[0], 10);
-        rewardName = parts.slice(1).join(" ").toLowerCase();
-      }
-
-      rewardName = rewardName.replace(" ", "");
-      const picture = codeRewardIcon.find((pic) =>
-        rewardName.includes(pic.name)
-      );
-      return {
-        reward: rewardName,
-        icon: picture ? picture.url : null,
-        count: isNaN(count) ? null : count,
-      };
-    });
-
-    codes.push({ code, rewards });
-  }
-
-  const filteredCodes = codes.filter((item) => typeof item === "object");
-  return filteredCodes;
+  return res.codes;
 }
 
 export function secondsToHms(d, tr) {
@@ -195,13 +138,21 @@ export function getStaminaColor(stamina) {
   return selectedColor;
 }
 
+export async function drawInQueueReply(interaction, title = "") {
+  interaction.editReply({
+    embeds: [
+      new EmbedBuilder()
+        .setTitle(title)
+        .setThumbnail(
+          "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+        ),
+    ],
+    fetchReply: true,
+  });
+}
+
 export async function failedReply(interaction, title = "", description = "") {
-  const embed = new EmbedBuilder()
-    .setTitle(title)
-    .setColor("#E76161")
-    .setThumbnail(
-      "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-    );
+  const embed = new EmbedBuilder().setTitle(title).setConfig("#E76161", "sob");
 
   if (description) embed.setDescription(description);
 
@@ -212,15 +163,80 @@ export async function failedReply(interaction, title = "", description = "") {
   });
 }
 
-export async function getUserZZZData(interaction, tr, userId) {
-  const [cookie, userLang, uid] = await Promise.all([
+const dotggCharacterUrl =
+  "https://api.dotgg.gg/cgfw/getgacha?game=zenless&type=characters";
+
+export async function getCharacterData(characterId) {
+  const response = await axios.get(dotggCharacterUrl);
+  const character = response.data.find(
+    (character) => character.id == characterId
+  );
+
+  return {
+    id: character.id,
+    name: character.name,
+    fullName: character.fullName,
+    iconUrl: `https://static.dotgg.gg/zenless/${character.icon}`,
+    faction: character.faction,
+  };
+}
+
+export async function getUserHoyolabData(interaction, tr, userId, userLang) {
+  const [cookie, uid] = await Promise.all([
     getUserCookie(userId),
-    getUserLang(userId),
     getUserUid(userId),
   ]);
+  if (!userLang) userLang = await getUserLang(userId);
 
-  const lang =
-    userLang === "tw" || interaction.locale === "zh-TW"
+  const lang = userLang
+    ? userLang == "tw"
+      ? LanguageEnum.TRADIIONAL_CHINESE
+      : LanguageEnum.ENGLISH
+    : interaction.locale === "zh-TW"
+      ? LanguageEnum.TRADIIONAL_CHINESE
+      : LanguageEnum.ENGLISH;
+
+  try {
+    const hoyolab = new Hoyolab({ cookie, lang, uid });
+    const gameRecord = await hoyolab.gameRecordCard();
+    const filteredData = gameRecord.filter((item) => item.game_id === 8);
+
+    return filteredData[0];
+  } catch (error) {
+    const isHoyoAPIError = error instanceof HoyoAPIError;
+    const errorCode = isHoyoAPIError ? error.code : error;
+
+    checkAccount(
+      interaction,
+      tr,
+      userId,
+      isHoyoAPIError && error.code == 10035
+        ? {
+            ErrorCode: error.code,
+          }
+        : {
+            hasCookie: cookie != null,
+            Lang: lang,
+            hasUid: uid != null,
+            ErrorCode: errorCode,
+          }
+    );
+    return null;
+  }
+}
+
+export async function getUserZZZData(interaction, tr, userId, userLang) {
+  const [cookie, uid] = await Promise.all([
+    getUserCookie(userId),
+    getUserUid(userId),
+  ]);
+  if (!userLang) userLang = await getUserLang(userId);
+
+  const lang = userLang
+    ? userLang == "tw"
+      ? LanguageEnum.TRADIIONAL_CHINESE
+      : LanguageEnum.ENGLISH
+    : interaction.locale === "zh-TW"
       ? LanguageEnum.TRADIIONAL_CHINESE
       : LanguageEnum.ENGLISH;
 
@@ -268,10 +284,7 @@ export function checkAccount(interaction, tr, userId, data) {
     replyOrfollowUp(interaction, {
       embeds: [
         new EmbedBuilder()
-          .setColor("#E76161")
-          .setThumbnail(
-            "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png/revision/latest?cb=20220617042016"
-          )
+          .setConfig("#E76161", "sob")
           .setTitle(tr("AccountNotFound"))
           .setDescription(
             tr("AccountNotFoundDesc", {
@@ -290,10 +303,7 @@ export function checkAccount(interaction, tr, userId, data) {
     replyOrfollowUp(interaction, {
       embeds: [
         new EmbedBuilder()
-          .setColor("#E76161")
-          .setThumbnail(
-            "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-          )
+          .setConfig("#E76161", "sob")
           .setTitle(tr("NoSetAccount")),
       ],
       ephemeral: true,

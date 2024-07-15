@@ -123,10 +123,7 @@ export default {
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
-            .setColor("#E76161")
-            .setThumbnail(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-            )
+            .setConfig("#E76161", "sob")
             .setTitle(tr("daily_NonAccount"))
             .setDescription(tr("daily_NonAccountDesc")),
         ],
@@ -143,11 +140,8 @@ export default {
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
-            .setColor("#E76161")
             .setTitle(tr("autoDaily_Off"))
-            .setThumbnail(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/3/37/Sticker_Set_1_Nicole_smirk.png"
-            ),
+            .setConfig("#E76161", "smirk"),
         ],
       });
     } else if (time || tag || auto === "on") {
@@ -160,7 +154,7 @@ export default {
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
-            .setColor("#A2CDB0")
+            .setConfig("#A2CDB0", "smirk")
             .setTitle(tr("autoDaily_On"))
             .setDescription(
               tr("autoDaily_Time", {
@@ -173,9 +167,6 @@ export default {
                       ? "`" + tr("True") + "`"
                       : "`" + tr("False") + "`",
                 })
-            )
-            .setThumbnail(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/3/37/Sticker_Set_1_Nicole_smirk.png"
             ),
         ],
       });
@@ -187,7 +178,8 @@ export default {
     const info = await zzz.daily.info();
     const reward = await zzz.daily.reward();
     const rewards = await zzz.daily.rewards();
-    const todaySign = rewards.awards[info.total_sign_day - 1];
+    const todaySign =
+      rewards.awards[info.total_sign_day - 1] || rewards.awards[0];
     const tmrSign = rewards.awards[info.total_sign_day];
     const res = await zzz.daily.claim();
 
@@ -195,10 +187,7 @@ export default {
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
-            .setColor("#E76161")
-            .setThumbnail(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-            )
+            .setConfig("#E76161", "sob")
             .setTitle(`${tr("daily_Failed")} ${tr("daily_Signed")}`),
         ],
       });

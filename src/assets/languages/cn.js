@@ -16,6 +16,21 @@ const langs = {
   AccountNotFound: "找不到这位绳匠！",
   AccountNotFoundDesc:
     "### 请确认以下资料是否已设置及是否正确\n- Cookie： `<hasCookie>`\n- UID： `<hasUid>`",
+  Searching: "搜寻资料中，主人请稍等～",
+  DrawInQueue: "正在排队中，目前排队位置：<position>",
+  DrawError: "绘制失败",
+  MainPage: "首页",
+  CostTime: "耗时：请求 <requestTime> 秒 • 绘制 <drawTime> 秒",
+  levelFormat: "等级 <level>",
+  levelFormat2: "等级 <level>",
+  MindScape: "显示影画效果",
+  InterKnot: "绳网通讯",
+  Agents: "我的代理人",
+  Bangboo: "我的邦布",
+  Showmore: "查看更多",
+  ActiveDays: "活跃天数",
+  PeriodZoneLayer: "式与防卫战防线",
+  InterKnotReputation: "绳网声望",
 
   //Commands
   news_Notice: "公告",
@@ -95,6 +110,10 @@ const langs = {
   autoRedeem_Off: "已关闭自动兑换",
   autoRedeem_On: "已开启自动兑换",
   autoRedeem_Tag: "兑换时提及：<z>",
+
+  profile_SelectCharacter: "选择角色查看",
+  profile_NoImageData: "无法获取图片资料",
+  profile_CharactersFormat: "等级 <level> • 意象影画 <rank>",
 };
 
 export default langs;

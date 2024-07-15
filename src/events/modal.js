@@ -3,7 +3,7 @@ import { AxiosError } from "axios";
 import { Events, EmbedBuilder } from "discord.js";
 import { ZenlessZoneZero } from "hoyoapi";
 import { getUserLang } from "../utilities/utilities.js";
-import { i18nMixin, toI18nLang } from "../utilities/core/i18n.js";
+import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 
 const db = client.db;
 
@@ -11,8 +11,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isModalSubmit()) return;
 
   const { locale, customId, fields } = interaction;
-  const userLocale = await getUserLang(interaction.user.id);
-  const tr = i18nMixin(userLocale || toI18nLang(locale) || "en");
+  const userLocale =
+    (await getUserLang(interaction.user.id)) || toI18nLang(locale) || "en";
+  const tr = createTranslator(userLocale);
 
   if (customId.startsWith("accountEdit"))
     handleAccountEdit(interaction, tr, customId, fields);
@@ -31,10 +32,7 @@ async function handleAccountEdit(interaction, tr, customId, fields) {
   // 	return interaction.editReply({
   // 		embeds: [
   // 			new EmbedBuilder()
-  // 				.setColor("#E76161")
-  // 				.setThumbnail(
-  // 					"https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-  // 				)
+  //        .setConfig("#E76161", "sob")
   // 				.setTitle(tr("profile_UidNotFound") + " - " + uid)
   // 		]
   // 	});
@@ -44,16 +42,11 @@ async function handleAccountEdit(interaction, tr, customId, fields) {
   if (accounts.some((account) => account.uid == uid))
     return interaction.editReply({
       embeds: [
-        new EmbedBuilder()
-          .setColor("#E76161")
-          .setThumbnail(
-            "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-          )
-          .setTitle(
-            tr("account_AlreadySet", {
-              z: `${uid}`,
-            })
-          ),
+        new EmbedBuilder().setConfig("#E76161", "sob").setTitle(
+          tr("account_AlreadySet", {
+            z: `${uid}`,
+          })
+        ),
       ],
     });
 
@@ -62,10 +55,7 @@ async function handleAccountEdit(interaction, tr, customId, fields) {
   interaction.editReply({
     embeds: [
       new EmbedBuilder()
-        .setColor("#F6F1F1")
-        .setThumbnail(
-          "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bd/Sticker_Set_1_Billy_wiggle.png/revision/latest?cb=20220617042050"
-        )
+        .setConfig("#F6F1F1", "wiggle")
         .setTitle(tr("account_UidSetSuccess", { z: `${uid}` })),
     ],
   });
@@ -82,10 +72,7 @@ async function handleUidSet(interaction, tr, fields) {
   //       return interaction.editReply({
   //         embeds: [
   //           new EmbedBuilder()
-  //             .setColor("#E76161")
-  //             .setThumbnail(
-  //               "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-  //             )
+  //             .setConfig("#E76161", "sob")
   //             .setTitle(tr("profile_UidNotFound") + " - " + uid),
   //         ],
   //       });
@@ -105,9 +92,7 @@ async function handleUidSet(interaction, tr, fields) {
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
-            .setThumbnail(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-            )
+            .setConfig("#E76161", "sob")
             .setTitle(`${tr("account_LimitExceeded")} `),
         ],
       });
@@ -115,32 +100,22 @@ async function handleUidSet(interaction, tr, fields) {
     if (accounts.some((account) => account.uid == uid))
       return interaction.editReply({
         embeds: [
-          new EmbedBuilder()
-            .setColor("#E76161")
-            .setThumbnail(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-            )
-            .setTitle(
-              `${tr("account_AlreadySet", {
-                z: `${uid}`,
-              })}`
-            ),
+          new EmbedBuilder().setConfig("#E76161", "sob").setTitle(
+            `${tr("account_AlreadySet", {
+              z: `${uid}`,
+            })}`
+          ),
         ],
       });
   }
 
   interaction.editReply({
     embeds: [
-      new EmbedBuilder()
-        .setColor("#F6F1F1")
-        .setThumbnail(
-          "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bd/Sticker_Set_1_Billy_wiggle.png/revision/latest?cb=20220617042050"
-        )
-        .setTitle(
-          `${tr("account_UidSetSuccess", {
-            z: `${uid}`,
-          })}`
-        ),
+      new EmbedBuilder().setConfig("#F6F1F1", "wiggle").setTitle(
+        `${tr("account_UidSetSuccess", {
+          z: `${uid}`,
+        })}`
+      ),
     ],
   });
   await db.push(`${interaction.user.id}.account`, {
@@ -151,12 +126,18 @@ async function handleUidSet(interaction, tr, fields) {
 
 async function handleCookieSet(interaction, tr, customId, fields) {
   const accountIndex = customId.split("-")[1];
-  const ltoken = `ltoken_v2=${fields.getTextInputValue("ltoken")}; ` || "";
-  const ltuid = `ltuid_v2=${fields.getTextInputValue("ltuid")}; ` || "";
-  const cookieToken =
-    `cookie_token_v2=${fields.getTextInputValue("cookieToken")}; ` || "";
-  const accountMid =
-    `account_mid_v2=${fields.getTextInputValue("accountMid")}; ` || "";
+  const ltoken = fields.getTextInputValue("ltoken")
+    ? `ltoken_v2=${fields.getTextInputValue("ltoken")}; `
+    : "";
+  const ltuid = fields.getTextInputValue("ltuid")
+    ? `ltuid_v2=${fields.getTextInputValue("ltuid")}; `
+    : "";
+  const cookieToken = fields.getTextInputValue("cookieToken")
+    ? `cookie_token_v2=${fields.getTextInputValue("cookieToken")}; `
+    : "";
+  const accountMid = fields.getTextInputValue("accountMid")
+    ? `account_mid_v2=${fields.getTextInputValue("accountMid")}; `
+    : "";
   const cookie = ltoken + ltuid + cookieToken + accountMid;
   const account = (await db.get(`${interaction.user.id}.account`)) ?? "";
 
@@ -171,16 +152,11 @@ async function handleCookieSet(interaction, tr, customId, fields) {
 
     return interaction.reply({
       embeds: [
-        new EmbedBuilder()
-          .setColor("#F6F1F1")
-          .setThumbnail(
-            "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bd/Sticker_Set_1_Billy_wiggle.png/revision/latest?cb=20220617042050"
-          )
-          .setTitle(
-            tr("account_CookieSetSuccess", {
-              z: `${account[accountIndex].uid}`,
-            })
-          ),
+        new EmbedBuilder().setConfig("#F6F1F1", "wiggle").setTitle(
+          tr("account_CookieSetSuccess", {
+            z: `${account[accountIndex].uid}`,
+          })
+        ),
       ],
       ephemeral: true,
     });

@@ -8,7 +8,7 @@ import {
   getRandomColor,
   getRedeemCodes,
 } from "../utilities.js";
-import { i18nMixin } from "../core/i18n.js";
+import { createTranslator } from "../core/i18n.js";
 import { ZenlessZoneZero, LanguageEnum } from "hoyoapi";
 
 const db = client.db;
@@ -34,6 +34,8 @@ export default async function autoRedeem() {
 
   for (const id of autoRedeem) {
     const accounts = await db.get(`${id}.account`);
+    if (!accounts || !Array.isArray(accounts) || accounts.length <= 0) continue;
+    new Logger("自動執行 - 自動兌換").info(`已開始 ${id} 的自動兌換`);
     for (const account of accounts) {
       let accountIndex = 0;
       if (getUserCookie(id, accountIndex) && getUserUid(id, accountIndex))
@@ -54,73 +56,71 @@ export default async function autoRedeem() {
 
 async function redeemCode(dailyData, codesList, userId, uid, cookie) {
   total++;
-  const userRedeemedCodes = (await db.get(`${userId}.redeemedCodes`)) || [];
+  let userRedeemedCodes = (await db.get(`${userId}.redeemedCodes`)) || [];
 
   if (!userRedeemedCodes.includes(codesList.code)) {
     const unRedeemedCodes = codesList.filter(
       (code) => !userRedeemedCodes.includes(code.code)
     );
 
-    const locale = await getUserLang(userId);
-    const tr = i18nMixin(locale || "en");
+    const userLocale = (await getUserLang(userId)) || "en";
+    const tr = createTranslator(userLocale);
     const channelId = dailyData[userId].channelId;
     const tag = dailyData[userId].tag === "true" ? "<@" + userId + ">" : "";
     const embed = new EmbedBuilder().setColor(getRandomColor());
     const redeemedCode = [];
     let redeemSuccess = false;
     let description = `<@${userId}>`;
-    let channel;
-
-    try {
-      channel = await client.channels.fetch(channelId);
-    } catch (e) {}
 
     try {
       const zzz = new ZenlessZoneZero({
         uid,
         cookie,
         lang:
-          locale === "tw"
+          userLocale === "tw"
             ? LanguageEnum.TRADIIONAL_CHINESE
             : LanguageEnum.ENGLISH,
       });
 
-      unRedeemedCodes.forEach(async (code) => {
+      for (const code of unRedeemedCodes) {
         const res = await zzz.redeem.claim(code.code);
-        if (res.code === 0) {
-          userRedeemedCodes.push(code.code);
+        if (res.retcode === 0 || res.message == "OK") {
+          if (!userRedeemedCodes.includes(code.code))
+            userRedeemedCodes.push(code.code);
+          userRedeemedCodes = Array.from(new Set(userRedeemedCodes));
           redeemedCode.push(code);
           redeemSuccess = true;
-          description += `\n### ${code.code}\n${code.rewards
-            .map(
-              (reward, index) =>
-                `${index}. \`${tr(reward.reward)}${reward.count != null ? ` x${reward.count}` : ""}\``
-            )
-            .join("\n")}`;
+          description += `\n### ${code.code}\n`;
+        } else if ([-2017, -2001, -2006].includes(res.retcode)) {
+          if (!userRedeemedCodes.includes(code.code)) {
+            userRedeemedCodes.push(code.code);
+          }
+          userRedeemedCodes = Array.from(new Set(userRedeemedCodes));
         } else {
           description += `\n### ${code.code} \`${tr("redeem_Failed")}\`\n${res.message || ""}`;
           failed++;
         }
 
-        await new Promise((r) => setTimeout(r, 5000));
-      });
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
 
+      await db.set(`${userId}.redeemedCodes`, userRedeemedCodes);
       if (redeemSuccess) {
         success++;
-        const firstCode = redeemedCode[0];
 
         sendMessage(channelId, {
           content: tag,
           embeds: [
             embed
               .setTitle(tr("Auto") + tr("redeem_Success"))
-              .setThumbnail(firstCode.rewards[0].icon || "")
+              .setThumbnail(
+                "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png"
+              )
               .setDescription(description),
           ],
         }).catch(() => {});
       }
     } catch (error) {
-      console.log(error);
       console.log("兌換錯誤：" + error);
       failed++;
     }
