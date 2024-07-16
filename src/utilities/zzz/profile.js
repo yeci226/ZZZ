@@ -267,13 +267,13 @@ export async function drawMainImage(tr, userLocale, userData, record) {
 
     // Draw User Name
     ctx.textAlign = "left";
-    drawText(ctx, userData.nickname, userLocale, 170, 36, 16, 200, 150); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
+    drawText(ctx, userData?.nickname ?? "", userLocale, 170, 36, 16, 200, 150); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
 
     // Draw User level
     ctx.fillStyle = "white";
     ctx.textAlign = "left";
     ctx.font = `26px ${userLocale === "tw" ? "TW" : "EN"}`;
-    ctx.fillText(`Lv.${userData.level}`, 200, 200);
+    ctx.fillText(userData?.level ? `Lv.${userData.level}` : "", 200, 200);
 
     // Draw User World Level Name
     ctx.textAlign = "left";
@@ -452,7 +452,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
     ctx.fillStyle = "white";
     ctx.textAlign = "right";
     ctx.fillText(
-      `UID ${userData.game_role_id}`,
+      userData?.game_role_id ? `UID ${userData.game_role_id}` : "",
       canvas.width - 10,
       canvas.height - 10
     );
