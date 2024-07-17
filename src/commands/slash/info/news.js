@@ -11,9 +11,11 @@ export default {
     .setDescription("Get the latest news from the offical")
     .setNameLocalizations({
       "zh-TW": "新聞",
+      vi: "tintức",
     })
     .setDescriptionLocalizations({
       "zh-TW": "從官方獲取最新消息",
+      vi: "nhận tin tức chính thức mới nhất",
     }),
   /**
    *

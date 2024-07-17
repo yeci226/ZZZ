@@ -15,9 +15,11 @@ export default {
     .setDescription("View current energy")
     .setNameLocalizations({
       "zh-TW": "即時便箋",
+      vi: "ghichúnhanh",
     })
     .setDescriptionLocalizations({
       "zh-TW": "查看當前電量",
+      vi: "Kiểm tra điện lượng hiện tại",
     })
     .addSubcommand((subcommand) =>
       subcommand
@@ -25,6 +27,7 @@ export default {
         .setDescription("...")
         .setNameLocalizations({
           "zh-TW": "查看",
+          vi: "kiểmtra",
         })
         .addUserOption((option) =>
           option
@@ -32,6 +35,7 @@ export default {
             .setDescription("...")
             .setNameLocalizations({
               "zh-TW": "使用者",
+              vi: "ngườidùng",
             })
             .setRequired(false)
         )

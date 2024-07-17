@@ -1,8 +1,11 @@
 import en from "../../assets/languages/en.js";
 import tw from "../../assets/languages/tw.js";
 import cn from "../../assets/languages/cn.js";
+import vi from "../../assets/languages/vi.js";
+import jp from "../../assets/languages/jp.js";
+import kr from "../../assets/languages/kr.js";
 
-const langs = { en, tw, cn };
+const langs = { en, tw, cn, vi, jp, kr };
 
 export function createTranslator(lang) {
   if (!Object.keys(langs).includes(lang))

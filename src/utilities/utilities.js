@@ -181,6 +181,14 @@ export async function getCharacterData(characterId) {
   };
 }
 
+const languageMapping = {
+  tw: LanguageEnum.TRADIIONAL_CHINESE,
+  vi: LanguageEnum.VIETNAMESE,
+  jp: LanguageEnum.JAPANESE,
+  kr: LanguageEnum.KOREAN,
+  default: LanguageEnum.ENGLISH,
+};
+
 export async function getUserHoyolabData(interaction, tr, userId, userLang) {
   const [cookie, uid] = await Promise.all([
     getUserCookie(userId),
@@ -188,13 +196,11 @@ export async function getUserHoyolabData(interaction, tr, userId, userLang) {
   ]);
   if (!userLang) userLang = await getUserLang(userId);
 
+  const getLanguage = (locale) =>
+    languageMapping[locale] || languageMapping.default;
   const lang = userLang
-    ? userLang == "tw"
-      ? LanguageEnum.TRADIIONAL_CHINESE
-      : LanguageEnum.ENGLISH
-    : interaction.locale === "zh-TW"
-      ? LanguageEnum.TRADIIONAL_CHINESE
-      : LanguageEnum.ENGLISH;
+    ? getLanguage(userLang)
+    : getLanguage(interaction.locale);
 
   try {
     const hoyolab = new Hoyolab({ cookie, lang, uid });
@@ -232,13 +238,11 @@ export async function getUserZZZData(interaction, tr, userId, userLang) {
   ]);
   if (!userLang) userLang = await getUserLang(userId);
 
+  const getLanguage = (locale) =>
+    languageMapping[locale] || languageMapping.default;
   const lang = userLang
-    ? userLang == "tw"
-      ? LanguageEnum.TRADIIONAL_CHINESE
-      : LanguageEnum.ENGLISH
-    : interaction.locale === "zh-TW"
-      ? LanguageEnum.TRADIIONAL_CHINESE
-      : LanguageEnum.ENGLISH;
+    ? getLanguage(userLang)
+    : getLanguage(interaction.locale);
 
   try {
     const zzz = new ZenlessZoneZero({ cookie, lang, uid });

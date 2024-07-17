@@ -16,9 +16,11 @@ export default {
     .setDescription("Redeem codes for rewards")
     .setNameLocalizations({
       "zh-TW": "兌換碼",
+      vi: "mãcode",
     })
     .setDescriptionLocalizations({
       "zh-TW": "兌換代碼獲取獎勵",
+      vi: "Đổi mã nhận thưởng",
     })
     .addSubcommand((subcommand) =>
       subcommand
@@ -26,9 +28,11 @@ export default {
         .setDescription("Check available codes")
         .setNameLocalizations({
           "zh-TW": "列表",
+          vi: "danhsách",
         })
         .setDescriptionLocalizations({
           "zh-TW": "查看當前可用兌換碼",
+          vi: "Kiểm tra các mã đổi thưởng hiện có",
         })
     )
     .addSubcommand((subcommand) =>
@@ -37,9 +41,11 @@ export default {
         .setDescription("...")
         .setNameLocalizations({
           "zh-TW": "兌換",
+          vi: "đổithưởng",
         })
         .setDescriptionLocalizations({
           "zh-TW": "...",
+          vi: "...",
         })
         .addStringOption((option) =>
           option
@@ -47,9 +53,11 @@ export default {
             .setDescription("Enter the code to redeem")
             .setNameLocalizations({
               "zh-TW": "禮包碼",
+              vi: "mãđổithưởng",
             })
             .setDescriptionLocalizations({
               "zh-TW": "在這裡輸入要兌換的禮包碼",
+              vi: "Nhập mã code bạn muốn đổi thưởng tại đây",
             })
             .setRequired(true)
         )
@@ -59,9 +67,11 @@ export default {
             .setDescription("Help other user redeem code")
             .setNameLocalizations({
               "zh-TW": "使用者",
+              vi: "ngườidùng",
             })
             .setDescriptionLocalizations({
               "zh-TW": "幫其他使用者兌換代碼",
+              vi: "Đổi mã đổi thưởng cho người dùng khác",
             })
             .setRequired(false)
         )
@@ -74,9 +84,11 @@ export default {
         )
         .setNameLocalizations({
           "zh-TW": "自動兌換",
+          vi: "tựđộngđổithưởng",
         })
         .setDescriptionLocalizations({
           "zh-TW": "自動兌換代碼，訊息會在使用指令的地方自動發送！",
+          vi: "Bot sẽ trả lời tự động ngay dưới câu hỏi!",
         })
         .addStringOption((option) =>
           option
@@ -84,9 +96,11 @@ export default {
             .setDescription("...")
             .setNameLocalizations({
               "zh-TW": "開啟",
+              vi: "bật",
             })
             .setDescriptionLocalizations({
               "zh-TW": "...",
+              vi: "...",
             })
             .setRequired(true)
             .addChoices(
@@ -94,6 +108,7 @@ export default {
                 name: "On",
                 name_localizations: {
                   "zh-TW": "開啟",
+                  vi: "Bật",
                 },
                 value: "on",
               },
@@ -101,6 +116,7 @@ export default {
                 name: "Off",
                 name_localizations: {
                   "zh-TW": "關閉",
+                  vi: "Tắt",
                 },
                 value: "off",
               }
@@ -114,9 +130,11 @@ export default {
             )
             .setNameLocalizations({
               "zh-TW": "標註",
+              vi: "thôngbáo",
             })
             .setDescriptionLocalizations({
               "zh-TW": "是否在自動兌換中標註，開啟這個也相當於開啟了自動兌換",
+              vi: "Chọn Bật sẽ tự động kích hoạt chế độ nhận code tự động nếu bạn chưa kích hoạt.",
             })
             .setRequired(false)
             .addChoices(
@@ -124,6 +142,7 @@ export default {
                 name: "On",
                 name_localizations: {
                   "zh-TW": "開啟",
+                  vi: "Bật",
                 },
                 value: "true",
               },
@@ -131,6 +150,7 @@ export default {
                 name: "Off",
                 name_localizations: {
                   "zh-TW": "關閉",
+                  vi: "Tắt",
                 },
                 value: "false",
               }
@@ -157,13 +177,13 @@ export default {
           new EmbedBuilder()
             .setTimestamp()
             .setColor(getRandomColor())
-            .setTitle("當前可用兌換碼")
-            .setFooter({ text: "使用機器人兌換過的禮包碼才會顯示已兌換" })
+            .setTitle(tr("redeem_Codelist"))
+            .setFooter({ text: tr("redeem_CodeTip") })
             .setDescription(
               `${codes
                 .map((code, index) => {
                   const redeemed = userRedeemedCodes.includes(code.code);
-                  return `${index}. ${code.code} ${redeemed ? "`✅已兌換`" : "`❌未兌換`"}`;
+                  return `${index}. ${code.code} ${redeemed ? tr("redeem_Redeemed") : tr("redeem_NoRedeem")}`;
                 })
                 .join("\n")}`
             ),

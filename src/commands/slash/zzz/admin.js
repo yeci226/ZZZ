@@ -12,9 +12,11 @@ export default {
     .setDescription("Server administrator settings")
     .setNameLocalizations({
       "zh-TW": "管理員",
+      vi: "quảntrịviên",
     })
     .setDescriptionLocalizations({
       "zh-TW": "伺服器管理員的設定",
+      vi: "Cài đặt admin máy chủ",
     })
     .addSubcommand((subcommand) =>
       subcommand
@@ -24,9 +26,11 @@ export default {
         )
         .setNameLocalizations({
           "zh-TW": "刪除",
+          vi: "tuỳchọn",
         })
         .setDescriptionLocalizations({
           "zh-TW": "刪除使用者在頻道中的訊息通知",
+          vi: "Xoá thông báo tin nhắn của người dùng (Ping) khỏi kênh",
         })
         .addStringOption((option) =>
           option
@@ -34,21 +38,27 @@ export default {
             .setDescription("Select the features you want to remove user from")
             .setNameLocalizations({
               "zh-TW": "功能",
+              vi: "chứcnăng",
             })
             .setDescriptionLocalizations({
               "zh-TW": "選擇要刪除使用者的功能",
+              vi: "Tuỳ chọn xoá chức năng người dùng",
             })
             .setRequired(true)
             .addChoices(
               {
                 name: "autodaily",
-                name_localizations: { "zh-TW": "自動簽到" },
+                name_localizations: {
+                  "zh-TW": "自動簽到",
+                  vi: "Điểm danh tự động",
+                },
                 value: "autoDaily",
               },
               {
                 name: "autoredeem",
                 name_localizations: {
                   "zh-TW": "自動兌換",
+                  vi: "Đổi code tự động",
                 },
                 value: "autoRedeem",
               }
@@ -60,9 +70,11 @@ export default {
             .setDescription("Select user to remove")
             .setNameLocalizations({
               "zh-TW": "使用者",
+              vi: "ngườidùng",
             })
             .setDescriptionLocalizations({
               "zh-TW": "選擇要刪除的使用者",
+              vi: "Tuỳ chọn xoá người dùng",
             })
             .setRequired(false)
         )
@@ -72,9 +84,11 @@ export default {
             .setDescription("Enter the user ID you want to delete")
             .setNameLocalizations({
               "zh-TW": "使用者id",
+              vi: "idngườidùng",
             })
             .setDescriptionLocalizations({
               "zh-TW": "輸入要刪除的使用者ID",
+              vi: "Nhập ID người dùng bạn muốn xoá",
             })
             .setRequired(false)
         )
@@ -85,9 +99,11 @@ export default {
         .setDescription("Change the channel for message notifications")
         .setNameLocalizations({
           "zh-TW": "移動",
+          vi: "dichuyển",
         })
         .setDescriptionLocalizations({
           "zh-TW": "更改訊息通知的頻道",
+          vi: "Đổi kênh nhận thông báo tin nhắn",
         })
         .addStringOption((option) =>
           option
@@ -95,26 +111,35 @@ export default {
             .setDescription("Select features to move")
             .setNameLocalizations({
               "zh-TW": "功能",
+              vi: "chứcnăng",
             })
             .setDescriptionLocalizations({
               "zh-TW": "選擇移動的功能",
+              vi: "Tuỳ chọn chức năng di chuyển",
             })
             .setRequired(true)
             .addChoices(
               {
                 name: "all",
-                name_localizations: { "zh-TW": "全部" },
+                name_localizations: {
+                  "zh-TW": "全部",
+                  vi: "Tất cả",
+                },
                 value: "all",
               },
               {
                 name: "autodaily",
-                name_localizations: { "zh-TW": "自動簽到" },
+                name_localizations: {
+                  "zh-TW": "自動簽到",
+                  vi: "Điểm danh tự động",
+                },
                 value: "autoDaily",
               },
               {
                 name: "autoredeem",
                 name_localizations: {
                   "zh-TW": "自動兌換",
+                  vi: "Đổi code tự động",
                 },
                 value: "autoRedeem",
               }
@@ -126,9 +151,11 @@ export default {
             .setDescription("Select channel to remove")
             .setNameLocalizations({
               "zh-TW": "頻道",
+              vi: "kênh",
             })
             .setDescriptionLocalizations({
               "zh-TW": "選擇要移動至哪個頻道",
+              vi: "Chọn kênh sẽ chuyển đến",
             })
             .setRequired(true)
         )

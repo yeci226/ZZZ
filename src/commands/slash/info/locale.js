@@ -6,15 +6,26 @@ import {
 import { createTranslator, toI18nLang } from "../../../utilities/core/i18n.js";
 import { getRandomColor, getUserLang } from "../../../utilities/utilities.js";
 
+const languages = {
+  vi: "Tiếng Việt",
+  cn: "简体中文",
+  tw: "繁體中文",
+  jp: "日本語",
+  kr: "한국어",
+  default: "English",
+};
+
 export default {
   data: new SlashCommandBuilder()
     .setName("locale")
     .setDescription("Set the language displayed by the bot")
     .setNameLocalizations({
       "zh-TW": "語言",
+      vi: "ngônngữ",
     })
     .setDescriptionLocalizations({
       "zh-TW": "設定機器人所顯示的語言",
+      vi: "Thiết lập ngôn ngữ của bot",
     })
     .addStringOption((option) =>
       option
@@ -22,32 +33,37 @@ export default {
         .setDescription("...")
         .setNameLocalizations({
           "zh-TW": "語言",
+          vi: "ngônngữ",
         })
         .setDescriptionLocalizations({
           "zh-TW": "...",
+          vi: "...",
         })
         .setRequired(true)
         .addChoices(
           {
-            name: "en",
-            name_localizations: {
-              "zh-TW": "英文",
-            },
+            name: "English",
             value: "en",
           },
           {
-            name: "tw",
-            name_localizations: {
-              "zh-TW": "中文(台灣)",
-            },
+            name: "繁體中文",
             value: "tw",
           },
           {
-            name: "cn",
-            name_localizations: {
-              "zh-TW": "中文(中國)",
-            },
+            name: "简体中文",
             value: "cn",
+          },
+          {
+            name: "日本語",
+            value: "jp",
+          },
+          {
+            name: "한국어",
+            value: "kr",
+          },
+          {
+            name: "Tiếng Việt",
+            value: "vi",
           }
         )
     ),
@@ -64,17 +80,13 @@ export default {
 
     const userLocale = await getUserLang(interaction.user.id);
     const newTr = createTranslator(userLocale || toI18nLang(locale) || "en");
+    const selectedLanguage = languages[locale] || languages.default;
 
     interaction.reply({
       embeds: [
         new EmbedBuilder().setConfig(getRandomColor(), "wiggle").setTitle(
           newTr("NewLocale", {
-            locale:
-              locale === "en"
-                ? "English"
-                : locale === "tw"
-                  ? "中文(台灣)"
-                  : "中文(中國)",
+            locale: selectedLanguage,
           })
         ),
       ],

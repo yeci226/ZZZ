@@ -117,6 +117,11 @@ const langs = {
     "Redeem successful, please go to the mailbox to collect it later",
   redeem_Failed: "Redeem failed",
   redeen_NoCookie: "CookieToken or AccountMid has not been set yet",
+  redeem_Codelist: "Currently available redemption codes",
+  redeem_CodeTip:
+    "Only gift codes redeemed by robots will be displayed as redeemed",
+  redeem_Redeemed: "`✅Redeemed`",
+  redeem_NoRedeem: "`❌Not redeemed`",
   autoRedeem_Off: "Auto-redeem is turned off",
   autoRedeem_On: "Automatic redemption is turned on",
   autoRedeem_Tag: "Mention when redeeming: <z>",

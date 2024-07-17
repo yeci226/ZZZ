@@ -97,9 +97,29 @@ GlobalFonts.registerFromPath(
   "TW"
 );
 GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "vi-vn.ttf"),
+  "VI"
+);
+GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "ja-jp.ttf"),
+  "JP"
+);
+GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "ko-kr.ttf"),
+  "KR"
+);
+GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "Nunito-BlackItalic.ttf"),
   "Nunito"
 );
+
+const fonts = {
+  tw: "TW",
+  vi: "VI",
+  jp: "JP",
+  kr: "KR",
+  default: "EN",
+};
 
 const loadImageAsync = async (url) => {
   try {
@@ -192,10 +212,7 @@ export async function handleProfileDraw(interaction, tr, user, zzz) {
           embeds: [
             new EmbedBuilder()
               .setTitle(tr("note_Error"))
-              .setColor("#E76161")
-              .setThumbnail(
-                "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-              )
+              .setConfig("#E76161", "sob")
               .setImage(
                 "https://media.discordapp.net/attachments/1149960935654559835/1258313139078955039/image.png"
               )
@@ -234,6 +251,7 @@ export async function handleProfileDraw(interaction, tr, user, zzz) {
 
 export async function drawMainImage(tr, userLocale, userData, record) {
   try {
+    const selectedFont = fonts[userLocale] || fonts.default;
     const canvas = createCanvas(1000, 1600);
     const ctx = canvas.getContext("2d");
 
@@ -259,7 +277,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
     // Draw BackGround Text
     ctx.fillStyle = "white";
     ctx.textAlign = "left";
-    ctx.font = `24px ${userLocale === "tw" ? "TW" : "EN"}`;
+    ctx.font = `24px ${selectedFont}`;
     ctx.fillText(tr("InterKnot"), 30, 33);
 
     // Draw User Info
@@ -267,42 +285,67 @@ export async function drawMainImage(tr, userLocale, userData, record) {
 
     // Draw User Name
     ctx.textAlign = "left";
-    drawText(ctx, userData?.nickname ?? "", userLocale, 170, 36, 16, 200, 150); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
+    drawText(
+      ctx,
+      userData?.nickname ?? "",
+      selectedFont,
+      170,
+      36,
+      16,
+      200,
+      150
+    ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
 
     // Draw User level
     ctx.fillStyle = "white";
     ctx.textAlign = "left";
-    ctx.font = `26px ${userLocale === "tw" ? "TW" : "EN"}`;
+    ctx.font = `26px ${selectedFont}`;
     ctx.fillText(userData?.level ? `Lv.${userData.level}` : "", 200, 200);
 
     // Draw User World Level Name
     ctx.textAlign = "left";
-    drawText(ctx, tr("InterKnotReputation"), userLocale, 320, 28, 20, 425, 128); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
-    ctx.fillStyle = "white";
+    drawText(
+      ctx,
+      tr("InterKnotReputation"),
+      selectedFont,
+      320,
+      28,
+      20,
+      425,
+      128
+    ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
     ctx.textAlign = "right";
-    ctx.font = `28px ${userLocale === "tw" ? "TW" : "EN"}`;
-    ctx.fillText(`${record.stats.world_level_name}`, 970, 128);
+    drawText(
+      ctx,
+      record.stats.world_level_name,
+      selectedFont,
+      160,
+      28,
+      22,
+      970,
+      128
+    ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
 
     // Draw User Active Days
     ctx.textAlign = "left";
-    drawText(ctx, tr("ActiveDays"), userLocale, 320, 28, 20, 425, 178); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
+    drawText(ctx, tr("ActiveDays"), selectedFont, 320, 28, 20, 425, 178); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
     ctx.fillStyle = "white";
     ctx.textAlign = "right";
-    ctx.font = `28px ${userLocale === "tw" ? "TW" : "EN"}`;
+    ctx.font = `28px ${selectedFont}`;
     ctx.fillText(`${record.stats.active_days}`, 970, 178);
 
     // Draw User Cur Period Zone Layer Count
     ctx.textAlign = "left";
-    drawText(ctx, tr("PeriodZoneLayer"), userLocale, 340, 28, 20, 425, 228); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
+    drawText(ctx, tr("PeriodZoneLayer"), selectedFont, 340, 28, 20, 425, 228); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
     ctx.fillStyle = "white";
     ctx.textAlign = "right";
-    ctx.font = `28px ${userLocale === "tw" ? "TW" : "EN"}`;
+    ctx.font = `28px ${selectedFont}`;
     ctx.fillText(`${record.stats.cur_period_zone_layer_count}`, 970, 228);
 
     // Agents
     ctx.fillStyle = "white";
     ctx.textAlign = "left";
-    ctx.font = `36px ${userLocale === "tw" ? "TW" : "EN"}`;
+    ctx.font = `36px ${selectedFont}`;
     ctx.fillText(tr("Agents") + ` (${record.stats.avatar_num})`, 50, 330);
 
     if (record.stats.avatar_num != record.avatar_list.length)
@@ -333,7 +376,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
       drawText(
         ctx,
         agent.name_mi18n,
-        userLocale,
+        selectedFont,
         140,
         24,
         20,
@@ -344,7 +387,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
       // Draw Agent Level
       ctx.fillStyle = "rgba(128, 128, 128, 255)";
       ctx.textAlign = "center";
-      ctx.font = `20px ${userLocale === "tw" ? "TW" : "EN"}`;
+      ctx.font = `20px ${selectedFont}`;
       ctx.fillText(
         agent.level
           ? tr("levelFormat2", {
@@ -368,7 +411,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
         ); // (ctx, x, y, width, height, radius, color)
         ctx.fillStyle = "white";
         ctx.textAlign = "center";
-        ctx.font = `28px ${userLocale === "tw" ? "TW" : "EN"}`;
+        ctx.font = `28px ${selectedFont}`;
         ctx.fillText(`${agent.rank}`, 200 + offset_x, 388 + offset_y);
       }
     });
@@ -376,7 +419,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
     // Buddy
     ctx.fillStyle = "white";
     ctx.textAlign = "left";
-    ctx.font = `36px ${userLocale === "tw" ? "TW" : "EN"}`;
+    ctx.font = `36px ${selectedFont}`;
     ctx.fillText(tr("Bangboo") + ` (${record.stats.buddy_num})`, 50, 960);
 
     if (record.stats.buddy_num != record.buddy_list.length)
@@ -407,7 +450,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
       drawText(
         ctx,
         buddy.name,
-        userLocale,
+        selectedFont,
         140,
         24,
         20,
@@ -418,7 +461,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
       // Draw Buddy Level
       ctx.fillStyle = "rgba(128, 128, 128, 255)";
       ctx.textAlign = "center";
-      ctx.font = `20px ${userLocale === "tw" ? "TW" : "EN"}`;
+      ctx.font = `20px ${selectedFont}`;
       ctx.fillText(
         buddy.level
           ? tr("levelFormat2", {
@@ -442,13 +485,13 @@ export async function drawMainImage(tr, userLocale, userData, record) {
         ); // (ctx, x, y, width, height, radius, color)
         ctx.fillStyle = "white";
         ctx.textAlign = "center";
-        ctx.font = `28px ${userLocale === "tw" ? "TW" : "EN"}`;
+        ctx.font = `28px ${selectedFont}`;
         ctx.fillText(`${buddy.star}`, 200 + offset_x, 1018 + offset_y);
       }
     });
 
     // Player UID
-    ctx.font = `28px ${userLocale === "tw" ? "TW" : "EN"}`;
+    ctx.font = `28px ${selectedFont}`;
     ctx.fillStyle = "white";
     ctx.textAlign = "right";
     ctx.fillText(
@@ -472,6 +515,7 @@ export async function drawCharacterImage(
   character
 ) {
   try {
+    const selectedFont = fonts[userLocale] || fonts.default;
     const userMindScape =
       (await db.get(`${interaction.user.id}.mindscape`)) ?? true;
     const canvas = createCanvas(2080, 870);
@@ -558,7 +602,7 @@ export async function drawCharacterImage(
     const iconSpacing = 40;
     const iconSize = 80;
 
-    ctx.font = `60px ${userLocale === "tw" ? "TW" : "EN"}`;
+    ctx.font = `60px ${selectedFont}`;
     const textWidth = ctx.measureText(character.name_mi18n).width;
     const boxWidth = padding * 2 + textWidth + iconSpacing + iconSize * 2;
 
@@ -589,7 +633,7 @@ export async function drawCharacterImage(
 
         const propertyName = character.properties[index].property_name;
         let fontSize = 32;
-        ctx.font = `${fontSize}px ${userLocale === "tw" ? "TW" : "EN"}`;
+        ctx.font = `${fontSize}px ${selectedFont}`;
         let propertyTextWidth = ctx.measureText(propertyName).width;
 
         const maxTextWidth = 230;
@@ -597,7 +641,7 @@ export async function drawCharacterImage(
         while (propertyTextWidth > maxTextWidth && fontSize > 22) {
           fontSize--;
           yPosition -= 0.4;
-          ctx.font = `${fontSize}px ${userLocale === "tw" ? "TW" : "EN"}`;
+          ctx.font = `${fontSize}px ${selectedFont}`;
           propertyTextWidth = ctx.measureText(propertyName).width;
         }
 
@@ -606,7 +650,7 @@ export async function drawCharacterImage(
         ctx.textAlign = "left";
         ctx.fillText(propertyName, 140, yPosition);
         ctx.textAlign = "right";
-        ctx.font = `32px ${userLocale === "tw" ? "TW" : "EN"}`;
+        ctx.font = `32px ${selectedFont}`;
         ctx.fillText(
           `${character.properties[index].final}`,
           480,
@@ -628,7 +672,7 @@ export async function drawCharacterImage(
       const offset_y = index * 60;
       drawRoundedRect(ctx, 520, 260 + offset_y, 120, 54, 27, boxColor); // (ctx, x, y, width, height, radius, color)
       ctx.drawImage(image, 526, 264 + offset_y, 46, 46);
-      ctx.font = `32px ${userLocale === "tw" ? "TW" : "EN"}`;
+      ctx.font = `32px ${selectedFont}`;
       ctx.fillStyle = "white";
       ctx.textAlign = "right";
       ctx.fillText(`${reorderedSkillLevel[index].level}`, 614, 298 + offset_y);
@@ -648,7 +692,7 @@ export async function drawCharacterImage(
       30,
       boxColor
     ); // (ctx, x, y, width, height, radius, color)
-    ctx.font = `48px ${userLocale === "tw" ? "TW" : "EN"}`;
+    ctx.font = `48px ${selectedFont}`;
     ctx.fillStyle = "white";
     ctx.textAlign = "left";
     ctx.fillText(
@@ -688,7 +732,7 @@ export async function drawCharacterImage(
         18,
         "rgba(255, 255, 255, 0.95)"
       );
-      ctx.font = `32px ${userLocale === "tw" ? "TW" : "EN"}`;
+      ctx.font = `32px ${selectedFont}`;
       ctx.fillStyle = "black";
       ctx.textAlign = "center";
       ctx.fillText(
@@ -702,7 +746,7 @@ export async function drawCharacterImage(
       equip.main_properties?.forEach((prop) => {
         const image = propertyImageMap[propertiesId[prop.property_id]];
         ctx.drawImage(image, 1334 + offset_x, 126 + offset_y, 40, 40);
-        ctx.font = `36px ${userLocale === "tw" ? "TW" : "EN"}`;
+        ctx.font = `36px ${selectedFont}`;
         ctx.fillStyle = "white";
         ctx.textAlign = "right";
         ctx.fillText(`${prop.base}`, 1510 + offset_x, 160 + offset_y);
@@ -720,7 +764,7 @@ export async function drawCharacterImage(
           28,
           28
         );
-        ctx.font = `24px ${userLocale === "tw" ? "TW" : "EN"}`;
+        ctx.font = `24px ${selectedFont}`;
         ctx.fillStyle = "white";
         ctx.textAlign = "right";
         ctx.fillText(
@@ -751,11 +795,18 @@ export async function drawCharacterImage(
         const propOffest_y = 56 * index;
         const image = propertyImageMap[propertiesId[prop.property_id]];
         ctx.drawImage(image, 1560, 640 + propOffest_y, 40, 40);
-        ctx.font = `32px ${userLocale === "tw" ? "TW" : "EN"}`;
-        ctx.fillStyle = "white";
         ctx.textAlign = "left";
-        ctx.fillText(`${prop.property_name}`, 1620, 672 + propOffest_x);
-        ctx.font = `32px ${userLocale === "tw" ? "TW" : "EN"}`;
+        drawText(
+          ctx,
+          prop.property_name,
+          selectedFont,
+          170,
+          32,
+          28,
+          1620,
+          672 + propOffest_x
+        ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
+        ctx.font = `32px ${selectedFont}`;
         ctx.fillStyle = "white";
         ctx.textAlign = "right";
         ctx.fillText(`${prop.base}`, 1900, 672 + propOffest_y);
@@ -767,11 +818,18 @@ export async function drawCharacterImage(
         const propOffest_y = 56 * index;
         const image = propertyImageMap[propertiesId[prop.property_id]];
         ctx.drawImage(image, 1562, 686 + propOffest_y, 36, 36);
-        ctx.font = `28px ${userLocale === "tw" ? "TW" : "EN"}`;
-        ctx.fillStyle = "white";
         ctx.textAlign = "left";
-        ctx.fillText(`${prop.property_name}`, 1620, 716 + propOffest_y);
-        ctx.font = `28px ${userLocale === "tw" ? "TW" : "EN"}`;
+        drawText(
+          ctx,
+          prop.property_name,
+          selectedFont,
+          170,
+          28,
+          24,
+          1620,
+          716 + propOffest_y
+        ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
+        ctx.font = `28px ${selectedFont}`;
         ctx.fillStyle = "white";
         ctx.textAlign = "right";
         ctx.fillText(`${prop.base}`, 1900, 716 + propOffest_y);
@@ -779,7 +837,7 @@ export async function drawCharacterImage(
 
       // Weapon Level
       ctx.textAlign = "left";
-      ctx.font = `40px ${userLocale === "tw" ? "TW" : "EN"}`;
+      ctx.font = `40px ${selectedFont}`;
       ctx.fillText(
         tr("levelFormat", {
           level: character.weapon.level,
@@ -790,7 +848,7 @@ export async function drawCharacterImage(
     }
 
     // Player UID
-    ctx.font = `32px ${userLocale === "tw" ? "TW" : "EN"}`;
+    ctx.font = `32px ${selectedFont}`;
     ctx.fillStyle = "white";
     ctx.textAlign = "right";
     ctx.fillText(`UID: ${uid}`, canvas.width - 10, canvas.height - 10);
@@ -828,7 +886,7 @@ function drawCircleImage(ctx, img, x, y, size) {
 function drawText(
   ctx,
   text,
-  userLocale,
+  selectedFont,
   maxWidth,
   initialFontSize,
   minFontSize,
@@ -836,12 +894,12 @@ function drawText(
   y
 ) {
   let fontSize = initialFontSize;
-  ctx.font = `${fontSize}px ${userLocale === "tw" ? "TW" : "EN"}`;
+  ctx.font = `${fontSize}px ${selectedFont}`;
   let textWidth = ctx.measureText(text).width;
 
   while (textWidth > maxWidth && fontSize > minFontSize) {
     fontSize--;
-    ctx.font = `${fontSize}px ${userLocale === "tw" ? "TW" : "EN"}`;
+    ctx.font = `${fontSize}px ${selectedFont}`;
     textWidth = ctx.measureText(text).width;
   }
 

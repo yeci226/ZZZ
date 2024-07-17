@@ -17,9 +17,11 @@ export default {
     .setDescription("Setting, view, delete account")
     .setNameLocalizations({
       "zh-TW": "帳號",
+      vi: "tàikhoản",
     })
     .setDescriptionLocalizations({
       "zh-TW": "設置, 檢視, 刪除帳號",
+      vi: "Cài đặt, xem, xoá tài khoản",
     })
     .addStringOption((option) =>
       option
@@ -27,9 +29,11 @@ export default {
         .setDescription("...")
         .setNameLocalizations({
           "zh-TW": "選項",
+          vi: "tuỳchọn",
         })
         .setDescriptionLocalizations({
           "zh-TW": "...",
+          vi: "...",
         })
         .setRequired(true)
         .addChoices(
@@ -37,6 +41,7 @@ export default {
             name: "❓ How to set up account",
             name_localizations: {
               "zh-TW": "❓ 如何設定帳號",
+              vi: "❓Cách thiết lập tài khoản:",
             },
             value: "HowToSetUpAccount",
           },
@@ -44,6 +49,7 @@ export default {
             name: "① Set UID",
             name_localizations: {
               "zh-TW": "① 設定 UID",
+              vi: "① Thiết lập UID",
             },
             value: "SetUserID",
           },
@@ -51,6 +57,7 @@ export default {
             name: "② Set Cookie",
             name_localizations: {
               "zh-TW": "② 設定 Cookie",
+              vi: "② Thiết lập Cookie",
             },
             value: "SetUserCookie",
           },
@@ -58,6 +65,7 @@ export default {
             name: "🔸 View configured account",
             name_localizations: {
               "zh-TW": "🔸 檢視已設定帳號",
+              vi: "🔸 Xem các tài khoản đã được cài đặt",
             },
             value: "ViewAccount",
           },
@@ -65,6 +73,7 @@ export default {
             name: "⚙️ Edit configured account",
             name_localizations: {
               "zh-TW": "⚙️ 編輯已設定帳號",
+              vi: "⚙️ Sửa thiết lập tài khoản",
             },
             value: "EditAccount",
           },
@@ -72,6 +81,7 @@ export default {
             name: "❌ Delete configured account",
             name_localizations: {
               "zh-TW": "❌ 刪除已設定帳號",
+              vi: "❌ Xoá tài khoản đã thiết lập",
             },
             value: "DeleteAccount",
           }
