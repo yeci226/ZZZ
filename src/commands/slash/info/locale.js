@@ -12,6 +12,7 @@ const languages = {
   tw: "繁體中文",
   jp: "日本語",
   kr: "한국어",
+  fr: "Français",
   default: "English",
 };
 
@@ -22,10 +23,12 @@ export default {
     .setNameLocalizations({
       "zh-TW": "語言",
       vi: "ngônngữ",
+      fr: "langue",
     })
     .setDescriptionLocalizations({
       "zh-TW": "設定機器人所顯示的語言",
       vi: "Thiết lập ngôn ngữ của bot",
+      fr: "Définissez la langue affichée par le bot",
     })
     .addStringOption((option) =>
       option
@@ -34,6 +37,7 @@ export default {
         .setNameLocalizations({
           "zh-TW": "語言",
           vi: "ngônngữ",
+          fr: "langue",
         })
         .setDescriptionLocalizations({
           "zh-TW": "...",
@@ -44,6 +48,10 @@ export default {
           {
             name: "English",
             value: "en",
+          },
+          {
+            name: "Français",
+            value: "fr",
           },
           {
             name: "繁體中文",

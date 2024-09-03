@@ -17,10 +17,12 @@ export default {
     .setNameLocalizations({
       "zh-TW": "兌換碼",
       vi: "mãcode",
+      fr: "codes",
     })
     .setDescriptionLocalizations({
       "zh-TW": "兌換代碼獲取獎勵",
       vi: "Đổi mã nhận thưởng",
+      fr: "Échanger les codes pour les récompenses",
     })
     .addSubcommand((subcommand) =>
       subcommand
@@ -29,10 +31,12 @@ export default {
         .setNameLocalizations({
           "zh-TW": "列表",
           vi: "danhsách",
+          fr: "liste",
         })
         .setDescriptionLocalizations({
           "zh-TW": "查看當前可用兌換碼",
           vi: "Kiểm tra các mã đổi thưởng hiện có",
+          fr: "Voir les codes de racheté disponibles",
         })
     )
     .addSubcommand((subcommand) =>
@@ -42,10 +46,7 @@ export default {
         .setNameLocalizations({
           "zh-TW": "兌換",
           vi: "đổithưởng",
-        })
-        .setDescriptionLocalizations({
-          "zh-TW": "...",
-          vi: "...",
+          fr: "racheté",
         })
         .addStringOption((option) =>
           option
@@ -54,12 +55,26 @@ export default {
             .setNameLocalizations({
               "zh-TW": "禮包碼",
               vi: "mãđổithưởng",
+              fr: "code",
             })
             .setDescriptionLocalizations({
               "zh-TW": "在這裡輸入要兌換的禮包碼",
               vi: "Nhập mã code bạn muốn đổi thưởng tại đây",
+              fr: "Entrer le code",
             })
             .setRequired(true)
+        )
+        .addStringOption((option) =>
+          option
+            .setName("account")
+            .setDescription("...")
+            .setNameLocalizations({
+              "zh-TW": "帳號",
+              vi: "tàikhoản",
+              fr: "compte",
+            })
+            .setRequired(false)
+            .setAutocomplete(true)
         )
         .addUserOption((option) =>
           option
@@ -68,10 +83,12 @@ export default {
             .setNameLocalizations({
               "zh-TW": "使用者",
               vi: "ngườidùng",
+              fr: "utilisateur",
             })
             .setDescriptionLocalizations({
               "zh-TW": "幫其他使用者兌換代碼",
               vi: "Đổi mã đổi thưởng cho người dùng khác",
+              fr: "Échange contre d'autres utilisateurs",
             })
             .setRequired(false)
         )
@@ -85,10 +102,12 @@ export default {
         .setNameLocalizations({
           "zh-TW": "自動兌換",
           vi: "tựđộngđổithưởng",
+          fr: "rachetéautomatique",
         })
         .setDescriptionLocalizations({
           "zh-TW": "自動兌換代碼，訊息會在使用指令的地方自動發送！",
           vi: "Bot sẽ trả lời tự động ngay dưới câu hỏi!",
+          fr: "Racheté automatique activée, des notifications seront envoyées là où cette commande a été utilisée",
         })
         .addStringOption((option) =>
           option
@@ -97,10 +116,7 @@ export default {
             .setNameLocalizations({
               "zh-TW": "開啟",
               vi: "bật",
-            })
-            .setDescriptionLocalizations({
-              "zh-TW": "...",
-              vi: "...",
+              fr: "activée",
             })
             .setRequired(true)
             .addChoices(
@@ -109,6 +125,7 @@ export default {
                 name_localizations: {
                   "zh-TW": "開啟",
                   vi: "Bật",
+                  fr: "Activée",
                 },
                 value: "on",
               },
@@ -117,6 +134,7 @@ export default {
                 name_localizations: {
                   "zh-TW": "關閉",
                   vi: "Tắt",
+                  fr: "Désactivé",
                 },
                 value: "off",
               }
@@ -131,10 +149,12 @@ export default {
             .setNameLocalizations({
               "zh-TW": "標註",
               vi: "thôngbáo",
+              fr: "mentionner",
             })
             .setDescriptionLocalizations({
               "zh-TW": "是否在自動兌換中標註，開啟這個也相當於開啟了自動兌換",
               vi: "Chọn Bật sẽ tự động kích hoạt chế độ nhận code tự động nếu bạn chưa kích hoạt.",
+              fr: "Mentionner dans le racheté automatique, activer cela activera également le racheté automatique",
             })
             .setRequired(false)
             .addChoices(
@@ -143,6 +163,7 @@ export default {
                 name_localizations: {
                   "zh-TW": "開啟",
                   vi: "Bật",
+                  fr: "Activée",
                 },
                 value: "true",
               },
@@ -151,6 +172,7 @@ export default {
                 name_localizations: {
                   "zh-TW": "關閉",
                   vi: "Tắt",
+                  fr: "Désactivé",
                 },
                 value: "false",
               }
@@ -194,8 +216,15 @@ export default {
       const code = interaction.options.getString("code");
       const targetUser =
         interaction.options.getUser("user") || interaction.user;
+      const accountIndex = interaction.options.getString("account") || 0;
 
-      const zzz = await getUserZZZData(interaction, tr, targetUser.id);
+      const zzz = await getUserZZZData(
+        interaction,
+        tr,
+        targetUser.id,
+        null,
+        accountIndex
+      );
       if (!zzz) return;
 
       let userRedeemedCodes =

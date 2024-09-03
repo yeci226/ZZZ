@@ -21,6 +21,7 @@ import {
   drawInQueueReply,
   getUserHoyolabData,
 } from "../utilities/utilities.js";
+import { handleSignalLogDraw } from "../utilities/zzz/gacha.js";
 import { drawMainImage, drawCharacterImage } from "../utilities/zzz/profile.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import Queue from "queue";
@@ -62,6 +63,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     handleAccountAction(interaction, tr, customId, values[0]);
   if (customId == "profile_SelectCharacter")
     handleSelectCharacter(interaction, tr, values[0], userLocale);
+  // if (customId == "signalLogSelect")
+  //   handleSignalLogDraw(interaction, tr, userLocale, values[0], values[1]); //interaction, tr, userLocale, type = "character", url
 });
 
 async function handleMindScapeChange(interaction) {
@@ -308,7 +311,7 @@ async function handleAccountAction(interaction, tr, customId, value) {
                 .setPlaceholder("v2_...")
                 .setValue(cookieObject.ltoken || "")
                 .setStyle(TextInputStyle.Short)
-                .setRequired(false)
+                .setRequired(true)
                 .setMinLength(0)
                 .setMaxLength(1000)
             ),
@@ -319,29 +322,29 @@ async function handleAccountAction(interaction, tr, customId, value) {
                 .setPlaceholder("30...")
                 .setValue(cookieObject.ltuid || "")
                 .setStyle(TextInputStyle.Short)
-                .setRequired(false)
+                .setRequired(true)
                 .setMinLength(0)
                 .setMaxLength(30)
             ),
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
                 .setCustomId("cookieToken")
-                .setLabel(tr("Optional") + " " + "cookie_token_v2")
+                .setLabel("cookie_token_v2")
                 .setPlaceholder("v2_...")
                 .setValue(cookieObject.cookieToken || "")
                 .setStyle(TextInputStyle.Short)
-                .setRequired(false)
+                .setRequired(true)
                 .setMinLength(0)
                 .setMaxLength(1000)
             ),
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
                 .setCustomId("accountMid")
-                .setLabel(tr("Optional") + " " + "account_mid_v2")
+                .setLabel("account_mid_v2")
                 .setPlaceholder("1lyq...")
                 .setValue(cookieObject.accountMid || "")
                 .setStyle(TextInputStyle.Short)
-                .setRequired(false)
+                .setRequired(true)
                 .setMinLength(0)
                 .setMaxLength(30)
             )
@@ -407,7 +410,7 @@ async function handleAccountAction(interaction, tr, customId, value) {
               .setPlaceholder("v2_...")
               .setValue(cookieObject.ltoken || "")
               .setStyle(TextInputStyle.Short)
-              .setRequired(false)
+              .setRequired(true)
               .setMinLength(0)
               .setMaxLength(1000)
           ),
@@ -418,29 +421,29 @@ async function handleAccountAction(interaction, tr, customId, value) {
               .setPlaceholder("30...")
               .setValue(cookieObject.ltuid || "")
               .setStyle(TextInputStyle.Short)
-              .setRequired(false)
+              .setRequired(true)
               .setMinLength(0)
               .setMaxLength(30)
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
               .setCustomId("cookieToken")
-              .setLabel(tr("Optional") + " " + "cookie_token_v2")
+              .setLabel("cookie_token_v2")
               .setPlaceholder("v2_...")
               .setValue(cookieObject.cookieToken || "")
               .setStyle(TextInputStyle.Short)
-              .setRequired(false)
+              .setRequired(true)
               .setMinLength(0)
               .setMaxLength(1000)
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
               .setCustomId("accountMid")
-              .setLabel(tr("Optional") + " " + "account_mid_v2")
+              .setLabel("account_mid_v2")
               .setPlaceholder("1lyq...")
               .setValue(cookieObject.accountMid || "")
               .setStyle(TextInputStyle.Short)
-              .setRequired(false)
+              .setRequired(true)
               .setMinLength(0)
               .setMaxLength(30)
           )
@@ -534,7 +537,7 @@ async function handleNews(interaction, tr, value) {
           .setDescription(
             content.length < 4096
               ? content
-              : content.slice(0, 4096 - 3).concat("...") ?? tr("None")
+              : (content.slice(0, 4096 - 3).concat("...") ?? tr("None"))
           )
           .setFooter({
             text:

@@ -129,6 +129,24 @@ const langs = {
   profile_SelectCharacter: "Select a character to view",
   profile_NoImageData: "Unable to obtain image data",
   profile_CharactersFormat: "Level <level> • Imagery <rank>",
+
+  RegularPool: "Regular Pool",
+  CharacterPool: "Character Pool",
+  WeaponPool: "Weapon Pool",
+  BangbooPool: "Bangboo Pool",
+  gacha_HowToGet: "How to get Signal records",
+  gacha_HowToGetDesc:
+    "**1.** Open ZZZ on PC\n**2.** Open the `Signal record` of `Signal details`\n**3.** Open Windows PowerShell and paste the following command<z >\n**4.** Copy the URL and use the command to query signal records",
+  gacha_LogTitle: "View Signal Records",
+  gacha_LogDesc: "Please enter the signal record link here",
+  gacha_NoSignal: "No available signal records",
+  gacha_Loading: "Loading data for <type>",
+  gacha_SelectType: "Select the data type to display",
+  gacha_TotalCount: "Total pulls",
+  gacha_SRankCount: "S-rank quantity",
+  gacha_SRankAverage: "Average S-rank pulls",
+  gacha_Pity: "<pity> pulls",
+  gacha_Count: "<count> pulls",
 };
 
 export default langs;

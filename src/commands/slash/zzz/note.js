@@ -16,10 +16,12 @@ export default {
     .setNameLocalizations({
       "zh-TW": "即時便箋",
       vi: "ghichúnhanh",
+      fr: "note",
     })
     .setDescriptionLocalizations({
       "zh-TW": "查看當前電量",
       vi: "Kiểm tra điện lượng hiện tại",
+      fr: "Afficher les charges de batterie actuelles",
     })
     .addSubcommand((subcommand) =>
       subcommand
@@ -28,7 +30,20 @@ export default {
         .setNameLocalizations({
           "zh-TW": "查看",
           vi: "kiểmtra",
+          fr: "vérifier",
         })
+        .addStringOption((option) =>
+          option
+            .setName("account")
+            .setDescription("...")
+            .setNameLocalizations({
+              "zh-TW": "帳號",
+              vi: "tàikhoản",
+              fr: "compte",
+            })
+            .setRequired(false)
+            .setAutocomplete(true)
+        )
         .addUserOption((option) =>
           option
             .setName("user")
@@ -36,6 +51,7 @@ export default {
             .setNameLocalizations({
               "zh-TW": "使用者",
               vi: "ngườidùng",
+              fr: "utilisateur",
             })
             .setRequired(false)
         )
@@ -52,8 +68,15 @@ export default {
     if (subCommand == "check") {
       const targetUser =
         interaction.options.getUser("user") || interaction.user;
+      const accountIndex = interaction.options.getString("account") || 0;
 
-      const zzz = await getUserZZZData(interaction, tr, targetUser.id);
+      const zzz = await getUserZZZData(
+        interaction,
+        tr,
+        targetUser.id,
+        null,
+        accountIndex
+      );
       if (zzz == null) return;
 
       try {

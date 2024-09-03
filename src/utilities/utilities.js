@@ -3,8 +3,24 @@ import axios from "axios";
 import emoji from "../assets/emoji.js";
 import { EmbedBuilder } from "discord.js";
 import { ZenlessZoneZero, LanguageEnum, HoyoAPIError, Hoyolab } from "hoyoapi";
+import { loadImage } from "@napi-rs/canvas";
 const db = client.db;
 const BASE_URL = "https://bbs-api-os.hoyolab.com/community/post/wapi/";
+
+const zzzStaticUrl = "https://act-webstatic.hoyoverse.com/game_record/zzz";
+const zzzStaticUrl2 = "https://act-webstatic.hoyoverse.com/game_record/nap";
+const squareUrl = `${zzzStaticUrl}/role_square_avatar/role_square_avatar_`;
+const squareUrl2 = `${zzzStaticUrl2}/role_square_avatar/role_square_avatar_`;
+
+export async function getAvatarUrl(agentId) {
+  const url = squareUrl2 + `${agentId}.png`;
+  try {
+    await loadImage(url);
+    return url;
+  } catch {
+    return squareUrl + `${agentId}.png`;
+  }
+}
 
 export async function getNewsList(lang, type) {
   return await axios({
@@ -91,18 +107,18 @@ export function secondsToHms(d, tr) {
   return hDisplay + mDisplay + sDisplay;
 }
 
-export async function getUserUid(userId, index = 0) {
+export async function getUserUid(userId, accountIndex) {
   const accountKey = `${userId}.account`;
 
   const account = await db.get(accountKey);
-  return account?.[index]?.uid || null;
+  return account?.[accountIndex]?.uid || null;
 }
 
-export async function getUserCookie(userId, index = 0) {
+export async function getUserCookie(userId, accountIndex) {
   const accountKey = `${userId}.account`;
 
   const account = await db.get(accountKey);
-  return account?.[index]?.cookie || null;
+  return account?.[accountIndex]?.cookie || null;
 }
 
 export async function getUserLang(userId) {
@@ -183,16 +199,37 @@ export async function getCharacterData(characterId) {
 
 const languageMapping = {
   tw: LanguageEnum.TRADIIONAL_CHINESE,
+  cn: LanguageEnum.SIMPLIFIED_CHINESE,
   vi: LanguageEnum.VIETNAMESE,
   jp: LanguageEnum.JAPANESE,
   kr: LanguageEnum.KOREAN,
+  fr: LanguageEnum.FRENCH,
   default: LanguageEnum.ENGLISH,
 };
 
-export async function getUserHoyolabData(interaction, tr, userId, userLang) {
+export async function setupDefaultLang(userId, userSystemLang) {
+  const langMap = {
+    "zh-TW": "tw",
+    "zh-CN": "cn",
+    ja: "jp",
+    ko: "kr",
+  };
+
+  const langCode = langMap[userSystemLang] || userSystemLang;
+
+  if (languageMapping[langCode]) await db.set(`${userId}.locale`, langCode);
+}
+
+export async function getUserHoyolabData(
+  interaction,
+  tr,
+  userId,
+  userLang,
+  accountIndex = 0
+) {
   const [cookie, uid] = await Promise.all([
-    getUserCookie(userId),
-    getUserUid(userId),
+    getUserCookie(userId, accountIndex),
+    getUserUid(userId, accountIndex),
   ]);
   if (!userLang) userLang = await getUserLang(userId);
 
@@ -231,10 +268,16 @@ export async function getUserHoyolabData(interaction, tr, userId, userLang) {
   }
 }
 
-export async function getUserZZZData(interaction, tr, userId, userLang) {
+export async function getUserZZZData(
+  interaction,
+  tr,
+  userId,
+  userLang,
+  accountIndex = 0
+) {
   const [cookie, uid] = await Promise.all([
-    getUserCookie(userId),
-    getUserUid(userId),
+    getUserCookie(userId, accountIndex),
+    getUserUid(userId, accountIndex),
   ]);
   if (!userLang) userLang = await getUserLang(userId);
 

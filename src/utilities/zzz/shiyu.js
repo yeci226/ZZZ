@@ -4,11 +4,14 @@ export async function getShiyu(interaction, tr, user, zzz) {
   const res = await zzz.record.shiyuDefense();
   if (!res.has_data) return failedReply(interaction, "沒有深淵資料喔><");
 
-  console.log(res);
-  console.log(res.all_floor_detail);
-  console.log(res.all_floor_detail[0]);
-  console.log(res.all_floor_detail[0].node_1);
   console.log(res.all_floor_detail[0].node_1.monster_info);
+  console.log(res.all_floor_detail[0].node_2.monster_info);
+
+  console.log(res.all_floor_detail[1].node_1.monster_info);
+  console.log(res.all_floor_detail[1].node_2.monster_info);
+
+  console.log(res.all_floor_detail[2].node_1.monster_info);
+  console.log(res.all_floor_detail[2].node_2.monster_info);
 }
 
 /**

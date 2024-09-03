@@ -122,6 +122,24 @@ const langs = {
   profile_SelectCharacter: "Chọn nhân vật",
   profile_NoImageData: "Không thể lấy dữ liệu hình ảnh",
   profile_CharactersFormat: "Level <level> • Cung mệnh <rank>",
+
+  RegularPool: "Hồ sơ thông thường",
+  CharacterPool: "Hồ sơ nhân vật",
+  WeaponPool: "Hồ sơ vũ khí",
+  BangbooPool: "Hồ sơ Bangboo",
+  gacha_HowToGet: "Cách lấy bản ghi tín hiệu",
+  gacha_HowToGetDesc:
+    "1. Mở ZZZ trên PC\n2. Mở Ghi chép tín hiệu trong Chi tiết tín hiệu\n3. Mở Windows PowerShell và dán lệnh sau<z>\n4. Sao chép URL và sử dụng lệnh để tra cứu các bản ghi tín hiệu",
+  gacha_LogTitle: "Xem bản ghi tín hiệu",
+  gacha_LogDesc: "Vui lòng nhập liên kết bản ghi tín hiệu tại đây",
+  gacha_NoSignal: "Không có bản ghi tín hiệu khả dụng",
+  gacha_Loading: "Đang tải dữ liệu cho <type>",
+  gacha_SelectType: "Chọn loại dữ liệu để hiển thị",
+  gacha_TotalCount: "Tổng số lần rút",
+  gacha_SRankCount: "S-rank số lượng",
+  gacha_SRankAverage: "S-rank trung bình số lần rút",
+  gacha_Pity: "<pity> lần rút",
+  gacha_Count: "<count> lần rút",
 };
 
 export default langs;

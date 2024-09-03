@@ -13,10 +13,12 @@ import {
   drawInQueueReply,
   getUserHoyolabData,
   getUserLang,
+  getAvatarUrl,
 } from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
 import emoji from "../../assets/emoji.js";
 import { createCanvas, loadImage, GlobalFonts } from "@napi-rs/canvas";
+import fs from "fs";
 import { join } from "path";
 const db = client.db;
 const drawQueue = new Queue({ autostart: true });
@@ -26,6 +28,9 @@ const offsetCharacter = {
   1281: 0, // Piper
   1211: 0, // Rina
   1181: -55, // Grace
+  1101: 0, // Koleda
+  1241: 0, // Zhu Yuan
+  1251: -70, // Qingyi
 };
 const elementId = {
   200: "physic",
@@ -42,6 +47,7 @@ const professionId = {
   5: "defense",
 };
 const propertyId = {
+  // 基礎屬性
   1: "hp",
   2: "atk",
   3: "def",
@@ -52,11 +58,14 @@ const propertyId = {
   8: "mystery",
   9: "penratio",
   10: "sprecover",
-  11: "physic",
-  12: "fire",
-  13: "ice",
-  14: "thunder",
-  15: "ether",
+  11: "penvalue",
+
+  // 屬性加成
+  12: "physic",
+  13: "fire",
+  14: "ice",
+  15: "thunder",
+  16: "ether",
 };
 const propertiesId = {
   11102: "hp", // 小生命
@@ -82,7 +91,6 @@ const propertiesId = {
 };
 
 const zzzStaticUrl = "https://act-webstatic.hoyoverse.com/game_record/zzz";
-const squareUrl = `${zzzStaticUrl}/role_square_avatar/role_square_avatar_`;
 // const verticalUrl = `${zzzStaticUrl}/role_vertical_painting/role_vertical_painting_`;
 // const rectangleUrl = `${zzzStaticUrl}/role_rectangle_avatar/role_rectangle_avatar_`;
 // const bangbooSquareUrl = `${zzzStaticUrl}/bangboo_square_avatar/bangboo_square_avatar_`;
@@ -97,6 +105,10 @@ GlobalFonts.registerFromPath(
   "TW"
 );
 GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "zh-cn.ttf"),
+  "CN"
+);
+GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "vi-vn.ttf"),
   "VI"
 );
@@ -109,15 +121,21 @@ GlobalFonts.registerFromPath(
   "KR"
 );
 GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "fr-fr.ttf"),
+  "FR"
+);
+GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "Nunito-BlackItalic.ttf"),
   "Nunito"
 );
 
 const fonts = {
   tw: "TW",
+  cn: "CN",
   vi: "VI",
   jp: "JP",
   kr: "KR",
+  fr: "FR",
   default: "EN",
 };
 
@@ -131,7 +149,13 @@ const loadImageAsync = async (url) => {
   }
 };
 
-export async function handleProfileDraw(interaction, tr, user, zzz) {
+export async function handleProfileDraw(
+  interaction,
+  tr,
+  user,
+  zzz,
+  accountIndex
+) {
   const drawTask = async () => {
     try {
       interaction.editReply({
@@ -146,25 +170,35 @@ export async function handleProfileDraw(interaction, tr, user, zzz) {
         fetchReply: true,
       });
 
+      // Request
       const requestStartTime = Date.now();
+      const userMindScape = (await db.get(`${user.id}.mindscape`)) ?? true;
       const userLocale =
         (await getUserLang(interaction.user.id)) ||
         toI18nLang(interaction.locale) ||
         "en";
       const record = await zzz.record.records();
       const characters = await zzz.record.characters();
-      const userData = await getUserHoyolabData(interaction, tr, user.id);
+      const userData = await getUserHoyolabData(
+        interaction,
+        tr,
+        user.id,
+        userLocale,
+        accountIndex
+      );
+
       const requestEndTime = Date.now();
+
+      // Generate
       const drawStartTime = Date.now();
       const imageBuffer = await drawMainImage(tr, userLocale, userData, record);
       if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
       const drawEndTime = Date.now();
 
+      // bla bla bla Builder
       const image = new AttachmentBuilder(imageBuffer, {
         name: `MainImage_${zzz.uid}.png`,
       });
-
-      const userMindScape = (await db.get(`${user.id}.mindscape`)) ?? true;
       const rowSelect = new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setPlaceholder(tr("profile_SelectCharacter"))
@@ -258,7 +292,9 @@ export async function drawMainImage(tr, userLocale, userData, record) {
     const imagePaths = [
       `./src/assets/images/profileBg.png`,
       record.cur_head_icon_url,
-      ...record.avatar_list.map((agent) => squareUrl + `${agent.id}.png`),
+      ...(await Promise.all(
+        record.avatar_list.map(async (agent) => await getAvatarUrl(agent.id))
+      )),
       "./src/assets/images/icons/other/showmore.png",
       ...record.buddy_list.map(
         (buddy) => bangbooRectangleUrl + `${buddy.id}.png`
@@ -530,10 +566,21 @@ export async function drawCharacterImage(
     character.equip.sort((a, b) => a.equipment_type - b.equipment_type);
     const propertyLength = 15;
 
+    // 檢查 character.id 對應的圖片是否存在
+    const characterSpecificImagePath = `./src/assets/images/icons/mindscape/${character.id}.png`;
+    const defaultImagePath = `./src/assets/images/icons/mindscape/m0.png`;
+    const userMindScapeImagePath = `./src/assets/images/icons/mindscape/m${userMindScape ? character.rank : 0}.png`;
+
+    // 如果 characterSpecificImagePath 不存在，將 userMindScapeImagePath 改為 defaultImagePath
+    let finalMindScapeImagePath = userMindScapeImagePath;
+    if (!fs.existsSync(characterSpecificImagePath)) {
+      finalMindScapeImagePath = defaultImagePath;
+    }
+
     // Load images concurrently
     const imagePaths = [
-      `./src/assets/images//icons/mindscape/m${userMindScape ? character.rank : 0}.png`,
-      `./src/assets/images/icons/mindscape/${character.id}.png`,
+      finalMindScapeImagePath,
+      characterSpecificImagePath,
       `./src/assets/images/agents/${character.id}.webp`,
       `./src/assets/images/icons/element/${elementId[character.element_type]}.png`,
       `./src/assets/images/icons/profession/${professionId[character.avatar_profession]}.png`,
@@ -551,6 +598,7 @@ export async function drawCharacterImage(
           : "./src/assets/images/icons/diskdrives/none.png"
       ),
     ];
+
     const images = await Promise.all(imagePaths.map(loadImageAsync));
     const [
       bg,
@@ -580,7 +628,6 @@ export async function drawCharacterImage(
     // Draw BG
     ctx.drawImage(characterRankImage, 0, 0, canvas.width, canvas.height);
     ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
-    // ctx.drawImage(characterImage, -300, 0, 1664, 806); // For agent.png
 
     // Draw Agent
     const offsetX = offsetCharacter.hasOwnProperty(character.id)
@@ -596,39 +643,40 @@ export async function drawCharacterImage(
       characterImage.width / 1.25,
       characterImage.height / 1.25
     ); // For agent.webp
+    // ctx.drawImage(characterImage, -300, 0, 1664, 806); // For agent.png
 
     const boxColor = "rgba(34, 33, 34, 0.95)";
+    ctx.font = `60px ${selectedFont}`;
+
+    // Draw Agent Info Box
     const padding = 60;
     const iconSpacing = 40;
     const iconSize = 80;
-
-    ctx.font = `60px ${selectedFont}`;
     const textWidth = ctx.measureText(character.name_mi18n).width;
     const boxWidth = padding * 2 + textWidth + iconSpacing + iconSize * 2;
 
-    // Draw Agent Info Box
-    drawRoundedRect(ctx, 60, 100, boxWidth, 100, 30, boxColor); // (ctx, x, y, width, height, radius, color)
+    drawRoundedRect(ctx, 60, 40, boxWidth, 100, 30, boxColor); // (ctx, x, y, width, height, radius, color)
     ctx.fillStyle = "white";
-    ctx.fillText(character.name_mi18n, 60 + padding, 170);
+    ctx.fillText(character.name_mi18n, 60 + padding, 110);
 
     const elementIconX = 60 + padding + textWidth + iconSpacing;
     const professionIconX = elementIconX + iconSize;
-    ctx.drawImage(elementImage, elementIconX, 110, iconSize, iconSize);
-    ctx.drawImage(professionImage, professionIconX, 110, iconSize, iconSize);
+    ctx.drawImage(elementImage, elementIconX, 50, iconSize, iconSize);
+    ctx.drawImage(professionImage, professionIconX, 50, iconSize, iconSize);
 
     // Draw Agent Properties Box
     drawRoundedRect(
       ctx,
       60,
-      220,
+      160,
       440,
-      20 + character.properties.length * 56 + 20,
+      20 + character.properties.length * 56 + 10,
       30,
       boxColor
     ); // (ctx, x, y, width, height, radius, color)
 
     propertyImages.map((image, index) => {
-      if (index < 10) {
+      if (index < character.properties.length) {
         const offset_y = index * 56;
 
         const propertyName = character.properties[index].property_name;
@@ -636,8 +684,8 @@ export async function drawCharacterImage(
         ctx.font = `${fontSize}px ${selectedFont}`;
         let propertyTextWidth = ctx.measureText(propertyName).width;
 
-        const maxTextWidth = 230;
-        let yPosition = 274 + offset_y;
+        const maxTextWidth = 210;
+        let yPosition = 214 + offset_y;
         while (propertyTextWidth > maxTextWidth && fontSize > 22) {
           fontSize--;
           yPosition -= 0.4;
@@ -645,7 +693,13 @@ export async function drawCharacterImage(
           propertyTextWidth = ctx.measureText(propertyName).width;
         }
 
-        ctx.drawImage(image, 80, 240 + offset_y, 48, 48);
+        ctx.drawImage(
+          index == character.properties.length - 1 ? elementImage : image, // 最後一個屬性是該角色的屬性加成
+          80,
+          180 + offset_y,
+          48,
+          48
+        );
         ctx.fillStyle = "white";
         ctx.textAlign = "left";
         ctx.fillText(propertyName, 140, yPosition);
@@ -654,7 +708,7 @@ export async function drawCharacterImage(
         ctx.fillText(
           `${character.properties[index].final}`,
           480,
-          274 + offset_y
+          214 + offset_y
         );
       }
     });

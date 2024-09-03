@@ -53,6 +53,16 @@ export default async function autoRedeem() {
   UpdateStatistics(total, nowTime);
 }
 
+const languageMapping = {
+  tw: LanguageEnum.TRADIIONAL_CHINESE,
+  cn: LanguageEnum.SIMPLIFIED_CHINESE,
+  vi: LanguageEnum.VIETNAMESE,
+  jp: LanguageEnum.JAPANESE,
+  kr: LanguageEnum.KOREAN,
+  fr: LanguageEnum.FRENCH,
+  default: LanguageEnum.ENGLISH,
+};
+
 async function redeemCode(dailyData, codesList, userId, uid, cookie) {
   total++;
   let userRedeemedCodes = (await db.get(`${userId}.redeemedCodes`)) || [];
@@ -70,15 +80,14 @@ async function redeemCode(dailyData, codesList, userId, uid, cookie) {
     const redeemedCode = [];
     let redeemSuccess = false;
     let description = `<@${userId}>`;
+    const getLanguage = (locale) =>
+      languageMapping[locale] || languageMapping.default;
 
     try {
       const zzz = new ZenlessZoneZero({
         uid,
         cookie,
-        lang:
-          userLocale === "tw"
-            ? LanguageEnum.TRADIIONAL_CHINESE
-            : LanguageEnum.ENGLISH,
+        lang: getLanguage(userLocale),
       });
 
       for (const code of unRedeemedCodes) {

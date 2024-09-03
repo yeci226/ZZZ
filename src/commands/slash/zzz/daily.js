@@ -19,11 +19,11 @@ export default {
     .setDescription("Daily check-in")
     .setNameLocalizations({
       "zh-TW": "每日簽到",
-      vi: "nhậnphònghàngngày",
     })
     .setDescriptionLocalizations({
       "zh-TW": "領取每日簽到獎勵",
       vi: "Nhận phần thưởng điểm danh hằng ngày",
+      fr: "Obtenir des récompenses de connexion quotidiennes",
     })
     .addUserOption((option) =>
       option
@@ -32,10 +32,7 @@ export default {
         .setNameLocalizations({
           "zh-TW": "使用者",
           vi: "ngườidùng",
-        })
-        .setDescriptionLocalizations({
-          "zh-TW": "...",
-          vi: "...",
+          fr: "utilisateur",
         })
         .setRequired(false)
     )
@@ -48,10 +45,12 @@ export default {
         .setNameLocalizations({
           "zh-TW": "自動簽到",
           vi: "điểmdanhhàngngày",
+          fr: "signéautomatique",
         })
         .setDescriptionLocalizations({
           "zh-TW": "每天自動簽到，訊息會在使用指令的地方自動發送！",
           vi: "Thông báo điểm danh tự động hằng ngày: không giới hạn kênh thông báo!",
+          fr: "Signé automatique activée, des notifications seront envoyées là où cette commande a été utilisée",
         })
         .setRequired(false)
         .addChoices(
@@ -60,6 +59,7 @@ export default {
             name_localizations: {
               "zh-TW": "開啟",
               vi: "Bật",
+              fr: "Activée",
             },
             value: "on",
           },
@@ -68,6 +68,7 @@ export default {
             name_localizations: {
               "zh-TW": "關閉",
               vi: "Tắt",
+              fr: "Désactivé",
             },
             value: "off",
           }
@@ -80,10 +81,12 @@ export default {
         .setNameLocalizations({
           "zh-TW": "簽到時間",
           vi: "thờigianđiểmdanh",
+          fr: "letempsdesigné",
         })
         .setDescriptionLocalizations({
           "zh-TW": "自動簽到的時間",
           vi: "Thời gian tự động điểm danh",
+          fr: "Le temps de signé automatiquement",
         })
         .setRequired(false)
         .addChoices(...timeChoices)
@@ -97,10 +100,12 @@ export default {
         .setNameLocalizations({
           "zh-TW": "標註",
           vi: "thôngbáo",
+          fr: "mentionner",
         })
         .setDescriptionLocalizations({
           "zh-TW": "是否在自動簽到中標註，開啟這個也相當於開啟了自動簽到",
           vi: "Chọn Bật sẽ tự động kích hoạt chế độ điểm danh tự động nếu bạn chưa kích hoạt.",
+          fr: "Mentionner dans le signé automatique, activer cela activera également le signé automatique",
         })
         .setRequired(false)
         .addChoices(
@@ -109,6 +114,7 @@ export default {
             name_localizations: {
               "zh-TW": "開啟",
               vi: "Bật",
+              fr: "Activée",
             },
             value: "true",
           },
@@ -117,6 +123,7 @@ export default {
             name_localizations: {
               "zh-TW": "關閉",
               vi: "Tắt",
+              fr: "Désactivé",
             },
             value: "false",
           }

@@ -18,10 +18,12 @@ export default {
     .setNameLocalizations({
       "zh-TW": "帳號",
       vi: "tàikhoản",
+      fr: "compte",
     })
     .setDescriptionLocalizations({
       "zh-TW": "設置, 檢視, 刪除帳號",
       vi: "Cài đặt, xem, xoá tài khoản",
+      fr: "Paramètres, voir, supprimer le compte",
     })
     .addStringOption((option) =>
       option
@@ -30,10 +32,7 @@ export default {
         .setNameLocalizations({
           "zh-TW": "選項",
           vi: "tuỳchọn",
-        })
-        .setDescriptionLocalizations({
-          "zh-TW": "...",
-          vi: "...",
+          fr: "options",
         })
         .setRequired(true)
         .addChoices(
@@ -41,7 +40,8 @@ export default {
             name: "❓ How to set up account",
             name_localizations: {
               "zh-TW": "❓ 如何設定帳號",
-              vi: "❓Cách thiết lập tài khoản:",
+              vi: "❓ Cách thiết lập tài khoản",
+              fr: "❓ Comment définir le compte",
             },
             value: "HowToSetUpAccount",
           },
@@ -50,6 +50,7 @@ export default {
             name_localizations: {
               "zh-TW": "① 設定 UID",
               vi: "① Thiết lập UID",
+              fr: "① Définir UID",
             },
             value: "SetUserID",
           },
@@ -58,6 +59,7 @@ export default {
             name_localizations: {
               "zh-TW": "② 設定 Cookie",
               vi: "② Thiết lập Cookie",
+              fr: "② Définir Cookie",
             },
             value: "SetUserCookie",
           },
@@ -66,6 +68,7 @@ export default {
             name_localizations: {
               "zh-TW": "🔸 檢視已設定帳號",
               vi: "🔸 Xem các tài khoản đã được cài đặt",
+              fr: "🔸 Liste de comptes",
             },
             value: "ViewAccount",
           },
@@ -74,6 +77,7 @@ export default {
             name_localizations: {
               "zh-TW": "⚙️ 編輯已設定帳號",
               vi: "⚙️ Sửa thiết lập tài khoản",
+              fr: "⚙️ Modifier le compte",
             },
             value: "EditAccount",
           },
@@ -82,6 +86,7 @@ export default {
             name_localizations: {
               "zh-TW": "❌ 刪除已設定帳號",
               vi: "❌ Xoá tài khoản đã thiết lập",
+              fr: "❌ Supprimer le compte",
             },
             value: "DeleteAccount",
           }
@@ -158,7 +163,7 @@ export default {
                 .addOptions(
                   accounts.map((account, index) => ({
                     emoji: emoji.avatarIcon,
-                    label: `${account.uid}`,
+                    label: `${account.uid} ${account.nickname ? `- ${account.nickname}` : ""}`,
                     value: `${index}`,
                   }))
                 )
@@ -183,7 +188,7 @@ export default {
               })
               .addFields(
                 ...accounts.map((account) => ({
-                  name: `${emoji.avatarIcon} ${account.uid}`,
+                  name: `${emoji.avatarIcon} ${account.uid} ${account.nickname ? `- ${account.nickname}` : ""}`,
                   value: `${
                     account.cookie
                       ? `🔗 \`${tr("account_Linked")}\``
@@ -208,7 +213,7 @@ export default {
                   accounts.map((account, i) => {
                     return {
                       emoji: emoji.avatarIcon,
-                      label: `${account.uid}`,
+                      label: `${account.uid} ${account.nickname ? `- ${account.nickname}` : ""}`,
                       value: `${i}`,
                     };
                   })
@@ -230,7 +235,7 @@ export default {
                 .addOptions(
                   accounts.map((account, i) => ({
                     emoji: emoji.avatarIcon,
-                    label: `${account.uid}`,
+                    label: `${account.uid} ${account.nickname ? `- ${account.nickname}` : ""}`,
                     value: `${i}`,
                   }))
                 )

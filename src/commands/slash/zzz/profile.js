@@ -9,11 +9,25 @@ export default {
     .setNameLocalizations({
       "zh-TW": "個人簡介",
       vi: "hồsơngườichơi",
+      fr: "profils",
     })
     .setDescriptionLocalizations({
       "zh-TW": "查詢玩家的個人簡介",
       vi: "Truy vấn hồ sơ người chơi",
+      fr: "Voir le vos info",
     })
+    .addStringOption((option) =>
+      option
+        .setName("account")
+        .setDescription("...")
+        .setNameLocalizations({
+          "zh-TW": "帳號",
+          vi: "tàikhoản",
+          fr: "compte",
+        })
+        .setRequired(false)
+        .setAutocomplete(true)
+    )
     .addUserOption((option) =>
       option
         .setName("user")
@@ -21,10 +35,7 @@ export default {
         .setNameLocalizations({
           "zh-TW": "使用者",
           vi: "ngườidùng",
-        })
-        .setDescriptionLocalizations({
-          "zh-TW": "...",
-          vi: "...",
+          fr: "utilisateur",
         })
         .setRequired(false)
     ),
@@ -36,16 +47,18 @@ export default {
    */
   async execute(_client, interaction, _args, tr, db, emoji) {
     const targetUser = interaction.options.getUser("user") || interaction.user;
+    const accountIndex = interaction.options.getString("account") || 0;
 
     const zzz = await getUserZZZData(
       interaction,
       tr,
       targetUser.id,
-      await getUserLang(interaction.user.id)
+      await getUserLang(interaction.user.id),
+      accountIndex
     );
     if (!zzz) return;
 
     await interaction.deferReply();
-    handleProfileDraw(interaction, tr, targetUser, zzz);
+    handleProfileDraw(interaction, tr, targetUser, zzz, accountIndex);
   },
 };

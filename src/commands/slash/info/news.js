@@ -12,10 +12,12 @@ export default {
     .setNameLocalizations({
       "zh-TW": "新聞",
       vi: "tintức",
+      fr: "journaux",
     })
     .setDescriptionLocalizations({
       "zh-TW": "從官方獲取最新消息",
       vi: "nhận tin tức chính thức mới nhất",
+      fr: "Obtenez les dernières nouvelles",
     }),
   /**
    *

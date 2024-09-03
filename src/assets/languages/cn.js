@@ -118,6 +118,24 @@ const langs = {
   profile_SelectCharacter: "选择角色查看",
   profile_NoImageData: "无法获取图片资料",
   profile_CharactersFormat: "等级 <level> • 意象影画 <rank>",
+
+  RegularPool: "常驻池",
+  CharacterPool: "角色限定池",
+  WeaponPool: "武器限定池",
+  BangbooPool: "邦布池",
+  gacha_HowToGet: "如何获取调频纪录",
+  gacha_HowToGetDesc:
+    "**1.** 在PC 上打开绝区零\n**2.** 打开`调频`详情的`调频纪录`\n**3.** 打开Windows PowerShell 并贴上以下指令<z >\n**4.** 复制网址后使用指令查询调频纪录",
+  gacha_LogTitle: "查看调频纪录",
+  gacha_LogDesc: "请在这输入调频纪录连结",
+  gacha_NoSignal: "没有可用的讯号纪录",
+  gacha_Loading: "正在载入 `<type>` 的资料",
+  gacha_SelectType: "选择显示的资料类型",
+  gacha_TotalCount: "总抽取数",
+  gacha_SRankCount: "S级数量",
+  gacha_SRankAverage: "平均S级抽数",
+  gacha_Pity: "已垫<pity>抽",
+  gacha_Count: "<count>抽",
 };
 
 export default langs;

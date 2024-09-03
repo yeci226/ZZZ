@@ -1,9 +1,13 @@
 import { client } from "../index.js";
-import { AxiosError } from "axios";
 import { Events, EmbedBuilder } from "discord.js";
 import { ZenlessZoneZero } from "hoyoapi";
-import { getUserLang } from "../utilities/utilities.js";
+import {
+  getUserHoyolabData,
+  getUserLang,
+  getRandomColor,
+} from "../utilities/utilities.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
+import { handleSignalLogDraw, getSingalLog } from "../utilities/zzz/gacha.js";
 
 const db = client.db;
 
@@ -21,7 +25,57 @@ client.on(Events.InteractionCreate, async (interaction) => {
     handleUidSet(interaction, tr, fields);
   if (customId.startsWith("cookie_set"))
     handleCookieSet(interaction, tr, customId, fields);
+  if (customId == "signal_log") handleWarplog(interaction, tr, fields);
 });
+
+async function handleWarplog(interaction, tr, fields) {
+  const url = fields.getTextInputValue("signalUrl");
+
+  await interaction.deferReply();
+  interaction.editReply({
+    embeds: [
+      new EmbedBuilder()
+        .setTitle(tr("Searching"))
+        .setColor(getRandomColor())
+        .setImage(
+          "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+        ),
+    ],
+    fetchReply: true,
+  });
+
+  const userLocale =
+    (await getUserLang(interaction.user.id)) ||
+    toI18nLang(interaction.locale) ||
+    "en";
+
+  const requestStartTime = Date.now();
+  let signalResults;
+  if (url != "")
+    signalResults = await getSingalLog(interaction, tr, userLocale, url);
+
+  if (!signalResults)
+    return interaction.editReply({
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(tr("gacha_NoSignal"))
+          .setConfig("#E76161", "sob"),
+      ],
+    });
+
+  const requestEndTime = Date.now();
+  const requestTime = ((requestEndTime - requestStartTime) / 1000).toFixed(2);
+
+  handleSignalLogDraw(
+    interaction,
+    tr,
+    userLocale,
+    requestTime,
+    signalResults,
+    "character"
+  );
+  // handleSignalLogDraw(interaction, tr, userLocale, "character", url);
+}
 
 async function handleAccountEdit(interaction, tr, customId, fields) {
   await interaction.deferReply({ ephemeral: true });
@@ -147,6 +201,15 @@ async function handleCookieSet(interaction, tr, customId, fields) {
     });
     await zzz.daily.info();
 
+    const userData = await getUserHoyolabData(
+      interaction,
+      tr,
+      interaction.user.id,
+      null,
+      accountIndex
+    );
+
+    account[accountIndex].nickname = userData.nickname;
     account[accountIndex].cookie = cookie;
     await db.set(`${interaction.user.id}.account`, account);
 

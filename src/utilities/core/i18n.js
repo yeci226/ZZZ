@@ -4,8 +4,9 @@ import cn from "../../assets/languages/cn.js";
 import vi from "../../assets/languages/vi.js";
 import jp from "../../assets/languages/jp.js";
 import kr from "../../assets/languages/kr.js";
+import fr from "../../assets/languages/fr.js";
 
-const langs = { en, tw, cn, vi, jp, kr };
+const langs = { en, tw, cn, vi, jp, kr, fr };
 
 export function createTranslator(lang) {
   if (!Object.keys(langs).includes(lang))

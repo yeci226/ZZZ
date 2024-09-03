@@ -4,13 +4,16 @@ import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import { Events, EmbedBuilder, WebhookClient, ChannelType } from "discord.js";
 import emoji from "../assets/emoji.js";
 import { Logger } from "../utilities/core/logger.js";
-import { getUserLang } from "../utilities/utilities.js";
+import { getUserLang, setupDefaultLang } from "../utilities/utilities.js";
 
 const db = client.db;
 const webhook = new WebhookClient({ url: process.env.CMDWEBHOOK });
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.channel.type == ChannelType.DM) return;
+
+  if (!(await getUserLang(interaction.user.id)))
+    await setupDefaultLang(interaction.user.id, interaction.locale);
 
   const userLocale =
     (await getUserLang(interaction.user.id)) ||

@@ -57,20 +57,29 @@ export default async function autoDailySign() {
   UpdateStatistics(total, startTime, success, failed, signed, nowTime);
 }
 
+const languageMapping = {
+  tw: LanguageEnum.TRADIIONAL_CHINESE,
+  cn: LanguageEnum.SIMPLIFIED_CHINESE,
+  vi: LanguageEnum.VIETNAMESE,
+  jp: LanguageEnum.JAPANESE,
+  kr: LanguageEnum.KOREAN,
+  fr: LanguageEnum.FRENCH,
+  default: LanguageEnum.ENGLISH,
+};
+
 async function dailySign(dailyData, userId, uid, cookie) {
   total++;
   const userLocale = (await getUserLang(userId)) || "en";
   const tr = createTranslator(userLocale);
   const channelId = dailyData[userId].channelId;
   const tag = dailyData[userId].tag === "true" ? "<@" + userId + ">" : "";
+  const getLanguage = (locale) =>
+    languageMapping[locale] || languageMapping.default;
 
   try {
     const zzz = new ZenlessZoneZero({
       cookie,
-      lang:
-        userLocale === "tw"
-          ? LanguageEnum.TRADIIONAL_CHINESE
-          : LanguageEnum.ENGLISH,
+      lang: getLanguage(userLocale),
     });
 
     const info = await zzz.daily.info();
