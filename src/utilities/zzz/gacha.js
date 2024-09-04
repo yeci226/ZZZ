@@ -361,10 +361,10 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
     const ctx = canvas.getContext("2d");
 
     const imagePaths = [
-      `./src/assets/images/gachaBg.png`,
-      `./src/assets/images/icons/gacha/character.png`,
-      `./src/assets/images/icons/gacha/regular.png`,
-      `./src/assets/images/icons/gacha/boopon.png`,
+      "./src/assets/images/gachaBg.png",
+      "./src/assets/images/icons/gacha/character.png",
+      "./src/assets/images/icons/gacha/regular.png",
+      "./src/assets/images/icons/gacha/boopon.png",
       ...(await Promise.all(signalResults.data.map(processAgent))),
     ];
     const images = await Promise.all(imagePaths.map(loadImageAsync));
