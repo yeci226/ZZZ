@@ -24,4 +24,5 @@ const client = new Client({
 });
 
 export { client };
+
 import("./main.js");
