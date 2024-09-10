@@ -102,8 +102,14 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
       });
 
       const requestStartTime = Date.now();
-      const [userId, characterId] = value.split("-");
-      const zzz = await getUserZZZData(interaction, tr, userId, userLocale);
+      const [userId, accountIndex, characterId] = value.split("-");
+      const zzz = await getUserZZZData(
+        interaction,
+        tr,
+        userId,
+        userLocale,
+        accountIndex
+      );
       if (!zzz) return;
 
       const characters = await zzz.record.characters();

@@ -201,6 +201,9 @@ async function handleCookieSet(interaction, tr, customId, fields) {
     });
     await zzz.daily.info();
 
+    account[accountIndex].cookie = cookie;
+    await db.set(`${interaction.user.id}.account`, account);
+
     const userData = await getUserHoyolabData(
       interaction,
       tr,
@@ -210,7 +213,6 @@ async function handleCookieSet(interaction, tr, customId, fields) {
     );
 
     account[accountIndex].nickname = userData.nickname;
-    account[accountIndex].cookie = cookie;
     await db.set(`${interaction.user.id}.account`, account);
 
     return interaction.reply({
@@ -224,6 +226,7 @@ async function handleCookieSet(interaction, tr, customId, fields) {
       ephemeral: true,
     });
   } catch (error) {
+    console.log(error);
     return interaction.reply({
       embeds: [
         new EmbedBuilder()

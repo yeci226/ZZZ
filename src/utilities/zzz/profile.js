@@ -139,15 +139,13 @@ const fonts = {
   default: "EN",
 };
 
-const loadImageAsync = async (url) => {
+async function loadImageAsync(url, fallbackUrl) {
   try {
     return await loadImage(url);
   } catch {
-    return await loadImage(
-      `https://raw.githubusercontent.com/Mar-7th/StarRailRes/master/icon/element/None.png`
-    );
+    return await loadImage(fallbackUrl || "./src/assets/images/None.png");
   }
-};
+}
 
 export async function handleProfileDraw(
   interaction,
@@ -214,7 +212,7 @@ export async function handleProfileDraw(
                   level: character.level,
                   rank: character.rank,
                 })}`,
-                value: `${user.id}-${character.id}`,
+                value: `${user.id}-${accountIndex}-${character.id}`,
               };
             })
           )
@@ -564,7 +562,7 @@ export async function drawCharacterImage(
       }
     }
     character.equip.sort((a, b) => a.equipment_type - b.equipment_type);
-    const propertyLength = 15;
+    const propertyLength = 16;
 
     // 檢查 character.id 對應的圖片是否存在
     const characterSpecificImagePath = `./src/assets/images/icons/mindscape/${character.id}.png`;
@@ -586,7 +584,7 @@ export async function drawCharacterImage(
       `./src/assets/images/icons/profession/${professionId[character.avatar_profession]}.png`,
       `${character.weapon?.icon}`,
       `./src/assets/images/icons/weapon/role-star-${character.weapon?.star}.png`,
-      ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(
+      ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(
         (index) => `./src/assets/images/icons/property/${propertyId[index]}.png`
       ),
       ...character.skills.map(
@@ -621,7 +619,7 @@ export async function drawCharacterImage(
 
     // Create a mapping from propertiesId to propertyImages
     const propertyImageMap = {};
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((index) => {
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map((index) => {
       propertyImageMap[propertyId[index]] = propertyImages[index - 1];
     });
 

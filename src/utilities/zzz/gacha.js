@@ -18,38 +18,19 @@ import { join } from "path";
 
 const drawQueue = new Queue({ autostart: true });
 
-GlobalFonts.registerFromPath(
-  join(".", "src", ".", "assets", "en-us.ttf"),
-  "EN"
-);
-GlobalFonts.registerFromPath(
-  join(".", "src", ".", "assets", "zh-tw.ttf"),
-  "TW"
-);
-GlobalFonts.registerFromPath(
-  join(".", "src", ".", "assets", "zh-cn.ttf"),
-  "CN"
-);
-GlobalFonts.registerFromPath(
-  join(".", "src", ".", "assets", "vi-vn.ttf"),
-  "VI"
-);
-GlobalFonts.registerFromPath(
-  join(".", "src", ".", "assets", "ja-jp.ttf"),
-  "JP"
-);
-GlobalFonts.registerFromPath(
-  join(".", "src", ".", "assets", "ko-kr.ttf"),
-  "KR"
-);
-GlobalFonts.registerFromPath(
-  join(".", "src", ".", "assets", "fr-fr.ttf"),
-  "FR"
-);
-GlobalFonts.registerFromPath(
-  join(".", "src", ".", "assets", "Nunito-BlackItalic.ttf"),
-  "Nunito"
-);
+const fontPaths = {
+  EN: "en-us.ttf",
+  TW: "zh-tw.ttf",
+  CN: "zh-cn.ttf",
+  VI: "vi-vn.ttf",
+  JP: "ja-jp.ttf",
+  KR: "ko-kr.ttf",
+  FR: "fr-fr.ttf",
+  Nunito: "Nunito-BlackItalic.ttf",
+};
+
+for (const [key, value] of Object.entries(fontPaths))
+  GlobalFonts.registerFromPath(join(".", "src", "assets", value), key);
 
 const zzzStaticUrl = "https://act-webstatic.hoyoverse.com/game_record/zzz";
 const bangbooRectangleUrl = `${zzzStaticUrl}/bangboo_rectangle_avatar/bangboo_rectangle_avatar_`;
@@ -85,15 +66,13 @@ const countColor = [
   { threshold: 90, color: "#FF6969" },
 ];
 
-const loadImageAsync = async (url) => {
+async function loadImageAsync(url, fallbackUrl) {
   try {
     return await loadImage(url);
   } catch {
-    return await loadImage(
-      `https://raw.githubusercontent.com/Mar-7th/StarRailRes/master/icon/element/None.png`
-    );
+    return await loadImage(fallbackUrl || "./src/assets/images/None.png");
   }
-};
+}
 
 async function fetchSignalData(query, id, endId) {
   query.set("real_gacha_type", id);
