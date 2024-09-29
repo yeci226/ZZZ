@@ -88,22 +88,22 @@ export async function handleInterknotDraw(
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setCustomId("scrollUp")
+          .setCustomId("post_scrollUp")
           .setLabel("⬆️")
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId("scrollDown")
+          .setCustomId("post_scrollDown")
           .setLabel("⬇️")
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId("refresh")
+          .setCustomId("post_refresh")
           .setLabel("更新")
           .setStyle(ButtonStyle.Success)
       );
 
       const row2 = new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
-          .setCustomId("categorySelect")
+          .setCustomId("post_categorySelect")
           .setPlaceholder("選擇類別")
           .addOptions(
             {
@@ -712,6 +712,9 @@ function drawRoundedRect(ctx, x, y, width, height, radius, options = {}) {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   const { customId, user, values } = interaction;
+  if (!customId.startsWith("post_")) return;
+
+  const command = customId.split("_")[1];
   const userId = user.id;
   const userState = getUserState(userId);
   const userLocale =
@@ -724,11 +727,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (userState.isScrolling) return;
     userState.isScrolling = true;
 
-    if (customId === "scrollUp") {
+    if (command === "scrollUp") {
       userState.page = Math.max(0, userState.page - 1);
-    } else if (customId === "scrollDown") {
+    } else if (command === "scrollDown") {
       userState.page = Math.min(userState.page + 1, userState.totalPages - 1);
-    } else if (customId === "refresh") {
+    } else if (command === "refresh") {
       userState.page = 0;
       userState.canvasCache.clear();
     }
@@ -741,7 +744,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   if (interaction.isStringSelectMenu()) {
-    if (customId === "categorySelect") {
+    if (command === "categorySelect") {
       userState.category = parseInt(values[0]);
       userState.page = 0;
     }
