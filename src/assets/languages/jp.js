@@ -9,6 +9,7 @@ const langs = {
   Month: "月",
   Day: "日",
   Auto: "自動",
+  VoidHunter: "虛狩",
   isSet: "設定済み",
   isNotSet: "未設定",
   NewLocale: "言語が <locale> に設定されました",

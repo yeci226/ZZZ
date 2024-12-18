@@ -22,6 +22,8 @@ import { join } from "path";
 const db = client.db;
 const drawQueue = new Queue({ autostart: true });
 
+const voidHunterIds = [1091];
+
 const offsetCharacter = {
   1121: 0, // Ben
   1281: 0, // Piper
@@ -643,6 +645,7 @@ export async function drawCharacterImage(
   character
 ) {
   try {
+    console.log(character);
     const selectedFont = fonts[userLocale] || fonts.default;
     const userMindScape =
       (await db.get(`${interaction.user.id}.mindscape`)) ?? true;
@@ -749,15 +752,35 @@ export async function drawCharacterImage(
     ctx.font = `60px ${selectedFont}`;
 
     // Draw Agent Info Box
-    const padding = 60;
+    let padding = 60;
     const iconSpacing = 40;
     const iconSize = 80;
     const textWidth = ctx.measureText(character.name_mi18n).width;
-    const boxWidth = padding * 2 + textWidth + iconSpacing + iconSize * 2;
+    const boxWidth =
+      padding * 2 +
+      textWidth +
+      iconSpacing +
+      iconSize * 2 +
+      (voidHunterIds.includes(character.id) ? 80 : 0);
 
     drawRoundedRect(ctx, 60, 40, boxWidth, 100, 30, boxColor); // (ctx, x, y, width, height, radius, color)
     ctx.fillStyle = "white";
     ctx.fillText(character.name_mi18n, 60 + padding, 110);
+
+    if (voidHunterIds.includes(character.id)) {
+      const voidHunterIcon = await loadImageAsync(
+        `./src/assets/images/icons/other/voidHunter.png`
+      );
+
+      ctx.drawImage(voidHunterIcon, 60 + padding + textWidth + 10, 75, 40, 40);
+
+      const voidHunterText = tr("VoidHunter") || "";
+      ctx.font = `32px ${selectedFont}`;
+      ctx.fillStyle = "#E3E3E3";
+      ctx.fillText(voidHunterText, 60 + padding + textWidth + 50, 107.5);
+
+      padding += 80;
+    }
 
     const elementIconX = 60 + padding + textWidth + iconSpacing;
     const professionIconX = elementIconX + iconSize;
