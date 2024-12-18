@@ -13,7 +13,6 @@ import {
   drawInQueueReply,
   getUserHoyolabData,
   getUserLang,
-  getAvatarUrl,
 } from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
 import emoji from "../../assets/emoji.js";
@@ -31,6 +30,8 @@ const offsetCharacter = {
   1101: 0, // Koleda
   1241: 0, // Zhu Yuan
   1251: -70, // Qingyi
+  1221: 60, // Yanagi
+  1091: -70, // Miyabi
 };
 const elementId = {
   200: "physic",
@@ -143,7 +144,11 @@ async function loadImageAsync(url, fallbackUrl) {
   try {
     return await loadImage(url);
   } catch {
-    return await loadImage(fallbackUrl || "./src/assets/images/None.png");
+    try {
+      return await loadImage(fallbackUrl);
+    } catch {
+      return await loadImage("./src/assets/images/None.png");
+    }
   }
 }
 
@@ -287,16 +292,18 @@ export async function drawMainImage(tr, userLocale, userData, record) {
     const canvas = createCanvas(1000, 1600);
     const ctx = canvas.getContext("2d");
 
+    record.avatar_list.map((agent) => {
+      console.log(agent);
+    });
+
     const imagePaths = [
       `./src/assets/images/profileBg.png`,
       record.cur_head_icon_url,
       ...(await Promise.all(
-        record.avatar_list.map(async (agent) => await getAvatarUrl(agent.id))
+        record.avatar_list.map((agent) => agent.role_square_url)
       )),
       "./src/assets/images/icons/other/showmore.png",
-      ...record.buddy_list.map(
-        (buddy) => bangbooRectangleUrl + `${buddy.id}.png`
-      ),
+      ...record.buddy_list.map((buddy) => buddy.bangboo_rectangle_url),
       "./src/assets/images/icons/other/showmore.png",
     ];
     const images = await Promise.all(imagePaths.map(loadImageAsync));
@@ -477,7 +484,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
         60 + offset_x + 10,
         990 + offset_y + 10,
         140
-      );
+      ); // (ctx, img, x, y, size, scaleFactor)
 
       // Draw Buddy Name
       ctx.textAlign = "center";
@@ -925,13 +932,27 @@ function drawRoundedRect(ctx, x, y, width, height, radius, color) {
   ctx.fill();
 }
 
-function drawCircleImage(ctx, img, x, y, size) {
+function drawCircleImage(ctx, img, x, y, size, scaleFactor = 1.2) {
   ctx.save();
+
+  const centerX = x + size / 2;
+  const centerY = y + size / 2;
+
   ctx.beginPath();
-  ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2, true);
+  ctx.arc(centerX, centerY, size / 2, 0, Math.PI * 2, true);
   ctx.closePath();
+
   ctx.clip();
-  ctx.drawImage(img, x, y, img.width, img.height);
+
+  const scale = Math.min(size / img.width, size / img.height) * scaleFactor;
+
+  const scaledWidth = img.width * scale;
+  const scaledHeight = img.height * scale;
+
+  const imgX = centerX - scaledWidth / 2;
+  const imgY = centerY - scaledHeight / 2;
+
+  ctx.drawImage(img, imgX, imgY, scaledWidth, scaledHeight);
   ctx.restore();
 }
 

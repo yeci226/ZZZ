@@ -7,18 +7,19 @@ import { loadImage } from "@napi-rs/canvas";
 const db = client.db;
 const BASE_URL = "https://bbs-api-os.hoyolab.com/community/post/wapi/";
 
-const zzzStaticUrl = "https://act-webstatic.hoyoverse.com/game_record/zzz";
-const zzzStaticUrl2 = "https://act-webstatic.hoyoverse.com/game_record/nap";
-const squareUrl = `${zzzStaticUrl}/role_square_avatar/role_square_avatar_`;
-const squareUrl2 = `${zzzStaticUrl2}/role_square_avatar/role_square_avatar_`;
-
 export async function getAvatarUrl(agentId) {
-  const url = squareUrl2 + `${agentId}.png`;
+  let url = squareUrl3 + `${agentId}.png`;
   try {
     await loadImage(url);
     return url;
   } catch {
-    return squareUrl + `${agentId}.png`;
+    try {
+      url = squareUrl2 + `${agentId}.png`;
+      await loadImage(url);
+      return url;
+    } catch {
+      return squareUrl + `${agentId}.png`;
+    }
   }
 }
 
@@ -84,7 +85,7 @@ export async function parsePostContent(content) {
 
 export async function getRedeemCodes() {
   const res = await axios
-    .get("https://hoyo-codes.seriaati.xyz/codes?game=nap")
+    .get("https://hoyo-codes.seria.moe/codes?game=nap")
     .then((response) => response.data);
 
   return res.codes;
@@ -289,12 +290,13 @@ export async function getUserZZZData(
 
   try {
     const zzz = new ZenlessZoneZero({ cookie, lang, uid });
-    await zzz.daily.info();
+    // await zzz.daily.info();
 
     return zzz;
   } catch (error) {
     const isHoyoAPIError = error instanceof HoyoAPIError;
     const errorCode = isHoyoAPIError ? error.code : error;
+    console.log(error);
 
     checkAccount(
       interaction,

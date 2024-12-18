@@ -712,7 +712,8 @@ function drawRoundedRect(ctx, x, y, width, height, radius, options = {}) {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   const { customId, user, values } = interaction;
-  if (!customId.startsWith("post_")) return;
+  if (!interaction.isStringSelectMenu() || !customId.startsWith("post_"))
+    return;
 
   const command = customId.split("_")[1];
   const userId = user.id;
