@@ -1,11 +1,23 @@
 import { CommandInteraction, SlashCommandBuilder } from "discord.js";
-import { getShiyu } from "../../../utilities/zzz/shiyu.js";
+import { handleShiyuDraw } from "../../../utilities/zzz/shiyu.js";
 import { getUserZZZData, getUserLang } from "../../../utilities/utilities.js";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("shiyu")
     .setDescription("saldsald")
+    .addStringOption((option) =>
+      option
+        .setName("account")
+        .setDescription("...")
+        .setNameLocalizations({
+          "zh-TW": "帳號",
+          vi: "tàikhoản",
+          fr: "compte",
+        })
+        .setRequired(false)
+        .setAutocomplete(true)
+    )
     .addUserOption((option) =>
       option
         .setName("user")
@@ -27,17 +39,19 @@ export default {
    * @param {String[]} args
    */
   async execute(_client, interaction, _args, tr, db, emoji) {
+    const accountIndex = interaction.options.getString("account") || 0;
     const targetUser = interaction.options.getUser("user") || interaction.user;
 
     const zzz = await getUserZZZData(
       interaction,
       tr,
       targetUser.id,
-      await getUserLang(interaction.user.id)
+      await getUserLang(interaction.user.id),
+      accountIndex
     );
-    if (!zzz) return;
+    if (zzz == null) return;
 
     await interaction.deferReply();
-    getShiyu(interaction, tr, targetUser, zzz);
+    handleShiyuDraw(interaction, tr, targetUser, zzz);
   },
 };

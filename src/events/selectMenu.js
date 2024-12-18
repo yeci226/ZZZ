@@ -92,7 +92,6 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
         embeds: [
           new EmbedBuilder()
             .setTitle(tr("Searching"))
-            .setColor(getRandomColor())
             .setImage(
               "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
             ),
@@ -115,6 +114,10 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
       const characters = await zzz.record.characters();
       const requestEndTime = Date.now();
       const drawStartTime = Date.now();
+      const selectedCharacter =
+        characterId !== "main"
+          ? (await zzz.record.character(characterId))[0]
+          : null;
       let imageBuffer;
 
       if (characterId == "main") {
@@ -127,7 +130,7 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
           tr,
           userLocale,
           zzz.uid,
-          (await zzz.record.character(characterId))[0]
+          selectedCharacter
         );
       }
 
@@ -157,7 +160,7 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
                   {
                     emoji: emoji.avatarIcon,
                     label: tr("MainPage"),
-                    value: `${userId}-main`,
+                    value: `${userId}-${accountIndex}-main`,
                   },
                   ...characters.map((character) => ({
                     emoji: emoji[elementId[character.element_type]],
@@ -166,7 +169,7 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
                       level: character.level,
                       rank: character.rank,
                     })}`,
-                    value: `${userId}-${character.id}`,
+                    value: `${userId}-${accountIndex}-${character.id}`,
                   })),
                 ]
           )
@@ -180,14 +183,18 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
 
       interaction.editReply({
         embeds: [
-          new EmbedBuilder().setImage(`attachment://${image.name}`).setFooter({
-            text: tr("CostTime", {
-              requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
-                2
-              ),
-              drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
+          new EmbedBuilder()
+            .setImage(`attachment://${image.name}`)
+            .setColor(`${selectedCharacter.vertical_painting_color}`)
+            .setFooter({
+              text: tr("CostTime", {
+                requestTime: (
+                  (requestEndTime - requestStartTime) /
+                  1000
+                ).toFixed(2),
+                drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
+              }),
             }),
-          }),
         ],
         components: [rowSelect, rowMindScape],
         files: [image],

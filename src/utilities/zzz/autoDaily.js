@@ -16,6 +16,8 @@ let success, failed, signed, total;
 
 export default async function autoDailySign() {
   const dailyData = await db.get("autoDaily");
+  if (!dailyData) return;
+
   const autoDaily = Object.keys(dailyData);
 
   // Initialize the variables

@@ -137,7 +137,7 @@ const langs = {
   BangbooPool: "バングブープール",
   gacha_HowToGet: "信号記録の取得方法",
   gacha_HowToGetDesc:
-    "1. PCでZZZを開きます\n2. 信号記録の信号詳細を開きます\n3. Windows PowerShellを開き、以下のコマンドを貼り付けます<z>\n4. URLをコピーし、コマンドを使って信号記録を照会します",
+    "1. PCでZZZを開きます\n2. 信号記録の信号詳細を開きます\n3. Windows PowerShellを開き、以下のコマンドを貼り付けます\n<z>\n4. URLをコピーし、コマンドを使って信号記録を照会します",
   gacha_LogTitle: "信号記録を見る",
   gacha_LogDesc: "ここに信号記録のリンクを入力してください",
   gacha_NoSignal: "利用可能な信号記録がありません",

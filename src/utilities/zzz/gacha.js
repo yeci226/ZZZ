@@ -473,7 +473,7 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
             160,
             30,
             20,
-            150 + offsetX - ctx.measureText(countText).width / 2,
+            145 + offsetX - ctx.measureText(countText).width / 2,
             590 + offsetY
           ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
 
@@ -492,7 +492,7 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
             160,
             30,
             20,
-            150 + offsetX + ctx.measureText(nameText).width / 2 + 5,
+            145 + offsetX + ctx.measureText(nameText).width / 2 + 5,
             590 + offsetY,
             color
           ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)

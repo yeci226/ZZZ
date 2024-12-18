@@ -292,10 +292,6 @@ export async function drawMainImage(tr, userLocale, userData, record) {
     const canvas = createCanvas(1000, 1600);
     const ctx = canvas.getContext("2d");
 
-    record.avatar_list.map((agent) => {
-      console.log(agent);
-    });
-
     const imagePaths = [
       `./src/assets/images/profileBg.png`,
       record.cur_head_icon_url,
@@ -321,67 +317,158 @@ export async function drawMainImage(tr, userLocale, userData, record) {
     ctx.font = `24px ${selectedFont}`;
     ctx.fillText(tr("InterKnot"), 30, 33);
 
+    // Draw User Card
+    if (record.game_data_show?.card_url) {
+      // Main Card
+      const cardImage = await loadImageAsync(record.game_data_show.card_url);
+
+      const cardImageHeight = 265;
+      const cardImageScale = Math.min(1, cardImageHeight / cardImage.height);
+      ctx.drawImage(
+        cardImage,
+        -(cardImage.width * cardImageScale) / 2 + canvas.width * 0.66,
+        0,
+        cardImage.width * cardImageScale,
+        cardImageHeight
+      );
+
+      // Underline
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, cardImageHeight);
+      ctx.lineTo(canvas.width, cardImageHeight);
+      ctx.stroke();
+    }
+
     // Draw User Info
     ctx.drawImage(userHeadIcon, 54, 94, 129, 129);
 
+    const userNameX = 200;
     // Draw User Name
     ctx.textAlign = "left";
     drawText(
       ctx,
-      userData?.nickname ?? "",
+      userData?.nickname ?? "Unknown",
       selectedFont,
       170,
-      36,
-      16,
-      200,
-      150
+      46,
+      22,
+      userNameX,
+      record.game_data_show?.personal_title ? 150 : 180
     ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
+
+    // Draw User Name Outline
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.strokeText(
+      userData?.nickname ?? "Unknown",
+      userNameX,
+      record.game_data_show?.personal_title ? 150 : 180
+    );
 
     // Draw User level
-    ctx.fillStyle = "white";
-    ctx.textAlign = "left";
-    ctx.font = `26px ${selectedFont}`;
-    ctx.fillText(userData?.level ? `Lv.${userData.level}` : "", 200, 200);
-
-    // Draw User World Level Name
-    ctx.textAlign = "left";
-    drawText(
+    const userNameWidth = ctx.measureText(userData?.nickname ?? "").width;
+    const userLevelString = `Lv.${userData.level}`;
+    drawTextWithBackground(
       ctx,
-      tr("InterKnotReputation"),
-      selectedFont,
-      320,
-      28,
-      20,
-      425,
-      128
-    ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
-    ctx.textAlign = "right";
-    drawText(
-      ctx,
-      record.stats.world_level_name,
-      selectedFont,
-      160,
-      28,
-      22,
-      970,
-      128
-    ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
+      userLevelString,
+      userNameX + userNameWidth + 20,
+      145,
+      {
+        font: `25px ${selectedFont}`,
+        textColor: "black",
+        backgroundColor: "#FFDE00",
+        padding: 7.5,
+      }
+    );
 
-    // Draw User Active Days
-    ctx.textAlign = "left";
-    drawText(ctx, tr("ActiveDays"), selectedFont, 320, 28, 20, 425, 178); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
-    ctx.fillStyle = "white";
-    ctx.textAlign = "right";
-    ctx.font = `28px ${selectedFont}`;
-    ctx.fillText(`${record.stats.active_days}`, 970, 178);
+    // Draw User title
+    const gameDataShow = record.game_data_show ?? null;
+    const title = gameDataShow?.personal_title ?? null;
+    if (title) {
+      const titleMainColor = `#${gameDataShow.title_main_color.toUpperCase()}`;
+      const titleBottomColor = `#${gameDataShow.title_bottom_color.toUpperCase()}`;
 
-    // Draw User Cur Period Zone Layer Count
-    ctx.textAlign = "left";
-    drawText(ctx, tr("PeriodZoneLayer"), selectedFont, 340, 28, 20, 425, 228); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
-    ctx.fillStyle = "white";
-    ctx.textAlign = "right";
-    ctx.font = `28px ${selectedFont}`;
-    ctx.fillText(`${record.stats.cur_period_zone_layer_count}`, 970, 228);
+      ctx.textAlign = "left";
+      drawTextWithBackground(ctx, `${title}`, 210, 200, {
+        font: `30px ${selectedFont}`,
+        textColor: "black",
+        backgroundColor: "black",
+        padding: 12.5,
+        radius: 20,
+        outlineWidth: 3,
+        outlineColor: "rgba(255, 255, 255, 0.12)",
+      });
+
+      const gradient = ctx.createLinearGradient(0, 220 - 26, 0, 220);
+      gradient.addColorStop(0, titleMainColor);
+      gradient.addColorStop(1, titleBottomColor);
+
+      ctx.font = `30px ${selectedFont}`;
+      ctx.fillStyle = gradient;
+      ctx.fillText(`${title}`, 210, 200);
+    }
+
+    // // Draw User World Level Name
+    // ctx.textAlign = "left";
+    // drawText(
+    //   ctx,
+    //   tr("InterKnotReputation"),
+    //   selectedFont,
+    //   320,
+    //   28,
+    //   20,
+    //   425,
+    //   128
+    // ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
+    // ctx.textAlign = "right";
+    // drawText(
+    //   ctx,
+    //   record.stats.world_level_name,
+    //   selectedFont,
+    //   160,
+    //   28,
+    //   22,
+    //   970,
+    //   128
+    // ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
+
+    // // Draw User Active Days
+    // ctx.textAlign = "left";
+    // drawText(ctx, tr("ActiveDays"), selectedFont, 320, 28, 20, 425, 178); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
+    // ctx.fillStyle = "white";
+    // ctx.textAlign = "right";
+    // ctx.font = `28px ${selectedFont}`;
+    // ctx.fillText(`${record.stats.active_days}`, 970, 178);
+
+    // Draw User Medal
+    if (gameDataShow.medal_item_list.length > 0) {
+      const userTitleWidth = ctx.measureText(title).width;
+      for (
+        let index = 0;
+        index < gameDataShow.medal_item_list.length;
+        index++
+      ) {
+        const medal = gameDataShow.medal_item_list[index];
+        const medalIcon = await loadImageAsync(medal.medal_icon);
+        const medalIconX =
+          (userTitleWidth ? 220 + userTitleWidth + 10 : 220) + 10 + index * 70;
+        const medalIconY = 155;
+
+        ctx.drawImage(medalIcon, medalIconX, medalIconY, 64, 64);
+
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.font = `30px Impact`;
+        ctx.fillText(`${medal.number}`, medalIconX + 32, medalIconY + 67);
+
+        // Text Outline
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 1.5;
+        ctx.strokeText(`${medal.number}`, medalIconX + 32, medalIconY + 67);
+      }
+    }
 
     // Agents
     ctx.fillStyle = "white";
@@ -389,7 +476,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
     ctx.font = `36px ${selectedFont}`;
     ctx.fillText(tr("Agents") + ` (${record.stats.avatar_num})`, 50, 330);
 
-    if (record.stats.avatar_num != record.avatar_list.length)
+    if (record.avatar_list.length == 9)
       record.avatar_list.push({ name_mi18n: tr("Showmore") });
     record.avatar_list.map((agent, index) => {
       const offset_x = 180 * (index % 5);
@@ -463,7 +550,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
     ctx.font = `36px ${selectedFont}`;
     ctx.fillText(tr("Bangboo") + ` (${record.stats.buddy_num})`, 50, 960);
 
-    if (record.stats.buddy_num != record.buddy_list.length)
+    if (record.buddy_list.length == 9)
       record.buddy_list.push({ name: tr("Showmore") });
     record.buddy_list.map((buddy, index) => {
       const offset_x = 180 * (index % 5);
@@ -536,7 +623,7 @@ export async function drawMainImage(tr, userLocale, userData, record) {
     ctx.fillStyle = "white";
     ctx.textAlign = "right";
     ctx.fillText(
-      userData?.game_role_id ? `UID ${userData.game_role_id}` : "",
+      `${userData.region_name} | ${userData?.game_role_id ? `UID ${userData.game_role_id}` : ""}`,
       canvas.width - 10,
       canvas.height - 10
     );
@@ -600,7 +687,7 @@ export async function drawCharacterImage(
       ...character.equip.map((equip) =>
         equip?.id
           ? `./src/assets/images/icons/diskdrives/${equip.id.toString().slice(0, 3)}_${equip.rarity}.webp`
-          : "./src/assets/images/icons/diskdrives/none.png"
+          : "./src/assets/images/icons/other/empty.png"
       ),
     ];
 
@@ -633,6 +720,14 @@ export async function drawCharacterImage(
     // Draw BG
     ctx.drawImage(characterRankImage, 0, 0, canvas.width, canvas.height);
     ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+
+    // Draw Paint
+    drawPaintSplatter(ctx, canvas.width, canvas.height, {
+      splatterCount: 10,
+      minSize: 50,
+      maxSize: 200,
+      colors: [`${character.vertical_painting_color}`],
+    });
 
     // Draw Agent
     const offsetX = offsetCharacter.hasOwnProperty(character.id)
@@ -705,16 +800,40 @@ export async function drawCharacterImage(
           48,
           48
         );
+
+        const propertyFinalValue = character.properties[index].final;
+
+        if (
+          character.properties[index].base &&
+          character.properties[index].add
+        ) {
+          // Property Base Value
+          ctx.fillStyle = "white";
+          ctx.textAlign = "right";
+          ctx.font = `22px ${selectedFont}`;
+          ctx.fillText(
+            `${character.properties[index].base}`,
+            480 - ctx.measureText(`${propertyFinalValue}`).width - 40,
+            204 + offset_y
+          );
+
+          // Property Add Value
+          ctx.fillStyle = "#B5FF00";
+          ctx.fillText(
+            `+${character.properties[index].add}`,
+            480 - ctx.measureText(`${propertyFinalValue}`).width - 40,
+            224 + offset_y
+          );
+        }
+
+        // Property Final Value
+        ctx.font = `${fontSize}px ${selectedFont}`;
         ctx.fillStyle = "white";
         ctx.textAlign = "left";
         ctx.fillText(propertyName, 140, yPosition);
         ctx.textAlign = "right";
         ctx.font = `32px ${selectedFont}`;
-        ctx.fillText(
-          `${character.properties[index].final}`,
-          480,
-          214 + offset_y
-        );
+        ctx.fillText(`${propertyFinalValue}`, 480, 214 + offset_y);
       }
     });
 
@@ -766,47 +885,62 @@ export async function drawCharacterImage(
     character.equip.map((equip, index) => {
       const offset_x = 220 * (index % 3);
       const offset_y = 280 * Math.floor(index / 3);
+      const boxWidth = 210;
+      const boxHeight = 270;
 
       drawRoundedRect(
         ctx,
         1320 + offset_x,
         60 + offset_y,
-        210,
-        270,
+        boxWidth,
+        boxHeight,
         30,
         boxColor
       );
 
       // Draw Disk Driver Icon
       const image = equipImages[equip.equipment_type - 1];
-      ctx.drawImage(image, 1310 + offset_x, 28 + offset_y, 110, 110);
+      ctx.drawImage(
+        image,
+        equip.level > 0 ? 1310 + offset_x : 1280 + offset_x + boxWidth / 2,
+        equip.level > 0 ? 28 + offset_y : offset_y + boxHeight / 2,
+        equip.level > 0 ? 110 : 84,
+        equip.level > 0 ? 110 : 84
+      );
 
-      // Draw Disk Driver Level
-      drawRoundedRect(
-        ctx,
-        1426 + offset_x,
-        80 + offset_y,
-        84,
-        36,
-        18,
-        "rgba(255, 255, 255, 0.95)"
-      );
-      ctx.font = `32px ${selectedFont}`;
-      ctx.fillStyle = "black";
-      ctx.textAlign = "center";
-      ctx.fillText(
-        `+${equip.level ?? "0"}`,
-        1465 + offset_x,
-        110 + offset_y,
-        70
-      );
+      // Draw Disk Driver
+      if (equip.level > 0) {
+        drawRoundedRect(
+          ctx,
+          1426 + offset_x,
+          80 + offset_y,
+          84,
+          36,
+          18,
+          "rgba(255, 255, 255, 0.95)"
+        );
+        ctx.font = `32px ${selectedFont}`;
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.fillText(`+${equip.level}`, 1465 + offset_x, 110 + offset_y, 70);
+      } else {
+        ctx.font = `32px ${selectedFont}`;
+        ctx.fillStyle = "#FFFFFF29";
+        ctx.textAlign = "center";
+        ctx.fillText(
+          `EMPTY`,
+          1322.5 + offset_x + boxWidth / 2,
+          112.5 + offset_y + boxHeight / 2,
+          95
+        );
+      }
 
       // Draw Disk Driver Main Prop
       equip.main_properties?.forEach((prop) => {
         const image = propertyImageMap[propertiesId[prop.property_id]];
         ctx.drawImage(image, 1334 + offset_x, 126 + offset_y, 40, 40);
         ctx.font = `36px ${selectedFont}`;
-        ctx.fillStyle = "white";
+        ctx.fillStyle = prop.valid ? "#F1AD3D" : "white";
         ctx.textAlign = "right";
         ctx.fillText(`${prop.base}`, 1510 + offset_x, 160 + offset_y);
       });
@@ -816,6 +950,7 @@ export async function drawCharacterImage(
         const propOffest_x = 0;
         const propOffest_y = 36 * index;
         const image = propertyImageMap[propertiesId[prop.property_id]];
+
         ctx.drawImage(
           image,
           1340 + offset_x,
@@ -823,8 +958,20 @@ export async function drawCharacterImage(
           28,
           28
         );
+
+        // Property Add
         ctx.font = `24px ${selectedFont}`;
-        ctx.fillStyle = "white";
+        ctx.fillStyle = prop.valid ? "#F1AD3D" : "#FFFFFFA6";
+
+        if (prop.add > 0) {
+          ctx.textAlign = "left";
+          ctx.fillText(
+            `+${prop.add}`,
+            1380 + offset_x,
+            200 + offset_y + propOffest_y
+          );
+        }
+
         ctx.textAlign = "right";
         ctx.fillText(
           `${prop.base}`,
@@ -910,7 +1057,7 @@ export async function drawCharacterImage(
     ctx.font = `32px ${selectedFont}`;
     ctx.fillStyle = "white";
     ctx.textAlign = "right";
-    ctx.fillText(`UID: ${uid}`, canvas.width - 10, canvas.height - 10);
+    ctx.fillText(`UID ${uid}`, canvas.width - 10, canvas.height - 10);
 
     return canvas.toBuffer("image/png");
   } catch (error) {
@@ -919,7 +1066,17 @@ export async function drawCharacterImage(
   }
 }
 
-function drawRoundedRect(ctx, x, y, width, height, radius, color) {
+function drawRoundedRect(
+  ctx,
+  x,
+  y,
+  width,
+  height,
+  radius,
+  color,
+  outlineWidth = 0,
+  outlineColor = "black"
+) {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
   ctx.arcTo(x + width, y, x + width, y + height, radius);
@@ -930,6 +1087,12 @@ function drawRoundedRect(ctx, x, y, width, height, radius, color) {
 
   ctx.fillStyle = color;
   ctx.fill();
+
+  if (outlineWidth > 0) {
+    ctx.strokeStyle = outlineColor;
+    ctx.lineWidth = outlineWidth;
+    ctx.stroke();
+  }
 }
 
 function drawCircleImage(ctx, img, x, y, size, scaleFactor = 1.2) {
@@ -964,7 +1127,8 @@ function drawText(
   initialFontSize,
   minFontSize,
   x,
-  y
+  y,
+  color = "white"
 ) {
   let fontSize = initialFontSize;
   ctx.font = `${fontSize}px ${selectedFont}`;
@@ -976,6 +1140,117 @@ function drawText(
     textWidth = ctx.measureText(text).width;
   }
 
-  ctx.fillStyle = "white";
+  ctx.fillStyle = color;
   ctx.fillText(`${text}`, x, y);
+}
+
+function drawTextWithBackground(ctx, text, x, y, options = {}) {
+  // 解構選項參數，提供預設值
+  const {
+    font = "20px Arial",
+    textColor = "black",
+    backgroundColor = "lightblue",
+    padding = 5,
+    radius = 10,
+    outlineWidth = 0,
+    outlineColor = "black",
+  } = options;
+
+  if (!text) return;
+
+  // 設定字體
+  ctx.font = font;
+
+  // 計算文字尺寸
+  const textWidth = ctx.measureText(text).width;
+  const textHeight = parseInt(font, 7.5);
+
+  // 計算背景矩形的尺寸和位置
+  const rectX = x - padding;
+  const rectY = y - textHeight - padding;
+  const rectWidth = textWidth + padding * 2;
+  const rectHeight = textHeight + padding * 2;
+
+  // 繪製背景矩形
+  ctx.fillStyle = backgroundColor;
+  drawRoundedRect(
+    ctx,
+    rectX,
+    rectY,
+    rectWidth,
+    rectHeight,
+    radius,
+    backgroundColor,
+    outlineWidth,
+    outlineColor
+  );
+
+  // 繪製文字
+  ctx.fillStyle = textColor;
+  ctx.fillText(text, x, y);
+}
+
+function drawPaintSplatter(ctx, canvasWidth, canvasHeight, options = {}) {
+  const {
+    splatterCount = 50, // 潑灑總數量
+    minSize = 5, // 最小潑灑點大小
+    maxSize = 30, // 最大潑灑點大小
+    colors = ["red", "blue", "yellow", "green", "purple"], // 潑灑顏色
+  } = options;
+
+  const splatters = []; // 記錄所有潑灑的位置和大小
+
+  for (let i = 0; i < splatterCount; i++) {
+    let isValid = false;
+    let x, y, size;
+
+    // 持續嘗試直到找到不重疊的位置
+    while (!isValid) {
+      x = Math.random() * canvasWidth; // 隨機 X 坐標
+      y = Math.random() * canvasHeight; // 隨機 Y 坐標
+      size = Math.random() * (maxSize - minSize) + minSize; // 隨機大小
+
+      // 檢查是否與已有的潑灑點重疊
+      isValid = splatters.every((s) => {
+        const distance = Math.sqrt((x - s.x) ** 2 + (y - s.y) ** 2);
+        return distance > s.size + size; // 距離大於半徑之和，表示不重疊
+      });
+    }
+
+    // 紀錄新的潑灑點
+    splatters.push({ x, y, size });
+
+    // 設定顏色和透明度
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    ctx.fillStyle = color;
+    ctx.globalAlpha = Math.random() * 0.6 + 0.1; // 隨機透明度 (0.2 - 1.0)
+
+    // 繪製主潑灑點
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 繪製額外的小滴
+    const dripCount = Math.floor(Math.random() * 5 + 3); // 每次潑灑的小滴數量
+    for (let j = 0; j < dripCount; j++) {
+      const dripX = x + Math.random() * size * 2 - size; // 小滴的偏移 X
+      const dripY = y + Math.random() * size * 2 - size; // 小滴的偏移 Y
+      const dripSize = size * (Math.random() * 0.4); // 小滴的大小
+
+      // 確保小滴也不會與主潑灑點或其他點重疊
+      const isDripValid = splatters.every((s) => {
+        const distance = Math.sqrt((dripX - s.x) ** 2 + (dripY - s.y) ** 2);
+        return distance > s.size + dripSize;
+      });
+
+      if (isDripValid) {
+        ctx.beginPath();
+        ctx.arc(dripX, dripY, dripSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // 恢復透明度
+  ctx.globalAlpha = 1.0;
 }

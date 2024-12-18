@@ -16,6 +16,8 @@ let success, failed, total;
 
 export default async function autoRedeem() {
   const redeemData = await db.get("autoRedeem");
+  if (!redeemData) return;
+
   const autoRedeem = Object.keys(redeemData);
 
   // Initialize the variables

@@ -7,6 +7,13 @@ import { loadImage } from "@napi-rs/canvas";
 const db = client.db;
 const BASE_URL = "https://bbs-api-os.hoyolab.com/community/post/wapi/";
 
+const zzzStaticUrl = "https://act-webstatic.hoyoverse.com/game_record/zzz";
+const zzzStaticUrl2 = "https://act-webstatic.hoyoverse.com/game_record/nap";
+const zzzStaticUrl3 = "https://act-webstatic.hoyoverse.com/game_record/zzzv2";
+const squareUrl = `${zzzStaticUrl}/role_square_avatar/role_square_avatar_`;
+const squareUrl2 = `${zzzStaticUrl2}/role_square_avatar/role_square_avatar_`;
+const squareUrl3 = `${zzzStaticUrl3}/role_square_avatar/role_square_avatar_`;
+
 export async function getAvatarUrl(agentId) {
   let url = squareUrl3 + `${agentId}.png`;
   try {
@@ -290,7 +297,7 @@ export async function getUserZZZData(
 
   try {
     const zzz = new ZenlessZoneZero({ cookie, lang, uid });
-    // await zzz.daily.info();
+    await zzz.daily.info();
 
     return zzz;
   } catch (error) {
