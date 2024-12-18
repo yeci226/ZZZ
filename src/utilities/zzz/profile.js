@@ -645,7 +645,6 @@ export async function drawCharacterImage(
   character
 ) {
   try {
-    console.log(character);
     const selectedFont = fonts[userLocale] || fonts.default;
     const userMindScape =
       (await db.get(`${interaction.user.id}.mindscape`)) ?? true;
@@ -925,14 +924,14 @@ export async function drawCharacterImage(
       const image = equipImages[equip.equipment_type - 1];
       ctx.drawImage(
         image,
-        equip.level > 0 ? 1310 + offset_x : 1280 + offset_x + boxWidth / 2,
-        equip.level > 0 ? 28 + offset_y : offset_y + boxHeight / 2,
-        equip.level > 0 ? 110 : 84,
-        equip.level > 0 ? 110 : 84
+        equip.id ? 1310 + offset_x : 1280 + offset_x + boxWidth / 2,
+        equip.id ? 28 + offset_y : offset_y + boxHeight / 2,
+        equip.id ? 110 : 84,
+        equip.id ? 110 : 84
       );
 
       // Draw Disk Driver
-      if (equip.level > 0) {
+      if (equip.id) {
         drawRoundedRect(
           ctx,
           1426 + offset_x,
