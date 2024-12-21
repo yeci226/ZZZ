@@ -204,26 +204,39 @@ export async function handleProfileDraw(
       const image = new AttachmentBuilder(imageBuffer, {
         name: `MainImage_${zzz.uid}.png`,
       });
-      const rowSelect = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setPlaceholder(tr("profile_SelectCharacter"))
-          .setCustomId("profile_SelectCharacter")
-          .setMinValues(1)
-          .setMaxValues(1)
-          .addOptions(
-            characters.map((character) => {
-              return {
-                emoji: emoji[elementId[character.element_type]],
-                label: `${character.name_mi18n}`,
-                description: `${tr("profile_CharactersFormat", {
-                  level: character.level,
-                  rank: character.rank,
-                })}`,
-                value: `${user.id}-${accountIndex}-${character.id}`,
-              };
-            })
-          )
+
+      function chunkArray(array, size) {
+        return Array.from(
+          { length: Math.ceil(array.length / size) },
+          (_, index) => array.slice(index * size, (index + 1) * size)
+        );
+      }
+
+      const characterOptions = characters.map((character) => {
+        return {
+          emoji: emoji[elementId[character.element_type]],
+          label: `${character.name_mi18n}`,
+          description: `${tr("profile_CharactersFormat", {
+            level: character.level,
+            rank: character.rank,
+          })}`,
+          value: `${user.id}-${accountIndex}-${character.id}`,
+        };
+      });
+
+      const optionChunks = chunkArray(characterOptions, 25);
+
+      const rowSelects = optionChunks.map((optionsChunk, index) =>
+        new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setPlaceholder(`${tr("profile_SelectCharacter")} (${index + 1})`)
+            .setCustomId(`profile_SelectCharacter-${index}`)
+            .setMinValues(1)
+            .setMaxValues(1)
+            .addOptions(optionsChunk)
+        )
       );
+
       const rowMindScape = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("profile_CharacterMindScape")
@@ -242,7 +255,7 @@ export async function handleProfileDraw(
             }),
           }),
         ],
-        components: [rowSelect, rowMindScape],
+        components: [...rowSelects, rowMindScape],
         files: [image],
       });
     } catch (error) {

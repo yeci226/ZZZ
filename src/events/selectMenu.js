@@ -21,7 +21,6 @@ import {
   drawInQueueReply,
   getUserHoyolabData,
 } from "../utilities/utilities.js";
-import { handleSignalLogDraw } from "../utilities/zzz/gacha.js";
 import { drawMainImage, drawCharacterImage } from "../utilities/zzz/profile.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import Queue from "queue";
@@ -61,7 +60,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (customId.startsWith("news")) handleNews(interaction, tr, values[0]);
   if (customId.startsWith("account"))
     handleAccountAction(interaction, tr, customId, values[0]);
-  if (customId == "profile_SelectCharacter")
+  if (customId.startsWith("profile_SelectCharacter"))
     handleSelectCharacter(interaction, tr, values[0], userLocale);
   // if (customId == "signalLogSelect")
   //   handleSignalLogDraw(interaction, tr, userLocale, values[0], values[1]); //interaction, tr, userLocale, type = "character", url
@@ -143,37 +142,51 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
 
       const userMindScape =
         (await db.get(`${interaction.user.id}.mindscape`)) ?? true;
-      const rowSelect = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setPlaceholder(tr("profile_SelectCharacter"))
-          .setCustomId("profile_SelectCharacter")
-          .setMinValues(1)
-          .setMaxValues(1)
-          .addOptions(
-            characterId === "main"
-              ? characters.map((character) => ({
-                  emoji: emoji[elementId[character.element_type]],
-                  label: `${character.name_mi18n}`,
-                  value: `${userId}-${character.id}`,
-                }))
-              : [
-                  {
-                    emoji: emoji.avatarIcon,
-                    label: tr("MainPage"),
-                    value: `${userId}-${accountIndex}-main`,
-                  },
-                  ...characters.map((character) => ({
-                    emoji: emoji[elementId[character.element_type]],
-                    label: `${character.name_mi18n}`,
-                    description: `${tr("profile_CharactersFormat", {
-                      level: character.level,
-                      rank: character.rank,
-                    })}`,
-                    value: `${userId}-${accountIndex}-${character.id}`,
-                  })),
-                ]
-          )
+
+      function chunkArray(array, size) {
+        return Array.from(
+          { length: Math.ceil(array.length / size) },
+          (_, index) => array.slice(index * size, (index + 1) * size)
+        );
+      }
+
+      const characterOptions =
+        characterId === "main"
+          ? characters.map((character) => ({
+              emoji: emoji[elementId[character.element_type]],
+              label: `${character.name_mi18n}`,
+              value: `${userId}-${character.id}`,
+            }))
+          : [
+              {
+                emoji: emoji.avatarIcon,
+                label: tr("MainPage"),
+                value: `${userId}-${accountIndex}-main`,
+              },
+              ...characters.map((character) => ({
+                emoji: emoji[elementId[character.element_type]],
+                label: `${character.name_mi18n}`,
+                description: `${tr("profile_CharactersFormat", {
+                  level: character.level,
+                  rank: character.rank,
+                })}`,
+                value: `${userId}-${accountIndex}-${character.id}`,
+              })),
+            ];
+
+      const optionChunks = chunkArray(characterOptions, 25);
+
+      const rowSelects = optionChunks.map((optionsChunk, index) =>
+        new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setPlaceholder(`${tr("profile_SelectCharacter")} (${index + 1})`)
+            .setCustomId(`profile_SelectCharacter-${index}`)
+            .setMinValues(1)
+            .setMaxValues(1)
+            .addOptions(optionsChunk)
+        )
       );
+
       const rowMindScape = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("profile_CharacterMindScape")
@@ -196,7 +209,7 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
               }),
             }),
         ],
-        components: [rowSelect, rowMindScape],
+        components: [...rowSelects, rowMindScape],
         files: [image],
       });
     } catch (error) {
