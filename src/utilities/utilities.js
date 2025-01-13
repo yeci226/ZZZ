@@ -187,23 +187,23 @@ export async function failedReply(interaction, title = "", description = "") {
   });
 }
 
-const dotggCharacterUrl =
-  "https://api.dotgg.gg/cgfw/getgacha?game=zenless&type=characters";
+// const dotggCharacterUrl =
+//   "https://api.dotgg.gg/cgfw/getgacha?game=zenless&type=characters";
 
-export async function getCharacterData(characterId) {
-  const response = await axios.get(dotggCharacterUrl);
-  const character = response.data.find(
-    (character) => character.id == characterId
-  );
+// export async function getCharacterData(characterId) {
+//   const response = await axios.get(dotggCharacterUrl);
+//   const character = response.data.find(
+//     (character) => character.id == characterId
+//   );
 
-  return {
-    id: character.id,
-    name: character.name,
-    fullName: character.fullName,
-    iconUrl: `https://static.dotgg.gg/zenless/${character.icon}`,
-    faction: character.faction,
-  };
-}
+//   return {
+//     id: character.id,
+//     name: character.name,
+//     fullName: character.fullName,
+//     iconUrl: `https://static.dotgg.gg/zenless/${character.icon}`,
+//     faction: character.faction,
+//   };
+// }
 
 const languageMapping = {
   tw: LanguageEnum.TRADIIONAL_CHINESE,
@@ -272,6 +272,28 @@ export async function getUserHoyolabData(
             ErrorCode: errorCode,
           }
     );
+    return null;
+  }
+}
+
+export async function getCharacterData(characterId) {
+  try {
+    const apiUrl = `https://api.hakush.in/zzz/data/en/character/${characterId}.json`;
+    const response = await axios.get(apiUrl).then((response) => response.data);
+    const partnerInfo = response.PartnerInfo;
+    const dataFormat = {
+      id: response.Id,
+      name: response.Name,
+      fullName: partnerInfo.FullName,
+      gender: partnerInfo.Gender,
+      birthday: partnerInfo.Birthday,
+      camp: partnerInfo.Race,
+      iconUrl: `https://api.hakush.in/zzz/UI/${partnerInfo.RoleIcon.split("/").pop()}.webp`,
+    };
+
+    return dataFormat;
+  } catch (error) {
+    console.log(error);
     return null;
   }
 }

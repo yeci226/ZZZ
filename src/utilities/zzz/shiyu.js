@@ -1,17 +1,200 @@
-import { failedReply } from "../utilities.js";
+import { client } from "../../index.js";
+import {
+  EmbedBuilder,
+  AttachmentBuilder,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} from "discord.js";
+import Queue from "queue";
+import {
+  getRandomColor,
+  drawInQueueReply,
+  getUserHoyolabData,
+  getUserLang,
+  failedReply,
+} from "../utilities.js";
+import { toI18nLang } from "../core/i18n.js";
+import emoji from "../../assets/emoji.js";
+import { createCanvas, loadImage, GlobalFonts } from "@napi-rs/canvas";
+import fs from "fs";
+import { join } from "path";
+const db = client.db;
+const drawQueue = new Queue({ autostart: true });
 
-export async function getShiyu(interaction, tr, user, zzz) {
-  const res = await zzz.record.shiyuDefense();
-  if (!res.has_data) return failedReply(interaction, "沒有深淵資料喔><");
+GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "en-us.ttf"),
+  "EN"
+);
+GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "zh-tw.ttf"),
+  "TW"
+);
+GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "zh-cn.ttf"),
+  "CN"
+);
+GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "vi-vn.ttf"),
+  "VI"
+);
+GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "ja-jp.ttf"),
+  "JP"
+);
+GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "ko-kr.ttf"),
+  "KR"
+);
+GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "fr-fr.ttf"),
+  "FR"
+);
+GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "Nunito-BlackItalic.ttf"),
+  "Nunito"
+);
 
-  console.log(res.all_floor_detail[0].node_1.monster_info);
-  console.log(res.all_floor_detail[0].node_2.monster_info);
+const fonts = {
+  tw: "TW",
+  cn: "CN",
+  vi: "VI",
+  jp: "JP",
+  kr: "KR",
+  fr: "FR",
+  default: "EN",
+};
 
-  console.log(res.all_floor_detail[1].node_1.monster_info);
-  console.log(res.all_floor_detail[1].node_2.monster_info);
+async function loadImageAsync(url, fallbackUrl) {
+  try {
+    return await loadImage(url);
+  } catch {
+    try {
+      return await loadImage(fallbackUrl);
+    } catch {
+      return await loadImage("./src/assets/images/None.png");
+    }
+  }
+}
 
-  console.log(res.all_floor_detail[2].node_1.monster_info);
-  console.log(res.all_floor_detail[2].node_2.monster_info);
+export async function handleShiyuDraw(interaction, tr, user, zzz) {
+  const drawTask = async () => {
+    try {
+      interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(tr("Searching"))
+            .setColor(getRandomColor())
+            .setImage(
+              "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+            ),
+        ],
+        fetchReply: true,
+      });
+
+      // Request
+      const requestStartTime = Date.now();
+      const userLocale =
+        (await getUserLang(interaction.user.id)) ||
+        toI18nLang(interaction.locale) ||
+        "en";
+      const shiyuData = await zzz.record.shiyuDefense();
+      if (!shiyuData.has_data)
+        return failedReply(interaction, "沒有深淵資料喔><");
+      const requestEndTime = Date.now();
+
+      // Generate
+      const drawStartTime = Date.now();
+      const imageBuffer = await drawShiyuImage(tr, userLocale, shiyuData);
+      if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
+      const drawEndTime = Date.now();
+
+      // bla bla bla Builder
+      const image = new AttachmentBuilder(imageBuffer, {
+        name: `Shiyu_${zzz.uid}.png`,
+      });
+
+      interaction.editReply({
+        embeds: [
+          new EmbedBuilder().setImage(`attachment://${image.name}`).setFooter({
+            text: tr("CostTime", {
+              requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
+                2
+              ),
+              drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
+            }),
+          }),
+        ],
+        files: [image],
+      });
+    } catch (error) {
+      if (error?.code == "-501000") {
+        interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(tr("note_Error"))
+              .setConfig("#E76161", "sob")
+              .setImage(
+                "https://media.discordapp.net/attachments/1149960935654559835/1258313139078955039/image.png"
+              )
+              .setDescription(
+                tr("note_Error_Description") + "\n\n" + `\`${error.message}\``
+              ),
+          ],
+          fetchReply: true,
+        });
+      } else {
+        interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor("#E76161")
+              .setTitle(tr("DrawError"))
+              .setDescription(`\`${error}\``)
+              .setThumbnail(
+                "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
+              ),
+          ],
+          fetchReply: true,
+        });
+      }
+    }
+  };
+
+  drawQueue.push(drawTask);
+
+  if (drawQueue.length !== 1) {
+    drawInQueueReply(
+      interaction,
+      tr("DrawInQueue", { position: drawQueue.length - 1 })
+    );
+  }
+}
+
+async function drawShiyuImage(tr, userLocale, shiyuData) {
+  console.log(`shiyuData:`, shiyuData);
+  try {
+    const selectedFont = fonts[userLocale] || fonts.default;
+    const canvas = createCanvas(1000, 1600);
+    const ctx = canvas.getContext("2d");
+
+    const challengeTime = new Date(
+      parseInt(shiyuData.all_floor_detail[0].challenge_time)
+    );
+
+    const imagePaths = [];
+    const images = await Promise.all(imagePaths.map(loadImageAsync));
+    const [] = images;
+
+    const allFloorDetail = shiyuData.all_floor_detail;
+    for (const floor in allFloorDetail) {
+    }
+
+    return canvas.toBuffer("image/png");
+  } catch (error) {
+    console.log(error);
+    console.error("Error generating image:", error);
+  }
 }
 
 /**

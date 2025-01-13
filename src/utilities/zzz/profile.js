@@ -13,6 +13,7 @@ import {
   drawInQueueReply,
   getUserHoyolabData,
   getUserLang,
+  getCharacterData,
 } from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
 import emoji from "../../assets/emoji.js";
@@ -684,11 +685,14 @@ export async function drawCharacterImage(
       finalMindScapeImagePath = defaultImagePath;
     }
 
+    const characterData = await getCharacterData(character.id);
+
     // Load images concurrently
     const imagePaths = [
       finalMindScapeImagePath,
       characterSpecificImagePath,
-      `./src/assets/images/agents/${character.id}.webp`,
+      characterData.iconUrl ??
+        `./src/assets/images/agents/${character.id}.webp`,
       `./src/assets/images/icons/element/${elementId[character.element_type]}.png`,
       `./src/assets/images/icons/profession/${professionId[character.avatar_profession]}.png`,
       `${character.weapon?.icon}`,
