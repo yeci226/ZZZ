@@ -1,6 +1,8 @@
 import { client } from "../../index.js";
-import { EmbedBuilder, WebhookClient } from "discord.js";
+import { EmbedBuilder } from "discord.js";
+import { ZenlessZoneZero, LanguageEnum } from "hoyoapi";
 import { Logger } from "../core/logger.js";
+import { createTranslator } from "../core/i18n.js";
 import {
   getUserCookie,
   getUserLang,
@@ -8,54 +10,22 @@ import {
   getRandomColor,
   getRedeemCodes,
 } from "../utilities.js";
-import { createTranslator } from "../core/i18n.js";
-import { ZenlessZoneZero, LanguageEnum } from "hoyoapi";
 
-const db = client.db;
-let success, failed, total;
+// Constants
+const CONFIG = {
+  TAIPEI_TIMEZONE: "Asia/Taipei",
+  API_TIMEOUT: 10000,
+  REDEEM_DELAY: 3000,
+  MAX_RETRIES: 3,
+  DEFAULT_LANGUAGE: "en",
+  ERROR_CODES: {
+    ALREADY_CLAIMED: -2017,
+    CODE_INVALID: -2001,
+    CODE_EXPIRED: -2006,
+  },
+};
 
-export default async function autoRedeem() {
-  const redeemData = await db.get("autoRedeem");
-  if (!redeemData) return;
-
-  const autoRedeem = Object.keys(redeemData);
-
-  // Initialize the variables
-  const nowTime = new Date().toLocaleString("en-US", {
-    timeZone: "Asia/Taipei",
-    hour: "numeric",
-    hour12: false,
-  });
-  total = 0;
-  failed = 0;
-  success = 0;
-
-  // Loop through the autoRedeem array
-  new Logger("自動執行").info(`已開始 ${nowTime} 點自動兌換`);
-  const codesList = await getRedeemCodes();
-
-  for (const id of autoRedeem) {
-    const accounts = await db.get(`${id}.account`);
-    if (!accounts || !Array.isArray(accounts) || accounts.length <= 0) continue;
-    for (const account of accounts) {
-      let accountIndex = 0;
-      if (getUserCookie(id, accountIndex) && getUserUid(id, accountIndex))
-        await redeemCode(
-          redeemData,
-          codesList,
-          id,
-          account.uid,
-          account.cookie
-        );
-      accountIndex++;
-    }
-  }
-
-  // End
-  UpdateStatistics(total, nowTime);
-}
-
-const languageMapping = {
+const LANGUAGE_MAPPING = {
   tw: LanguageEnum.TRADIIONAL_CHINESE,
   cn: LanguageEnum.SIMPLIFIED_CHINESE,
   vi: LanguageEnum.VIETNAMESE,
@@ -65,95 +35,256 @@ const languageMapping = {
   default: LanguageEnum.ENGLISH,
 };
 
-async function redeemCode(dailyData, codesList, userId, uid, cookie) {
-  total++;
-  let userRedeemedCodes = (await db.get(`${userId}.redeemedCodes`)) || [];
+class AutoRedeemSystem {
+  constructor(client) {
+    this.client = client;
+    this.db = client.db;
+    this.logger = new Logger("AutoRedeem");
+    this.stats = {
+      total: 0,
+      success: 0,
+      failed: 0,
+    };
+  }
 
-  if (!userRedeemedCodes.includes(codesList.code)) {
-    const unRedeemedCodes = codesList.filter(
+  getLanguage(locale) {
+    return LANGUAGE_MAPPING[locale] || LANGUAGE_MAPPING.default;
+  }
+
+  async sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async getUserPreferences(userId) {
+    try {
+      const userLang = (await getUserLang(userId)) || CONFIG.DEFAULT_LANGUAGE;
+      const accounts = await this.db.get(`${userId}.account`);
+      const redeemedCodes =
+        (await this.db.get(`${userId}.redeemedCodes`)) || [];
+      return { userLang, accounts, redeemedCodes };
+    } catch (error) {
+      this.logger.error(
+        `Failed to get user preferences for ${userId}: ${error.message}`
+      );
+      return {
+        userLang: CONFIG.DEFAULT_LANGUAGE,
+        accounts: [],
+        redeemedCodes: [],
+      };
+    }
+  }
+
+  async processRedemption(userId, redeemData, codesList) {
+    const { userLang, accounts, redeemedCodes } =
+      await this.getUserPreferences(userId);
+    if (!accounts?.length) return;
+
+    const channelId = redeemData[userId].channelId;
+    const tag = redeemData[userId].tag === "true" ? `<@${userId}>` : "";
+    const tr = createTranslator(userLang);
+
+    const accountPromises = accounts.map(async (account, index) => {
+      const cookie = await getUserCookie(userId, index);
+      const uid = await getUserUid(userId, index);
+
+      if (!cookie || !uid) return;
+
+      try {
+        await this.redeemCodesForAccount(account, codesList, redeemedCodes, {
+          userId,
+          channelId,
+          tag,
+          tr,
+          userLang,
+        });
+      } catch (error) {
+        this.logger.error(`Failed to process account ${uid}: ${error.message}`);
+        this.stats.failed++;
+      }
+    });
+
+    await Promise.allSettled(accountPromises);
+  }
+
+  async redeemCodesForAccount(account, codesList, userRedeemedCodes, context) {
+    this.stats.total++;
+
+    const unredeemedCodes = codesList.filter(
       (code) => !userRedeemedCodes.includes(code.code)
     );
 
-    const userLocale = (await getUserLang(userId)) || "en";
-    const tr = createTranslator(userLocale);
-    const channelId = dailyData[userId].channelId;
-    const tag = dailyData[userId].tag === "true" ? "<@" + userId + ">" : "";
-    const embed = new EmbedBuilder().setColor(getRandomColor());
-    const redeemedCode = [];
+    if (!unredeemedCodes.length) return;
+
+    const zzz = new ZenlessZoneZero({
+      uid: account.uid,
+      cookie: account.cookie,
+      lang: this.getLanguage(context.userLang),
+    });
+
+    const redeemedCodes = [];
+    const description = [`<@${context.userId}>`];
     let redeemSuccess = false;
-    let description = `<@${userId}>`;
-    const getLanguage = (locale) =>
-      languageMapping[locale] || languageMapping.default;
 
-    try {
-      const zzz = new ZenlessZoneZero({
-        uid,
-        cookie,
-        lang: getLanguage(userLocale),
-      });
+    for (const code of unredeemedCodes) {
+      try {
+        const result = await this.attemptCodeRedeem(
+          zzz,
+          code.code,
+          CONFIG.MAX_RETRIES
+        );
 
-      for (const code of unRedeemedCodes) {
-        const res = await zzz.redeem.claim(code.code);
-        if (res.retcode === 0 || res.message == "OK") {
-          if (!userRedeemedCodes.includes(code.code))
-            userRedeemedCodes.push(code.code);
-          userRedeemedCodes = Array.from(new Set(userRedeemedCodes));
-          redeemedCode.push(code);
+        if (result.success) {
+          userRedeemedCodes.push(code.code);
+          redeemedCodes.push(code);
           redeemSuccess = true;
-          description += `\n### ${code.code}\n`;
-        } else if ([-2017, -2001, -2006].includes(res.retcode)) {
-          if (!userRedeemedCodes.includes(code.code)) {
+          description.push(`### ${code.code}`);
+        } else {
+          if (result.shouldStore) {
             userRedeemedCodes.push(code.code);
           }
-          userRedeemedCodes = Array.from(new Set(userRedeemedCodes));
-        } else {
-          description += `\n### ${code.code} \`${tr("redeem_Failed")}\`\n${res.message || ""}`;
-          failed++;
+          if (result.message) {
+            description.push(
+              `### ${code.code} \`${context.tr("redeem_Failed")}\`\n${result.message}`
+            );
+          }
+          if (result.failed) this.stats.failed++;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await this.sleep(CONFIG.REDEEM_DELAY);
+      } catch (error) {
+        this.logger.error(
+          `Failed to redeem code ${code.code}: ${error.message}`
+        );
+        this.stats.failed++;
       }
-
-      await db.set(`${userId}.redeemedCodes`, userRedeemedCodes);
-      if (redeemSuccess) {
-        success++;
-
-        sendMessage(channelId, {
-          content: tag,
-          embeds: [
-            embed
-              .setTitle(tr("Auto") + tr("redeem_Success"))
-              .setThumbnail(
-                "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png"
-              )
-              .setDescription(description),
-          ],
-        }).catch(() => {});
-      }
-    } catch (error) {
-      console.log("兌換錯誤：" + error);
-      failed++;
     }
+
+    await this.updateUserRedeemedCodes(context.userId, userRedeemedCodes);
+
+    if (redeemSuccess) {
+      this.stats.success++;
+      await this.sendRedeemSuccessMessage(context.channelId, {
+        tag: context.tag,
+        tr: context.tr,
+        description: description.join("\n"),
+      });
+    }
+  }
+
+  async attemptCodeRedeem(zzz, code, retries = 3) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const res = await zzz.redeem.claim(code);
+
+        if (res.retcode === 0 || res.message === "OK") {
+          return { success: true };
+        }
+
+        if (
+          [
+            CONFIG.ERROR_CODES.ALREADY_CLAIMED,
+            CONFIG.ERROR_CODES.CODE_INVALID,
+            CONFIG.ERROR_CODES.CODE_EXPIRED,
+          ].includes(res.retcode)
+        ) {
+          return { success: false, shouldStore: true };
+        }
+
+        return {
+          success: false,
+          failed: true,
+          message: res.message || "Unknown error",
+        };
+      } catch (error) {
+        if (attempt === retries - 1) throw error;
+        await this.sleep(1000 * (attempt + 1));
+      }
+    }
+  }
+
+  async updateUserRedeemedCodes(userId, codes) {
+    try {
+      const uniqueCodes = [...new Set(codes)];
+      await this.db.set(`${userId}.redeemedCodes`, uniqueCodes);
+    } catch (error) {
+      this.logger.error(
+        `Failed to update redeemed codes for ${userId}: ${error.message}`
+      );
+    }
+  }
+
+  async sendRedeemSuccessMessage(channelId, data) {
+    const embed = new EmbedBuilder()
+      .setColor(getRandomColor())
+      .setTitle(data.tr("Auto") + data.tr("redeem_Success"))
+      .setThumbnail(
+        "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png"
+      )
+      .setDescription(data.description);
+
+    const content = data.tag ?? "";
+
+    try {
+      await this.client.cluster.broadcastEval(
+        async (c, { channelId, content, embeds }) => {
+          const channel = c.channels.cache.get(channelId);
+          if (channel) {
+            await channel.send({ content, embeds });
+          }
+        },
+        {
+          context: {
+            channelId,
+            content: content,
+            embeds: [embed],
+          },
+          timeout: CONFIG.API_TIMEOUT,
+        }
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send success message to channel ${channelId}: ${error.message}`
+      );
+    }
+  }
+
+  async updateStatistics(nowTime) {
+    this.logger.success(
+      `Completed ${nowTime}:00 auto redemption: ${this.stats.total} total, ` +
+        `${this.stats.success} successful, ${this.stats.failed} failed`
+    );
   }
 }
 
-async function sendMessage(channelId, embed) {
-  try {
-    await client.cluster.broadcastEval(
-      async (c, context) => {
-        const channel = c.channels.cache.get(context.channelId);
-        channel.send(context.embed).catch(() => {});
-      },
-      {
-        context: { channelId: channelId, embed: embed },
-        timeout: 10e3,
-      }
-    );
-  } catch (e) {}
-}
+export default async function autoRedeem() {
+  const system = new AutoRedeemSystem(client);
 
-function UpdateStatistics(total, nowTime) {
-  new Logger("自動執行").success(
-    `已結束 ${nowTime} 點自動兌換，已開啟此功能人數${total}人`
-  );
+  const redeemData = await system.db.get("autoRedeem");
+  if (!redeemData) return;
+
+  const currentHour = new Date().toLocaleString("en-US", {
+    timeZone: CONFIG.TAIPEI_TIMEZONE,
+    hour: "numeric",
+    hour12: false,
+  });
+
+  system.logger.info(`Starting ${currentHour}:00 auto redemption`);
+
+  try {
+    const codesList = await getRedeemCodes();
+
+    for (const userId of Object.keys(redeemData)) {
+      try {
+        await system.processRedemption(userId, redeemData, codesList);
+      } catch (error) {
+        system.logger.error(
+          `Error processing user ${userId}: ${error.message}`
+        );
+      }
+    }
+
+    await system.updateStatistics(currentHour);
+  } catch (error) {
+    system.logger.error(`Auto redemption failed: ${error.message}`);
+  }
 }
