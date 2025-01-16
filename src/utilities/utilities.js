@@ -139,7 +139,13 @@ export async function getUserLang(userId) {
 export function getRandomColor() {
   const letters = "0123456789ABCDEF";
   let color = "#";
-  for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
+  for (let i = 0; i < 6; i++) {
+    const index = Math.floor(Math.random() * letters.length) % letters.length;
+    color += letters[index];
+  }
+
+  const isValidHex = /^#[0-9A-F]{6}$/i.test(color);
+  if (!isValidHex) return "#000000";
 
   return color;
 }
@@ -386,6 +392,46 @@ export function checkAccount(interaction, tr, userId, data) {
       ],
       ephemeral: true,
     });
+  }
+}
+
+const parseCookies = (cookieString) => {
+  return cookieString.split("; ").reduce((cookies, cookie) => {
+    const [name, value] = cookie.split("=");
+    cookies[name] = value;
+    return cookies;
+  }, {});
+};
+
+export async function getCookieToken(interaction, accountIndex) {
+  const cookieString = await getUserCookie(interaction.user.id, accountIndex);
+  const { ltoken_v2, ltuid_v2, cookie_token_v2, account_mid_v2 } =
+    parseCookies(cookieString);
+
+  const apiUrl =
+    "https://api-account-os.hoyoverse.com/account/auth/api/getCookieAccountInfoByGameToken";
+
+  // Request configuration
+  const config = {
+    headers: {
+      "Content-Type": "application/json",
+      "x-rpc-app_version": "2.34.1",
+      "x-rpc-client_type": "5",
+      Accept: "application/json",
+    },
+    params: {
+      game_token: ltoken_v2,
+      account_id: account_mid_v2,
+    },
+  };
+
+  try {
+    const response = await axios.post(apiUrl, {}, config);
+    console.log(response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error:", error.response?.data || error.message);
+    throw error;
   }
 }
 

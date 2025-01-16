@@ -3,8 +3,14 @@ import { EmbedBuilder, WebhookClient } from "discord.js";
 import { ZenlessZoneZero, LanguageEnum } from "hoyoapi";
 import { Logger } from "../core/logger.js";
 import { createTranslator } from "../core/i18n.js";
+import {
+  getUserCookie,
+  getUserLang,
+  getUserUid,
+  getRandomColor,
+} from "../utilities.js";
 
-// Constants
+// Constants remain the same
 const CONFIG = {
   TAIPEI_TIMEZONE: "Asia/Taipei",
   API_TIMEOUT: 10000,
@@ -46,46 +52,40 @@ class AutoDailySignSystem {
     return LANGUAGE_MAPPING[locale] || LANGUAGE_MAPPING.default;
   }
 
-  async getUserPreferences(userId) {
-    try {
-      const userLang =
-        (await this.db.get(`${userId}.locale`)) || CONFIG.DEFAULT_LANGUAGE;
-      const accounts = await this.db.get(`${userId}.account`);
-      return { userLang, accounts };
-    } catch (error) {
-      this.logger.error(
-        `Failed to get user preferences for ${userId}: ${error.message}`
-      );
-      return { userLang: CONFIG.DEFAULT_LANGUAGE, accounts: [] };
-    }
-  }
-
   async processDailySign(userId, dailyData) {
-    const { userLang, accounts } = await this.getUserPreferences(userId);
+    const accounts = await this.db.get(`${userId}.account`);
     if (!accounts || !Array.isArray(accounts) || accounts.length === 0) {
       return;
     }
 
+    const userLang = (await getUserLang(userId)) || CONFIG.DEFAULT_LANGUAGE;
     const tr = createTranslator(userLang);
     const channelId = dailyData[userId].channelId;
     const tag = dailyData[userId].tag === "true" ? `<@${userId}>` : "";
 
-    const signPromises = accounts.map(async (account) => {
-      if (!account.cookie || !account.uid) {
-        return;
-      }
-
+    // Process each account sequentially instead of concurrently
+    for (let accountIndex = 0; accountIndex < accounts.length; accountIndex++) {
       try {
-        await this.performSignIn(account, userLang, userId, channelId, tag, tr);
+        const cookie = await getUserCookie(userId, accountIndex);
+        const uid = await getUserUid(userId, accountIndex);
+
+        if (!cookie || !uid) continue;
+
+        await this.performSignIn(
+          { cookie, uid },
+          userLang,
+          userId,
+          channelId,
+          tag,
+          tr
+        );
       } catch (error) {
         this.logger.error(
-          `Sign-in failed for UID ${account.uid}: ${error.message}`
+          `Sign-in failed for user ${userId} account ${accountIndex}: ${error.message}`
         );
         this.stats.failed++;
       }
-    });
-
-    await Promise.allSettled(signPromises);
+    }
   }
 
   async performSignIn(account, userLang, userId, channelId, tag, tr) {
@@ -97,55 +97,85 @@ class AutoDailySignSystem {
     });
 
     try {
-      const result = await zzz.daily.claim();
-      if (result.code === -5003 || result.info.is_sign === true) {
-        this.stats.signed++;
-        return;
-      }
-
+      // Get all required information first
       const [info, reward, rewards] = await Promise.all([
         zzz.daily.info(),
         zzz.daily.reward(),
         zzz.daily.rewards(),
       ]);
+
+      // Perform the claim
+      const result = await zzz.daily.claim();
+
+      if (result.code === -5003 || result.info.is_sign === true) {
+        this.stats.signed++;
+        return;
+      }
+
+      // Get sign info for today and tomorrow
       const todaySign =
-        rewards.awards[info.total_sign_day - 1] || rewards.awards[0];
-      const tmrSign = rewards.awards[info.total_sign_day];
+        rewards.awards[info.total_sign_day] || rewards.awards[0];
+      const tmrSign =
+        rewards.awards[info.total_sign_day + 1] || rewards.awards[1];
 
       this.stats.success++;
       await this.sendSuccessMessage(channelId, {
-        tag,
-        uid: account.uid,
-        tr,
-        info,
-        reward,
-        todaySign,
-        tmrSign,
-        userId,
+        content: tag,
+        embeds: [
+          new EmbedBuilder()
+            .setColor(getRandomColor())
+            .setTitle(`${account.uid} ${tr("Auto")}${tr("daily_SignSuccess")}`)
+            .setThumbnail(todaySign?.icon)
+            .setDescription(
+              `${tr("daily_Description", {
+                a: `\`${todaySign?.name}x${todaySign?.cnt}\``,
+              })}${
+                info.month_last_day
+                  ? ""
+                  : `\n\n<@${userId}> ${tr("daily_DescriptionTmr", {
+                      b: `\`${tmrSign?.name}x${tmrSign?.cnt}\``,
+                    })}`
+              }`
+            )
+            .addFields(
+              {
+                name: `${reward.month} ${tr("daily_Month")}`,
+                value: "\u200b",
+                inline: true,
+              },
+              {
+                name: tr("daily_SignedDay", {
+                  z: `\`${info.total_sign_day}\``,
+                }),
+                value: "\u200b",
+                inline: true,
+              },
+              {
+                name: tr("daily_MissedDay", {
+                  z: `\`${info.sign_cnt_missed}\``,
+                }),
+                value: "\u200b",
+                inline: true,
+              }
+            ),
+        ],
       });
     } catch (error) {
       throw new Error(`API Error: ${error.message}`);
     }
   }
 
-  async sendSuccessMessage(channelId, data) {
-    const embed = new EmbedBuilder()
-      .setColor(this.getRandomColor())
-      .setTitle(`${data.uid} ${data.tr("Auto")}${data.tr("daily_SignSuccess")}`)
-      .setThumbnail(data.todaySign?.icon)
-      .setDescription(this.buildDescription(data))
-      .addFields(this.buildEmbedFields(data));
-
+  async sendSuccessMessage(channelId, messageData) {
     try {
       await this.client.cluster.broadcastEval(
-        async (c, { channelId, content, embed }) => {
-          const channel = c.channels.cache.get(channelId);
+        async (c, context) => {
+          const channel = c.channels.cache.get(context.channelId);
           if (channel) {
-            await channel.send({ content, embeds: [embed] });
+            await channel.send(context.messageData).catch(() => {});
           }
         },
         {
-          context: { channelId, embed },
+          context: { channelId, messageData },
           timeout: CONFIG.API_TIMEOUT,
         }
       );
@@ -156,48 +186,7 @@ class AutoDailySignSystem {
     }
   }
 
-  buildDescription(data) {
-    const baseDesc = data.tr("daily_Description", {
-      a: `\`${data.todaySign?.name}x${data.todaySign?.cnt}\``,
-    });
-
-    if (data.info.month_last_day) {
-      return baseDesc;
-    }
-
-    return `${baseDesc}\n\n<@${data.userId}> ${data.tr("daily_DescriptionTmr", {
-      b: `\`${data.tmrSign?.name}x${data.tmrSign?.cnt}\``,
-    })}`;
-  }
-
-  buildEmbedFields(data) {
-    return [
-      {
-        name: `${data.reward.month} ${data.tr("daily_Month")}`,
-        value: "\u200b",
-        inline: true,
-      },
-      {
-        name: data.tr("daily_SignedDay", {
-          z: `\`${data.info.total_sign_day}\``,
-        }),
-        value: "\u200b",
-        inline: true,
-      },
-      {
-        name: data.tr("daily_MissedDay", {
-          z: `\`${data.info.sign_cnt_missed}\``,
-        }),
-        value: "\u200b",
-        inline: true,
-      },
-    ];
-  }
-
-  getRandomColor() {
-    return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-  }
-
+  // Statistics methods remain the same...
   async updateStatistics(startTime, currentHour) {
     const endTime = Date.now();
     const duration = (endTime - startTime) / 1000;
