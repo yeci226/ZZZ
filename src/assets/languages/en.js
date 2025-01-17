@@ -60,8 +60,7 @@ const langs = {
   autoDaily_Time: "Automatic check-in time: <time>",
   autoDaily_Tag: "Mention when checking in: <z>",
 
-  account_LoginAccount:
-    "Log in with an account (account information will not be saved)",
+  account_LoginAccount: "Login Account (Info won't be saved)",
   account_LoginAccountDesc: "Account (Email)",
   account_LoginAccountDesc2: "Password",
   account_LoginFailed: "Login failed",
@@ -120,9 +119,17 @@ const langs = {
   note_Error_Description:
     "请至 [战绩](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) 右上角设定开启查看游戏资料！",
 
-  redeem_Success:
-    "Redeem successful, please go to the mailbox to collect it later",
+  redeem_SuccessDesc: "Redeem successful, please go to the mailbox to collect",
+  redeem_Success: "Redeem successful",
+  redeem_Already: "Already redeemed",
+  redeem_Invalid: "Invalid or expired",
   redeem_Failed: "Redeem failed",
+  redeem_Processing: "Processing...",
+  redeem_ProcessingDesc:
+    "<noRedeemedCodes> unredeemed gift codes remaining, <seconds> seconds remaining",
+  redeem_Processed: "Processed Redeem Codes",
+  redeem_Redeeming: "Redeeming...",
+  redeem_RedeemStats: "Redeem Result Statistics:",
   redeen_NoCookie: "CookieToken or AccountMid has not been set yet",
   redeem_Codelist: "Currently available redemption codes",
   redeem_CodeTip:

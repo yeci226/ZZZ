@@ -111,8 +111,17 @@ const langs = {
   note_Error_Description:
     "Please go to [Record](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) and set it in the upper right corner to view game data!",
 
-  redeem_Success: "兑换成功，请稍后前往信箱领取",
+  redeem_SuccessDesc: "兑换成功，请稍后前往信箱领取",
+  redeem_Success: "兑换成功",
+  redeem_Already: "已兑换过",
+  redeem_Invalid: "无效或过期",
   redeem_Failed: "兑换失败",
+  redeem_Processing: "处理中...",
+  redeem_Processed: "已处理的兑换码",
+  redeem_Redeeming: "正在兑换...",
+  redeem_ProcessingDesc:
+    "剩余 <noRedeemedCodes> 个未兑换的礼包码，约剩余 <seconds> 秒",
+  redeem_RedeemStats: "兑换结果统计:",
   redeen_NoCookie: "尚未设定 CookieToken 或 AccountMid",
   redeem_Codelist: "当前可用兑换码",
   redeem_CodeTip: "使用机器人兑换过的礼包码才会显示已兑换",

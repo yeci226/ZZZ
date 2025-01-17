@@ -118,8 +118,16 @@ const langs = {
   note_Error_Description:
     "[전적](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) 오른쪽 상단 설정에서 게임 데이터 공개를 활성화하세요!",
 
-  redeem_Success: "교환에 성공했습니다. 잠시 후 메일을 확인하세요",
+  redeem_SuccessDesc: "교환 성공, 나중에 메일함에서 수령하세요",
+  redeem_Success: "교환 성공",
+  redeem_Already: "이미 교환했습니다",
+  redeem_Invalid: "유효하지 않거나 만료됨",
   redeem_Failed: "교환 실패",
+  redeem_Processing: "처리 중...",
+  redeem_ProcessingDesc: "교환 처리 중입니다. 나중에 다시 시도하세요",
+  redeem_Processed: "처리된 교환 코드",
+  redeem_Redeeming: "교환 중...",
+  redeem_RedeemStats: "교환 결과 통계:",
   redeen_NoCookie: "CookieToken 또는 AccountMid가 설정되지 않았습니다",
   redeem_Codelist: "현재 사용 가능한 교환 코드",
   redeem_CodeTip: "봇으로 교환한 기프트 코드만 교환됨으로 표시됩니다",

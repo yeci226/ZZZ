@@ -4,11 +4,11 @@ const db = client.db;
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isAutocomplete()) return;
-  const { options, user } = interaction;
-  const optionName = options._hoistedOptions[0].name;
+  const focusedOption = interaction.options.getFocused(true);
+  const { name: optionName } = focusedOption;
 
   if (optionName == "account") {
-    const userAccounts = await db.get(`${user.id}.account`);
+    const userAccounts = await db.get(`${interaction.user.id}.account`);
     if (!userAccounts) return;
 
     const choices = [];

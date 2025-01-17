@@ -118,8 +118,19 @@ const langs = {
   note_Error: "Impossible d'afficher les données de jeu!",
   note_Error_Description:
     "Veuillez activer la bascule à la page [Registre des combats](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz)",
-  redeem_Success: "Racheté réussie",
-  redeem_Failed: "Le racheté a échoué",
+
+  redeem_SuccessDesc:
+    "Échange réussi, veuillez récupérer dans votre boîte de réception",
+  redeem_Success: "Échange réussi",
+  redeem_Already: "Déjà échangé",
+  redeem_Invalid: "Invalide ou expiré",
+  redeem_Failed: "Échec de l'échange",
+  redeem_Processing: "En cours de traitement...",
+  redeem_ProcessingDesc:
+    "<noRedeemedCodes> codes cadeaux non utilisés restants, environ <seconds> secondes restantes",
+  redeem_Processed: "Codes échangés",
+  redeem_Redeeming: "En cours d'échange...",
+  redeem_RedeemStats: "Statistiques d'échange",
   redeen_NoCookie: "Cookietoken ou Comptemid pas encore configuré.",
   redeem_Codelist: "Discount codes currently available",
   redeem_CodeTip: "Le code échangé par le bot sera affiché racheté.",

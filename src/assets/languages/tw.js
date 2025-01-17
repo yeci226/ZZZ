@@ -115,8 +115,17 @@ const langs = {
   note_Error_Description:
     "請至 [戰績](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) 右上角設定開啟查看遊戲資料！",
 
-  redeem_Success: "兌換成功，請稍後前往信箱領取",
+  redeem_SuccessDesc: "兌換成功，請稍後前往信箱領取",
+  redeem_Success: "兌換成功",
+  redeem_Already: "已兌換過",
+  redeem_Invalid: "無效或過期",
   redeem_Failed: "兌換失敗",
+  redeem_Processing: "處理中...",
+  redeem_ProcessingDesc:
+    "剩餘 <noRedeemedCodes> 個未兌換的禮包碼，約剩餘 <seconds> 秒",
+  redeem_Processed: "已處理的兌換碼",
+  redeem_Redeeming: "正在兌換...",
+  redeem_RedeemStats: "兌換結果統計:",
   redeen_NoCookie: "尚未設定 CookieToken 或 AccountMid",
   redeem_Codelist: "當前可用兌換碼",
   redeem_CodeTip: "使用機器人兌換過的禮包碼才會顯示已兌換",

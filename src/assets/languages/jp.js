@@ -121,9 +121,16 @@ const langs = {
   note_Error_Description:
     "[成績](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) の右上の設定からゲームデータの公開を有効にしてください！",
 
-  redeem_Success:
-    "引き換えに成功しました。しばらくしてからメールを確認してください",
-  redeem_Failed: "引き換えに失敗しました",
+  redeem_SuccessDesc: "引き換え成功、後でメールボックスで受け取ってください",
+  redeem_Success: "引き換え成功",
+  redeem_Already: "すでに引き換え済み",
+  redeem_Invalid: "無効または期限切れ",
+  redeem_Failed: "引き換え失敗",
+  redeem_Processing: "処理中...",
+  redeem_ProcessingDesc: "引き換え処理中です。後で再試行してください",
+  redeem_Processed: "処理された引き換えコード",
+  redeem_Redeeming: "引き換え中...",
+  redeem_RedeemStats: "引き換え結果の統計:",
   redeen_NoCookie: "CookieToken または AccountMid が設定されていません",
   redeem_Codelist: "現在利用可能な引き換えコード",
   redeem_CodeTip:

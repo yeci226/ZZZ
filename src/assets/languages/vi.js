@@ -116,8 +116,18 @@ const langs = {
   note_Error: "Thông tin người dùng không thiết lập công khai!",
   note_Error_Description:
     "Vui lòng truy cập [Zzz](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz), tại góc trên bên phải, mở `Cài đặt` và bật tất cả các thông tin liên quan đến dữ liệu trò chơi!",
-  redeem_Success: "Đổi thưởng thành công, nhận tại hòm thư trong game",
-  redeem_Failed: "Đổi thưởng thất bại!",
+
+  redeem_SuccessDesc: "Đổi thưởng thành công, vui lòng kiểm tra hộp thư!",
+  redeem_Success: "Đổi thưởng thành công",
+  redeem_Already: "Đã đổi thưởng",
+  redeem_Invalid: "Mã đổi thưởng không hợp lệ hoặc đã hết hạn",
+  redeem_Failed: "Đổi thưởng thất bại",
+  redeem_Processing: "Đang xử lý...",
+  redeem_Processed: "Mã đổi thưởng đã xử lý",
+  redeem_Redeeming: "Đang đổi thưởng...",
+  redeem_ProcessingDesc:
+    "Còn <noRedeemedCodes> mã đổi thưởng chưa được đổi, khoảng <seconds> giây",
+  redeem_RedeemStats: "Thống kê kết quả đổi thưởng:",
   redeen_NoCookie: "Chưa thiết lập CookieToken hay AccountMid",
   redeem_Codelist: "Danh sách các mã đổi quà có sẵn",
   redeem_CodeTip:
