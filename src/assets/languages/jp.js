@@ -61,6 +61,12 @@ const langs = {
   autoDaily_Time: "自動サインイン時間：<time>",
   autoDaily_Tag: "サインイン時にタグ付け：<z>",
 
+  account_LoginAccount: "アカウントでログイン(アカウント情報は保存されません)",
+  account_LoginAccountDesc: "アカウント(メールアドレス)",
+  account_LoginAccountDesc2: "パスワード",
+  account_LoginFailed: "ログインに失敗しました",
+  account_LoginFailedDesc: "アカウント情報を確認してください",
+  account_LoginSuccess: "アカウントにログインし、クッキーを設定しました",
   account_Linked: "リンク済み",
   account_NotLinked: "リンクされていません",
   account_ListOfAccount: "<Username> の設定済みアカウント",

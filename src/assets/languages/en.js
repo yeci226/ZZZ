@@ -60,6 +60,13 @@ const langs = {
   autoDaily_Time: "Automatic check-in time: <time>",
   autoDaily_Tag: "Mention when checking in: <z>",
 
+  account_LoginAccount:
+    "Log in with an account (account information will not be saved)",
+  account_LoginAccountDesc: "Account (Email)",
+  account_LoginAccountDesc2: "Password",
+  account_LoginFailed: "Login failed",
+  account_LoginFailedDesc: "Please check if the account password is correct",
+  account_LoginSuccess: "Logged in to the account and set the Cookie",
   account_Linked: "Linked",
   account_NotLinked: "Not linked",
   account_ListOfAccount: "<Username> Account that has been set",

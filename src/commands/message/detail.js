@@ -1,4 +1,4 @@
-import { ActionRowBuilder, EmbedBuilder } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 
 function parseCookie(cookieString) {
   const cookies = cookieString.split(";");

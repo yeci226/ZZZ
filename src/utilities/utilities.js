@@ -395,48 +395,22 @@ export function checkAccount(interaction, tr, userId, data) {
   }
 }
 
-const parseCookies = (cookieString) => {
-  return cookieString.split("; ").reduce((cookies, cookie) => {
-    const [name, value] = cookie.split("=");
-    cookies[name] = value;
-    return cookies;
-  }, {});
-};
-
-export async function getCookieToken(interaction, accountIndex) {
-  const cookieString = await getUserCookie(interaction.user.id, accountIndex);
-  const { ltoken_v2, ltuid_v2, cookie_token_v2, account_mid_v2 } =
-    parseCookies(cookieString);
-
-  const apiUrl =
-    "https://api-account-os.hoyoverse.com/account/auth/api/getCookieAccountInfoByGameToken";
-
-  // Request configuration
-  const config = {
-    headers: {
-      "Content-Type": "application/json",
-      "x-rpc-app_version": "2.34.1",
-      "x-rpc-client_type": "5",
-      Accept: "application/json",
-    },
-    params: {
-      game_token: ltoken_v2,
-      account_id: account_mid_v2,
-    },
-  };
-
-  try {
-    const response = await axios.post(apiUrl, {}, config);
-    console.log(response.data);
-    return response.data;
-  } catch (error) {
-    console.error("Error:", error.response?.data || error.message);
-    throw error;
-  }
-}
-
 global.replyOrfollowUp = async function (interaction, ...args) {
   if (interaction.replied) return interaction.editReply(...args);
   if (interaction.deferred) return await interaction.followUp(...args);
   return await interaction.reply(...args);
 };
+
+export async function getUserGameUid(cookie, gameName = "Zenless Zone Zero") {
+  const hoyolab = new Hoyolab({
+    cookie: cookie,
+  });
+
+  const gameRecord = await hoyolab.gameRecordCard();
+  const filteredData = gameRecord.filter((item) => item.game_name === gameName);
+
+  return {
+    uid: filteredData[0].game_role_id,
+    nickname: filteredData[0].nickname,
+  };
+}

@@ -59,6 +59,12 @@ const langs = {
   autoDaily_Time: "자동 출석 체크 시간: <time>",
   autoDaily_Tag: "출석 체크 시 태그: <z>",
 
+  account_LoginAccount: "계정으로 로그인(계정 정보는 저장되지 않습니다)",
+  account_LoginAccountDesc: "계정(이메일)",
+  account_LoginAccountDesc2: "비밀번호",
+  account_LoginFailed: "로그인 실패",
+  account_LoginFailedDesc: "계정 정보가 올바른지 확인하세요",
+  account_LoginSuccess: "계정 로그인 성공 및 쿠키 설정",
   account_Linked: "연결됨",
   account_NotLinked: "연결되지 않음",
   account_ListOfAccount: "<Username> 설정된 계정",

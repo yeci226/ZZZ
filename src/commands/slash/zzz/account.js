@@ -37,6 +37,15 @@ export default {
         .setRequired(true)
         .addChoices(
           {
+            name: "🔥Login with account and password🔥",
+            name_localizations: {
+              "zh-TW": "🔥帳號密碼登入🔥",
+              vi: "🔥Đăng nhập tài khoản mật khẩu🔥",
+              fr: "🔥Connexion par mot de passe🔥",
+            },
+            value: "LoginAccount",
+          },
+          {
             name: "❓ How to set up account",
             name_localizations: {
               "zh-TW": "❓ 如何設定帳號",
@@ -129,6 +138,31 @@ export default {
           ],
           ephemeral: true,
         });
+        return;
+      case "LoginAccount":
+        await interaction.showModal(
+          new ModalBuilder()
+            .setCustomId("account_LoginAccountModal")
+            .setTitle(tr("account_LoginAccount"))
+            .addComponents(
+              new ActionRowBuilder().addComponents(
+                new TextInputBuilder()
+                  .setCustomId("account_LoginAccountModalField")
+                  .setLabel(tr("account_LoginAccountDesc"))
+                  .setPlaceholder("example@gmail.com")
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true)
+              ),
+              new ActionRowBuilder().addComponents(
+                new TextInputBuilder()
+                  .setCustomId("account_LoginAccountModalField2")
+                  .setLabel(tr("account_LoginAccountDesc2"))
+                  .setPlaceholder("mypassword")
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true)
+              )
+            )
+        );
         return;
       case "SetUserID":
         await interaction.showModal(

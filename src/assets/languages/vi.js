@@ -57,6 +57,14 @@ const langs = {
   autoDaily_On: "Tính năng điểm danh tự động: Bật",
   autoDaily_Time: "Cài đặt thời gian điểm danh tự động：<time>",
   autoDaily_Tag: "Ping khi điểm danh：<z>",
+
+  account_LoginAccount:
+    "Đăng nhập bằng tài khoản (Chúng tôi không lưu trữ tài khoản và mật khẩu của bạn)",
+  account_LoginAccountDesc: "Tên tài khoản",
+  account_LoginAccountDesc2: "Mật khẩu",
+  account_LoginFailed: "Đăng nhập thất bại",
+  account_LoginFailedDesc: "Vui lòng kiểm tra lại tài khoản và mật khẩu!",
+  account_LoginSuccess: "Đăng nhập thành công, đã thiết lập Cookie",
   account_Linked: "Đã liên kết tài khoản",
   account_NotLinked: "Chưa liên kết tài khoản",
   account_ListOfAccount: "<Username> đã thiết lập tài khoản",

@@ -57,6 +57,15 @@ const langs = {
   autoDaily_On: "Le signé automatique est activée",
   autoDaily_Time: "Le temps de signé automatiquement: <time>",
   autoDaily_Tag: "Tag lorsqu'il est connecté: <z>",
+
+  account_LoginAccount: "Se connecter avec un compte",
+  account_LoginAccountDesc:
+    "Nous ne stockerons pas votre nom d'utilisateur et mot de passe.",
+  account_LoginAccountDesc2: "Mot de passe",
+  account_LoginFailed: "Échec de la connexion",
+  account_LoginFailedDesc:
+    "Veuillez vérifier votre nom d'utilisateur et mot de passe.",
+  account_LoginSuccess: "Connecté avec succès et Cookie défini.",
   account_Linked: "compte lié",
   account_NotLinked: "compte non lié",
   account_ListOfAccount: "<Username> Liste de comptes",
