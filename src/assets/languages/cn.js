@@ -122,7 +122,7 @@ const langs = {
   redeem_ProcessingDesc:
     "剩余 <noRedeemedCodes> 个未兑换的礼包码，约剩余 <seconds> 秒",
   redeem_RedeemStats: "兑换结果统计:",
-  redeen_NoCookie: "尚未设定 CookieToken 或 AccountMid",
+  redeem_NoCookie: "尚未设定 CookieToken 或 AccountMid",
   redeem_Codelist: "当前可用兑换码",
   redeem_CodeTip: "使用机器人兑换过的礼包码才会显示已兑换",
   redeem_Redeemed: "`✅已兑换`",

@@ -128,7 +128,7 @@ const langs = {
   redeem_Processed: "처리된 교환 코드",
   redeem_Redeeming: "교환 중...",
   redeem_RedeemStats: "교환 결과 통계:",
-  redeen_NoCookie: "CookieToken 또는 AccountMid가 설정되지 않았습니다",
+  redeem_NoCookie: "CookieToken 또는 AccountMid가 설정되지 않았습니다",
   redeem_Codelist: "현재 사용 가능한 교환 코드",
   redeem_CodeTip: "봇으로 교환한 기프트 코드만 교환됨으로 표시됩니다",
   redeem_Redeemed: "`✅ 교환됨`",

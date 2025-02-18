@@ -86,7 +86,7 @@ async function handleAccountLogin(interaction, tr, fields) {
       embeds: [
         new EmbedBuilder()
           .setTitle(tr("account_LoginFailed"))
-          .setDescription(tr("account_LoginFailedDesc"))
+          .setDescription(`${tr("account_LoginFailedDesc")}\n${error.message}`)
           .setColor("#E76161"),
       ],
     });

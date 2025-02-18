@@ -130,7 +130,7 @@ const langs = {
   redeem_Processed: "Processed Redeem Codes",
   redeem_Redeeming: "Redeeming...",
   redeem_RedeemStats: "Redeem Result Statistics:",
-  redeen_NoCookie: "CookieToken or AccountMid has not been set yet",
+  redeem_NoCookie: "CookieToken or AccountMid has not been set yet",
   redeem_Codelist: "Currently available redemption codes",
   redeem_CodeTip:
     "Only gift codes redeemed by robots will be displayed as redeemed",

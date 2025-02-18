@@ -128,7 +128,7 @@ const langs = {
   redeem_ProcessingDesc:
     "Còn <noRedeemedCodes> mã đổi thưởng chưa được đổi, khoảng <seconds> giây",
   redeem_RedeemStats: "Thống kê kết quả đổi thưởng:",
-  redeen_NoCookie: "Chưa thiết lập CookieToken hay AccountMid",
+  redeem_NoCookie: "Chưa thiết lập CookieToken hay AccountMid",
   redeem_Codelist: "Danh sách các mã đổi quà có sẵn",
   redeem_CodeTip:
     "Chỉ những mã đã được đổi bằng bot mới được bot ghi lại, các mã đổi ngoài sẽ không nằm trong bộ nhớ của bot.",

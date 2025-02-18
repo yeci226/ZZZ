@@ -319,6 +319,7 @@ export default {
             ],
             ephemeral: true,
           });
+
           const res = await zzz.redeem.claim(code.code);
           if (res.retcode == 0 || res.message == "OK") {
             code.status = "success"; // 標記為兌換成功
@@ -348,6 +349,25 @@ export default {
         invalid: noRedeemedCodes.filter((c) => c.status === "invalid"),
         failed: noRedeemedCodes.filter((c) => c.status === "failed"),
       };
+
+      if (
+        results.success.length +
+          results.already.length +
+          results.invalid.length +
+          results.failed.length ===
+        0
+      ) {
+        return interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(getRandomColor())
+              .setTitle(tr("redeem_NoCode"))
+              .setDescription(tr("redeem_NoCodeDesc")),
+          ],
+          ephemeral: true,
+        });
+      }
+
       interaction.editReply({
         embeds: [
           new EmbedBuilder()
@@ -436,7 +456,17 @@ export default {
           await db.set(`${uid}.redeemedCodes`, userRedeemedCodes);
           failedReply(interaction, res.message);
         } else {
-          failedReply(interaction, res.message);
+          const userCookie = await db.get(`${targetUser.id}.account`)[
+            accountIndex
+          ];
+          if (
+            userCookie.cookie.includes("cookie_token_v2") ||
+            userCookie.cookie.includes("account_mid_v2")
+          ) {
+            failedReply(interaction, tr("redeem_CookieTokenInvalid"));
+          } else {
+            failedReply(interaction, tr("redeem_NoCookie"));
+          }
         }
       } catch (e) {
         failedReply(interaction, e.message);
@@ -449,7 +479,7 @@ export default {
         !userAccount[0].cookie.includes("cookie_token_v2") &&
         !userAccount[0].cookie.includes("account_mid_v2")
       ) {
-        return failedReply(interaction, tr("redeen_NoCookie"));
+        return failedReply(interaction, tr("redeem_NoCookie"));
       }
 
       const enable = interaction.options.getString("enable");

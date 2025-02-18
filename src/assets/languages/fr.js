@@ -131,7 +131,7 @@ const langs = {
   redeem_Processed: "Codes échangés",
   redeem_Redeeming: "En cours d'échange...",
   redeem_RedeemStats: "Statistiques d'échange",
-  redeen_NoCookie: "Cookietoken ou Comptemid pas encore configuré.",
+  redeem_NoCookie: "Cookietoken ou Comptemid pas encore configuré.",
   redeem_Codelist: "Discount codes currently available",
   redeem_CodeTip: "Le code échangé par le bot sera affiché racheté.",
   redeem_Redeemed: "`✅Racheté`",

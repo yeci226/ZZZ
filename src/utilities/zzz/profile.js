@@ -35,6 +35,7 @@ const offsetCharacter = {
   1251: -70, // Qingyi
   1221: 60, // Yanagi
   1091: -70, // Miyabi
+  1311: 0, // Astra Yao
 };
 const elementId = {
   200: "physic",

@@ -131,7 +131,7 @@ const langs = {
   redeem_Processed: "処理された引き換えコード",
   redeem_Redeeming: "引き換え中...",
   redeem_RedeemStats: "引き換え結果の統計:",
-  redeen_NoCookie: "CookieToken または AccountMid が設定されていません",
+  redeem_NoCookie: "CookieToken または AccountMid が設定されていません",
   redeem_Codelist: "現在利用可能な引き換えコード",
   redeem_CodeTip:
     "ボットで引き換えたギフトコードのみが引き換え済みとして表示されます",
