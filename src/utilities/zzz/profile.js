@@ -36,6 +36,8 @@ const offsetCharacter = {
   1221: 60, // Yanagi
   1091: -70, // Miyabi
   1311: 0, // Astra Yao
+  1381: -70, // Zero Anby
+  1351: 0, // Pulchra
 };
 const elementId = {
   200: "physic",
@@ -692,7 +694,7 @@ export async function drawCharacterImage(
     const imagePaths = [
       finalMindScapeImagePath,
       characterSpecificImagePath,
-      characterData.iconUrl ??
+      characterData?.iconUrl ??
         `./src/assets/images/agents/${character.id}.webp`,
       `./src/assets/images/icons/element/${elementId[character.element_type]}.png`,
       `./src/assets/images/icons/profession/${professionId[character.avatar_profession]}.png`,

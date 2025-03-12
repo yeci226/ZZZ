@@ -194,21 +194,23 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
           .setStyle(userMindScape ? ButtonStyle.Success : ButtonStyle.Secondary)
       );
 
+      const embed = new EmbedBuilder()
+        .setImage(`attachment://${image.name}`)
+        .setFooter({
+          text: tr("CostTime", {
+            requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
+              2
+            ),
+            drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
+          }),
+        });
+
+      if (characterId != "main") {
+        embed.setColor(`${selectedCharacter.vertical_painting_color}`);
+      }
+
       interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setImage(`attachment://${image.name}`)
-            .setColor(`${selectedCharacter.vertical_painting_color}`)
-            .setFooter({
-              text: tr("CostTime", {
-                requestTime: (
-                  (requestEndTime - requestStartTime) /
-                  1000
-                ).toFixed(2),
-                drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-              }),
-            }),
-        ],
+        embeds: [embed],
         components: [...rowSelects, rowMindScape],
         files: [image],
       });

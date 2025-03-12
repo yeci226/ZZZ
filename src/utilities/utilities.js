@@ -287,6 +287,8 @@ export async function getCharacterData(characterId) {
     const apiUrl = `https://api.hakush.in/zzz/data/en/character/${characterId}.json`;
     const response = await axios.get(apiUrl).then((response) => response.data);
     const partnerInfo = response.PartnerInfo;
+    if (!partnerInfo || Object.keys(partnerInfo).length == 0) return null;
+
     const dataFormat = {
       id: response.Id,
       name: response.Name,
