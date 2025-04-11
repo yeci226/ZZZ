@@ -259,7 +259,7 @@ export async function handleSignalLogDraw(
       const resMessage = await interaction.editReply({
         embeds: [
           new EmbedBuilder().setImage(`attachment://${image.name}`).setFooter({
-            text: tr("CostTime", {
+            text: tr("TimeSpent", {
               requestTime: requestTime,
               drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
             }),

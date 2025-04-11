@@ -1,20 +1,20 @@
 import { CommandInteraction, SlashCommandBuilder } from "discord.js";
-import { handleShiyuDraw } from "../../../utilities/zzz/shiyu.js";
+import { handleDeadlyDraw } from "../../../utilities/zzz/deadly.js";
 import { getUserZZZData, getUserLang } from "../../../utilities/utilities.js";
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("shiyudefense")
+    .setName("deadlyassault")
     .setNameLocalizations({
-      "zh-TW": "式輿防衛戰",
-      vi: "phongthushiyu",
-      fr: "defenseshiyu",
+      "zh-TW": "危局強襲戰",
+      vi: "tấncôngsiêuphẩm",
+      fr: "assautmortel",
     })
-    .setDescription("Show user's Shiyu Defense data")
+    .setDescription("Show user's Deadly Assault data")
     .setDescriptionLocalizations({
-      "zh-TW": "顯示使用者的式輿防衛戰資料",
-      vi: "Hiển thị dữ liệu phòng thủ Shiyu của người dùng",
-      fr: "Afficher les données de défense de Shiyu de l'utilisateur",
+      "zh-TW": "顯示使用者的危局強襲戰資料",
+      vi: "Hiển thị dữ liệu tấn công siêu phẩm của người dùng",
+      fr: "Afficher les données de l'assaut mortel de l'utilisateur",
     })
     .addStringOption((option) =>
       option
@@ -94,6 +94,6 @@ export default {
     if (zzz == null) return;
 
     await interaction.deferReply();
-    handleShiyuDraw(interaction, tr, targetUser, zzz, schedule);
+    handleDeadlyDraw(interaction, tr, targetUser, zzz, schedule);
   },
 };

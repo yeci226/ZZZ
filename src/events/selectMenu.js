@@ -197,7 +197,7 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
       const embed = new EmbedBuilder()
         .setImage(`attachment://${image.name}`)
         .setFooter({
-          text: tr("CostTime", {
+          text: tr("TimeSpent", {
             requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
               2
             ),

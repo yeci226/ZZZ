@@ -158,6 +158,25 @@ const langs = {
   gacha_SRankAverage: "S-rank trung bình số lần rút",
   gacha_Pity: "<pity> lần rút",
   gacha_Count: "<count> lần rút",
+
+  NonData: "Không tìm thấy dữ liệu cho chế độ này",
+  NonDataDesc: "Bản ghi chiến đấu cập nhật khoảng 1 giờ, vui lòng thử lại sau",
+  EnemyWeakness: "Điểm yếu của kẻ thù",
+  TimeSpent: "Thời gian: Yêu cầu <requestTime> giây • Vẽ <drawTime> giây",
+  ShiyuDefense: "Phòng Thủ Shiyu",
+  RatingStats: "Thống kê xếp hạng",
+  FastestTime: "Thời gian nhanh nhất",
+  Node1: "Nút 1",
+  Node2: "Nút 2",
+  CostTime: "Thời gian",
+
+  // Deadly Assault
+  DeadlyAssault: "Tấn Công Nguy Hiểm",
+  TotalScore: "Tổng Điểm",
+  DeadlyTip:
+    "Tổng điểm được sử dụng để xếp hạng, xếp hạng được cập nhật 30 phút một lần, vui lòng làm mới sau",
+  BattleRecord: "Ghi Chép Chiến Đấu",
+  ChallengeTime: "Thời Gian Thử Thách",
 };
 
 export default langs;

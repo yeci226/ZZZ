@@ -160,6 +160,27 @@ const langs = {
   gacha_SRankAverage: "Moyenne des tirages S-rang",
   gacha_Pity: "<pity> tirages",
   gacha_Count: "<count> tirages",
+
+  NonData: "Aucune donnée trouvée pour ce mode",
+  NonDataDesc:
+    "Les enregistrements de combat sont mis à jour environ une heure, veuillez réessayer plus tard",
+  EnemyWeakness: "Faiblesse ennemie",
+  TimeSpent:
+    "Temps passé: Demande <requestTime> seconde • Générer <drawTime> seconde",
+  ShiyuDefense: "Défense de Shiyu",
+  RatingStats: "Statistiques de classement",
+  FastestTime: "Temps le plus rapide",
+  Node1: "Nœud 1",
+  Node2: "Nœud 2",
+  CostTime: "Temps passé",
+
+  // Deadly Assault
+  DeadlyAssault: "Assaut Mortel",
+  TotalScore: "Score Total",
+  DeadlyTip:
+    "Le score total est utilisé pour le classement, les classements sont mis à jour toutes les demi-heures, veuillez actualiser plus tard",
+  BattleRecord: "Enregistrement de Combat",
+  ChallengeTime: "Temps de Défi",
 };
 
 export default langs;

@@ -162,6 +162,25 @@ const langs = {
   gacha_SRankAverage: "Sランク平均抽選数",
   gacha_Pity: "<pity>抽",
   gacha_Count: "<count>抽",
+
+  NonData: "このモードのデータが見つかりません",
+  NonDataDesc: "データの更新には数時間かかります。後で再試行してください",
+  EnemyWeakness: "敵の弱点",
+  TimeSpent: "所要時間：リクエスト <requestTime> 秒 • 描画 <drawTime> 秒",
+  ShiyuDefense: "式輿防衛戦",
+  RatingStats: "ランク統計",
+  FastestTime: "最速クリア時間",
+  Node1: "ノード1",
+  Node2: "ノード2",
+  CostTime: "所要時間",
+
+  // Deadly Assault
+  DeadlyAssault: "危局強襲戦",
+  TotalScore: "総合スコア",
+  DeadlyTip:
+    "総合スコアはランキングに使用され、ランキングは30分ごとに更新されます。後ほど更新してください",
+  BattleRecord: "戦闘記録",
+  ChallengeTime: "挑戰時間",
 };
 
 export default langs;

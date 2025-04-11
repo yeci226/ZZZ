@@ -158,6 +158,26 @@ const langs = {
   gacha_SRankAverage: "S랭크 평균 뽑기 수",
   gacha_Pity: "<pity>번 뽑기",
   gacha_Count: "<count>번 뽑기",
+
+  NonData: "이 모드의 데이터를 찾을 수 없습니다",
+  NonDataDesc:
+    "전투 기록은 약 1시간에 한 번씩 업데이트됩니다. 나중에 다시 시도해 주세요",
+  EnemyWeakness: "적 약점",
+  TimeSpent: "소요 시간: 요청 <requestTime> 초 • 그리기 <drawTime> 초",
+  ShiyuDefense: "식여 방어전",
+  RatingStats: "등급 통계",
+  FastestTime: "최단 시간",
+  Node1: "노드1",
+  Node2: "노드2",
+  CostTime: "소요 시간",
+
+  // Deadly Assault
+  DeadlyAssault: "위국 강습",
+  TotalScore: "총 점수",
+  DeadlyTip:
+    "총 점수는 랭킹에 사용되며, 랭킹은 30분마다 업데이트됩니다. 나중에 새로고침하세요",
+  BattleRecord: "전투 기록",
+  ChallengeTime: "도전 시간",
 };
 
 export default langs;

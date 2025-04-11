@@ -251,7 +251,7 @@ export async function handleProfileDraw(
       interaction.editReply({
         embeds: [
           new EmbedBuilder().setImage(`attachment://${image.name}`).setFooter({
-            text: tr("CostTime", {
+            text: tr("TimeSpent", {
               requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
                 2
               ),

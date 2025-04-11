@@ -157,6 +157,24 @@ const langs = {
   gacha_SRankAverage: "平均S級抽數",
   gacha_Pity: "已墊<pity>抽",
   gacha_Count: "<count>抽",
+
+  NonData: "找不到這個模式的戰鬥紀錄",
+  NonDataDesc: "戰鬥記錄更新約需要數個小時，請稍後再試",
+  EnemyWeakness: "敵人弱點",
+  TimeSpent: "耗時：請求 <requestTime> 秒 • 繪製 <drawTime> 秒",
+  ShiyuDefense: "式輿防衛戰",
+  RatingStats: "評級統計",
+  FastestTime: "最快通關時間",
+  Node1: "節點1",
+  Node2: "節點2",
+  CostTime: "花費時間",
+
+  // Deadly Assault
+  DeadlyAssault: "危局強襲戰",
+  TotalScore: "總得分",
+  DeadlyTip: "總得分為排名依據，排名每半小時更新一次，請稍後刷新",
+  BattleRecord: "戰鬥記錄",
+  ChallengeTime: "挑戰時間",
 };
 
 export default langs;
