@@ -167,12 +167,7 @@ class AutoRedeemSystem {
     const { userId, userLang, tr, accountIndex, accountNickname } = context;
 
     const isCookieExpired = await this.db.get(`${account.uid}.cookieExpired`);
-    if (isCookieExpired) {
-      this.logger.warn(
-        `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 已過期，跳過兌換流程`
-      );
-      return null;
-    }
+    if (isCookieExpired) return null;
 
     const zzz = new ZenlessZoneZero({
       uid: account.uid,
@@ -186,12 +181,7 @@ class AutoRedeemSystem {
       (code) => !userRedeemedCodes.includes(code.code)
     );
 
-    if (!unRedeemedCodes.length) {
-      this.logger.info(
-        `[用戶 ${userId}] [帳號 #${accountIndex}] 沒有新的禮包碼需要兌換`
-      );
-      return null;
-    }
+    if (!unRedeemedCodes.length) return null;
     this.logger.info(
       `[用戶 ${userId}] [帳號 #${accountIndex}] 發現 ${unRedeemedCodes.length} 個未兌換的禮包碼`
     );
