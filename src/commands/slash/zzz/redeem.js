@@ -361,8 +361,8 @@ export default {
           embeds: [
             new EmbedBuilder()
               .setColor(getRandomColor())
-              .setTitle(tr("redeem_NoCode"))
-              .setDescription(tr("redeem_NoCodeDesc")),
+              .setTitle(tr("redeem_NoCode") || "No Code Available")
+              .setDescription(tr("redeem_NoCodeDesc") || "No Code Available"),
           ],
           ephemeral: true,
         });
