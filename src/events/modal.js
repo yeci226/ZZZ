@@ -77,10 +77,12 @@ async function handleAccountLogin(interaction, tr, fields) {
     });
 
     if (existedAccounts.some((account) => account.uid == uid)) {
-      existedAccounts.map((account) => {
+      existedAccounts.map(async (account) => {
         if (account.uid == uid) {
           account.cookie = cookie;
           account.nickname = nickname;
+
+          await db.set(`${interaction.user.id}.account`, existedAccounts);
         }
       });
     } else {
