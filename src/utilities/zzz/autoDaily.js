@@ -10,12 +10,14 @@ import {
   getRandomColor,
 } from "../utilities.js";
 
-// Constants remain the same
 const CONFIG = {
   TAIPEI_TIMEZONE: "Asia/Taipei",
   API_TIMEOUT: 10000,
-  WEBHOOK_RETRIES: 3,
+  MAX_RETRIES: 3,
   DEFAULT_LANGUAGE: "en",
+  ERROR_CODES: {
+    ALREADY_SIGNED: -5003,
+  },
 };
 
 const LANGUAGE_MAPPING = {
@@ -38,13 +40,18 @@ class AutoDailySignSystem {
       total: 0,
       success: 0,
       failed: 0,
-      signed: 0,
+      alreadySigned: 0,
     };
   }
 
-  async initialize() {
-    if (!this.webhook?.url) {
-      throw new Error("Invalid webhook configuration");
+  async withRetry(operation, maxRetries = CONFIG.MAX_RETRIES) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt === maxRetries) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      }
     }
   }
 
@@ -52,130 +59,166 @@ class AutoDailySignSystem {
     return LANGUAGE_MAPPING[locale] || LANGUAGE_MAPPING.default;
   }
 
-  async processDailySign(userId, dailyData) {
-    const accounts = await this.db.get(`${userId}.account`);
-    if (!accounts || !Array.isArray(accounts) || accounts.length === 0) {
-      return;
-    }
+  async processSignIn(zzz, context) {
+    try {
+      // 使用 Promise.all 並行獲取所需信息
+      const [info, reward, rewards] = await Promise.all([
+        this.withRetry(() => zzz.daily.info()),
+        this.withRetry(() => zzz.daily.reward()),
+        this.withRetry(() => zzz.daily.rewards()),
+      ]);
 
-    const userLang = (await getUserLang(userId)) || CONFIG.DEFAULT_LANGUAGE;
-    const tr = createTranslator(userLang);
-    const channelId = dailyData[userId].channelId;
-    const tag = dailyData[userId].tag === "true" ? `<@${userId}>` : "";
+      const result = await this.withRetry(() => zzz.daily.claim());
 
-    // Process each account sequentially instead of concurrently
-    for (let accountIndex = 0; accountIndex < accounts.length; accountIndex++) {
-      try {
-        const cookie = await getUserCookie(userId, accountIndex);
-        const uid = await getUserUid(userId, accountIndex);
-
-        if (!cookie || !uid) continue;
-
-        await this.performSignIn(
-          { cookie, uid },
-          userLang,
-          userId,
-          channelId,
-          tag,
-          tr
-        );
-      } catch (error) {
-        this.logger.error(
-          `Sign-in failed for user ${userId} account ${accountIndex}: ${error.message}`
-        );
-        this.stats.failed++;
+      if (
+        result.code === CONFIG.ERROR_CODES.ALREADY_SIGNED ||
+        result.info.is_sign
+      ) {
+        return {
+          status: "already_signed",
+          info,
+          reward,
+          rewards,
+        };
       }
+
+      return {
+        status: "success",
+        info,
+        reward,
+        rewards,
+      };
+    } catch (error) {
+      return {
+        status: "failed",
+        error: error.message,
+      };
     }
   }
 
-  async performSignIn(account, userLang, userId, channelId, tag, tr) {
-    this.stats.total++;
+  formatSignInResult(result, userId, tr) {
+    if (result.status === "failed") {
+      return null;
+    }
 
+    const { info, reward, rewards } = result;
+    const todaySign = rewards.awards[info.total_sign_day] || rewards.awards[0];
+    const tmrSign =
+      rewards.awards[info.total_sign_day + 1] || rewards.awards[1];
+
+    const embed = new EmbedBuilder()
+      .setColor(getRandomColor())
+      .setTitle(`${result.uid} ${tr("Auto")}${tr("daily_SignSuccess")}`)
+      .setThumbnail(todaySign?.icon)
+      .setDescription(
+        `${tr("daily_Description", {
+          a: `\`${todaySign?.name}x${todaySign?.cnt}\``,
+        })}${
+          info.month_last_day
+            ? ""
+            : `\n\n<@${userId}> ${tr("daily_DescriptionTmr", {
+                b: `\`${tmrSign?.name}x${tmrSign?.cnt}\``,
+              })}`
+        }`
+      )
+      .addFields(
+        {
+          name: `${reward.month} ${tr("daily_Month")}`,
+          value: "\u200b",
+          inline: true,
+        },
+        {
+          name: tr("daily_SignedDay", { z: `\`${info.total_sign_day}\`` }),
+          value: "\u200b",
+          inline: true,
+        },
+        {
+          name: tr("daily_MissedDay", { z: `\`${info.sign_cnt_missed}\`` }),
+          value: "\u200b",
+          inline: true,
+        }
+      );
+
+    return embed;
+  }
+
+  async processAccount(account, context) {
+    const { userId, userLang, tr } = context;
     const zzz = new ZenlessZoneZero({
       cookie: account.cookie,
       lang: this.getLanguage(userLang),
     });
 
     try {
-      // Get all required information first
-      const [info, reward, rewards] = await Promise.all([
-        zzz.daily.info(),
-        zzz.daily.reward(),
-        zzz.daily.rewards(),
-      ]);
+      const result = await this.processSignIn(zzz, context);
+      result.uid = account.uid;
 
-      // Perform the claim
-      const result = await zzz.daily.claim();
-
-      if (result.code === -5003 || result.info.is_sign === true) {
-        this.stats.signed++;
-        return;
+      switch (result.status) {
+        case "success":
+          this.stats.success++;
+          break;
+        case "already_signed":
+          this.stats.alreadySigned++;
+          break;
+        case "failed":
+          this.stats.failed++;
+          break;
       }
 
-      // Get sign info for today and tomorrow
-      const todaySign =
-        rewards.awards[info.total_sign_day] || rewards.awards[0];
-      const tmrSign =
-        rewards.awards[info.total_sign_day + 1] || rewards.awards[1];
+      if (result.status === "success") {
+        const embed = this.formatSignInResult(result, userId, tr);
+        if (embed) {
+          await this.sendMessage(context.channelId, {
+            content: context.tag,
+            embed,
+          });
+        }
+      }
 
-      this.stats.success++;
-      await this.sendSuccessMessage(channelId, {
-        content: tag,
-        embeds: [
-          new EmbedBuilder()
-            .setColor(getRandomColor())
-            .setTitle(`${account.uid} ${tr("Auto")}${tr("daily_SignSuccess")}`)
-            .setThumbnail(todaySign?.icon)
-            .setDescription(
-              `${tr("daily_Description", {
-                a: `\`${todaySign?.name}x${todaySign?.cnt}\``,
-              })}${
-                info.month_last_day
-                  ? ""
-                  : `\n\n<@${userId}> ${tr("daily_DescriptionTmr", {
-                      b: `\`${tmrSign?.name}x${tmrSign?.cnt}\``,
-                    })}`
-              }`
-            )
-            .addFields(
-              {
-                name: `${reward.month} ${tr("daily_Month")}`,
-                value: "\u200b",
-                inline: true,
-              },
-              {
-                name: tr("daily_SignedDay", {
-                  z: `\`${info.total_sign_day}\``,
-                }),
-                value: "\u200b",
-                inline: true,
-              },
-              {
-                name: tr("daily_MissedDay", {
-                  z: `\`${info.sign_cnt_missed}\``,
-                }),
-                value: "\u200b",
-                inline: true,
-              }
-            ),
-        ],
-      });
+      return result;
     } catch (error) {
-      throw new Error(`API Error: ${error.message}`);
+      this.logger.error(
+        `Failed to process account ${account.uid}: ${error.message}`
+      );
+      this.stats.failed++;
+      return { status: "failed", error: error.message };
     }
   }
 
-  async sendSuccessMessage(channelId, messageData) {
+  async processUser(userId, dailyData) {
+    const userLang = (await getUserLang(userId)) || CONFIG.DEFAULT_LANGUAGE;
+    const accounts = await this.db.get(`${userId}.account`);
+
+    if (!accounts?.length) return;
+
+    const channelId = dailyData[userId].channelId;
+    const tag = dailyData[userId].tag === "true" ? `<@${userId}>` : "";
+    const tr = createTranslator(userLang);
+
+    for (const account of accounts) {
+      this.stats.total++;
+      const cookie = await getUserCookie(userId, accounts.indexOf(account));
+      if (!cookie) continue;
+
+      await this.processAccount(account, {
+        userId,
+        channelId,
+        tag,
+        tr,
+        userLang,
+      });
+    }
+  }
+
+  async sendMessage(channelId, data) {
     try {
       await this.client.cluster.broadcastEval(
-        async (c, context) => {
-          const channel = c.channels.cache.get(context.channelId);
-          if (channel) {
-            await channel.send(context.messageData).catch(() => {});
-          }
+        async (c, { channelId, content, embed }) => {
+          const channel = c.channels.cache.get(channelId);
+          if (channel) await channel.send({ content, embeds: [embed] });
         },
         {
-          context: { channelId, messageData },
+          context: { channelId, content: data.content, embed: data.embed },
           timeout: CONFIG.API_TIMEOUT,
         }
       );
@@ -186,66 +229,59 @@ class AutoDailySignSystem {
     }
   }
 
-  // Statistics methods remain the same...
   async updateStatistics(startTime, currentHour) {
     const endTime = Date.now();
     const duration = (endTime - startTime) / 1000;
     const averageTime = this.stats.total > 0 ? duration / this.stats.total : 0;
 
-    this.logger.success(
-      `Completed ${currentHour}:00 auto sign-in: ${this.stats.total} total, ` +
-        `${this.stats.success} successful, ${this.stats.signed} already signed, ` +
-        `${this.stats.failed} failed`
-    );
-
     const statsEmbed = new EmbedBuilder()
       .setColor("#F2BE22")
       .setTitle(`${currentHour}:00 Auto Sign-in Stats`)
       .setTimestamp()
-      .addFields(this.buildStatsFields(duration, averageTime));
+      .addFields([
+        {
+          name: `Total Users: \`${this.stats.total}\``,
+          value: "\u200b",
+          inline: false,
+        },
+        {
+          name: `Successful: \`${this.stats.success}\``,
+          value: "\u200b",
+          inline: true,
+        },
+        {
+          name: `Already Signed: \`${this.stats.alreadySigned}\``,
+          value: "\u200b",
+          inline: true,
+        },
+        {
+          name: `Failed: \`${this.stats.failed}\``,
+          value: "\u200b",
+          inline: true,
+        },
+        {
+          name: `Total Duration: \`${duration.toFixed(3)}\` seconds`,
+          value: "\u200b",
+          inline: true,
+        },
+        {
+          name: `Average Time: \`${averageTime.toFixed(3)}\` seconds`,
+          value: "\u200b",
+          inline: true,
+        },
+      ]);
 
     await this.webhook.send({ embeds: [statsEmbed] });
-  }
-
-  buildStatsFields(duration, averageTime) {
-    return [
-      {
-        name: `Total Users: \`${this.stats.total}\``,
-        value: "\u200b",
-        inline: false,
-      },
-      {
-        name: `Successful: \`${this.stats.success}\``,
-        value: "\u200b",
-        inline: true,
-      },
-      {
-        name: `Already Signed: \`${this.stats.signed}\``,
-        value: "\u200b",
-        inline: true,
-      },
-      {
-        name: `Failed: \`${this.stats.failed}\``,
-        value: "\u200b",
-        inline: true,
-      },
-      {
-        name: `Total Duration: \`${duration.toFixed(3)}\` seconds`,
-        value: "\u200b",
-        inline: true,
-      },
-      {
-        name: `Average Time: \`${averageTime.toFixed(3)}\` seconds`,
-        value: "\u200b",
-        inline: true,
-      },
-    ];
+    this.logger.success(
+      `Completed ${currentHour}:00 auto sign-in: ${this.stats.total} total, ` +
+        `${this.stats.success} successful, ${this.stats.alreadySigned} already signed, ` +
+        `${this.stats.failed} failed`
+    );
   }
 }
 
 export default async function autoDailySign() {
   const system = new AutoDailySignSystem(client, process.env.LOGWEBHOOK);
-  await system.initialize();
 
   const dailyData = await system.db.get("autoDaily");
   if (!dailyData) return;
@@ -257,21 +293,18 @@ export default async function autoDailySign() {
   });
 
   const startTime = Date.now();
-  system.logger.success(`Starting ${currentHour}:00 auto sign-in`);
+  system.logger.info(`Starting ${currentHour}:00 auto sign-in`);
 
-  for (const userId of Object.keys(dailyData)) {
-    const scheduledTime = dailyData[userId]?.time || "13";
-
-    if (parseInt(scheduledTime) === parseInt(currentHour)) {
-      try {
-        await system.processDailySign(userId, dailyData);
-      } catch (error) {
-        system.logger.error(
-          `Error processing user ${userId}: ${error.message}`
-        );
+  try {
+    for (const userId of Object.keys(dailyData)) {
+      const scheduledTime = dailyData[userId]?.time || "13";
+      if (parseInt(scheduledTime) === parseInt(currentHour)) {
+        await system.processUser(userId, dailyData);
       }
     }
-  }
 
-  await system.updateStatistics(startTime, currentHour);
+    await system.updateStatistics(startTime, currentHour);
+  } catch (error) {
+    system.logger.error(`Auto sign-in failed: ${error.message}`);
+  }
 }

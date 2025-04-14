@@ -45,6 +45,8 @@ class AutoRedeemSystem {
       total: 0,
       success: 0,
       failed: 0,
+      alreadyClaimed: 0,
+      invalid: 0,
     };
   }
 
@@ -72,6 +74,134 @@ class AutoRedeemSystem {
     }
   }
 
+  async withRetry(operation, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt === maxRetries) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+  }
+
+  async processCode(zzz, code, userRedeemedCodes) {
+    try {
+      const result = await this.withRetry(() => zzz.redeem.claim(code.code));
+
+      const status = {
+        success: result.retcode === 0 || result.message === "OK",
+        alreadyClaimed: [
+          CONFIG.ERROR_CODES.ALREADY_CLAIMED,
+          CONFIG.ERROR_CODES.CODE_CLAIMED,
+        ].includes(result.retcode),
+        invalid: [
+          CONFIG.ERROR_CODES.CODE_INVALID,
+          CONFIG.ERROR_CODES.CODE_EXPIRED,
+        ].includes(result.retcode),
+        tokenInvalid: result.retcode === -1071,
+      };
+
+      if (status.success || status.alreadyClaimed || status.invalid) {
+        userRedeemedCodes.push(code.code);
+      }
+
+      return {
+        code,
+        status,
+        message: result.message,
+      };
+    } catch (error) {
+      return {
+        code,
+        status: { failed: true },
+        message: error.message,
+      };
+    }
+  }
+
+  formatResults(results, tr) {
+    const description = [];
+    const stats = {
+      success: 0,
+      alreadyClaimed: 0,
+      invalid: 0,
+      failed: 0,
+    };
+
+    results.forEach((result) => {
+      const { code, status } = result;
+      if (status.success) {
+        description.push(`✅ **${code.code}** - (${tr("redeem_Success")})`);
+        stats.success++;
+      } else if (status.alreadyClaimed) {
+        description.push(`ℹ️ **${code.code}** - (${tr("redeem_Already")})`);
+        stats.alreadyClaimed++;
+      } else if (status.invalid) {
+        description.push(`⚠️ **${code.code}** - (${tr("redeem_Invalid")})`);
+        stats.invalid++;
+      } else {
+        description.push(`❌ **${code.code}** - (${tr("redeem_Failed")})`);
+        stats.failed++;
+      }
+    });
+
+    if (description.length > 0) {
+      description.push(`\n### ${tr("redeem_RedeemStats")}`);
+      description.push(`✅ ${tr("redeem_Success")}: ${stats.success}`);
+      description.push(`ℹ️ ${tr("redeem_Already")}: ${stats.alreadyClaimed}`);
+      description.push(`⚠️ ${tr("redeem_Invalid")}: ${stats.invalid}`);
+      description.push(`❌ ${tr("redeem_Failed")}: ${stats.failed}`);
+    }
+
+    return {
+      description: description.join("\n"),
+      stats,
+    };
+  }
+
+  async processAccount(account, codes, context) {
+    const { userId, userLang, tr } = context;
+    const zzz = new ZenlessZoneZero({
+      uid: account.uid,
+      cookie: account.cookie,
+      lang: this.getLanguage(userLang),
+    });
+
+    let userRedeemedCodes =
+      (await this.db.get(`${account.uid}.redeemedCodes`)) || [];
+    const unredeemedCodes = codes.filter(
+      (code) => !userRedeemedCodes.includes(code.code)
+    );
+
+    if (!unredeemedCodes.length) return null;
+
+    const results = [];
+    for (const code of unredeemedCodes) {
+      const result = await this.processCode(zzz, code, userRedeemedCodes);
+      if (result.status.tokenInvalid) return null;
+      results.push(result);
+      await new Promise((resolve) => setTimeout(resolve, CONFIG.REDEEM_DELAY));
+    }
+
+    await this.db.set(`${account.uid}.redeemedCodes`, [
+      ...new Set(userRedeemedCodes),
+    ]);
+
+    const { description, stats } = this.formatResults(results, tr);
+
+    Object.entries(stats).forEach(([key, value]) => {
+      this.stats[key] += value;
+    });
+
+    return {
+      uid: account.uid,
+      nickname: account.nickname,
+      description,
+      hasSuccess: stats.success > 0,
+    };
+  }
+
   async processRedemption(userId, redeemData, codesList) {
     const { userLang, accounts } = await this.getUserPreferences(userId);
     if (!accounts?.length) return;
@@ -88,7 +218,7 @@ class AutoRedeemSystem {
       if (!cookie || !uid) return;
 
       try {
-        await this.redeemCodesForAccount(account, codesList, redeemedCodes, {
+        await this.processAccount(account, codesList, {
           userId,
           channelId,
           tag,
@@ -105,191 +235,30 @@ class AutoRedeemSystem {
     await Promise.allSettled(accountPromises);
   }
 
-  async redeemCodesForAccount(account, codesList, userRedeemedCodes, context) {
-    this.stats.total++;
-
-    const unredeemedCodes = codesList.filter(
-      (code) => !userRedeemedCodes.includes(code.code)
-    );
-
-    if (!unredeemedCodes.length) return;
-
-    const zzz = new ZenlessZoneZero({
-      uid: account.uid,
-      cookie: account.cookie,
-      lang: this.getLanguage(context.userLang),
-    });
-
-    const results = {
-      success: [],
-      alreadyClaimed: [],
-      invalid: [],
-      failed: [],
-    };
-
-    const description = [
-      `<@${context.userId}> - ${account.nickname ? `- ${account.nickname}` : ""} (${account.uid})`,
-    ];
-
-    for (const code of unredeemedCodes) {
-      try {
-        const result = await this.attemptCodeRedeem(
-          zzz,
-          code.code,
-          CONFIG.MAX_RETRIES
-        );
-
-        if (!result.success && result.retcode === -1071) return;
-        if (result.success) {
-          results.success.push(code);
-          userRedeemedCodes.push(code.code);
-          description.push(
-            `✅ **${code.code}** - (${context.tr("redeem_Success")})`
-          );
-        } else {
-          if (
-            result.retcode === CONFIG.ERROR_CODES.ALREADY_CLAIMED ||
-            result.retcode === CONFIG.ERROR_CODES.CODE_CLAIMED
-          ) {
-            results.alreadyClaimed.push(code);
-            userRedeemedCodes.push(code.code);
-            description.push(
-              `ℹ️ **${code.code}** - (${context.tr("redeem_Already")})`
-            );
-          } else if (
-            [
-              CONFIG.ERROR_CODES.CODE_INVALID,
-              CONFIG.ERROR_CODES.CODE_EXPIRED,
-            ].includes(result.retcode)
-          ) {
-            results.invalid.push(code);
-            userRedeemedCodes.push(code.code);
-            description.push(
-              `⚠️ **${code.code}** - (${context.tr("redeem_Invalid")})`
-            );
-          } else {
-            results.failed.push(code);
-            this.stats.failed++;
-            description.push(
-              `❌ **${code.code}** - (${context.tr("redeem_Failed")})`
-            );
-          }
-        }
-
-        await this.sleep(CONFIG.REDEEM_DELAY);
-      } catch (error) {
-        results.failed.push(code);
-        this.stats.failed++;
-        this.logger.error(
-          `Failed to redeem code ${code.code}: ${error.message}`
-        );
-        description.push(`❌ **${code.code}** - ${error.message}`);
-      }
-    }
-
-    await this.updateUserRedeemedCodes(account.uid, userRedeemedCodes);
-
-    if (results.success.length > 0) {
-      this.stats.success++;
-    }
-
-    // 加入統計資訊
-    if (unredeemedCodes.length > 0) {
-      description.push(`\n### ${context.tr("redeem_RedeemStats")}`);
-      description.push(
-        `✅ ${context.tr("redeem_Success")}: ${results.success.length}`
-      );
-      description.push(
-        `ℹ️ ${context.tr("redeem_Already")}: ${results.alreadyClaimed.length}`
-      );
-      description.push(
-        `⚠️ ${context.tr("redeem_Invalid")}: ${results.invalid.length}`
-      );
-      description.push(
-        `❌ ${context.tr("redeem_Failed")}: ${results.failed.length}`
-      );
-    }
-
-    if (results.success.length > 0) {
-      // 有成功兌換的才發送訊息
-      await this.sendRedeemSuccessMessage(context.channelId, {
-        tag: context.tag,
-        tr: context.tr,
-        description: description.join("\n"),
-      });
-    }
-  }
-
-  async attemptCodeRedeem(zzz, code, retries = 3) {
-    for (let attempt = 0; attempt < retries; attempt++) {
-      try {
-        const res = await zzz.redeem.claim(code);
-
-        if (res.retcode === 0 || res.message === "OK") {
-          return { success: true };
-        }
-
-        return {
-          success: false,
-          retcode: res.retcode,
-          message: res.message || "Unknown error",
-        };
-      } catch (error) {
-        if (attempt === retries - 1) {
-          return {
-            success: false,
-            failed: true,
-            message: error.message,
-          };
-        }
-        await this.sleep(1000 * (attempt + 1));
-      }
-    }
-  }
-
-  async updateUserRedeemedCodes(uid, codes) {
-    try {
-      const uniqueCodes = [...new Set(codes)];
-      await this.db.set(`${uid}.redeemedCodes`, uniqueCodes);
-    } catch (error) {
-      this.logger.error(
-        `Failed to update redeemed codes for ${uid}: ${error.message}`
-      );
-    }
-  }
-
-  async sendRedeemSuccessMessage(channelId, data) {
+  async sendRedeemMessage(channelId, data) {
     const embed = new EmbedBuilder()
       .setColor(getRandomColor())
       .setTitle(data.tr("Auto") + data.tr("redeem_SuccessDesc"))
+      .setDescription(data.description)
       .setThumbnail(
         "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png"
       )
-      .setDescription(data.description)
-      .setTimestamp(); // 加入時間戳記
-
-    const content = data.tag ?? "";
+      .setTimestamp();
 
     try {
       await this.client.cluster.broadcastEval(
-        async (c, { channelId, content, embeds }) => {
+        async (c, { channelId, content, embed }) => {
           const channel = c.channels.cache.get(channelId);
-          if (channel) {
-            await channel.send({ content, embeds });
-          }
+          if (channel) await channel.send({ content, embeds: [embed] });
         },
         {
-          context: {
-            channelId,
-            content: content,
-            embeds: [embed],
-          },
+          context: { channelId, content: data.tag || "", embed },
           timeout: CONFIG.API_TIMEOUT,
         }
       );
     } catch (error) {
       this.logger.error(
-        `Failed to send success message to channel ${channelId}: ${error.message}`
+        `Failed to send message to channel ${channelId}: ${error.message}`
       );
     }
   }

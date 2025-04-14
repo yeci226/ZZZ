@@ -350,6 +350,41 @@ export default {
         failed: noRedeemedCodes.filter((c) => c.status === "failed"),
       };
 
+      const resultDescription = [
+        // 成功兌換的代碼
+        results.success.length &&
+          results.success
+            .map((code) => `✅ **${code.code}** (${tr("redeem_Success")})`)
+            .join("\n"),
+
+        // 已兌換過的代碼
+        results.already.length &&
+          results.already
+            .map((code) => `ℹ️ **${code.code}** (${tr("redeem_Already")})`)
+            .join("\n"),
+
+        // 無效的代碼
+        results.invalid.length &&
+          results.invalid
+            .map((code) => `⚠️ **${code.code}** (${tr("redeem_Invalid")})`)
+            .join("\n"),
+
+        // 兌換失敗的代碼
+        results.failed.length &&
+          results.failed
+            .map((code) => `❌ **${code.code}** (${tr("redeem_Failed")})`)
+            .join("\n"),
+
+        // 兌換統計
+        `\n### ${tr("redeem_RedeemStats")}`,
+        `✅ ${tr("redeem_Success")}: ${results.success.length}`,
+        `ℹ️ ${tr("redeem_Already")}: ${results.already.length}`,
+        `⚠️ ${tr("redeem_Invalid")}: ${results.invalid.length}`,
+        `❌ ${tr("redeem_Failed")}: ${results.failed.length}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
       if (
         results.success.length +
           results.already.length +
@@ -373,42 +408,7 @@ export default {
           new EmbedBuilder()
             .setColor(getRandomColor())
             .setTitle(tr("redeem_SuccessDesc"))
-            .setDescription(
-              results.success
-                .map((code) => `✅ **${code.code}** (${tr("redeem_Success")})`)
-                .join("\n") +
-                (results.already.length
-                  ? "\n" +
-                    results.already
-                      .map(
-                        (code) =>
-                          `ℹ️ **${code.code}** (${tr("redeem_Already")})`
-                      )
-                      .join("\n")
-                  : "") +
-                (results.invalid.length
-                  ? "\n" +
-                    results.invalid
-                      .map(
-                        (code) =>
-                          `⚠️ **${code.code}** (${tr("redeem_Invalid")})`
-                      )
-                      .join("\n")
-                  : "") +
-                (results.failed.length
-                  ? "\n" +
-                    results.failed
-                      .map(
-                        (code) => `❌ **${code.code}** (${tr("redeem_Failed")})`
-                      )
-                      .join("\n")
-                  : "") +
-                `\n### ${tr("redeem_RedeemStats")}\n` +
-                `✅ ${tr("redeem_Success")}: ${results.success.length}\n` +
-                `ℹ️ ${tr("redeem_Already")}: ${results.already.length}\n` +
-                `⚠️ ${tr("redeem_Invalid")}: ${results.invalid.length}\n` +
-                `❌ ${tr("redeem_Failed")}: ${results.failed.length}`
-            )
+            .setDescription(resultDescription)
             .setThumbnail(
               "https://static.wikia.nocookie.net/houkai-star-rail/images/d/d9/Item_Stellar_Jade.png/revision/latest?cb=20230722074903"
             ),
