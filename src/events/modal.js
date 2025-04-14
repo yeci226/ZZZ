@@ -55,7 +55,7 @@ async function handleAccountLogin(interaction, tr, fields) {
     const existedAccounts =
       (await db.get(`${interaction.user.id}.account`)) || [];
 
-    if (existedAccounts.length >= 3) {
+    if (existedAccounts.length >= 5) {
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
@@ -65,8 +65,8 @@ async function handleAccountLogin(interaction, tr, fields) {
       });
     }
 
-    const cookie = await loginAccount(email, password);
-    const { uid, nickname } = await getUserGameUid(cookie);
+    const loginData = await loginAccount(email, password);
+    const { uid, nickname, cookie } = loginData;
 
     interaction.editReply({
       embeds: [
@@ -76,12 +76,22 @@ async function handleAccountLogin(interaction, tr, fields) {
       ],
     });
 
-    await db.push(`${interaction.user.id}.account`, {
-      uid: uid,
-      cookie: cookie,
-      nickname: nickname,
-    });
+    if (existedAccounts.some((account) => account.uid == uid)) {
+      existedAccounts.map((account) => {
+        if (account.uid == uid) {
+          account.cookie = cookie;
+          account.nickname = nickname;
+        }
+      });
+    } else {
+      await db.push(`${interaction.user.id}.account`, {
+        uid: uid,
+        cookie: cookie,
+        nickname: nickname,
+      });
+    }
   } catch (error) {
+    console.log(error);
     await interaction.editReply({
       embeds: [
         new EmbedBuilder()
@@ -207,7 +217,7 @@ async function handleUidSet(interaction, tr, fields) {
 
   if (await db.has(`${interaction.user.id}.account`)) {
     const accounts = (await db.get(`${interaction.user.id}.account`)) || [];
-    if (accounts.length >= 3)
+    if (accounts.length >= 5)
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()

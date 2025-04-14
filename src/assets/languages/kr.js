@@ -82,7 +82,7 @@ const langs = {
   account_CookieSetFailed: "쿠키 설정 실패",
   account_CookieSetFailedDesc: "쿠키가 올바른지 확인하세요",
   account_DeletedSuccess: "계정 연결이 해제되었습니다",
-  account_LimitExceeded: "최대 `3` 개의 계정만 설정할 수 있습니다!",
+  account_LimitExceeded: "최대 `5` 개의 계정만 설정할 수 있습니다!",
   account_AlreadySet: "이미 <z>를 설정했습니다!",
   account_UidSetSuccess: "UID <z> 설정 성공!",
 
@@ -118,6 +118,7 @@ const langs = {
   note_Error_Description:
     "[전적](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) 오른쪽 상단 설정에서 게임 데이터 공개를 활성화하세요!",
 
+  redeem_NoCode: "모든 교환 코드가 교환되었습니다",
   redeem_SuccessDesc: "교환 성공, 나중에 메일함에서 수령하세요",
   redeem_Success: "교환 성공",
   redeem_Already: "이미 교환했습니다",
@@ -128,6 +129,8 @@ const langs = {
   redeem_Processed: "처리된 교환 코드",
   redeem_Redeeming: "교환 중...",
   redeem_RedeemStats: "교환 결과 통계:",
+  redeem_SystemBusy: "시스템 부하가 높습니다. 나중에 다시 시도하세요",
+  redeem_CookieTokenInvalid: "CookieToken이 만료되었습니다. 다시 설정하세요",
   redeem_NoCookie: "CookieToken 또는 AccountMid가 설정되지 않았습니다",
   redeem_Codelist: "현재 사용 가능한 교환 코드",
   redeem_CodeTip: "봇으로 교환한 기프트 코드만 교환됨으로 표시됩니다",

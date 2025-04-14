@@ -82,7 +82,7 @@ const langs = {
   account_CookieSetFailed: "Liên kết Cookie thất bại!",
   account_CookieSetFailedDesc: "Vui lòng kiểm tra lại Cookie!",
   account_DeletedSuccess: "Tài khoản đã bị xoá!",
-  account_LimitExceeded: "Bạn chỉ có thể thiết lập tối đa 3 tài khoản!",
+  account_LimitExceeded: "Bạn chỉ có thể thiết lập tối đa 5 tài khoản!",
   account_AlreadySet: "Tài khoản đã được liên kết <z> rồi!",
   account_UidSetSuccess: "Đã liên kết UID <z> thành công!",
   admin_NoPermission: "Bạn không có quyền sử dụng lệnh này!",
@@ -117,6 +117,7 @@ const langs = {
   note_Error_Description:
     "Vui lòng truy cập [Zzz](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz), tại góc trên bên phải, mở `Cài đặt` và bật tất cả các thông tin liên quan đến dữ liệu trò chơi!",
 
+  redeem_NoCode: "Tất cả mã đổi thưởng đã được đổi",
   redeem_SuccessDesc: "Đổi thưởng thành công, vui lòng kiểm tra hộp thư!",
   redeem_Success: "Đổi thưởng thành công",
   redeem_Already: "Đã đổi thưởng",
@@ -127,6 +128,8 @@ const langs = {
   redeem_Redeeming: "Đang đổi thưởng...",
   redeem_ProcessingDesc:
     "Còn <noRedeemedCodes> mã đổi thưởng chưa được đổi, khoảng <seconds> giây",
+  redeem_SystemBusy: "Hệ thống bận, vui lòng thử lại sau",
+  redeem_CookieTokenInvalid: "CookieToken đã hết hạn, vui lòng thiết lập lại",
   redeem_RedeemStats: "Thống kê kết quả đổi thưởng:",
   redeem_NoCookie: "Chưa thiết lập CookieToken hay AccountMid",
   redeem_Codelist: "Danh sách các mã đổi quà có sẵn",

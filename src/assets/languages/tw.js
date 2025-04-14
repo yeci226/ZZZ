@@ -82,7 +82,7 @@ const langs = {
   account_CookieSetFailed: "Cookie 綁定失敗",
   account_CookieSetFailedDesc: "請確認 Cookie 是否正確",
   account_DeletedSuccess: "已解除綁定帳號",
-  account_LimitExceeded: "最多只能設定至多 `3` 個帳號！",
+  account_LimitExceeded: "最多只能設定至多 `5` 個帳號！",
   account_AlreadySet: "您已經設定過 <z> 了！",
   account_UidSetSuccess: "UID <z> 設定成功！",
 
@@ -115,6 +115,7 @@ const langs = {
   note_Error_Description:
     "請至 [戰績](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) 右上角設定開啟查看遊戲資料！",
 
+  redeem_NoCode: "所有兌換碼已兌換完畢",
   redeem_SuccessDesc: "兌換成功，請稍後前往信箱領取",
   redeem_Success: "兌換成功",
   redeem_Already: "已兌換過",
@@ -126,6 +127,7 @@ const langs = {
   redeem_Processed: "已處理的兌換碼",
   redeem_Redeeming: "正在兌換...",
   redeem_RedeemStats: "兌換結果統計:",
+  redeem_SystemBusy: "系統繁忙，請稍後再試",
   redeem_CookieTokenInvalid: "CookieToken 過期了，請重新設定",
   redeem_NoCookie: "尚未設定 CookieToken 或 AccountMid",
   redeem_Codelist: "當前可用兌換碼",

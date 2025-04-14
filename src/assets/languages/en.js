@@ -83,7 +83,7 @@ const langs = {
   account_CookieSetFailed: "Cookie binding failed",
   account_CookieSetFailedDesc: "Please confirm whether the Cookie is correct",
   account_DeletedSuccess: "Account has been unbound",
-  account_LimitExceeded: "Only a maximum of `3` accounts can be set!",
+  account_LimitExceeded: "Only a maximum of `5` accounts can be set!",
   account_AlreadySet: "You have already set <z>!",
   account_UidSetSuccess: "UID <z> set successfully!",
 
@@ -115,10 +115,11 @@ const langs = {
   note_VHS_NotDoing: "Waiting for business",
   note_Card_Done: "Done",
   note_Card_NotDone: "Not completed",
-  note_Error: "使用者资料未公开！",
+  note_Error: "User data is not public!",
   note_Error_Description:
-    "请至 [战绩](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) 右上角设定开启查看游戏资料！",
+    "Please go to the top right corner of [battle record](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) to set it to view game data!",
 
+  redeem_NoCode: "All redemption codes have been redeemed",
   redeem_SuccessDesc: "Redeem successful, please go to the mailbox to collect",
   redeem_Success: "Redeem successful",
   redeem_Already: "Already redeemed",
@@ -129,6 +130,8 @@ const langs = {
     "<noRedeemedCodes> unredeemed gift codes remaining, <seconds> seconds remaining",
   redeem_Processed: "Processed Redeem Codes",
   redeem_Redeeming: "Redeeming...",
+  redeem_SystemBusy: "The system is busy, please try again later",
+  redeem_CookieTokenInvalid: "CookieToken has expired, please reset it",
   redeem_RedeemStats: "Redeem Result Statistics:",
   redeem_NoCookie: "CookieToken or AccountMid has not been set yet",
   redeem_Codelist: "Currently available redemption codes",

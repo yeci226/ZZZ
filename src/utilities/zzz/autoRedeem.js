@@ -1,7 +1,7 @@
 import { client } from "../../index.js";
 import { EmbedBuilder } from "discord.js";
 import { ZenlessZoneZero, LanguageEnum } from "hoyoapi";
-import { Logger } from "../core/logger.js";
+import Logger from "../core/logger.js";
 import { createTranslator } from "../core/i18n.js";
 import {
   getUserCookie,
@@ -9,6 +9,7 @@ import {
   getUserUid,
   getRandomColor,
   getRedeemCodes,
+  updateCookie,
 } from "../utilities.js";
 
 // Constants
@@ -40,7 +41,7 @@ class AutoRedeemSystem {
   constructor(client) {
     this.client = client;
     this.db = client.db;
-    this.logger = new Logger("AutoRedeem");
+    this.logger = new Logger("自動兌換");
     this.stats = {
       total: 0,
       success: 0,
@@ -64,9 +65,7 @@ class AutoRedeemSystem {
       const accounts = await this.db.get(`${userId}.account`);
       return { userLang, accounts };
     } catch (error) {
-      this.logger.error(
-        `Failed to get user preferences for ${userId}: ${error.message}`
-      );
+      this.logger.error(`獲取使用者偏好設定失敗: ${error.message}`);
       return {
         userLang: CONFIG.DEFAULT_LANGUAGE,
         accounts: [],
@@ -161,7 +160,7 @@ class AutoRedeemSystem {
   }
 
   async processAccount(account, codes, context) {
-    const { userId, userLang, tr } = context;
+    const { userId, userLang, tr, accountIndex } = context;
     const zzz = new ZenlessZoneZero({
       uid: account.uid,
       cookie: account.cookie,
@@ -170,18 +169,77 @@ class AutoRedeemSystem {
 
     let userRedeemedCodes =
       (await this.db.get(`${account.uid}.redeemedCodes`)) || [];
-    const unredeemedCodes = codes.filter(
+    const unRedeemedCodes = codes.filter(
       (code) => !userRedeemedCodes.includes(code.code)
     );
 
-    if (!unredeemedCodes.length) return null;
+    if (!unRedeemedCodes.length) {
+      this.logger.info(
+        `[用戶 ${userId}] [帳號 #${accountIndex}] 沒有新的禮包碼需要兌換`
+      );
+      return null;
+    }
+    this.logger.info(
+      `[用戶 ${userId}] [帳號 #${accountIndex}] 發現 ${unRedeemedCodes.length} 個未兌換的禮包碼`
+    );
 
     const results = [];
-    for (const code of unredeemedCodes) {
-      const result = await this.processCode(zzz, code, userRedeemedCodes);
-      if (result.status.tokenInvalid) return null;
-      results.push(result);
-      await new Promise((resolve) => setTimeout(resolve, CONFIG.REDEEM_DELAY));
+    let hasSuccessfulRedeem = false;
+
+    for (const code of unRedeemedCodes) {
+      try {
+        this.logger.info(
+          `[用戶 ${userId}] [帳號 #${accountIndex}] 正在兌換: ${code.code}`
+        );
+        const result = await this.processCode(zzz, code, userRedeemedCodes);
+        if (result.status.tokenInvalid) {
+          this.logger.warn(
+            `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 已過期，跳過兌換流程`
+          );
+          return null;
+        }
+
+        if (result.status.success) {
+          this.logger.success(
+            `[用戶 ${userId}] [帳號 #${accountIndex}] 兌換成功: ${code.code}`
+          );
+          hasSuccessfulRedeem = true;
+        } else if (result.status.alreadyClaimed) {
+          this.logger.info(
+            `[用戶 ${userId}] [帳號 #${accountIndex}] 已經兌換過: ${code.code}`
+          );
+        } else if (result.status.invalid) {
+          this.logger.warn(
+            `[用戶 ${userId}] [帳號 #${accountIndex}] 無效的禮包碼: ${code.code}`
+          );
+        } else {
+          this.logger.error(
+            `[用戶 ${userId}] [帳號 #${accountIndex}] 兌換失敗: ${code.code} - ${result.message}`
+          );
+        }
+
+        results.push(result);
+        await new Promise((resolve) =>
+          setTimeout(resolve, CONFIG.REDEEM_DELAY)
+        );
+      } catch (error) {
+        this.logger.error(
+          `[用戶 ${userId}] [帳號 #${accountIndex}] 兌換出錯: ${code.code} - ${error.message}`
+        );
+      }
+    }
+
+    if (hasSuccessfulRedeem) {
+      try {
+        await updateCookie(userId, accountIndex, account.cookie);
+        this.logger.success(
+          `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 更新成功`
+        );
+      } catch (error) {
+        this.logger.error(
+          `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 更新失敗: ${error.message}`
+        );
+      }
     }
 
     await this.db.set(`${account.uid}.redeemedCodes`, [
@@ -213,7 +271,6 @@ class AutoRedeemSystem {
     const accountPromises = accounts.map(async (account, index) => {
       const cookie = await getUserCookie(userId, index);
       const uid = await getUserUid(userId, index);
-      const redeemedCodes = (await this.db.get(`${uid}.redeemedCodes`)) || [];
 
       if (!cookie || !uid) return;
 
@@ -224,10 +281,12 @@ class AutoRedeemSystem {
           tag,
           tr,
           userLang,
+          accountIndex: index,
         });
       } catch (error) {
-        console.log(error);
-        this.logger.error(`Failed to process account ${uid}: ${error.message}`);
+        this.logger.error(
+          `使用者 ${userId} 的帳號 #${index} 處理失敗: ${error.message}`
+        );
         this.stats.failed++;
       }
     });
@@ -258,16 +317,20 @@ class AutoRedeemSystem {
       );
     } catch (error) {
       this.logger.error(
-        `Failed to send message to channel ${channelId}: ${error.message}`
+        `發送訊息至頻道 ${channelId} 時發生錯誤: ${error.message}`
       );
     }
   }
 
   async updateStatistics(nowTime) {
-    this.logger.success(
-      `Completed ${nowTime}:00 auto redemption: ${this.stats.total} total, ` +
-        `${this.stats.success} successful, ${this.stats.failed} failed`
-    );
+    this.logger.info("========== 自動兌換統計 ==========");
+    this.logger.info(`時間: ${nowTime}:00`);
+    this.logger.info(`總計處理: ${this.stats.total} 個禮包碼`);
+    this.logger.success(`成功兌換: ${this.stats.success} 個`);
+    this.logger.info(`已兌換過: ${this.stats.alreadyClaimed} 個`);
+    this.logger.warn(`無效代碼: ${this.stats.invalid} 個`);
+    this.logger.error(`兌換失敗: ${this.stats.failed} 個`);
+    this.logger.info("================================");
   }
 }
 
@@ -275,7 +338,10 @@ export default async function autoRedeem() {
   const system = new AutoRedeemSystem(client);
 
   const redeemData = await system.db.get("autoRedeem");
-  if (!redeemData) return;
+  if (!redeemData) {
+    system.logger.warn("沒有找到需要自動兌換的用戶數據");
+    return;
+  }
 
   const currentHour = new Date().toLocaleString("en-US", {
     timeZone: CONFIG.TAIPEI_TIMEZONE,
@@ -283,23 +349,25 @@ export default async function autoRedeem() {
     hour12: false,
   });
 
-  system.logger.info(`Starting ${currentHour}:00 auto redemption`);
+  system.logger.info("========== 開始自動兌換 ==========");
+  system.logger.info(`執行時間: ${currentHour}:00`);
 
   try {
     const codesList = await getRedeemCodes();
+    system.logger.info(`已獲取 ${codesList.length} 個禮包碼`);
 
     for (const userId of Object.keys(redeemData)) {
       try {
         await system.processRedemption(userId, redeemData, codesList);
       } catch (error) {
-        system.logger.error(
-          `Error processing user ${userId}: ${error.message}`
-        );
+        system.logger.error(`處理用戶 ${userId} 時發生錯誤: ${error.message}`);
       }
     }
 
     await system.updateStatistics(currentHour);
   } catch (error) {
-    system.logger.error(`Auto redemption failed: ${error.message}`);
+    system.logger.error("自動兌換過程中發生錯誤:");
+    system.logger.error(error.message);
   }
+  system.logger.info("========== 自動兌換結束 ==========");
 }

@@ -1,4 +1,5 @@
 import NodeRSA from "node-rsa";
+import { getUserGameUid } from "../utilities.js";
 
 function encrypt(source) {
   const publicKeyPem = `
@@ -53,13 +54,19 @@ async function loginAccount(account, password) {
 
     const responseData = await response.json();
     if (responseData.retcode !== 0) {
-      throw new Error(`Failed to login: ${responseData.message}`);
+      throw new Error(`登入失敗: ${responseData.message}`);
     }
 
     const result = response.headers;
     const cookie = parseCookie(result.get("set-cookie"));
 
-    return cookie;
+    const { uid, nickname } = await getUserGameUid(cookie);
+
+    return {
+      cookie,
+      uid,
+      nickname,
+    };
   } catch (error) {
     throw error;
   }

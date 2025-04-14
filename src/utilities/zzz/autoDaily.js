@@ -1,7 +1,7 @@
 import { client } from "../../index.js";
 import { EmbedBuilder, WebhookClient } from "discord.js";
 import { ZenlessZoneZero, LanguageEnum } from "hoyoapi";
-import { Logger } from "../core/logger.js";
+import Logger from "../core/logger.js";
 import { createTranslator } from "../core/i18n.js";
 import {
   getUserCookie,
@@ -35,7 +35,7 @@ class AutoDailySignSystem {
     this.client = client;
     this.db = client.db;
     this.webhook = new WebhookClient({ url: webhookUrl });
-    this.logger = new Logger("AutoDailySign");
+    this.logger = new Logger("自動簽到");
     this.stats = {
       total: 0,
       success: 0,
@@ -177,9 +177,7 @@ class AutoDailySignSystem {
 
       return result;
     } catch (error) {
-      this.logger.error(
-        `Failed to process account ${account.uid}: ${error.message}`
-      );
+      this.logger.error(`處理帳號 ${account.uid} 時發生錯誤: ${error.message}`);
       this.stats.failed++;
       return { status: "failed", error: error.message };
     }
@@ -224,7 +222,7 @@ class AutoDailySignSystem {
       );
     } catch (error) {
       this.logger.error(
-        `Failed to send message to channel ${channelId}: ${error.message}`
+        `發送訊息至頻道 ${channelId} 時發生錯誤: ${error.message}`
       );
     }
   }
@@ -236,36 +234,36 @@ class AutoDailySignSystem {
 
     const statsEmbed = new EmbedBuilder()
       .setColor("#F2BE22")
-      .setTitle(`${currentHour}:00 Auto Sign-in Stats`)
+      .setTitle(`${currentHour}:00 自動簽到統計`)
       .setTimestamp()
       .addFields([
         {
-          name: `Total Users: \`${this.stats.total}\``,
+          name: `總數: \`${this.stats.total}\``,
           value: "\u200b",
           inline: false,
         },
         {
-          name: `Successful: \`${this.stats.success}\``,
+          name: `成功: \`${this.stats.success}\``,
           value: "\u200b",
           inline: true,
         },
         {
-          name: `Already Signed: \`${this.stats.alreadySigned}\``,
+          name: `已簽到: \`${this.stats.alreadySigned}\``,
           value: "\u200b",
           inline: true,
         },
         {
-          name: `Failed: \`${this.stats.failed}\``,
+          name: `失敗: \`${this.stats.failed}\``,
           value: "\u200b",
           inline: true,
         },
         {
-          name: `Total Duration: \`${duration.toFixed(3)}\` seconds`,
+          name: `總時間: \`${duration.toFixed(3)}\` 秒`,
           value: "\u200b",
           inline: true,
         },
         {
-          name: `Average Time: \`${averageTime.toFixed(3)}\` seconds`,
+          name: `平均時間: \`${averageTime.toFixed(3)}\` 秒`,
           value: "\u200b",
           inline: true,
         },
@@ -273,9 +271,9 @@ class AutoDailySignSystem {
 
     await this.webhook.send({ embeds: [statsEmbed] });
     this.logger.success(
-      `Completed ${currentHour}:00 auto sign-in: ${this.stats.total} total, ` +
-        `${this.stats.success} successful, ${this.stats.alreadySigned} already signed, ` +
-        `${this.stats.failed} failed`
+      `已完成 ${currentHour}:00 自動簽到: ${this.stats.total} 總數, ` +
+        `${this.stats.success} 成功, ${this.stats.alreadySigned} 已簽到, ` +
+        `${this.stats.failed} 失敗`
     );
   }
 }
@@ -293,7 +291,7 @@ export default async function autoDailySign() {
   });
 
   const startTime = Date.now();
-  system.logger.info(`Starting ${currentHour}:00 auto sign-in`);
+  system.logger.info(`正在進行 ${currentHour}:00 自動簽到`);
 
   try {
     for (const userId of Object.keys(dailyData)) {
@@ -305,6 +303,6 @@ export default async function autoDailySign() {
 
     await system.updateStatistics(startTime, currentHour);
   } catch (error) {
-    system.logger.error(`Auto sign-in failed: ${error.message}`);
+    system.logger.error(`自動簽到失敗: ${error.message}`);
   }
 }

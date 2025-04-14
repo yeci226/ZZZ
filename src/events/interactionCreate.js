@@ -3,7 +3,7 @@ import { ApplicationCommandOptionType } from "discord.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import { Events, EmbedBuilder, WebhookClient, ChannelType } from "discord.js";
 import emoji from "../assets/emoji.js";
-import { Logger } from "../utilities/core/logger.js";
+import Logger from "../utilities/core/logger.js";
 import { getUserLang, setupDefaultLang } from "../utilities/utilities.js";
 
 const db = client.db;

@@ -9,6 +9,7 @@ import {
   getRandomColor,
   getUserZZZData,
   getUserUid,
+  updateCookie,
 } from "../../../utilities/utilities.js";
 
 export default {
@@ -284,64 +285,44 @@ export default {
       const noRedeemedCodes = codes.filter(
         (code) => !userRedeemedCodes.includes(code.code)
       );
+
+      if (!noRedeemedCodes.length) {
+        return interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setConfig("#A2CDB0", "wiggle")
+              .setTitle(tr("redeem_NoCode")),
+          ],
+        });
+      }
+
       for (let i = 0; i < noRedeemedCodes.length; i++) {
         const code = noRedeemedCodes[i];
         try {
-          // 更新進度訊息，加入已處理的兌換結果
-          const processedResults = noRedeemedCodes
-            .slice(0, i)
-            .map((c) => {
-              if (c.status === "success")
-                return `✅ ${c.code} (${tr("redeem_Success")})`;
-              if (c.status === "already")
-                return `ℹ️ ${c.code} (${tr("redeem_Already")})`;
-              if (c.status === "invalid")
-                return `⚠️ ${c.code} (${tr("redeem_Invalid")})`;
-              if (c.status === "failed")
-                return `❌ ${c.code} (${tr("redeem_Failed")})`;
-              return `⏳ ${c.code} (${tr("redeem_Processing")})`;
-            })
-            .join("\n");
-          interaction.editReply({
-            embeds: [
-              new EmbedBuilder()
-                .setColor(getRandomColor())
-                .setTitle(`正在兌換 ${code.code}`)
-                .setDescription(
-                  `剩餘 ${noRedeemedCodes.length - i} 個未兌換的禮包碼，約剩餘 ${(noRedeemedCodes.length - i) * 3} 秒\n\n` +
-                    (processedResults
-                      ? `已處理的兌換碼:\n${processedResults}`
-                      : "")
-                )
-                .setThumbnail(
-                  "https://media.discordapp.net/attachments/1057244827688910850/1120715314678730832/kuru.gif"
-                ),
-            ],
+          await interaction.editReply({
+            embeds: [createProgressEmbed(noRedeemedCodes, i, tr)],
             ephemeral: true,
           });
 
           const res = await zzz.redeem.claim(code.code);
-          if (res.retcode == 0 || res.message == "OK") {
-            code.status = "success"; // 標記為兌換成功
-            if (!userRedeemedCodes.includes(code.code))
-              userRedeemedCodes.push(code.code);
-          } else if (res.retcode == -2017 || res.retcode == -2018) {
-            code.status = "already"; // 標記為已兌換過
-            if (!userRedeemedCodes.includes(code.code))
-              userRedeemedCodes.push(code.code);
-          } else if (res.retcode == -2001 || res.retcode == -2006) {
-            code.status = "invalid"; // 標記為無效
-            if (!userRedeemedCodes.includes(code.code))
-              userRedeemedCodes.push(code.code);
-          }
-          userRedeemedCodes = Array.from(new Set(userRedeemedCodes));
-          await db.set(`${uid}.redeemedCodes`, userRedeemedCodes);
+          const result = await handleRedeemResult(
+            code.code,
+            res,
+            userRedeemedCodes,
+            db,
+            uid,
+            tr
+          );
+          code.status = result.status;
+          code.message = result.message;
+
           await new Promise((resolve) => setTimeout(resolve, 3000));
         } catch (e) {
-          code.status = "failed"; // 標記為兌換失敗
-          failedReply(interaction, e.message);
+          code.status = "failed";
+          code.message = e.message;
         }
       }
+
       // 最終結果顯示
       const results = {
         success: noRedeemedCodes.filter((c) => c.status === "success"),
@@ -349,41 +330,6 @@ export default {
         invalid: noRedeemedCodes.filter((c) => c.status === "invalid"),
         failed: noRedeemedCodes.filter((c) => c.status === "failed"),
       };
-
-      const resultDescription = [
-        // 成功兌換的代碼
-        results.success.length &&
-          results.success
-            .map((code) => `✅ **${code.code}** (${tr("redeem_Success")})`)
-            .join("\n"),
-
-        // 已兌換過的代碼
-        results.already.length &&
-          results.already
-            .map((code) => `ℹ️ **${code.code}** (${tr("redeem_Already")})`)
-            .join("\n"),
-
-        // 無效的代碼
-        results.invalid.length &&
-          results.invalid
-            .map((code) => `⚠️ **${code.code}** (${tr("redeem_Invalid")})`)
-            .join("\n"),
-
-        // 兌換失敗的代碼
-        results.failed.length &&
-          results.failed
-            .map((code) => `❌ **${code.code}** (${tr("redeem_Failed")})`)
-            .join("\n"),
-
-        // 兌換統計
-        `\n### ${tr("redeem_RedeemStats")}`,
-        `✅ ${tr("redeem_Success")}: ${results.success.length}`,
-        `ℹ️ ${tr("redeem_Already")}: ${results.already.length}`,
-        `⚠️ ${tr("redeem_Invalid")}: ${results.invalid.length}`,
-        `❌ ${tr("redeem_Failed")}: ${results.failed.length}`,
-      ]
-        .filter(Boolean)
-        .join("\n");
 
       if (
         results.success.length +
@@ -396,11 +342,23 @@ export default {
           embeds: [
             new EmbedBuilder()
               .setColor(getRandomColor())
-              .setTitle(tr("redeem_NoCode") || "No Code Available")
-              .setDescription(tr("redeem_NoCodeDesc") || "No Code Available"),
+              .setTitle(tr("redeem_NoCode")),
           ],
           ephemeral: true,
         });
+      }
+
+      if (results.success.length > 0) {
+        try {
+          await updateCookie(targetUser.id, accountIndex, zzz.cookie);
+          new Logger("Redeem").info(
+            `使用者 ${targetUser.id} 的帳號 #${accountIndex} 成功兌換 ${results.success.length} 個禮包碼並更新 Cookie`
+          );
+        } catch (e) {
+          new Logger("Redeem").error(
+            `使用者 ${targetUser.id} 的帳號 #${accountIndex} 更新 Cookie 失敗: ${e.message}`
+          );
+        }
       }
 
       interaction.editReply({
@@ -408,9 +366,36 @@ export default {
           new EmbedBuilder()
             .setColor(getRandomColor())
             .setTitle(tr("redeem_SuccessDesc"))
-            .setDescription(resultDescription)
+            .setDescription(
+              results.success
+                .map((code) => `✅ **${code.code}** (${code.message})`)
+                .join("\n") +
+                (results.already.length
+                  ? "\n" +
+                    results.already
+                      .map((code) => `ℹ️ **${code.code}** (${code.message})`)
+                      .join("\n")
+                  : "") +
+                (results.invalid.length
+                  ? "\n" +
+                    results.invalid
+                      .map((code) => `⚠️ **${code.code}** (${code.message})`)
+                      .join("\n")
+                  : "") +
+                (results.failed.length
+                  ? "\n" +
+                    results.failed
+                      .map((code) => `❌ **${code.code}** (${code.message})`)
+                      .join("\n")
+                  : "") +
+                `\n### ${tr("redeem_RedeemStats")}\n` +
+                `✅ ${tr("redeem_Success")}: ${results.success.length}\n` +
+                `ℹ️ ${tr("redeem_Already")}: ${results.already.length}\n` +
+                `⚠️ ${tr("redeem_Invalid")}: ${results.invalid.length}\n` +
+                `❌ ${tr("redeem_Failed")}: ${results.failed.length}`
+            )
             .setThumbnail(
-              "https://static.wikia.nocookie.net/houkai-star-rail/images/d/d9/Item_Stellar_Jade.png/revision/latest?cb=20230722074903"
+              "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png/revision/latest?cb=20240807185318"
             ),
         ],
       });
@@ -520,3 +505,77 @@ export default {
     }
   },
 };
+
+async function handleRedeemResult(code, res, userRedeemedCodes, db, uid, tr) {
+  let status = "failed";
+  let message = "";
+
+  switch (res.retcode) {
+    case 0:
+    case res.message === "OK":
+      status = "success";
+      message = tr("redeem_Success");
+      break;
+    case -2017:
+    case -2018:
+      status = "already";
+      message = tr("redeem_Already");
+      break;
+    case -2001:
+    case -2006:
+      status = "invalid";
+      message = tr("redeem_Invalid");
+      break;
+    case -1071:
+      throw new Error(tr("redeem_CookieTokenInvalid"));
+    case -1048:
+      throw new Error(tr("redeem_SystemBusy"));
+    default:
+      status = "failed";
+      message = tr("redeem_Failed");
+  }
+
+  if (status !== "failed" && !userRedeemedCodes.includes(code)) {
+    userRedeemedCodes.push(code);
+    await db.set(
+      `${uid}.redeemedCodes`,
+      Array.from(new Set(userRedeemedCodes))
+    );
+  }
+
+  return { status, message };
+}
+
+function createProgressEmbed(codes, currentIndex, tr) {
+  const processedResults = codes
+    .slice(0, currentIndex)
+    .map((code) => {
+      const statusMap = {
+        success: "✅",
+        already: "ℹ️",
+        invalid: "⚠️",
+        failed: "❌",
+        processing: "⏳",
+      };
+      const icon = statusMap[code.status || "processing"];
+      return `${icon} ${code.code} (${code.message || tr("redeem_Processing")})`;
+    })
+    .join("\n");
+
+  return new EmbedBuilder()
+    .setColor(getRandomColor())
+    .setTitle(`${tr("redeem_Redeeming")} ${codes[currentIndex]?.code}`)
+    .setDescription(
+      tr("redeem_ProcessingDesc", {
+        noRedeemedCodes: codes.length - currentIndex,
+        seconds: (codes.length - currentIndex) * 3,
+      }) +
+        "\n\n" +
+        (processedResults
+          ? `${tr("redeem_Processed")}:\n${processedResults}`
+          : "")
+    )
+    .setThumbnail(
+      "https://cdn.discordapp.com/attachments/1231256542419095623/1361321499549499432/bqqinrjkvtsd1.gif?ex=67fe54f1&is=67fd0371&hm=286f61395cfec0fa862d54c58dbc7b5b6aa20f89f76fd28756ca2cca0c7058aa&"
+    );
+}

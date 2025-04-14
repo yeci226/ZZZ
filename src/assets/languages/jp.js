@@ -85,7 +85,7 @@ const langs = {
   account_CookieSetFailed: "クッキーのリンクに失敗しました",
   account_CookieSetFailedDesc: "クッキーが正しいか確認してください",
   account_DeletedSuccess: "アカウントのリンクを解除しました",
-  account_LimitExceeded: "最大 `3` つのアカウントまで設定できます！",
+  account_LimitExceeded: "最大 `5` つのアカウントまで設定できます！",
   account_AlreadySet: "<z> は既に設定されています！",
   account_UidSetSuccess: "UID <z> が設定されました！",
 
@@ -121,6 +121,7 @@ const langs = {
   note_Error_Description:
     "[成績](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) の右上の設定からゲームデータの公開を有効にしてください！",
 
+  redeem_NoCode: "すべての交換コードが交換されました",
   redeem_SuccessDesc: "引き換え成功、後でメールボックスで受け取ってください",
   redeem_Success: "引き換え成功",
   redeem_Already: "すでに引き換え済み",
@@ -131,6 +132,8 @@ const langs = {
   redeem_Processed: "処理された引き換えコード",
   redeem_Redeeming: "引き換え中...",
   redeem_RedeemStats: "引き換え結果の統計:",
+  redeem_SystemBusy: "システムが混雑しています。後で再試行してください",
+  redeem_CookieTokenInvalid: "CookieToken が期限切れです。再設定してください",
   redeem_NoCookie: "CookieToken または AccountMid が設定されていません",
   redeem_Codelist: "現在利用可能な引き換えコード",
   redeem_CodeTip:

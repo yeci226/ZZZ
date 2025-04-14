@@ -83,7 +83,7 @@ const langs = {
   account_CookieSetFailed: "Cookie linked failed.",
   account_CookieSetFailedDesc: "Veuillez vérifier si le cookie est correct.",
   account_DeletedSuccess: "Compte supprimé",
-  account_LimitExceeded: "Atteindre la limite de 3 compte！",
+  account_LimitExceeded: "Atteindre la limite de 5 compte！",
   account_AlreadySet: "<z> est déjà défini!",
   account_UidSetSuccess: "UID <z> définir avec succès!",
   admin_NoPermission: "Aucune autorisation",
@@ -119,6 +119,7 @@ const langs = {
   note_Error_Description:
     "Veuillez activer la bascule à la page [Registre des combats](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz)",
 
+  redeem_NoCode: "Tous les codes d'échange ont été échangés",
   redeem_SuccessDesc:
     "Échange réussi, veuillez récupérer dans votre boîte de réception",
   redeem_Success: "Échange réussi",
@@ -130,6 +131,8 @@ const langs = {
     "<noRedeemedCodes> codes cadeaux non utilisés restants, environ <seconds> secondes restantes",
   redeem_Processed: "Codes échangés",
   redeem_Redeeming: "En cours d'échange...",
+  redeem_SystemBusy: "Le système est occupé, veuillez réessayer plus tard",
+  redeem_CookieTokenInvalid: "CookieToken a expiré, veuillez régler à nouveau",
   redeem_RedeemStats: "Statistiques d'échange",
   redeem_NoCookie: "Cookietoken ou Comptemid pas encore configuré.",
   redeem_Codelist: "Discount codes currently available",

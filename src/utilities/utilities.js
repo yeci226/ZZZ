@@ -397,6 +397,69 @@ export function checkAccount(interaction, tr, userId, data) {
   }
 }
 
+export async function updateCookie(userId, accountIndex, cookieObj) {
+  const webAPI =
+    "https://webapi-os.account.hoyoverse.com/Api/fetch_cookie_accountinfo";
+
+  const cookie = [
+    `ltoken_v2=${cookieObj.ltokenV2}`,
+    `ltuid_v2=${cookieObj.ltuidV2}`,
+    `ltmid_v2=${cookieObj.accountMidV2}`,
+    `cookie_token_v2=${cookieObj.cookieTokenV2}`,
+    `account_mid_v2=${cookieObj.accountMidV2}`,
+    `account_id_v2=${cookieObj.accountIdV2}`,
+  ].join("; ");
+
+  const response = await fetch(webAPI, {
+    method: "GET",
+    headers: {
+      Cookie: cookie,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  const responseData = await response.json();
+  if (responseData?.code !== 200) return;
+
+  const newCookieToken = responseData.data.cookie_info.cookie_token;
+  const accountKey = `${userId}.account`;
+  const account = await db.get(accountKey);
+
+  let originalCookie = account[accountIndex].cookie.split("; ").filter(Boolean);
+
+  let cookieTokenExists = false;
+
+  const updatedCookie = originalCookie.map((item) => {
+    if (item.startsWith("cookie_token=")) {
+      cookieTokenExists = true;
+      return `cookie_token=${newCookieToken}`;
+    }
+    return item;
+  });
+
+  if (!cookieTokenExists) {
+    const finalCookie = [];
+    let inserted = false;
+
+    for (const item of updatedCookie) {
+      finalCookie.push(item);
+      if (!inserted && item.startsWith("ltuid_v2=")) {
+        finalCookie.push(`cookie_token=${newCookieToken}`);
+        inserted = true;
+      }
+    }
+
+    account[accountIndex].cookie = finalCookie.join("; ");
+  } else {
+    account[accountIndex].cookie = updatedCookie.join("; ");
+  }
+
+  await db.set(accountKey, account);
+}
+
 global.replyOrfollowUp = async function (interaction, ...args) {
   if (interaction.replied) return interaction.editReply(...args);
   if (interaction.deferred) return await interaction.followUp(...args);
@@ -414,5 +477,49 @@ export async function getUserGameUid(cookie, gameName = "Zenless Zone Zero") {
   return {
     uid: filteredData[0].game_role_id,
     nickname: filteredData[0].nickname,
+  };
+}
+
+export async function updateAccountInfo(userId, newAccountInfo) {
+  const accountKey = `${userId}.account`;
+  let accounts = (await db.get(accountKey)) || [];
+
+  // 檢查是否存在相同 UID 的帳號
+  const existingIndex = accounts.findIndex(
+    (acc) => acc.uid === newAccountInfo.uid
+  );
+
+  if (existingIndex !== -1) {
+    // 更新現有帳號資訊
+    accounts[existingIndex] = {
+      ...accounts[existingIndex],
+      cookie: newAccountInfo.cookie,
+      nickname: newAccountInfo.nickname,
+      lastUpdate: new Date().toISOString(),
+    };
+
+    this.logger.info(
+      `[用戶 ${userId}] 更新現有帳號 [UID: ${newAccountInfo.uid}]`
+    );
+  } else {
+    // 添加新帳號
+    accounts.push({
+      uid: newAccountInfo.uid,
+      cookie: newAccountInfo.cookie,
+      nickname: newAccountInfo.nickname,
+      lastUpdate: new Date().toISOString(),
+    });
+
+    this.logger.info(
+      `[用戶 ${userId}] 添加新帳號 [UID: ${newAccountInfo.uid}]`
+    );
+  }
+
+  // 保存更新後的帳號列表
+  await db.set(accountKey, accounts);
+
+  return {
+    isNewAccount: existingIndex === -1,
+    accountIndex: existingIndex !== -1 ? existingIndex : accounts.length - 1,
   };
 }

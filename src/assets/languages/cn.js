@@ -78,7 +78,7 @@ const langs = {
   account_CookieSetFailed: "Cookie 绑定失败",
   account_CookieSetFailedDesc: "请确认 Cookie 是否正确",
   account_DeletedSuccess: "已解除绑定帐号",
-  account_LimitExceeded: "最多只能设定至多 `3` 个帐号！",
+  account_LimitExceeded: "最多只能设定至多 `5` 个帐号！",
   account_AlreadySet: "您已经设定过 <z> 了！",
   account_UidSetSuccess: "UID <z> 设定成功！",
 
@@ -107,10 +107,11 @@ const langs = {
   note_VHS_NotDoing: "等待营业",
   note_Card_Done: "已完成",
   note_Card_NotDone: "未完成",
-  note_Error: "User information is not public!",
+  note_Error: "用户资料未公开！",
   note_Error_Description:
-    "Please go to [Record](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) and set it in the upper right corner to view game data!",
+    "请至 [战绩](https://act.hoyolab.com/app/mihoyo-zzz-game-record/index.html#/zzz) 右上角设定开启查看游戏资料！",
 
+  redeem_NoCode: "所有兑换码已兑换完毕",
   redeem_SuccessDesc: "兑换成功，请稍后前往信箱领取",
   redeem_Success: "兑换成功",
   redeem_Already: "已兑换过",
@@ -121,6 +122,8 @@ const langs = {
   redeem_Redeeming: "正在兑换...",
   redeem_ProcessingDesc:
     "剩余 <noRedeemedCodes> 个未兑换的礼包码，约剩余 <seconds> 秒",
+  redeem_SystemBusy: "系统繁忙，请稍后再试",
+  redeem_CookieTokenInvalid: "CookieToken 已过期，请重新设定",
   redeem_RedeemStats: "兑换结果统计:",
   redeem_NoCookie: "尚未设定 CookieToken 或 AccountMid",
   redeem_Codelist: "当前可用兑换码",
