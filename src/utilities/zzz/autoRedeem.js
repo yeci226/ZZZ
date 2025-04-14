@@ -84,7 +84,7 @@ class AutoRedeemSystem {
     }
   }
 
-  async processCode(zzz, code, userRedeemedCodes) {
+  async processCode(zzz, code, userRedeemedCodes, uid) {
     try {
       const result = await this.withRetry(() => zzz.redeem.claim(code.code));
 
@@ -103,6 +103,10 @@ class AutoRedeemSystem {
 
       if (status.success || status.alreadyClaimed || status.invalid) {
         userRedeemedCodes.push(code.code);
+      }
+
+      if (status.tokenInvalid) {
+        await this.db.set(`${uid}.cookieExpired`, true);
       }
 
       return {
@@ -160,7 +164,16 @@ class AutoRedeemSystem {
   }
 
   async processAccount(account, codes, context) {
-    const { userId, userLang, tr, accountIndex } = context;
+    const { userId, userLang, tr, accountIndex, accountNickname } = context;
+
+    const isCookieExpired = await this.db.get(`${account.uid}.cookieExpired`);
+    if (isCookieExpired) {
+      this.logger.warn(
+        `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 已過期，跳過兌換流程`
+      );
+      return null;
+    }
+
     const zzz = new ZenlessZoneZero({
       uid: account.uid,
       cookie: account.cookie,
@@ -191,7 +204,12 @@ class AutoRedeemSystem {
         this.logger.info(
           `[用戶 ${userId}] [帳號 #${accountIndex}] 正在兌換: ${code.code}`
         );
-        const result = await this.processCode(zzz, code, userRedeemedCodes);
+        const result = await this.processCode(
+          zzz,
+          code,
+          userRedeemedCodes,
+          account.uid
+        );
         if (result.status.tokenInvalid) {
           this.logger.warn(
             `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 已過期，跳過兌換流程`
@@ -254,7 +272,7 @@ class AutoRedeemSystem {
 
     return {
       uid: account.uid,
-      nickname: account.nickname,
+      nickname: accountNickname,
       description,
       hasSuccess: stats.success > 0,
     };
@@ -269,10 +287,7 @@ class AutoRedeemSystem {
     const tr = createTranslator(userLang);
 
     const accountPromises = accounts.map(async (account, index) => {
-      const cookie = await getUserCookie(userId, index);
-      const uid = await getUserUid(userId, index);
-
-      if (!cookie || !uid) return;
+      if (!account || !account.uid || !account.cookie) return;
 
       try {
         await this.processAccount(account, codesList, {
@@ -282,6 +297,7 @@ class AutoRedeemSystem {
           tr,
           userLang,
           accountIndex: index,
+          accountNickname: account.nickname,
         });
       } catch (error) {
         this.logger.error(

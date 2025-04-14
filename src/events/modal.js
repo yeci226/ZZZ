@@ -5,7 +5,6 @@ import {
   getUserHoyolabData,
   getUserLang,
   getRandomColor,
-  getUserGameUid,
 } from "../utilities/utilities.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import { handleSignalLogDraw, getSingalLog } from "../utilities/zzz/gacha.js";
@@ -67,6 +66,8 @@ async function handleAccountLogin(interaction, tr, fields) {
 
     const loginData = await loginAccount(email, password);
     const { uid, nickname, cookie } = loginData;
+
+    await db.delete(`${uid}.cookieExpired`);
 
     interaction.editReply({
       embeds: [
@@ -288,6 +289,8 @@ async function handleCookieSet(interaction, tr, customId, fields) {
       null,
       accountIndex
     );
+
+    await db.delete(`${account[accountIndex].uid}.cookieExpired`);
 
     account[accountIndex].nickname = userData.nickname;
     await db.set(`${interaction.user.id}.account`, account);
