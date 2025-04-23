@@ -25,7 +25,7 @@ const drawQueue = new Queue({ autostart: true });
 
 const voidHunterIds = [1091];
 
-const offsetCharacter = {
+const offsetXCharacter = {
   1121: 0, // Ben
   1281: 0, // Piper
   1211: 0, // Rina
@@ -38,6 +38,9 @@ const offsetCharacter = {
   1311: 0, // Astra Yao
   1381: -70, // Zero Anby
   1351: 0, // Pulchra
+};
+const offsetYCharacter = {
+  1331: -480, // Vivian
 };
 const elementId = {
   200: "physic",
@@ -752,16 +755,21 @@ export async function drawCharacterImage(
     });
 
     // Draw Agent
-    const offsetX = offsetCharacter.hasOwnProperty(character.id)
-      ? offsetCharacter[character.id]
+    const offsetX = offsetXCharacter.hasOwnProperty(character.id)
+      ? offsetXCharacter[character.id]
       : -180;
+    const offsetY = offsetYCharacter.hasOwnProperty(character.id)
+      ? offsetYCharacter[character.id]
+      : -160;
     const characterImageX =
       canvas.width / 2 - characterImage.width / 2.5 + offsetX;
+    const characterImageY =
+      canvas.height / 2 - characterImage.height / 10 + offsetY;
 
     ctx.drawImage(
       characterImage,
       characterImageX,
-      100,
+      characterImageY,
       characterImage.width / 1.25,
       characterImage.height / 1.25
     ); // For agent.webp
