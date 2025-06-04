@@ -9,6 +9,10 @@ const langs = {
   Month: "tháng",
   Day: "ngày",
   Auto: "tự động",
+
+  VoidHunter: "Chấp Mã",
+  GrandMaster: "Thần Tốc",
+
   isSet: "đã thiết lập",
   isNotSet: "chưa thiết lập",
   NewLocale: "Xác định ngôn ngữ thành công <locale>",

@@ -23,25 +23,28 @@ import { join } from "path";
 const db = client.db;
 const drawQueue = new Queue({ autostart: true });
 
-const voidHunterIds = [1091];
+const offsetCharacter = {
+  1091: { x: -70, title: "VoidHunter", element: "frost" }, // Miyabi
+  1101: { x: 0 }, // Koleda
+  1121: { x: 0 }, // Ben
+  1181: { x: -55 }, // Grace
+  1211: { x: 0 }, // Rina
+  1221: { x: 60 }, // Yanagi
+  1241: { x: 0 }, // Zhu Yuan
+  1251: { x: -70 }, // Qingyi
+  1281: { x: 0 }, // Piper
+  1311: { x: 0 }, // Astra Yao
+  1331: { y: -480 }, // Vivian
+  1351: { x: 0 }, // Pulchra
+  1371: { title: "GrandMaster", element: "auricink" }, // Yixuan
+  1381: { x: -70 }, // Zero Anby
+};
+const offsetCharacterSkin = {
+  1031: {
+    3110311: { x: 0 }, // 皮膚ID
+  },
+};
 
-const offsetXCharacter = {
-  1121: 0, // Ben
-  1281: 0, // Piper
-  1211: 0, // Rina
-  1181: -55, // Grace
-  1101: 0, // Koleda
-  1241: 0, // Zhu Yuan
-  1251: -70, // Qingyi
-  1221: 60, // Yanagi
-  1091: -70, // Miyabi
-  1311: 0, // Astra Yao
-  1381: -70, // Zero Anby
-  1351: 0, // Pulchra
-};
-const offsetYCharacter = {
-  1331: -480, // Vivian
-};
 const elementId = {
   200: "physic",
   201: "fire",
@@ -482,12 +485,12 @@ export async function drawMainImage(tr, userLocale, userData, record) {
 
         ctx.fillStyle = "white";
         ctx.textAlign = "center";
-        ctx.font = `30px Impact`;
+        ctx.font = `36px Impact`;
         ctx.fillText(`${medal.number}`, medalIconX + 32, medalIconY + 67);
 
         // Text Outline
         ctx.strokeStyle = "black";
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.75;
         ctx.strokeText(`${medal.number}`, medalIconX + 32, medalIconY + 67);
       }
     }
@@ -693,13 +696,37 @@ export async function drawCharacterImage(
 
     const characterData = await getCharacterData(character.id);
 
+    // 如果 character.skin_list 有值，且 characterData.skin 有值，優先使用 unlocked: true 且 is_original: false 的皮膚
+    let characterPath =
+      characterData?.iconUrl ??
+      `./src/assets/images/agents/${character.id}.webp`;
+
+    if (character.skin_list.length > 0 && characterData.skin) {
+      const skin = character.skin_list.find(
+        (skin) => skin.unlocked && !skin.is_original
+      );
+
+      if (skin) {
+        character.usingSkin = {
+          characterId: character.id,
+          skinId: skin.skin_id,
+          color: skin.skin_vertical_painting_color,
+          name: skin.skin_name,
+        };
+        const skinImage = characterData.skin[String(skin.skin_id)];
+        if (skinImage)
+          characterPath = `https://api.hakush.in/zzz/UI/${skinImage.Image}.webp`;
+      }
+    }
+
     // Load images concurrently
     const imagePaths = [
       finalMindScapeImagePath,
       characterSpecificImagePath,
-      characterData?.iconUrl ??
-        `./src/assets/images/agents/${character.id}.webp`,
-      `./src/assets/images/icons/element/${elementId[character.element_type]}.png`,
+      characterPath,
+      offsetCharacter[character.id]?.element
+        ? `./src/assets/images/icons/element/${offsetCharacter[character.id].element}.webp`
+        : `./src/assets/images/icons/element/${elementId[character.element_type]}.webp`,
       `./src/assets/images/icons/profession/${professionId[character.avatar_profession]}.png`,
       `${character.weapon?.icon}`,
       `./src/assets/images/icons/weapon/role-star-${character.weapon?.star}.png`,
@@ -755,16 +782,25 @@ export async function drawCharacterImage(
     });
 
     // Draw Agent
-    const offsetX = offsetXCharacter.hasOwnProperty(character.id)
-      ? offsetXCharacter[character.id]
-      : -180;
-    const offsetY = offsetYCharacter.hasOwnProperty(character.id)
-      ? offsetYCharacter[character.id]
-      : -160;
+    // 取得角色 ID 和皮膚 ID
+    const characterId = character.id;
+    const skinId = character.skin_list.find(
+      (skin) => skin.unlocked && !skin.is_original
+    )?.skin_id;
+
+    const baseOffset = offsetCharacter[characterId] || {};
+    const skinOffset = skinId && offsetCharacterSkin[characterId]?.[skinId];
+
+    const offset = {
+      x: skinOffset?.x ?? baseOffset.x ?? -180,
+      y: skinOffset?.y ?? baseOffset.y ?? -160,
+    };
+    const characterMeta = baseOffset;
+
     const characterImageX =
-      canvas.width / 2 - characterImage.width / 2.5 + offsetX;
+      canvas.width / 2 - characterImage.width / 2.5 + offset.x;
     const characterImageY =
-      canvas.height / 2 - characterImage.height / 10 + offsetY;
+      canvas.height / 2 - characterImage.height / 10 + offset.y;
 
     ctx.drawImage(
       characterImage,
@@ -779,40 +815,84 @@ export async function drawCharacterImage(
     ctx.font = `60px ${selectedFont}`;
 
     // Draw Agent Info Box
-    let padding = 60;
+    let padding = 50;
     const iconSpacing = 40;
-    const iconSize = 80;
+    const elementIconSize = 60;
+    const professionIconSize = 80;
+
     const textWidth = ctx.measureText(character.name_mi18n).width;
+
+    // 如果有稱號圖示與文字，預估會佔用 100px 寬（圖 + 間距 + 文字）
+    const titleExtraWidth = characterMeta.title ? 100 : -20;
+
+    const isUsingSkin = character.usingSkin?.name;
     const boxWidth =
       padding * 2 +
       textWidth +
       iconSpacing +
-      iconSize * 2 +
-      (voidHunterIds.includes(character.id) ? 80 : 0);
+      elementIconSize +
+      professionIconSize +
+      titleExtraWidth;
+    const boxHeight = (isUsingSkin ? 15 : 0) + 100; // 如果有皮膚名稱，則增加高度
 
-    drawRoundedRect(ctx, 60, 40, boxWidth, 100, 30, boxColor); // (ctx, x, y, width, height, radius, color)
+    // 畫框
+    drawRoundedRect(ctx, 60, 40, boxWidth, boxHeight, 30, boxColor);
+
+    // 畫角色名
     ctx.fillStyle = "white";
+    ctx.font = `60px ${selectedFont}`;
     ctx.fillText(character.name_mi18n, 60 + padding, 110);
 
-    if (voidHunterIds.includes(character.id)) {
-      const voidHunterIcon = await loadImageAsync(
-        `./src/assets/images/icons/other/voidHunter.png`
-      );
-
-      ctx.drawImage(voidHunterIcon, 60 + padding + textWidth + 10, 75, 40, 40);
-
-      const voidHunterText = tr("VoidHunter") || "";
-      ctx.font = `32px ${selectedFont}`;
-      ctx.fillStyle = "#E3E3E3";
-      ctx.fillText(voidHunterText, 60 + padding + textWidth + 50, 107.5);
-
-      padding += 80;
+    // 畫皮膚名稱
+    if (isUsingSkin) {
+      ctx.font = `28px ${selectedFont}`;
+      ctx.fillStyle = character.usingSkin.color
+        ? character.usingSkin.color
+        : "#A2A2A2";
+      ctx.fillText(character.usingSkin.name, 60 + padding, 145);
+      ctx.fillStyle = "white"; // 恢復顏色
+      ctx.font = `60px ${selectedFont}`; // 恢復字體大小
     }
 
-    const elementIconX = 60 + padding + textWidth + iconSpacing;
-    const professionIconX = elementIconX + iconSize;
-    ctx.drawImage(elementImage, elementIconX, 50, iconSize, iconSize);
-    ctx.drawImage(professionImage, professionIconX, 50, iconSize, iconSize);
+    // 如果有稱號則繪製圖與文字
+    if (characterMeta.title) {
+      const TitleIcon = await loadImageAsync(
+        `./src/assets/images/icons/other/${characterMeta.title}.png`
+      );
+
+      // 算出 icon 和文字位置
+      const iconX = 60 + padding + textWidth + 10;
+      const iconY = 75;
+      const textX = iconX + 40 + 10;
+      const textY = iconY + 32.5;
+
+      ctx.drawImage(TitleIcon, iconX, iconY, 40, 40);
+
+      const TitleText = tr(characterMeta.title) || "";
+      ctx.font = `32px ${selectedFont}`;
+      ctx.fillStyle = "#E3E3E3";
+      ctx.fillText(TitleText, textX, textY);
+    }
+
+    const elementIconX =
+      60 + padding + textWidth + iconSpacing + titleExtraWidth;
+    const elementIconY = isUsingSkin ? 57.5 : 60;
+    const professionIconX = elementIconX + elementIconSize + 10;
+    const professionIconY = isUsingSkin ? 47.5 : 50;
+    ctx.drawImage(
+      elementImage,
+      elementIconX,
+      elementIconY,
+      elementIconSize,
+      elementIconSize
+    );
+    ctx.drawImage(
+      professionImage,
+      professionIconX,
+      professionIconY,
+      professionIconSize,
+      professionIconSize
+    );
 
     // Draw Agent Properties Box
     drawRoundedRect(
@@ -846,7 +926,7 @@ export async function drawCharacterImage(
         ctx.drawImage(
           index == character.properties.length - 1 ? elementImage : image, // 最後一個屬性是該角色的屬性加成
           80,
-          180 + offset_y,
+          (index == character.properties.length - 1 ? -2 : 0) + 180 + offset_y,
           48,
           48
         );
@@ -864,7 +944,7 @@ export async function drawCharacterImage(
           ctx.fillText(
             `${character.properties[index].base}`,
             480 - ctx.measureText(`${propertyFinalValue}`).width - 40,
-            204 + offset_y
+            202 + offset_y
           );
 
           // Property Add Value
@@ -872,7 +952,7 @@ export async function drawCharacterImage(
           ctx.fillText(
             `+${character.properties[index].add}`,
             480 - ctx.measureText(`${propertyFinalValue}`).width - 40,
-            224 + offset_y
+            222 + offset_y
           );
         }
 
@@ -1101,6 +1181,11 @@ export async function drawCharacterImage(
         1560,
         790
       );
+    } else {
+      ctx.font = `48px ${selectedFont}`;
+      ctx.fillStyle = "#FFFFFF29";
+      ctx.textAlign = "center";
+      ctx.fillText(`EMPTY`, 1320 + 650 / 2, 620 + 240 / 2, 650 / 2, 650 / 2);
     }
 
     // Player UID

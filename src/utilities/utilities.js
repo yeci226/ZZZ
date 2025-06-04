@@ -296,6 +296,8 @@ export async function getCharacterData(characterId) {
       gender: partnerInfo.Gender,
       birthday: partnerInfo.Birthday,
       camp: partnerInfo.Race,
+      icon: partnerInfo.Icon,
+      skin: response.Skin,
       iconUrl: `https://api.hakush.in/zzz/UI/${partnerInfo.RoleIcon.split("/").pop()}.webp`,
     };
 

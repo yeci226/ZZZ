@@ -11,6 +11,7 @@ import {
   getUserUid,
   updateCookie,
 } from "../../../utilities/utilities.js";
+import Logger from "../../../utilities/core/logger.js";
 
 export default {
   data: new SlashCommandBuilder()

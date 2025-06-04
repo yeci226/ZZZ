@@ -9,6 +9,10 @@ const langs = {
   Month: "월",
   Day: "일",
   Auto: "자동",
+
+  VoidHunter: "영혼 사냥꾼",
+  GrandMaster: "극마스터",
+
   isSet: "설정됨",
   isNotSet: "설정되지 않음",
   NewLocale: "언어가 <locale>(으)로 설정되었습니다",

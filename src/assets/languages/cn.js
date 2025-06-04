@@ -9,7 +9,10 @@ const langs = {
   Month: "月",
   Day: "日",
   Auto: "自动",
+
   VoidHunter: "虚狩",
+  GrandMaster: "宗师",
+
   isSet: "已设置",
   isNotSet: "未设置",
   NewLocale: "语言已设定为 <locale>",

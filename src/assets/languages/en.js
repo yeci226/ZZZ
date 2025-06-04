@@ -9,6 +9,10 @@ const langs = {
   Month: "/",
   Day: "/",
   Auto: "Auto ",
+
+  VoidHunter: "Void Hunter",
+  GrandMaster: "Grand Master",
+
   isSet: "already set",
   isNotSet: "Not set",
   NewLocale: "The language has been set to <locale>",
