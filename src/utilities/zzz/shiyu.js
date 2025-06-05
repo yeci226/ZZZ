@@ -239,11 +239,11 @@ async function drawShiyuImage(tr, userLocale, shiyuData) {
 
     // 元素圖標
     const elementImages = await Promise.all([
-      loadImageAsync(`./src/assets/images/icons/element/physic.png`),
-      loadImageAsync(`./src/assets/images/icons/element/fire.png`),
-      loadImageAsync(`./src/assets/images/icons/element/ice.png`),
-      loadImageAsync(`./src/assets/images/icons/element/thunder.png`),
-      loadImageAsync(`./src/assets/images/icons/element/ether.png`),
+      loadImageAsync(`./src/assets/images/icons/element/physic.webp`),
+      loadImageAsync(`./src/assets/images/icons/element/fire.webp`),
+      loadImageAsync(`./src/assets/images/icons/element/ice.webp`),
+      loadImageAsync(`./src/assets/images/icons/element/thunder.webp`),
+      loadImageAsync(`./src/assets/images/icons/element/ether.webp`),
     ]);
 
     // 加載所有圖像
