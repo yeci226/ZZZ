@@ -58,20 +58,21 @@ const professionId = {
   3: "anomaly",
   4: "support",
   5: "defense",
+  6: "rupture",
 };
 const propertyId = {
   // 基礎屬性
   1: "hp",
   2: "atk",
   3: "def",
-  4: "stun",
-  5: "crit",
-  6: "critdmg",
-  7: "power",
-  8: "mystery",
-  9: "penratio",
-  10: "sprecover",
-  11: "penvalue",
+  4: "stun", // 衝擊力
+  5: "crit", // 暴擊率
+  6: "critdmg", // 暴擊傷害
+  7: "power", // 異常掌控
+  8: "mystery", // 異常精通
+  9: "penratio", // 穿透率
+  10: "sprecover", // 能量回復
+  11: "penvalue", // 穿透值
 
   // 屬性加成
   12: "physic",
@@ -79,6 +80,10 @@ const propertyId = {
   14: "ice",
   15: "thunder",
   16: "ether",
+
+  // 命破專屬
+  19: "perforation", // 貫穿力
+  20: "energyaccumulation", // 閃能自動累積
 };
 const propertiesId = {
   11102: "hp", // 小生命
@@ -95,7 +100,7 @@ const propertiesId = {
   31203: "mystery", // 異常精通
   30502: "sprecover", // 能量回復
   23103: "penratio", // 穿透率
-  23203: "penratio", // 穿透值
+  23203: "penvalue", // 穿透值
   31503: "physic", // 物理傷害加成
   31603: "fire", // 火傷害加成
   31703: "ice", // 冰傷害加成
@@ -727,11 +732,26 @@ export async function drawCharacterImage(
       offsetCharacter[character.id]?.element
         ? `./src/assets/images/icons/element/${offsetCharacter[character.id].element}.webp`
         : `./src/assets/images/icons/element/${elementId[character.element_type]}.webp`,
-      `./src/assets/images/icons/profession/${professionId[character.avatar_profession]}.png`,
+      `./src/assets/images/icons/profession/${professionId[character.avatar_profession]}.webp`,
       `${character.weapon?.icon}`,
       `./src/assets/images/icons/weapon/role-star-${character.weapon?.star}.png`,
-      ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(
-        (index) => `./src/assets/images/icons/property/${propertyId[index]}.png`
+      // 加載角色屬性圖示
+      ...character.properties.map((prop) => {
+        if (prop.property_id === 11) {
+          return `./src/assets/images/icons/property/sprecover.png`;
+        } else if (prop.property_id === 232) {
+          return `./src/assets/images/icons/property/penvalue.png`;
+        } else if (prop.property_id === 19) {
+          return `./src/assets/images/icons/property/perforation.png`;
+        } else if (prop.property_id === 20) {
+          return `./src/assets/images/icons/property/energyaccumulation.png`;
+        } else {
+          return `./src/assets/images/icons/property/${propertyId[prop.property_id]}.png`;
+        }
+      }),
+      // 加載所有可能用到的屬性圖示（用於 disk driver）
+      ...Object.values(propertiesId).map(
+        (prop) => `./src/assets/images/icons/property/${prop}.png`
       ),
       ...character.skills.map(
         (skill) => `./src/assets/images/icons/skills/${skill.skill_type}.png`
@@ -754,19 +774,45 @@ export async function drawCharacterImage(
       weaponStarImage,
       ...restImages
     ] = images;
-    const propertyImages = restImages.slice(0, propertyLength);
+    const propertyImages = restImages.slice(0, character.properties.length);
+    const allPropertyImages = restImages.slice(
+      character.properties.length,
+      character.properties.length + Object.values(propertiesId).length
+    );
     const skillImages = restImages.slice(
-      propertyLength,
-      propertyLength + character.skills.length
+      character.properties.length + Object.values(propertiesId).length,
+      character.properties.length +
+        Object.values(propertiesId).length +
+        character.skills.length
     );
     const equipImages = restImages.slice(
-      propertyLength + character.skills.length
+      character.properties.length +
+        Object.values(propertiesId).length +
+        character.skills.length
     );
 
-    // Create a mapping from propertiesId to propertyImages
+    // 創建屬性圖示映射
     const propertyImageMap = {};
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map((index) => {
-      propertyImageMap[propertyId[index]] = propertyImages[index - 1];
+    // 角色屬性圖示映射
+    character.properties.forEach((prop, index) => {
+      let propertyKey;
+      if (prop.property_id === 11) {
+        propertyKey = "sprecover";
+      } else if (prop.property_id === 232) {
+        propertyKey = "penvalue";
+      } else if (prop.property_id === 19) {
+        propertyKey = "perforation";
+      } else if (prop.property_id === 20) {
+        propertyKey = "energyaccumulation";
+      } else {
+        propertyKey = propertyId[prop.property_id];
+      }
+      propertyImageMap[propertyKey] = propertyImages[index];
+    });
+
+    // 所有可能用到的屬性圖示映射（用於 disk driver）
+    Object.values(propertiesId).forEach((prop, index) => {
+      propertyImageMap[prop] = allPropertyImages[index];
     });
 
     // Draw BG
@@ -818,7 +864,7 @@ export async function drawCharacterImage(
     let padding = 50;
     const iconSpacing = 40;
     const elementIconSize = 60;
-    const professionIconSize = 80;
+    const professionIconSize = 60;
 
     const textWidth = ctx.measureText(character.name_mi18n).width;
 
@@ -878,7 +924,7 @@ export async function drawCharacterImage(
       60 + padding + textWidth + iconSpacing + titleExtraWidth;
     const elementIconY = isUsingSkin ? 57.5 : 60;
     const professionIconX = elementIconX + elementIconSize + 10;
-    const professionIconY = isUsingSkin ? 47.5 : 50;
+    const professionIconY = isUsingSkin ? 57.5 : 60;
     ctx.drawImage(
       elementImage,
       elementIconX,
