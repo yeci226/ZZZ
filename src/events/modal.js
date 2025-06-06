@@ -1,5 +1,9 @@
 import { client } from "../index.js";
-import { Events, EmbedBuilder } from "discord.js";
+import {
+  Events,
+  EmbedBuilder,
+  MessageFlags,
+} from "discord.js";
 import { ZenlessZoneZero } from "hoyoapi";
 import {
   getUserHoyolabData,
@@ -35,7 +39,7 @@ async function handleAccountLogin(interaction, tr, fields) {
   const email = fields.getTextInputValue("account_LoginAccountModalField");
   const password = fields.getTextInputValue("account_LoginAccountModalField2");
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     // Make sure Email is correct
@@ -156,7 +160,7 @@ async function handleWarplog(interaction, tr, fields) {
 }
 
 async function handleAccountEdit(interaction, tr, customId, fields) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const accountIndex = customId.split("-")[1];
   const uid = fields.getTextInputValue("uid");
   // const data = await requestPlayerData(uid, interaction);
@@ -196,7 +200,7 @@ async function handleAccountEdit(interaction, tr, customId, fields) {
 }
 
 async function handleUidSet(interaction, tr, fields) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const uid = fields.getTextInputValue("account_SetUserIDModalField");
   //   try {
   //     const data = await requestPlayerData(uid, interaction);
@@ -303,7 +307,7 @@ async function handleCookieSet(interaction, tr, customId, fields) {
           })
         ),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   } catch (error) {
     return interaction.reply({

@@ -1,7 +1,7 @@
 import { client } from "../index.js";
 import axios from "axios";
 import emoji from "../assets/emoji.js";
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, MessageFlags } from "discord.js";
 import { ZenlessZoneZero, LanguageEnum, HoyoAPIError, Hoyolab } from "hoyoapi";
 import { loadImage } from "@napi-rs/canvas";
 const db = client.db;
@@ -188,7 +188,7 @@ export async function failedReply(interaction, title = "", description = "") {
 
   replyOrfollowUp(interaction, {
     embeds: [embed],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
     fetchReply: true,
   });
 }
@@ -319,6 +319,23 @@ export async function getUserZZZData(
     getUserCookie(userId, accountIndex),
     getUserUid(userId, accountIndex),
   ]);
+  if(!cookie || !uid) {
+    replyOrfollowUp(interaction, {
+      embeds: [
+        new EmbedBuilder()
+          .setConfig("#E76161", "sob")
+          .setTitle(tr("AccountNotFound"))
+          .setDescription(
+            tr("AccountNotFoundDesc", {
+              hasCookie: tr(cookie ? "isSet" : "isNotSet"),
+              hasUid: tr(uid ? "isSet" : "isNotSet"),
+            })
+          ),
+      ],
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
   if (!userLang) userLang = await getUserLang(userId);
 
   const getLanguage = (locale) =>
@@ -365,7 +382,7 @@ export function checkAccount(interaction, tr, userId, data) {
           .setTitle("請先通過 Geetest 來繼續使用指令！")
           .setURL(`http://yeci.rocks:3000/geetest/${userId}`),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   } else if (interaction.user.id == userId) {
     const accountStats = data;
@@ -385,7 +402,7 @@ export function checkAccount(interaction, tr, userId, data) {
               "`"
           ),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   } else {
     replyOrfollowUp(interaction, {
@@ -394,7 +411,7 @@ export function checkAccount(interaction, tr, userId, data) {
           .setConfig("#E76161", "sob")
           .setTitle(tr("NoSetAccount")),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }

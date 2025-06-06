@@ -2,6 +2,7 @@ import {
   CommandInteraction,
   SlashCommandBuilder,
   EmbedBuilder,
+  MessageFlags
 } from "discord.js";
 import { createTranslator, toI18nLang } from "../../../utilities/core/i18n.js";
 import { getRandomColor, getUserLang } from "../../../utilities/utilities.js";
@@ -98,7 +99,7 @@ export default {
           })
         ),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral
     });
   },
 };

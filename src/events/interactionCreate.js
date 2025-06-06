@@ -1,13 +1,13 @@
 import { client } from "../index.js";
 import { ApplicationCommandOptionType } from "discord.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
-import { Events, EmbedBuilder, WebhookClient, ChannelType } from "discord.js";
+import { Events, EmbedBuilder, WebhookClient, ChannelType, MessageFlags } from "discord.js";
 import emoji from "../assets/emoji.js";
 import Logger from "../utilities/core/logger.js";
 import { getUserLang, setupDefaultLang } from "../utilities/utilities.js";
 
 const db = client.db;
-const webhook = new WebhookClient({ url: process.env.CMDWEBHOOK });
+const webhook = process.env.CMDWEBHOOK ? new WebhookClient({ url: process.env.CMDWEBHOOK }) : null;
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.channel.type == ChannelType.DM) return;
@@ -30,7 +30,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (!command)
       return interaction.followUp({
         content: "An error has occured",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral
       });
 
     const args = [];
@@ -54,42 +54,44 @@ client.on(Events.InteractionCreate, async (interaction) => {
       new Logger("指令").command(
         `${interaction.user.displayName}(${interaction.user.id}) 執行 ${command.data.name} - ${time}`
       );
-      webhook.send({
-        embeds: [
-          new EmbedBuilder()
-            .setTimestamp()
-            .setAuthor({
-              iconURL: interaction.user.displayAvatarURL({
-                size: 4096,
-                dynamic: true,
-              }),
-              name: `${interaction.user.username} - ${interaction.user.id}`,
-            })
-            .setThumbnail(
-              interaction.guild.iconURL({
-                size: 4096,
-                dynamic: true,
+      if (webhook) {
+        webhook.send({
+          embeds: [
+            new EmbedBuilder()
+              .setTimestamp()
+              .setAuthor({
+                iconURL: interaction.user.displayAvatarURL({
+                  size: 4096,
+                  dynamic: true,
+                }),
+                name: `${interaction.user.username} - ${interaction.user.id}`,
               })
-            )
-            .setDescription(
-              `\`\`\`${interaction.guild.name} - ${interaction.guild.id}\`\`\``
-            )
-            .addField(
-              command.data.name,
-              `${
-                interaction.options._subcommand
-                  ? `> ${interaction.options._subcommand}`
-                  : "\u200b"
-              }`,
-              true
-            ),
-        ],
-      });
+              .setThumbnail(
+                interaction.guild.iconURL({
+                  size: 4096,
+                  dynamic: true,
+                })
+              )
+              .setDescription(
+                `\`\`\`${interaction.guild.name} - ${interaction.guild.id}\`\`\``
+              )
+              .addField(
+                command.data.name,
+                `${
+                  interaction.options._subcommand
+                    ? `> ${interaction.options._subcommand}`
+                    : "\u200b"
+                }`,
+                true
+              ),
+          ],
+        });
+      }
     } catch (e) {
       new Logger("指令").error(`錯誤訊息：${e.message}`);
       await interaction.reply({
         content: "哦喲，好像出了一點小問題，請重試",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral
       });
     }
   } else if (interaction.isContextMenuCommand()) {
@@ -101,7 +103,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       new Logger("指令").error(`錯誤訊息：${e.message}`);
       await interaction.reply({
         content: "哦喲，好像出了一點小問題，請重試",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral
       });
     }
   }

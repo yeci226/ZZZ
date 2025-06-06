@@ -34,7 +34,7 @@ class AutoDailySignSystem {
   constructor(client, webhookUrl) {
     this.client = client;
     this.db = client.db;
-    this.webhook = new WebhookClient({ url: webhookUrl });
+    this.webhook = webhookUrl ? new WebhookClient({ url: webhookUrl }) : null;
     this.logger = new Logger("自動簽到");
     this.stats = {
       total: 0,
@@ -269,7 +269,9 @@ class AutoDailySignSystem {
         },
       ]);
 
-    await this.webhook.send({ embeds: [statsEmbed] });
+    if (this.webhook) {
+      await this.webhook.send({ embeds: [statsEmbed] });
+    }
     this.logger.success(
       `已完成 ${currentHour}:00 自動簽到: ${this.stats.total} 總數, ` +
         `${this.stats.success} 成功, ${this.stats.alreadySigned} 已簽到, ` +

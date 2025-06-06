@@ -10,6 +10,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   AttachmentBuilder,
+  MessageFlags,
 } from "discord.js";
 import {
   getUserLang,
@@ -250,7 +251,7 @@ async function handleAccountAction(interaction, tr, customId, value) {
           .setConfig("#E76161", "sob")
           .setTitle(`${tr("account_nonAcc")}`),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
 
   if (customId == "account_EditAccountSelect") {
@@ -277,7 +278,7 @@ async function handleAccountAction(interaction, tr, customId, value) {
         ),
       ],
       fetchReply: true,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   } else if (customId == "account_EditAccountSelectType") {
@@ -398,7 +399,7 @@ async function handleAccountAction(interaction, tr, customId, value) {
           .setTitle(`${tr("account_DeletedSuccess")} \`${uid}\``),
       ],
       components: [],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   } else if (interaction.customId == "account_SetUserCookieSelect") {

@@ -2,6 +2,7 @@ import {
   CommandInteraction,
   SlashCommandBuilder,
   EmbedBuilder,
+  MessageFlags,
 } from "discord.js";
 import {
   failedReply,
@@ -241,7 +242,7 @@ export default {
    */
   async execute(client, interaction, args, tr, db) {
     const subcommand = interaction.options.getSubcommand();
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     if (subcommand == "list") {
       const accountIndex = interaction.options.getString("account") || 0;
@@ -265,7 +266,7 @@ export default {
                 .join("\n")}`
             ),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     } else if (subcommand == "redeemall") {
       const accountIndex = interaction.options.getString("account") || 0;
@@ -315,6 +316,7 @@ export default {
               .setConfig("#A2CDB0", "wiggle")
               .setTitle(tr("redeem_NoCode")),
           ],
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -323,7 +325,7 @@ export default {
         try {
           await interaction.editReply({
             embeds: [createProgressEmbed(noRedeemedCodes, i, tr)],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
 
           const res = await zzz.redeem.claim(code.code);
@@ -366,7 +368,7 @@ export default {
               .setColor(getRandomColor())
               .setTitle(tr("redeem_NoCode")),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -420,6 +422,7 @@ export default {
               "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png/revision/latest?cb=20240807185318"
             ),
         ],
+        flags: MessageFlags.Ephemeral,
       });
     } else if (subcommand == "redeem") {
       const code = interaction.options.getString("code");
@@ -455,7 +458,7 @@ export default {
                   "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png"
                 ),
             ],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         } else if (res.retcode == -2017 || res.retcode == -2018) {
           if (!userRedeemedCodes.includes(code)) userRedeemedCodes.push(code);
@@ -512,6 +515,7 @@ export default {
                 })
               ),
           ],
+          flags: MessageFlags.Ephemeral,
         });
       } else {
         await db.delete(`autoRedeem.${interaction.user.id}`);
@@ -522,6 +526,7 @@ export default {
               .setColor("#E76161")
               .setTitle(tr("autoDaily_Off")),
           ],
+          flags: MessageFlags.Ephemeral,
         });
       }
     }

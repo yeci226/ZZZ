@@ -4,6 +4,7 @@ import {
   EmbedBuilder,
   ChannelType,
   PermissionsBitField,
+  MessageFlags,
 } from "discord.js";
 
 export default {
@@ -194,7 +195,7 @@ export default {
     ) {
       return interaction.reply({
         embeds: [createEmbed(tr("admin_NoPermission"), "sob", "#E76161")],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -227,7 +228,7 @@ const handleRemove = async (interaction, tr, db) => {
   if (!userid) {
     return interaction.reply({
       embeds: [createEmbed(tr("admin_RemoveFail"), "sob", "#E76161")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -241,7 +242,7 @@ const handleRemove = async (interaction, tr, db) => {
           tr("admin_UserNotSet", { user: `<@${userid}>` })
         ),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -262,7 +263,7 @@ const handleRemove = async (interaction, tr, db) => {
           })
         ),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -278,7 +279,7 @@ const handleRemove = async (interaction, tr, db) => {
         })
       ),
     ],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
   await db.delete(`${feature}.${userid}`);
 };
@@ -303,7 +304,7 @@ const handleMove = async (interaction, tr, db) => {
           })
         ),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -315,7 +316,7 @@ const handleMove = async (interaction, tr, db) => {
       ChannelType.GuildVoice,
     ].includes(channel.type)
   ) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const keywords =
       feature === "all" ? ["autoDaily", "autoRedeem"] : [feature];
@@ -336,7 +337,7 @@ const handleMove = async (interaction, tr, db) => {
             tr("admin_MoveNoUser")
           ),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -354,6 +355,7 @@ const handleMove = async (interaction, tr, db) => {
           })
         ),
       ],
+      flags: MessageFlags.Ephemeral,
     });
   } else {
     return interaction.reply({
@@ -365,7 +367,7 @@ const handleMove = async (interaction, tr, db) => {
           tr("admin_MoveFailMessage", { channel: `<#${channel.id}>` })
         ),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 };

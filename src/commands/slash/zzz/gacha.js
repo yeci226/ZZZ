@@ -6,6 +6,7 @@ import {
   ModalBuilder,
   EmbedBuilder,
   TextInputBuilder,
+  MessageFlags,
 } from "discord.js";
 import { getRandomColor } from "../../../utilities/utilities.js";
 
@@ -83,7 +84,7 @@ export default {
                 })
               ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
       if (type == "query") {

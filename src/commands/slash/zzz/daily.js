@@ -2,6 +2,7 @@ import {
   CommandInteraction,
   SlashCommandBuilder,
   EmbedBuilder,
+  MessageFlags,
 } from "discord.js";
 import {
   getRandomColor,
@@ -137,7 +138,7 @@ export default {
    * @param {String[]} args
    */
   async execute(client, interaction, args, tr, db, emoji) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const haveAccount = await db.get(`${interaction.user.id}.account`);
     if (!haveAccount) {

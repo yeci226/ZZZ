@@ -7,6 +7,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   StringSelectMenuBuilder,
+  MessageFlags,
 } from "discord.js";
 
 import { failedReply, getRandomColor } from "../../../utilities/utilities.js";
@@ -119,7 +120,7 @@ export default {
       command == "DeleteAccount"
     ) {
       if (!hasAccount) return failedReply(interaction, tr("account_NoAccount"));
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     }
 
     const accounts = await db.get(accountKey);
@@ -136,7 +137,7 @@ export default {
                 "https://media.discordapp.net/attachments/1149960935654559835/1185194443322687528/cookieT.png"
               ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       case "LoginAccount":
@@ -203,7 +204,7 @@ export default {
                 )
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       case "ViewAccount":
@@ -254,7 +255,7 @@ export default {
                 )
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       case "DeleteAccount":
@@ -275,7 +276,7 @@ export default {
                 )
             ),
           ],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
     }

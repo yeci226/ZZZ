@@ -2,18 +2,20 @@ import { client } from "../index.js";
 import { WebhookClient, EmbedBuilder } from "discord.js";
 import Logger from "../utilities/core/logger.js";
 
-const webhook = new WebhookClient({
+const webhook = process.env.ERRWEBHOOK ? new WebhookClient({
   url: process.env.ERRWEBHOOK,
-});
+}) : null;
 
 client.on("error", (error) => {
   console.log(error);
   new Logger("系統").error(`錯誤訊息：${error.message}`);
-  webhook.send({
-    embeds: [
-      new EmbedBuilder().setTimestamp().setDescription(`${error.message}`),
-    ],
-  });
+  if (webhook) {
+    webhook.send({
+      embeds: [
+        new EmbedBuilder().setTimestamp().setDescription(`${error.message}`),
+      ],
+    });
+  }
 });
 
 client.on("warn", (error) => {
@@ -23,11 +25,13 @@ client.on("warn", (error) => {
 process.on("unhandledRejection", (error) => {
   console.log(error);
   new Logger("系統").error(`錯誤訊息：${error.message}`);
-  webhook.send({
-    embeds: [
-      new EmbedBuilder().setTimestamp().setDescription(`${error.message}`),
-    ],
-  });
+  if (webhook) {
+    webhook.send({
+      embeds: [
+        new EmbedBuilder().setTimestamp().setDescription(`${error.message}`),
+      ],
+    });
+  }
 });
 
 process.on("uncaughtException", console.error);
