@@ -1,6 +1,6 @@
 import { client } from "../../index.js";
 import { EmbedBuilder } from "discord.js";
-import { ZenlessZoneZero, LanguageEnum } from "hoyoapi";
+import { ZenlessZoneZero, LanguageEnum } from "@yeci226/hoyoapi";
 import Logger from "../core/logger.js";
 import { createTranslator } from "../core/i18n.js";
 import {

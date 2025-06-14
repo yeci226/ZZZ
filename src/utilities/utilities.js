@@ -2,7 +2,12 @@ import { client } from "../index.js";
 import axios from "axios";
 import emoji from "../assets/emoji.js";
 import { EmbedBuilder, MessageFlags } from "discord.js";
-import { ZenlessZoneZero, LanguageEnum, HoyoAPIError, Hoyolab } from "hoyoapi";
+import {
+  ZenlessZoneZero,
+  LanguageEnum,
+  HoyoAPIError,
+  Hoyolab,
+} from "@yeci226/hoyoapi";
 import { loadImage } from "@napi-rs/canvas";
 const db = client.db;
 const BASE_URL = "https://bbs-api-os.hoyolab.com/community/post/wapi/";

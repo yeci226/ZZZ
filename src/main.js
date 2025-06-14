@@ -4,10 +4,7 @@ import { ClusterClient } from "discord-hybrid-sharding";
 import { QuickDB } from "quick.db";
 import Logger from "./utilities/core/logger.js";
 import { ApplicationCommandType } from "discord.js";
-import { promisify } from "util";
-import _glob from "glob";
-
-const glob = promisify(_glob);
+import { getAllJsFiles } from "./utilities/getAllJsFiles.js";
 
 // Client Variables
 client.db = new QuickDB();
@@ -36,7 +33,7 @@ async function getMessageCommands(client, messageCommandPaths) {
 }
 
 async function bindEvents() {
-  const paths = await glob(`${process.cwd()}/src/events/*.js`);
+  const paths = await getAllJsFiles(`${process.cwd()}/src/events`);
 
   for (let path of paths) {
     await import(`file://${path}`);
@@ -75,14 +72,14 @@ async function getSlashCommands(client, slashCommandPaths) {
 
 export async function load(client) {
   // Message command
-  const messageCommandPaths = await glob(
-    `${process.cwd()}/src/commands/message/**/*.js`
+  const messageCommandPaths = await getAllJsFiles(
+    `${process.cwd()}/src/commands/message`
   );
   const messageCommands = await getMessageCommands(client, messageCommandPaths);
 
   // Slash command
-  const slashCommandPaths = await glob(
-    `${process.cwd()}/src/commands/slash/**/*.js`
+  const slashCommandPaths = await getAllJsFiles(
+    `${process.cwd()}/src/commands/slash`
   );
   const slashCommands = await getSlashCommands(client, slashCommandPaths);
 

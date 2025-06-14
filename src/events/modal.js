@@ -1,10 +1,6 @@
 import { client } from "../index.js";
-import {
-  Events,
-  EmbedBuilder,
-  MessageFlags,
-} from "discord.js";
-import { ZenlessZoneZero } from "hoyoapi";
+import { Events, EmbedBuilder, MessageFlags } from "discord.js";
+import { ZenlessZoneZero } from "@yeci226/hoyoapi";
 import {
   getUserHoyolabData,
   getUserLang,
