@@ -56,6 +56,12 @@ GlobalFonts.registerFromPath(
   "Nunito"
 );
 
+const zzzStaticUrl = "https://act-webstatic.hoyoverse.com/game_record/zzz";
+// const verticalUrl = `${zzzStaticUrl}/role_vertical_painting/role_vertical_painting_`;
+// const rectangleUrl = `${zzzStaticUrl}/role_rectangle_avatar/role_rectangle_avatar_`;
+// const bangbooSquareUrl = `${zzzStaticUrl}/bangboo_square_avatar/bangboo_square_avatar_`;
+const bangbooRectangleUrl = `${zzzStaticUrl}/bangboo_rectangle_avatar/bangboo_rectangle_avatar_`;
+
 const fonts = {
   tw: "TW",
   cn: "CN",

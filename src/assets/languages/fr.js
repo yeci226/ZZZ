@@ -165,6 +165,7 @@ const langs = {
   gacha_SRankAverage: "Moyenne des tirages S-rang",
   gacha_Pity: "<pity> tirages",
   gacha_Count: "<count> tirages",
+  gacha_LimitedCharacterPulls: "Tirages de personnage S limité",
 
   NonData: "Aucune donnée trouvée pour ce mode",
   NonDataDesc:

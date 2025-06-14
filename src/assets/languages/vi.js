@@ -165,6 +165,7 @@ const langs = {
   gacha_SRankAverage: "S-rank trung bình số lần rút",
   gacha_Pity: "<pity> lần rút",
   gacha_Count: "<count> lần rút",
+  gacha_LimitedCharacterPulls: "Số lần rút S-rank giới hạn",
 
   NonData: "Không tìm thấy dữ liệu cho chế độ này",
   NonDataDesc: "Bản ghi chiến đấu cập nhật khoảng 1 giờ, vui lòng thử lại sau",

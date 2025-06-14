@@ -158,6 +158,7 @@ const langs = {
   gacha_SRankAverage: "平均S级抽数",
   gacha_Pity: "已垫<pity>抽",
   gacha_Count: "<count>抽",
+  gacha_LimitedCharacterPulls: "平均限定S级抽数",
 
   NonData: "找不到这个模式的战斗记录",
   NonDataDesc: "战斗记录更新大约需要数个小时，请稍后再试",

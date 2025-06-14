@@ -168,6 +168,7 @@ const langs = {
   gacha_SRankAverage: "Average S-rank pulls",
   gacha_Pity: "<pity> pulls",
   gacha_Count: "<count> pulls",
+  gacha_LimitedCharacterPulls: "Average Limited S-rank Pulls",
 
   NonData: "No data found for this mode",
   NonDataDesc:

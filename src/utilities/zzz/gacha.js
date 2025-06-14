@@ -11,6 +11,8 @@ import {
   getRandomColor,
   drawInQueueReply,
   getAvatarUrl,
+  getWeaponData,
+  getBangbooData,
 } from "../utilities.js";
 import Queue from "queue";
 import { createCanvas, loadImage, GlobalFonts } from "@napi-rs/canvas";
@@ -35,20 +37,30 @@ for (const [key, value] of Object.entries(fontPaths))
 const zzzStaticUrl = "https://act-webstatic.hoyoverse.com/game_record/zzz";
 const bangbooRectangleUrl = `${zzzStaticUrl}/bangboo_rectangle_avatar/bangboo_rectangle_avatar_`;
 
-function getAgentImageUrl(agentId) {
+async function getAgentImageUrl(agent) {
+  if (!agent?.id) return "./src/assets/images/icons/gacha/none.png";
+  const agentId = parseInt(agent.id);
+
   if (agentId < 10000) {
     return getAvatarUrl(agentId);
   } else if (agentId >= 10000 && agentId < 50000) {
-    return `./src/assets/images/icons/gacha/weapon/${agentId}.webp`;
+    const weaponData = await getWeaponData(agentId);
+    return weaponData.iconUrl;
   } else {
-    return bangbooRectangleUrl + agentId + ".png";
+    const bangbooData = await getBangbooData(agentId);
+    return bangbooData.iconUrl;
   }
 }
 
-async function processAgent(agent) {
-  if (!agent?.id) return "./src/assets/images/icons/gacha/none.png";
-  return getAgentImageUrl(agent.id);
-}
+const standardCharacterIds = ["1021", "1041", "1101", "1141", "1181", "1211"];
+const standardWeaponIds = [
+  "14104",
+  "14102",
+  "14110",
+  "14114",
+  "14121",
+  "14118",
+];
 
 const fonts = {
   tw: "TW",
@@ -70,7 +82,11 @@ async function loadImageAsync(url, fallbackUrl) {
   try {
     return await loadImage(url);
   } catch {
-    return await loadImage(fallbackUrl || "./src/assets/images/None.png");
+    try {
+      return await loadImage(fallbackUrl);
+    } catch {
+      return await loadImage("./src/assets/images/None.png");
+    }
   }
 }
 
@@ -197,6 +213,38 @@ export async function getSingalLog(interaction, tr, userLocale, input) {
         : 0;
     allSignalSRanklist[type].total = total;
     allSignalSRanklist[type].data.unshift({}); // Add blank data for showing pities
+
+    if (type === "character" || type === "weapon") {
+      let limitedPullSegments = [];
+      let counterSinceLastS = 0;
+      const standardIds =
+        type === "character" ? standardCharacterIds : standardWeaponIds;
+
+      for (let i = data.length - 1; i >= 0; i--) {
+        counterSinceLastS++;
+        const item = data[i];
+
+        if (item.rank === "S") {
+          const isLimited = !standardIds.includes(item.id.toString());
+          if (isLimited) {
+            limitedPullSegments.push(counterSinceLastS);
+            counterSinceLastS = 0;
+          }
+        }
+      }
+
+      if (limitedPullSegments.length > 0) {
+        const totalPulls = limitedPullSegments.reduce((sum, c) => sum + c, 0);
+        const avg = totalPulls / limitedPullSegments.length;
+        allSignalSRanklist[type].limitedCharacterPullsAverage = parseFloat(
+          avg.toFixed(2)
+        );
+      } else {
+        allSignalSRanklist[type].limitedCharacterPullsAverage = 0;
+      }
+    } else {
+      allSignalSRanklist[type].limitedCharacterPullsAverage = 0;
+    }
   }
 
   return allSignalSRanklist;
@@ -279,7 +327,7 @@ export async function handleSignalLogDraw(
         const type = values[0];
 
         await interaction.deferUpdate({ fetchReply: true }).catch(() => {});
-        interaction.editReply({
+        await interaction.editReply({
           embeds: [
             new EmbedBuilder()
               .setTitle(tr("Searching"))
@@ -309,7 +357,7 @@ export async function handleSignalLogDraw(
         });
       });
     } catch (error) {
-      interaction.editReply({
+      await interaction.editReply({
         embeds: [
           new EmbedBuilder()
             .setColor("#E76161")
@@ -344,12 +392,24 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
       "./src/assets/images/icons/gacha/character.png",
       "./src/assets/images/icons/gacha/regular.png",
       "./src/assets/images/icons/gacha/boopon.png",
-      ...(await Promise.all(signalResults.data.map(processAgent))),
+      "./src/assets/images/icons/gacha/o.png",
+      "./src/assets/images/icons/gacha/fei.png",
+      "./src/assets/images/icons/gacha/y.png",
+      ...(await Promise.all(signalResults.data.map(getAgentImageUrl))),
     ];
     const images = await Promise.all(imagePaths.map(loadImageAsync));
-    const [bg, characterImage, regularImage, booponImage, ...restImages] =
-      images;
+    const [
+      bg,
+      characterImage,
+      regularImage,
+      booponImage,
+      stampGoodLuckImage,
+      stampBadLuckImage,
+      yImage,
+      ...restImages
+    ] = images;
     const agentImages = restImages.slice(0, signalResults.data.length);
+    const standardCharacterImage = yImage;
     const boxColor = "rgba(64, 64, 64, 255)";
 
     // Draw BackGround
@@ -361,8 +421,17 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
     ctx.font = `24px ${selectedFont}`;
     ctx.fillText(tr("InterKnot"), 30, 33);
 
+    const isLimitedPool = type === "character" || type === "weapon";
     // Draw Signal Data
-    drawRoundedRect(ctx, 70, 100, 500, 230, 30, boxColor); // (ctx, x, y, width, height, radius, color)
+    drawRoundedRect(
+      ctx,
+      70,
+      isLimitedPool ? 100 : 125,
+      500,
+      isLimitedPool ? 270 : 220,
+      30,
+      boxColor
+    ); // (ctx, x, y, width, height, radius, color) - Increased height for new line
     const titleFontSize = 34;
     ctx.textAlign = "left";
     drawText(
@@ -373,7 +442,7 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
       titleFontSize,
       titleFontSize - 4,
       100,
-      160
+      isLimitedPool ? 160 : 185
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
     drawText(
       ctx,
@@ -383,7 +452,7 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
       titleFontSize,
       titleFontSize - 4,
       100,
-      220
+      isLimitedPool ? 220 : 245
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
     drawText(
       ctx,
@@ -393,7 +462,7 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
       titleFontSize,
       titleFontSize - 4,
       100,
-      290
+      isLimitedPool ? 280 : 305
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
     ctx.textAlign = "right";
     drawText(
@@ -404,7 +473,7 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
       titleFontSize,
       titleFontSize - 4,
       540,
-      160
+      isLimitedPool ? 160 : 185
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
     drawText(
       ctx,
@@ -414,38 +483,83 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
       titleFontSize,
       titleFontSize - 4,
       540,
-      230
+      isLimitedPool ? 220 : 245
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
     drawText(
       ctx,
-      `${isNaN(signalResults.average) ? 0 : signalResults.average}`,
+      `${isNaN(signalResults.average) ? 0 : signalResults.average}`, // Use a ternary operator to handle NaN
       selectedFont,
       100,
       titleFontSize,
       titleFontSize - 4,
       540,
-      290
+      isLimitedPool ? 280 : 305
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
+    if (isLimitedPool) {
+      drawText(
+        ctx,
+        `${isNaN(signalResults.limitedCharacterPullsAverage) ? 0 : signalResults.limitedCharacterPullsAverage}`,
+        selectedFont,
+        100,
+        titleFontSize,
+        titleFontSize - 4,
+        540,
+        340
+      );
+      ctx.textAlign = "left";
+      drawText(
+        ctx,
+        tr("gacha_LimitedCharacterPulls"),
+        selectedFont,
+        320,
+        titleFontSize,
+        titleFontSize - 4,
+        100,
+        340
+      );
+    }
 
     // Draw Signal Result
     signalResults.data.forEach((data, index) => {
       const offsetX = (index % 5) * (160 + 15);
-      const offsetY = Math.floor(index / 5) * 200;
+      const offsetY = Math.floor(index / 5) * 210;
       if (index < 25) {
         // Draw S Rank Picture
         drawRoundedRectImage(
           ctx,
           agentImages[index],
           70 + offsetX,
-          390 + offsetY,
+          390 + offsetY, // Adjusted Y-offset
           160,
           160,
           30,
           boxColor
         ); // (ctx, img, x, y, width, height, radius)
 
-        // Draw Agent Name
+        // New: Draw y.png overlay for standard characters
+        if (
+          (type === "character" || type === "weapon") &&
+          index !== 0 &&
+          standardCharacterIds.includes(data.id.toString())
+        ) {
+          const overlaySize = 80; // Size of the y.png overlay
+          const overlayX = 85 + offsetX + 160 - overlaySize - 5; // Position at top-right, with some padding
+          const overlayY = 375 + offsetY + 5; // Adjusted Y-offset
 
+          ctx.save();
+          ctx.translate(overlayX + overlaySize / 2, overlayY + overlaySize / 2); // Center for rotation
+          ctx.rotate((25 * Math.PI) / 180); // Rotate by 20 degrees
+          ctx.drawImage(
+            standardCharacterImage,
+            -overlaySize / 2,
+            -overlaySize / 2,
+            overlaySize,
+            overlaySize
+          );
+          ctx.restore();
+        }
+
+        // Draw Agent Name
         if (index == 0) {
           ctx.textAlign = "center";
           drawText(
@@ -456,25 +570,52 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
             30,
             28,
             150 + offsetX,
-            590 + offsetY,
+            585 + offsetY,
             "#808080"
           ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
         } else {
-          ctx.textAlign = "center";
           const nameText = data?.name ?? "NONE";
           const count = data?.count ?? 0;
           const countText = tr("gacha_Count", { count });
+          const combinedText = `${nameText}${countText}`;
 
+          const maxTextWidth = 160; // Max width for name + count
+          const initialFontSize = 30;
+          const minFontSize = 20;
+
+          // Get optimal font size for the combined text
+          const optimalFontSize = getOptimalFontSize(
+            ctx,
+            combinedText,
+            selectedFont,
+            maxTextWidth,
+            initialFontSize,
+            minFontSize
+          );
+
+          // Set font for actual drawing
+          ctx.font = `${optimalFontSize}px ${selectedFont}`;
+
+          const nameWidth = ctx.measureText(nameText).width;
+          const countWidth = ctx.measureText(countText).width;
+
+          const gap = 3; // Small gap between name and count
+          const totalCombinedWidth = nameWidth + countWidth + gap;
+
+          // Calculate starting X to center the combined text within the 160px space
+          const startX = 150 + offsetX - totalCombinedWidth / 2;
+
+          ctx.textAlign = "left";
           // Draw Agent Name
           drawText(
             ctx,
             nameText,
             selectedFont,
-            160,
-            30,
-            20,
-            145 + offsetX - ctx.measureText(countText).width / 2,
-            590 + offsetY
+            nameWidth, // Use actual name width as max for its own drawing
+            optimalFontSize,
+            optimalFontSize, // Fixed size after calculation
+            startX,
+            585 + offsetY
           ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
 
           // Draw Agent Count
@@ -484,21 +625,57 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
               color = colorValue;
               break;
             }
-          ctx.textAlign = "center";
           drawText(
             ctx,
             countText,
             selectedFont,
-            160,
-            30,
-            20,
-            145 + offsetX + ctx.measureText(nameText).width / 2 + 5,
-            590 + offsetY,
+            countWidth, // Use actual count width as max for its own drawing
+            optimalFontSize,
+            optimalFontSize, // Fixed size after calculation
+            startX + nameWidth + gap,
+            585 + offsetY,
             color
           ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
         }
       }
     });
+
+    // New: Draw Stamp based on average S-rank pulls
+    let stampImage = null;
+    let stampPullsForCalculation = 0;
+
+    if (
+      type === "character" &&
+      signalResults.limitedCharacterPullsAverage !== undefined
+    ) {
+      stampPullsForCalculation = signalResults.limitedCharacterPullsAverage;
+    } else {
+      stampPullsForCalculation = signalResults.average;
+    }
+
+    if (stampPullsForCalculation > 110) {
+      stampImage = stampBadLuckImage;
+    } else if (stampPullsForCalculation < 70) {
+      stampImage = stampGoodLuckImage;
+    }
+
+    if (stampImage) {
+      ctx.save();
+      ctx.translate(780, 240);
+
+      const stampSize = 250; // Size of the square stamp
+
+      // Draw the stamp image
+      ctx.drawImage(
+        stampImage,
+        -stampSize / 2,
+        -stampSize / 2,
+        stampSize,
+        stampSize
+      );
+
+      ctx.restore();
+    }
 
     // Draw Signal Type
     const i =
@@ -511,11 +688,14 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
             : 3;
 
     const offsetX = i * (160 + 35);
-    drawRoundedRect(ctx, 100 + offsetX, 1440, 160, 160, 30, boxColor); // (ctx, x, y, width, height, radius, color)
-    drawRoundedRect(ctx, 70 + offsetX, 1500, 220, 160, 30, boxColor);
+    const baseX = (canvas.width - (160 * 4 + 35 * 3)) / 2 - 100;
+
+    drawRoundedRect(ctx, baseX + 100 + offsetX, 1440, 160, 160, 30, boxColor);
+    drawRoundedRect(ctx, baseX + 70 + offsetX, 1500, 220, 160, 30, boxColor);
+
     drawRoundedRect(
       ctx,
-      -60 + offsetX,
+      baseX - 60 + offsetX,
       1440,
       160,
       160,
@@ -524,7 +704,7 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
     );
     drawRoundedRect(
       ctx,
-      260 + offsetX,
+      baseX + 260 + offsetX,
       1440,
       160,
       160,
@@ -533,10 +713,41 @@ export async function drawSignalLogImage(tr, userLocale, signalResults, type) {
     );
 
     // Draw Signal Type
-    ctx.drawImage(characterImage, 110, 1450, 140, 140);
-    ctx.drawImage(characterImage, 305, 1450, 140, 140);
-    ctx.drawImage(regularImage, 500, 1450, 140, 140);
-    ctx.drawImage(booponImage, 695, 1450, 140, 140);
+    const iconWidth = 140;
+    const iconGap = 55; // spacing between icons
+    const totalIcons = 4;
+    const totalWidth = iconWidth * totalIcons + iconGap * (totalIcons - 1);
+    const startX = (canvas.width - totalWidth) / 2;
+    const y = 1450;
+
+    ctx.drawImage(
+      characterImage,
+      startX + 0 * (iconWidth + iconGap),
+      y,
+      iconWidth,
+      iconWidth
+    );
+    ctx.drawImage(
+      characterImage,
+      startX + 1 * (iconWidth + iconGap),
+      y,
+      iconWidth,
+      iconWidth
+    );
+    ctx.drawImage(
+      regularImage,
+      startX + 2 * (iconWidth + iconGap),
+      y,
+      iconWidth,
+      iconWidth
+    );
+    ctx.drawImage(
+      booponImage,
+      startX + 3 * (iconWidth + iconGap),
+      y,
+      iconWidth,
+      iconWidth
+    );
 
     return canvas.toBuffer("image/png");
   } catch (e) {
@@ -569,14 +780,46 @@ function drawRoundedRectImage(ctx, img, x, y, width, height, radius) {
   ctx.closePath();
   ctx.clip();
 
-  ctx.drawImage(
-    img,
-    x + (width - img.width) / 2,
-    y + (height - img.height) / 2,
-    img.width,
-    img.height
-  );
+  const imgAspect = img.width / img.height;
+  const targetAspect = width / height;
+
+  let drawWidth, drawHeight, offsetX, offsetY;
+
+  if (imgAspect > targetAspect) {
+    drawHeight = height;
+    drawWidth = img.width * (height / img.height);
+    offsetX = x - (drawWidth - width) / 2;
+    offsetY = y;
+  } else {
+    drawWidth = width;
+    drawHeight = img.height * (width / img.width);
+    offsetX = x;
+    offsetY = y - (drawHeight - height) / 2;
+  }
+
+  ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
   ctx.restore();
+}
+
+function getOptimalFontSize(
+  ctx,
+  text,
+  selectedFont,
+  maxWidth,
+  initialFontSize,
+  minFontSize
+) {
+  let fontSize = initialFontSize;
+  ctx.font = `${fontSize}px ${selectedFont}`;
+  let textWidth = ctx.measureText(text).width;
+
+  while (textWidth > maxWidth && fontSize > minFontSize) {
+    fontSize--;
+    ctx.font = `${fontSize}px ${selectedFont}`;
+    textWidth = ctx.measureText(text).width;
+  }
+  return fontSize;
 }
 
 function drawText(
@@ -601,10 +844,11 @@ function drawText(
   }
 
   ctx.fillStyle = color;
-  ctx.fillText(`${text}`, x, y);
+  ctx.fillText(text, x, y);
+  return textWidth;
 }
 
-// To get gachaUrl use this
+// To get gachaUrl use this in PowerShell
 // Start-Process powershell -Verb runAs -ArgumentList '-NoExit -Command "Invoke-Expression  (New-Object Net.WebClient).DownloadString(\"https://raw.githubusercontent.com/yeci226/ZZZ-ToS-PP/main/getSignal.ps1\")"'
 
-// https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?authkey_ver=1&sign_type=2&auth_appid=webview_gacha&win_mode=fullscreen&gacha_id=7083b8f538908fae48f161333dfb709835bfd8&timestamp=1723591680&init_log_gacha_type=2001&init_log_gacha_base_type=2&ui_layout=&button_mode=default&plat_type=pc&authkey=GIpnAjPqL54LSBIuuUuVh0fz6inZ3Liui65n6l4ev%2B6i8JihDuk6ujW8k8JQy0GVi8sFLraW3JgP%2BBcI6ttSPAE1%2Fwh3R9FcgpTAJqRypxokZ198SDQKDU3z%2B5JoZ%2FuT99LTTP1XeaG1wy3FT4XpDh9uCfqGYjecMejRCM7k2Ceiy29lx0%2ButI2k2VRxkUngb9bnYBPLLKA90D2bq8rNSHSpHZvsI3g5tBWhGGTv43rnWueiVSqQszMdL8wTnzQ3pw5TXptsmFSVZ8pT8Vp2R5ilOepBmg4tlJ%2Bk5GSJvSJpZuRiUqvPAMXooX3Qb49pZMwgS3zcXe7eaeuiZ5ojNwBj6v4AnVB8zxZJJxI2TyVD7bZSHELZsBOzUAnlL2gyn%2Bx0iRSGRYPhYYVL%2B3lrg5n6a13vTSi0n6D8NbmXQfUL9d%2BMGmOLetWZWVv1yLNd9dITEZw7HuRjIndwzN2RBjACLTSlMTnVUZGMzCQPfp0ZNEuzvx0lixI1vBEdop4BBER22yxPi2%2FU4vnB95NJh%2BALu3Z8rWux3%2B6mZJb6YPy213YeZwKzTvmjQ8LxX89gRCHxRVzekqYZCqmLr3dcTqmy%2FgNjT1InJLJsGeaN2XzT%2B3D8WsIlI%2F08MMJ5P3ED3nxSPsEoIKOmYhYdu3syTTSRskpcLAspXjImyEVHB70%3D&lang=zh-tw&region=prod_gf_jp&game_biz=nap_global&page=1&size=5&gacha_type=2001&real_gacha_type=2&end_id=
+// https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?authkey_ver=1&sign_type=2&auth_appid=webview_gacha&win_mode=fullscreen&gacha_id=ab661a7ad928f17ee22a87f9b1f959b49ef58175&timestamp=1749165432&font_thickness_mode=1&init_log_gacha_type=2001&init_log_gacha_base_type=2&ui_layout=&button_mode=default&plat_type=pc&is_gacha=1&no_joypad_close=1&authkey=GIpnAjPqL54LSBIuuUuVh0fz6inZ3Liui65n6l4ev%2B6i8JihDuk6ujW8k8JQy0GVi8sFLraW3JgP%2BBcI6ttSPAE1%2Fwh3R9FcgpTAJqRypxokZ198SDQKDU3z%2B5JoZ%2FuT99LTTP1XeaG1wy3FT4XpDh9uCfqGYjecMejRCM7k2Ce51JzMoqyso1dANa0sO8ehsaaWDVgVeaDClSi2%2FlJe1jMqcnMTJyaTxCHOMkMsYrMBBHQUoWfCUQYRSlTX2sLCC%2BHTUFJscqq8EW9JSsUi9I1SR22jwKU7RPjwQdI0SUuyYDDjbVnyPYtcMDdcJUAxNhdU2rPDcJ6BcBsNiw9lT5WvcibxBAdIizNeVCAXWnxxNNoUQfcRf3flUCVpeVz0TJztQXnAOx62tfbeRE3tTOEYgKy05hfq%2Ba0g806AjUawFRMILPRS167mANCEVHU9mdgalBwCUHmq%2F7QydriiYlNWFfSP7Cp8O8tJojzEo3f%2BDoIJA6G%2BCZM3MmGnk%2BK4X6AAUWza5tC6fp2%2BLAAiuaw1rYbKlVZKEKTxOdvARVnKaxip9iUxcyOg7f5MhzLJD7JVDnkptykorsY5en1I2oUkGPUW%2BoAJ%2BgbopxWVfI88gSxp1SB64D7I2R5ISKR836W9wvG6QAJHUnQ3%2FSf6E%2Bt9kYjfu6Ex6WeWNVK%2Fhm42Xosr6Lb4NXvr5veGYQIV%2F6ursGChprhKEF8tvjYSKdtT%2BGsWjgpUZ8KN29JCF9EmpIcpmCH2RjlfL9Pr2fjz&lang=zh-tw&region=prod_gf_jp&game_biz=nap_global&page=1&size=5&gacha_type=2001&real_gacha_type=2&end_id=

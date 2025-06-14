@@ -163,10 +163,11 @@ const langs = {
   gacha_TotalCount: "총 뽑기 수",
   gacha_SRankCount: "S랭크 수",
   gacha_SRankAverage: "S랭크 평균 뽑기 수",
-  gacha_Pity: "<pity>번 뽑기",
-  gacha_Count: "<count>번 뽑기",
+  gacha_Pity: "<pity> 뽑기",
+  gacha_Count: "<count> 뽑기",
+  gacha_LimitedCharacterPulls: "한정 S등급 뽑기 횟수",
 
-  NonData: "이 모드의 데이터를 찾을 수 없습니다",
+  NonData: "이 모드의 전투 기록을 찾을 수 없습니다",
   NonDataDesc:
     "전투 기록은 약 1시간에 한 번씩 업데이트됩니다. 나중에 다시 시도해 주세요",
   EnemyWeakness: "적 약점",

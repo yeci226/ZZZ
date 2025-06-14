@@ -168,6 +168,7 @@ const langs = {
   gacha_SRankAverage: "Sランク平均抽選数",
   gacha_Pity: "<pity>抽",
   gacha_Count: "<count>抽",
+  gacha_LimitedCharacterPulls: "限定Sランク平均抽選数",
 
   NonData: "このモードのデータが見つかりません",
   NonDataDesc: "データの更新には数時間かかります。後で再試行してください",
@@ -186,7 +187,7 @@ const langs = {
   DeadlyTip:
     "総合スコアはランキングに使用され、ランキングは30分ごとに更新されます。後ほど更新してください",
   BattleRecord: "戦闘記録",
-  ChallengeTime: "挑戰時間",
+  ChallengeTime: "挑戦時間",
 };
 
 export default langs;

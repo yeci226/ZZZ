@@ -282,6 +282,36 @@ export async function getUserHoyolabData(
   }
 }
 
+export async function getBangbooData(bangbooId) {
+  try {
+    const apiUrl = `https://api.hakush.in/zzz/data/zh/bangboo/${bangbooId}.json`;
+    const response = await axios.get(apiUrl).then((response) => response.data);
+    const dataFormat = {
+      id: bangbooId,
+      iconUrl: `https://api.hakush.in/zzz/UI/${response.Icon.split("/").pop().split(".")[0]}.webp`,
+    };
+    return dataFormat;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
+export async function getWeaponData(weaponId) {
+  try {
+    const apiUrl = `https://api.hakush.in/zzz/data/en/weapon/${weaponId}.json`;
+    const response = await axios.get(apiUrl).then((response) => response.data);
+    const dataFormat = {
+      id: response.Id,
+      iconUrl: `https://api.hakush.in/zzz/UI/${response.Icon.split("/").pop().split(".")[0]}.webp`,
+    };
+    return dataFormat;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
 export async function getCharacterData(characterId) {
   try {
     const apiUrl = `https://api.hakush.in/zzz/data/en/character/${characterId}.json`;
@@ -319,7 +349,7 @@ export async function getUserZZZData(
     getUserCookie(userId, accountIndex),
     getUserUid(userId, accountIndex),
   ]);
-  if(!cookie || !uid) {
+  if (!cookie || !uid) {
     replyOrfollowUp(interaction, {
       embeds: [
         new EmbedBuilder()
@@ -332,7 +362,7 @@ export async function getUserZZZData(
             })
           ),
       ],
-      flags: MessageFlags.Ephemeral
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
