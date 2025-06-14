@@ -1,26 +1,14 @@
-import { client } from "../../index.js";
-import {
-  EmbedBuilder,
-  AttachmentBuilder,
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-} from "discord.js";
+import { EmbedBuilder, AttachmentBuilder } from "discord.js";
 import Queue from "queue";
 import {
   getRandomColor,
   drawInQueueReply,
-  getUserHoyolabData,
   getUserLang,
   failedReply,
 } from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
-import emoji from "../../assets/emoji.js";
 import { createCanvas, loadImage, GlobalFonts } from "@napi-rs/canvas";
-import fs from "fs";
 import { join } from "path";
-const db = client.db;
 const drawQueue = new Queue({ autostart: true });
 
 GlobalFonts.registerFromPath(
@@ -187,6 +175,9 @@ async function drawDeadlyImage(tr, userLocale, deadlyData) {
     // 加载所需图像
     const starImg = await loadImageAsync(
       "./src/assets/images/icons/deadly/star.png"
+    );
+    const starDarkImg = await loadImageAsync(
+      "./src/assets/images/icons/deadly/star_dark.png"
     );
 
     // 0% ~ ?% rankbg-1
@@ -642,12 +633,17 @@ async function drawDeadlyImage(tr, userLocale, deadlyData) {
         }
 
         // 绘制星级评分
-        if (battle.star) {
+        if (battle.star !== undefined) {
           const starX = canvas.width / 2 + 115;
           const starY = currentY + 60;
+          const maxStars = 3; // 總共顯示 3 顆星
 
-          for (let i = 0; i < battle.star; i++) {
-            ctx.drawImage(starImg, starX + i * 35, starY, 30, 30);
+          for (let i = 0; i < maxStars; i++) {
+            if (i < battle.star) {
+              ctx.drawImage(starImg, starX + i * 30, starY, 30, 30); // 亮星
+            } else {
+              ctx.drawImage(starDarkImg, starX + i * 30, starY, 30, 30); // 暗星
+            }
           }
         }
 
