@@ -38,6 +38,7 @@ const offsetCharacter = {
   1351: { x: 0 }, // Pulchra
   1371: { title: "GrandMaster", element: "auricink" }, // Yixuan
   1381: { x: -70 }, // Zero Anby
+  1391: { x: 0 }, // Jufufu
 };
 const offsetCharacterSkin = {
   1031: {
