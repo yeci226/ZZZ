@@ -1,7 +1,5 @@
 import NodeRSA from 'node-rsa';
 
-import { getUserGameUid, parseCookie } from '@/utilities';
-
 import { Account } from '@/types';
 
 function encrypt(source: string) {
@@ -23,7 +21,13 @@ function encrypt(source: string) {
   return key.encrypt(source, 'base64');
 }
 
-async function loginAccount(account: string, password: string): Promise<Account | null> {
+/**
+ * Login to Hoyolab
+ * @param account - The account to login to
+ * @param password - The password to login to
+ * @returns The cookie of the account
+ */
+export async function loginToHoyolab(account: string, password: string): Promise<string> {
   const URL = 'https://sg-public-api.hoyolab.com/account/ma-passport/api/webLoginByPassword';
 
   const payload = {
@@ -60,11 +64,6 @@ async function loginAccount(account: string, password: string): Promise<Account 
 
   const result = response.headers;
   const cookie = result.get('set-cookie') ?? '';
-  const parsedCookie = parseCookie(cookie);
 
-  const { uid, nickname } = await getUserGameUid(cookie);
-
-  return { cookie, uid, nickname };
+  return cookie;
 }
-
-export default loginAccount;

@@ -2,6 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder, ChannelType, PermissionsBitField, Me
 import { LanguageEnum } from '@yeci226/hoyoapi';
 import { database } from '@/index';
 
+import { failedReply } from '@/utilities';
 import { createTranslator } from '@/utilities/core/i18n';
 
 export default {
@@ -190,10 +191,7 @@ export default {
     const interactionMember = interaction.member;
 
     if (interactionMember?.permissions instanceof PermissionsBitField && !interactionMember?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-      return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('admin_NoPermission')).setDescription(tr('admin_NoPermissionDesc'))],
-        flags: MessageFlags.Ephemeral,
-      });
+      return failedReply(interaction, tr('admin_NoPermission'), tr('admin_NoPermissionDesc'));
     }
 
     const subcommand = interaction.options.getSubcommand();
@@ -209,93 +207,64 @@ export default {
 const handleRemove = async (interaction: ChatInputCommandInteraction, locale: LanguageEnum) => {
   const tr = createTranslator(locale);
 
-  const interactionUser = interaction.user;
-  const selectedUser = interaction.options.getUser('user') ?? interactionUser;
-  const feature = interaction.options.getString('feature');
-  const channels = interaction.guild?.channels.cache.map((c) => c.id).filter(Boolean) ?? [];
+  try {
+    const interactionUser = interaction.user;
+    const selectedUser = interaction.options.getUser('user') ?? interactionUser;
+    const selectedFeature = interaction.options.getString('feature');
+    const channels = interaction.guild?.channels.cache.map((c) => c.id).filter(Boolean) ?? [];
 
-  const data = await database.get(feature ?? '');
-  const userData = data[selectedUser.id];
+    const featureData = await database.get(selectedFeature ?? '');
+    const userFeatureData = featureData[selectedUser.id];
 
-  if (!selectedUser.id) {
-    return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('admin_RemoveFail')).setDescription(tr('admin_RemoveFailDesc'))],
-      flags: MessageFlags.Ephemeral,
-    });
-  }
+    if (!selectedUser.id) {
+      return failedReply(interaction, tr('admin_RemoveFail'), tr('admin_RemoveFailDesc'));
+    }
+    if (!Object.keys(featureData).includes(selectedUser.id)) {
+      return failedReply(interaction, tr('admin_RemoveFail'), tr('admin_UserNotSet', { user: `<@${selectedUser.id}>` }));
+    }
+    if (!channels.includes(userFeatureData?.channelId ?? '')) {
+      return failedReply(interaction, tr('admin_RemoveFail'), tr('admin_RemoveFailUserOtherServer', { user: `<@${selectedUser.id}>` }));
+    }
 
-  if (!Object.keys(data).includes(selectedUser.id)) {
-    return interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor('#E76161')
-          .setTitle(tr('admin_RemoveFail'))
-          .setDescription(tr('admin_UserNotSet', { user: `<@${selectedUser.id}>` })),
-      ],
-      flags: MessageFlags.Ephemeral,
-    });
-  }
+    await database.delete(`${selectedFeature}.${selectedUser.id}`);
 
-  if (!channels.includes(userData?.channelId ?? '')) {
     return interaction.reply({
       embeds: [
         new EmbedBuilder()
-          .setColor('#E76161')
-          .setTitle(tr('admin_RemoveFail'))
-          .setDescription(
-            tr('admin_RemoveFailUserOtherServer', {
-              user: `<@${selectedUser.id}>`,
-            }),
-          ),
+          .setColor('#F6F1F1')
+          .setTitle(tr('admin_RemoveSuccess'))
+          .setDescription(tr('admin_RemoveSuccessMessage', { user: `<@${selectedUser.id}>`, channel: `<#${userFeatureData.channelId}>` })),
       ],
       flags: MessageFlags.Ephemeral,
     });
+  } catch (error: any) {
+    return failedReply(interaction, tr('admin_RemoveFail'), tr('admin_RemoveFailDesc'), error.message);
   }
-
-  await database.delete(`${feature}.${selectedUser.id}`);
-
-  return interaction.reply({
-    embeds: [
-      new EmbedBuilder()
-        .setColor('#F6F1F1')
-        .setTitle(tr('admin_RemoveSuccess'))
-        .setDescription(
-          tr('admin_RemoveSuccessMessage', {
-            user: `<@${selectedUser.id}>`,
-            channel: `<#${userData.channelId}>`,
-          }),
-        ),
-    ],
-    flags: MessageFlags.Ephemeral,
-  });
 };
 
 const handleMove = async (interaction: ChatInputCommandInteraction, locale: LanguageEnum) => {
   const tr = createTranslator(locale);
 
-  const channel = interaction.options.getChannel('channel');
-  const selectedFeature = (interaction.options.getString('feature') as 'autoDaily' | 'autoRedeem' | 'all') ?? 'all';
-  const clientMember = interaction.guild?.members.me;
+  try {
+    const selectedChannel = interaction.options.getChannel('channel');
+    const selectedFeature = (interaction.options.getString('feature') as 'autoDaily' | 'autoRedeem' | 'all') ?? 'all';
+    const clientMember = interaction.guild?.members.me;
 
-  const channelIdSet = new Set(interaction.guild?.channels.cache.map((c) => c.id).filter(Boolean) ?? []);
+    const channelIdSet = new Set(interaction.guild?.channels.cache.map((c) => c.id).filter(Boolean) ?? []);
 
-  if (channel && clientMember && !clientMember.permissionsIn(channel as GuildChannelResolvable).has(PermissionsBitField.Flags.SendMessages)) {
-    return interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor('#E76161')
-          .setTitle(tr('admin_MoveFail'))
-          .setDescription(
-            tr('admin_MoveNoPermission', {
-              channel: `<#${channel.id}>`,
-            }),
-          ),
-      ],
-      flags: MessageFlags.Ephemeral,
-    });
-  }
+    if (!selectedChannel) {
+      return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveNoChannel'));
+    }
+    if (!clientMember) {
+      return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveNoBot'));
+    }
+    if (!clientMember.permissionsIn(selectedChannel as GuildChannelResolvable).has(PermissionsBitField.Flags.SendMessages)) {
+      return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveNoPermission', { channel: `<#${selectedChannel.id}>` }));
+    }
+    if (![ChannelType.GuildText, ChannelType.PrivateThread, ChannelType.PublicThread, ChannelType.GuildVoice].includes(selectedChannel.type)) {
+      return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveNoPermission', { channel: `<#${selectedChannel.id}>` }));
+    }
 
-  if ([ChannelType.GuildText, ChannelType.PrivateThread, ChannelType.PublicThread, ChannelType.GuildVoice].includes(channel?.type ?? 0)) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const moveAutoDaily = async (): Promise<number> => {
@@ -309,7 +278,7 @@ const handleMove = async (interaction: ChatInputCommandInteraction, locale: Lang
       for (const userId of matchedUsers) {
         const userAutoDailyData = autoDailyData[userId];
         if (userAutoDailyData) {
-          userAutoDailyData.channelId = channel?.id ?? '';
+          userAutoDailyData.channelId = selectedChannel?.id ?? '';
           await database.set(`autoDaily.${userId}`, userAutoDailyData);
         }
       }
@@ -328,7 +297,7 @@ const handleMove = async (interaction: ChatInputCommandInteraction, locale: Lang
       for (const userId of matchedUsers) {
         const userAutoRedeemData = autoRedeemData[userId];
         if (userAutoRedeemData) {
-          userAutoRedeemData.channelId = channel?.id ?? '';
+          userAutoRedeemData.channelId = selectedChannel?.id ?? '';
           await database.set(`autoRedeem.${userId}`, userAutoRedeemData);
           successCount++;
         }
@@ -337,7 +306,7 @@ const handleMove = async (interaction: ChatInputCommandInteraction, locale: Lang
       return successCount;
     };
 
-    const process = async () => {
+    const successCount = await (async () => {
       switch (selectedFeature) {
         case 'autoDaily':
           return await moveAutoDaily();
@@ -346,15 +315,10 @@ const handleMove = async (interaction: ChatInputCommandInteraction, locale: Lang
         case 'all':
           return (await moveAutoDaily()) + (await moveAutoRedeem());
       }
-    };
-
-    const successCount = await process();
+    })();
 
     if (successCount === 0) {
-      return interaction.editReply({
-        embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('admin_MoveFail')).setDescription(tr('admin_MoveNoUser'))],
-        flags: MessageFlags.Ephemeral as any,
-      });
+      return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveNoUser'));
     }
 
     return interaction.editReply({
@@ -362,24 +326,11 @@ const handleMove = async (interaction: ChatInputCommandInteraction, locale: Lang
         new EmbedBuilder()
           .setColor('#F6F1F1')
           .setTitle(tr('admin_MoveSuccess'))
-          .setDescription(
-            tr('admin_MoveSuccessMessage', {
-              count: successCount.toString(),
-              channel: `<#${channel?.id}>`,
-            }),
-          ),
+          .setDescription(tr('admin_MoveSuccessMessage', { count: successCount.toString(), channel: `<#${selectedChannel?.id}>` })),
       ],
       flags: MessageFlags.Ephemeral as any,
     });
-  } else {
-    return interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor('#E76161')
-          .setTitle(tr('admin_MoveFail'))
-          .setDescription(tr('admin_MoveFailMessage', { channel: `<#${channel?.id}>` })),
-      ],
-      flags: MessageFlags.Ephemeral as any,
-    });
+  } catch (error: any) {
+    return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveFailDesc'), error.message);
   }
 };
