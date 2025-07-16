@@ -13,9 +13,11 @@ export async function handleNoteCheckCommand(interaction: ChatInputCommandIntera
   const tr = createTranslator(userLocale);
 
   try {
+    await interaction.deferReply();
+
     const selectedUser = interactionOptions.getUser('user') || interactionUser;
     const selectedAccountIndex = parseInt(interactionOptions.getString('account') ?? '0');
-    const zzz = await getUserZZZData(interaction, userLocale, selectedUser.id, selectedAccountIndex);
+    const zzz = await getUserZZZData(userLocale, selectedUser.id, selectedAccountIndex);
 
     if (zzz == null) {
       return failedReply(interaction, tr('AccountNotFound'), tr('AccountNotFoundDesc'));

@@ -476,46 +476,13 @@ export async function getCharacterData(characterId: string) {
  * @param accountIndex - 帳號索引
  * @returns ZZZ 的數據
  */
-export async function getUserZZZData(interaction: Interaction, locale: LanguageEnum, userId: string, accountIndex = 0) {
-  const tr = createTranslator(locale);
-
+export async function getUserZZZData(locale: LanguageEnum, userId: string, accountIndex = 0) {
   const [cookie, uid] = await Promise.all([getUserCookie(userId, accountIndex), getUserUid(userId, accountIndex)]);
-  if (!cookie || !uid) {
-    replyOrfollowUp(interaction, {
-      embeds: [
-        new EmbedBuilder()
-          .setColor('#E76161')
-          .setTitle(tr('AccountNotFound'))
-          .setDescription(
-            tr('AccountNotFoundDesc', {
-              hasCookie: tr(cookie ? 'isSet' : 'isNotSet'),
-              hasUid: tr(uid ? 'isSet' : 'isNotSet'),
-            }),
-          ),
-      ],
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
+  if (!cookie || !uid) return null;
 
-  try {
-    const zzz = new ZenlessZoneZero({ cookie, lang: locale, uid });
-    await zzz.daily.info();
-
-    return zzz;
-  } catch (error) {
-    const isHoyoAPIError = error instanceof HoyoAPIError;
-    const errorCode = isHoyoAPIError ? error.code : error;
-    console.log(error);
-
-    checkAccount(
-      interaction,
-      locale,
-      userId,
-      isHoyoAPIError && error.code == 10035 ? { errorCode: error.code } : { hasCookie: cookie != null, lang: locale, hasUid: uid != null, errorCode: Number(errorCode) },
-    );
-    return null;
-  }
+  const zzz = new ZenlessZoneZero({ cookie, lang: locale, uid });
+  await zzz.daily.info();
+  return zzz;
 }
 
 /**

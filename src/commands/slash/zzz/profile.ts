@@ -57,7 +57,7 @@ export default {
     const selectedUser = interaction.options.getUser('user') || interactionUser;
     const selectedAccountIndex = parseInt(interaction.options.getString('account') ?? '0');
 
-    const zzz = await getUserZZZData(interaction, locale, selectedUser.id, selectedAccountIndex);
+    const zzz = await getUserZZZData(locale, selectedUser.id, selectedAccountIndex);
     if (zzz == null)
       return interaction.reply({
         embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('AccountNotFound')).setDescription(tr('AccountNotFoundDesc'))],

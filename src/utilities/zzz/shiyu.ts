@@ -19,7 +19,7 @@ export async function handleShiyuDrawCommand(interaction: ChatInputCommandIntera
     const selectedUser = interactionOptions.getUser('user') || interactionUser;
     const selectedAccountIndex = parseInt(interactionOptions.getString('account') ?? '0');
     const selectedSchedule = parseInt(interactionOptions.getString('schedule') ?? '1');
-    const zzz = await getUserZZZData(interaction, userLocale, selectedUser.id, selectedAccountIndex);
+    const zzz = await getUserZZZData(userLocale, selectedUser.id, selectedAccountIndex);
     const requestStartTime = Date.now();
 
     if (!zzz) {

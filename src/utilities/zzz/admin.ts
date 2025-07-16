@@ -56,6 +56,8 @@ export async function handleMoveFeatureNotifyCommand(interaction: ChatInputComma
   const tr = createTranslator(userLocale);
 
   try {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
     const selectedChannel = interactionOptions.getChannel('channel');
     const selectedFeature = (interactionOptions.getString('feature') as 'autoDaily' | 'autoRedeem' | 'all') ?? 'all';
     const clientMember = interactionGuild?.members.me;

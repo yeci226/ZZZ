@@ -60,6 +60,7 @@ export async function handleGachaLogSubmit(interaction: ModalSubmitInteraction) 
 
     const url = interactionFields.getTextInputValue('signalUrl');
     const signalResults = (await getSingalLog()) as any;
+
     const requestStartTime = Date.now();
 
     // interaction.editReply({

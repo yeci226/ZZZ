@@ -13,8 +13,10 @@ export async function handleRedeemListCommand(interaction: ChatInputCommandInter
   const tr = createTranslator(userLocale);
 
   try {
+    await interaction.deferReply();
+
     const selectedAccountIndex = parseInt(interactionOptions.getString('account') || '0');
-    const zzz = await getUserZZZData(interaction, userLocale, interactionUser.id, selectedAccountIndex);
+    const zzz = await getUserZZZData(userLocale, interactionUser.id, selectedAccountIndex);
     const codes = await getRedeemCodes();
     const userUid = await getUserUid(interactionUser.id, selectedAccountIndex);
     const userRedeemedCodes = (await database.get(`${userUid}.redeemedCodes`)) || [];
@@ -55,9 +57,11 @@ export async function handleRedeemAllCommand(interaction: ChatInputCommandIntera
   const tr = createTranslator(userLocale);
 
   try {
+    await interaction.deferReply();
+
     const selectedAccountIndex = parseInt(interactionOptions.getString('account') || '0');
     const selectedUser = interactionOptions.getUser('user') || interactionUser;
-    const zzz = await getUserZZZData(interaction, userLocale, selectedUser.id, selectedAccountIndex);
+    const zzz = await getUserZZZData(userLocale, selectedUser.id, selectedAccountIndex);
     const codes = await getRedeemCodes();
     const userUid = await getUserUid(selectedUser.id, selectedAccountIndex);
     const userRedeemedCodes = (await database.get(`${userUid}.redeemedCodes`)) || [];
@@ -187,10 +191,12 @@ export async function handleRedeemCommand(interaction: ChatInputCommandInteracti
   const tr = createTranslator(userLocale);
 
   try {
+    await interaction.deferReply();
+
     const selectedAccountIndex = parseInt(interactionOptions.getString('account') || '0');
     const selectedUser = interactionOptions.getUser('user') || interactionUser;
     const selectedCode = interactionOptions.getString('code') || '';
-    const zzz = await getUserZZZData(interaction, userLocale, selectedUser.id, selectedAccountIndex);
+    const zzz = await getUserZZZData(userLocale, selectedUser.id, selectedAccountIndex);
     const userUid = await getUserUid(selectedUser.id, selectedAccountIndex);
     const userRedeemedCodes = (await database.get(`${userUid}.redeemedCodes`)) || [];
 
@@ -238,10 +244,12 @@ export async function handleAutoRedeemCommand(interaction: ChatInputCommandInter
   const tr = createTranslator(userLocale);
 
   try {
+    await interaction.deferReply();
+
     const selectedEnable = interactionOptions.getString('enable') || 'off';
     const selectedTag = interactionOptions.getString('tag') || 'false';
     const channelId = interactionChannel?.id || '';
-    const zzz = await getUserZZZData(interaction, userLocale, interactionUser.id);
+    const zzz = await getUserZZZData(userLocale, interactionUser.id);
     const userAccounts = await database.get(`${interactionUser.id}.account`);
 
     if (!zzz) {

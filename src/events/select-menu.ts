@@ -86,7 +86,7 @@ async function handleSelectCharacter(interaction: StringSelectMenuInteraction) {
 
       const requestStartTime = Date.now();
       const [userId, accountIndex, characterId] = interactionValues[0].split('-');
-      const zzz = await getUserZZZData(interaction, userLocale, userId, parseInt(accountIndex));
+      const zzz = await getUserZZZData(userLocale, userId, parseInt(accountIndex));
       if (!zzz) return;
 
       const characters = await zzz.record.characters();

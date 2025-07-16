@@ -12,6 +12,8 @@ export async function handleNewsTypeSelect(interaction: StringSelectMenuInteract
   const tr = createTranslator(userLocale);
 
   try {
+    await interaction.deferReply();
+
     const newsData = await getNewsList(userLocale, interactionValue);
 
     return interaction.editReply({
@@ -62,6 +64,8 @@ export async function handleNewsPostSelect(interaction: StringSelectMenuInteract
   const tr = createTranslator(userLocale);
 
   try {
+    await interaction.deferReply();
+
     const postData = await getPostFull(userLocale, interactionValue);
     const { post, user, image_list, cover_list } = postData.post;
     const content = await parsePostContent(post.content);

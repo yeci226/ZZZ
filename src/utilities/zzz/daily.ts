@@ -22,7 +22,7 @@ export async function handleDailyCheckInCommand(interaction: ChatInputCommandInt
     const selectedTag = interactionOptions.getString('tag');
     const channelId = interactionChannel?.id;
     const userAccounts = (await database.get(`${selectedUser.id}.account`)) || [];
-    const zzz = await getUserZZZData(interaction, userLocale, selectedUser.id);
+    const zzz = await getUserZZZData(userLocale, selectedUser.id);
 
     if (userAccounts.length === 0) {
       return failedReply(interaction, tr('daily_NonAccount'), tr('daily_NonAccountDesc'));
