@@ -70,7 +70,7 @@ export default {
               'vi': '① Thiết lập UID',
               'fr': '① Définir UID',
             },
-            value: 'SetUserID',
+            value: 'SetUID',
           },
           {
             name: '② Set Cookie',
@@ -79,34 +79,34 @@ export default {
               'vi': '② Thiết lập Cookie',
               'fr': '② Définir Cookie',
             },
-            value: 'SetUserCookie',
+            value: 'SetCookie',
           },
           {
-            name: '🔸 View configured account',
+            name: '🔸 View configured accounts',
             name_localizations: {
               'zh-TW': '🔸 檢視已設定帳號',
               'vi': '🔸 Xem các tài khoản đã được cài đặt',
               'fr': '🔸 Liste de comptes',
             },
-            value: 'ViewAccount',
+            value: 'ViewAccounts',
           },
           {
-            name: '⚙️ Edit configured account',
+            name: '⚙️ Edit configured accounts',
             name_localizations: {
               'zh-TW': '⚙️ 編輯已設定帳號',
               'vi': '⚙️ Sửa thiết lập tài khoản',
               'fr': '⚙️ Modifier le compte',
             },
-            value: 'EditAccount',
+            value: 'EditAccounts',
           },
           {
-            name: '❌ Delete configured account',
+            name: '❌ Delete configured accounts',
             name_localizations: {
               'zh-TW': '❌ 刪除已設定帳號',
               'vi': '❌ Xoá tài khoản đã thiết lập',
               'fr': '❌ Supprimer le compte',
             },
-            value: 'DeleteAccount',
+            value: 'DeleteAccounts',
           },
         ),
     ),
@@ -119,17 +119,11 @@ export default {
    */
   async execute(interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) {
     const tr = createTranslator(locale);
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const interactionUser = interaction.user;
     const selectedOption = interaction.options.get('options')?.value;
 
-    const hasAccount = await database.has(`${interactionUser.id}.account`);
-    if (!hasAccount && (selectedOption == 'ViewAccount' || selectedOption == 'SetUserCookie' || selectedOption == 'EditAccount' || selectedOption == 'DeleteAccount')) {
-      return failedReply(interaction, tr('account_NoAccount'));
-    }
-
-    const accounts = await database.get(`${interactionUser.id}.account`);
+    const accounts = (await database.get(`${interactionUser.id}.account`)) || [];
 
     switch (selectedOption) {
       case 'HowToSetUpAccount':
@@ -137,8 +131,8 @@ export default {
           embeds: [
             new EmbedBuilder()
               .setTitle(tr('account_HowToSetUpAccount'))
-              .setColor(getRandomColor())
               .setDescription(tr('account_HowToSetUpAccountDesc'))
+              .setColor(getRandomColor())
               .setImage('https://media.discordapp.net/attachments/1149960935654559835/1185194443322687528/cookieT.png'),
           ],
           flags: MessageFlags.Ephemeral,
@@ -169,7 +163,7 @@ export default {
             ),
         );
 
-      case 'SetUserID':
+      case 'SetUID':
         return interaction.showModal(
           new ModalBuilder()
             .setCustomId('account_SetUserIDModal')
@@ -188,7 +182,11 @@ export default {
             ),
         );
 
-      case 'SetUserCookie':
+      case 'SetCookie':
+        if (accounts.length === 0) {
+          return failedReply(interaction, tr('account_NoAccount'), tr('account_NoAccountDesc'));
+        }
+
         return interaction.reply({
           components: [
             new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -209,18 +207,19 @@ export default {
           flags: MessageFlags.Ephemeral,
         });
 
-      case 'ViewAccount':
+      case 'ViewAccounts':
+        if (accounts.length === 0) {
+          return failedReply(interaction, tr('account_NoAccount'), tr('account_NoAccountDesc'));
+        }
+
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         return interaction.editReply({
           embeds: [
             new EmbedBuilder()
               .setColor(getRandomColor())
               .setAuthor({
-                name: tr('account_ListOfAccount', {
-                  Username: interactionUser.username,
-                }),
-                iconURL: `${interactionUser.displayAvatarURL({
-                  size: 4096,
-                })}`,
+                name: tr('account_ListOfAccount', { Username: interactionUser.username }),
+                iconURL: interactionUser.displayAvatarURL({ size: 4096 }),
               })
               .addFields(
                 accounts.map((account: any) => ({
@@ -232,7 +231,12 @@ export default {
           ],
         });
 
-      case 'EditAccount':
+      case 'EditAccounts':
+        if (accounts.length === 0) {
+          return failedReply(interaction, tr('account_NoAccount'), tr('account_NoAccountDesc'));
+        }
+
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         return interaction.editReply({
           components: [
             new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -255,7 +259,12 @@ export default {
           flags: MessageFlags.Ephemeral as BitFieldResolvable<'SuppressEmbeds' | 'IsComponentsV2', MessageFlags.SuppressEmbeds | MessageFlags.IsComponentsV2>,
         });
 
-      case 'DeleteAccount':
+      case 'DeleteAccounts':
+        if (accounts.length === 0) {
+          return failedReply(interaction, tr('account_NoAccount'), tr('account_NoAccountDesc'));
+        }
+
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         return interaction.editReply({
           components: [
             new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(

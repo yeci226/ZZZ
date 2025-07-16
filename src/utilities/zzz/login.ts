@@ -43,33 +43,28 @@ async function loginAccount(account: string, password: string): Promise<Account 
     'Referer': 'https://account.hoyolab.com/',
   };
 
-  try {
-    const response = await fetch(URL, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(payload),
-    });
+  const response = await fetch(URL, {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify(payload),
+  });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const responseData = (await response.json()) as { retcode: number; message: string };
-    if (responseData.retcode !== 0) {
-      throw new Error(`登入失敗: ${responseData.message}`);
-    }
-
-    const result = response.headers;
-    const cookie = result.get('set-cookie') ?? '';
-    const parsedCookie = parseCookie(cookie);
-
-    const { uid, nickname } = await getUserGameUid(cookie);
-
-    return { cookie, uid, nickname };
-  } catch (error) {
-    throw error;
-    return null;
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
   }
+
+  const responseData = (await response.json()) as { retcode: number; message: string };
+  if (responseData.retcode !== 0) {
+    throw new Error(responseData.message);
+  }
+
+  const result = response.headers;
+  const cookie = result.get('set-cookie') ?? '';
+  const parsedCookie = parseCookie(cookie);
+
+  const { uid, nickname } = await getUserGameUid(cookie);
+
+  return { cookie, uid, nickname };
 }
 
 export default loginAccount;

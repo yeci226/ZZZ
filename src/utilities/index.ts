@@ -281,13 +281,15 @@ export async function drawInQueueReply(interaction: Interaction, title = '') {
  * @param title - 標題
  * @param description - 描述
  */
-export async function failedReply(interaction: ChatInputCommandInteraction, title = '', description = '') {
-  const embed = new EmbedBuilder().setTitle(title).setColor('#E76161').setDescription(description);
+export async function failedReply(interaction: Interaction, title: string, description?: string, footer?: string) {
+  const embed = new EmbedBuilder().setTitle(title).setColor('#E76161');
+  if (description) embed.setDescription(description);
+  if (footer) embed.setFooter({ text: footer });
 
   return replyOrfollowUp(interaction, {
     embeds: [embed],
     flags: MessageFlags.Ephemeral,
-    fetchReply: true,
+    withResponse: true,
   });
 }
 
@@ -647,13 +649,13 @@ export async function updateCookie(userId: string, accountIndex: number, cookieO
  */
 const replyOrfollowUp = async (interaction: Interaction, options: InteractionReplyOptions) => {
   if (interaction instanceof AutocompleteInteraction) return;
-  if (interaction instanceof ChatInputCommandInteraction && interaction.replied) {
+  if (interaction.replied) {
     return interaction.editReply({
       embeds: options.embeds,
       components: options.components,
     });
   }
-  if (interaction instanceof ChatInputCommandInteraction && interaction.deferred) {
+  if (interaction.deferred) {
     return interaction.followUp(options);
   }
   return interaction.reply(options);

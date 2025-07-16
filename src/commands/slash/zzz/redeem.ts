@@ -410,18 +410,18 @@ const handleRedeem = async (interaction: ChatInputCommandInteraction, locale: La
       if (!userRedeemedCodes.includes(selectedCode)) userRedeemedCodes.push(selectedCode);
       userRedeemedCodes = Array.from(new Set(userRedeemedCodes));
       await database.set(`${userUid}.redeemedCodes`, userRedeemedCodes);
-      return failedReply(interaction, res.message);
+      return failedReply(interaction, tr('redeem_Already'), res.message);
     } else {
       const userAccount = await database.get(`${selectedUser.id}.account`);
       const userCookie = userAccount[selectedAccountIndex];
       if (userCookie.cookie.includes('cookie_token_v2') || userCookie.cookie.includes('account_mid_v2')) {
-        return failedReply(interaction, tr('redeem_CookieTokenInvalid'));
+        return failedReply(interaction, tr('redeem_CookieTokenInvalid'), tr('redeem_CookieTokenInvalidDesc'));
       } else {
-        return failedReply(interaction, tr('redeem_NoCookie'));
+        return failedReply(interaction, tr('redeem_NoCookie'), tr('redeem_NoCookieDesc'));
       }
     }
   } catch (e: any) {
-    return failedReply(interaction, e.message);
+    return failedReply(interaction, tr('redeem_Failed'), e.message);
   }
 };
 
@@ -442,7 +442,7 @@ const handleAutoRedeem = async (interaction: ChatInputCommandInteraction, locale
 
   const userAccount = await database.get(`${interactionUser.id}.account`);
   if (!userAccount[0].cookie.includes('cookie_token_v2') && !userAccount[0].cookie.includes('account_mid_v2')) {
-    return failedReply(interaction, tr('redeem_NoCookie'));
+    return failedReply(interaction, tr('redeem_NoCookie'), tr('redeem_NoCookieDesc'));
   }
 
   if (selectedEnable === 'on') {

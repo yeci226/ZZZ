@@ -2,7 +2,7 @@ import { Events, EmbedBuilder, MessageFlags, ModalSubmitInteraction, ModalSubmit
 import { LanguageEnum, ZenlessZoneZero } from '@yeci226/hoyoapi';
 import { client, database } from '@/index.js';
 
-import { getUserHoyolabData, getUserLang, getRandomColor, setupDefaultLang, discordToHoyolabLang } from '@/utilities';
+import { getUserHoyolabData, getUserLang, getRandomColor, setupDefaultLang, discordToHoyolabLang, failedReply } from '@/utilities';
 import { createTranslator, toI18nLang } from '@/utilities/core/i18n';
 import loginAccount from '@/utilities/zzz/login';
 
@@ -83,14 +83,7 @@ async function handleAccountLogin(interaction: ModalSubmitInteraction, locale: L
       embeds: [new EmbedBuilder().setColor('#F6F1F1').setTitle(tr('account_LoginSuccess'))],
     });
   } catch (error: any) {
-    return interaction.editReply({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(tr('account_LoginFailed'))
-          .setDescription(`${tr('account_LoginFailedDesc')}\n${error.message}`)
-          .setColor('#E76161'),
-      ],
-    });
+    return failedReply(interaction, tr('account_LoginFailed'), tr('account_LoginFailedDesc'), error.message);
   }
 }
 

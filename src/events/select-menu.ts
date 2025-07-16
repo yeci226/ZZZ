@@ -30,9 +30,12 @@ import {
   setupDefaultLang,
   parseCookie,
   discordToHoyolabLang,
+  failedReply,
 } from '@/utilities';
 import { drawMainImage, drawCharacterImage } from '@/renderers/profile';
-import { createTranslator, toI18nLang } from '@/utilities/core/i18n';
+import { createTranslator } from '@/utilities/core/i18n';
+
+import { Account } from '@/types';
 
 import emoji from '@/assets/emoji';
 
@@ -208,58 +211,134 @@ async function handleSelectCharacter(interaction: StringSelectMenuInteraction, u
 async function handleAccountAction(interaction: StringSelectMenuInteraction, userLocale: LanguageEnum, customId: string, value: string) {
   const tr = createTranslator(userLocale);
 
-  const account = await database.get(`${interaction.user.id}.account`);
-  if (!account)
-    return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#E76161').setTitle(`${tr('account_nonAcc')}`)],
-      flags: MessageFlags.Ephemeral,
-    });
+  const userAccounts = await database.get(`${interaction.user.id}.account`);
+  if (!userAccounts) return failedReply(interaction, tr('account_nonAcc'), tr('account_nonAccDesc'));
 
-  if (customId == 'account_EditAccountSelect') {
-    await interaction.update({ fetchReply: true }).catch(() => {});
-    const accountIndex = value;
-    interaction.editReply({
-      components: [
-        new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder()
-            .setPlaceholder(tr('account_SelectAccountEdit'))
-            .setCustomId('account_EditAccountSelectType')
-            .setMinValues(1)
-            .setMaxValues(1)
-            .addOptions({ label: 'UID', value: `uid-${accountIndex}` }, { label: 'Cookie', value: `cookie-${accountIndex}` }),
-        ),
-      ],
-      flags: MessageFlags.Ephemeral as any,
-    });
-    return;
-  } else if (customId == 'account_EditAccountSelectType') {
-    const [type, accountIndex] = value.split('-');
-    const accountData = account[accountIndex];
+  switch (customId) {
+    case 'account_EditAccountSelect':
+      return handleAccountEditSelect(interaction, value);
+    case 'account_EditAccountSelectType':
+      return handleAccountEditTypeSelect(interaction, value);
+    case 'account_DeleteAccountSelect':
+      return handleAccountDelete(interaction, value);
+    case 'account_SetUserCookieSelect':
+      return handleAccountEditCookieSelect(interaction, value);
+  }
 
-    if (type == 'uid') {
-      await interaction.showModal(
-        new ModalBuilder()
-          .setCustomId(`accountEdit-${accountIndex}`)
-          .setTitle(tr('account_SetUserID'))
-          .addComponents(
-            new ActionRowBuilder<TextInputBuilder>().addComponents(
-              new TextInputBuilder()
-                .setCustomId('uid')
-                .setLabel(tr('account_SetUserIDDesc'))
-                .setValue(accountData.uid || '')
-                .setPlaceholder('e.g. 809279679')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(9)
-                .setMaxLength(10),
-            ),
+  async function handleAccountEditSelect(interaction: StringSelectMenuInteraction, value: string) {
+    try {
+      await interaction.update({ withResponse: true }).catch(() => {});
+      return interaction.editReply({
+        components: [
+          new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+            new StringSelectMenuBuilder()
+              .setPlaceholder(tr('account_SelectAccountEdit'))
+              .setCustomId('account_EditAccountSelectType')
+              .setMinValues(1)
+              .setMaxValues(1)
+              .addOptions({ label: 'UID', value: `uid-${value}` }, { label: 'Cookie', value: `cookie-${value}` }),
           ),
-      );
-    } else if (type == 'cookie') {
-      const userAccountCookie = accountData.cookie;
-      const parsedCookie = parseCookie(userAccountCookie);
+        ],
+        flags: MessageFlags.Ephemeral as any,
+      });
+    } catch (error: any) {
+      return failedReply(interaction, tr('account_EditFailed'), tr('account_EditFailedDesc'), error.message);
+    }
+  }
 
-      await interaction.showModal(
+  async function handleAccountEditTypeSelect(interaction: StringSelectMenuInteraction, value: string) {
+    try {
+      const [type, accountIndex] = value.split('-');
+      const account = userAccounts[accountIndex];
+
+      switch (type) {
+        case 'uid':
+          return interaction.showModal(
+            new ModalBuilder()
+              .setCustomId(`accountEdit-${accountIndex}`)
+              .setTitle(tr('account_SetUserID'))
+              .addComponents(
+                new ActionRowBuilder<TextInputBuilder>().addComponents(
+                  new TextInputBuilder()
+                    .setCustomId('uid')
+                    .setLabel(tr('account_SetUserIDDesc'))
+                    .setValue(account.uid || '')
+                    .setPlaceholder('e.g. 809279679')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true)
+                    .setMinLength(9)
+                    .setMaxLength(10),
+                ),
+              ),
+          );
+
+        case 'cookie':
+          const parsedCookie = parseCookie(account.cookie);
+
+          return interaction.showModal(
+            new ModalBuilder()
+              .setCustomId(`cookie_set-${accountIndex}`)
+              .setTitle(tr('account_SetUserCookie'))
+              .addComponents(
+                new ActionRowBuilder<TextInputBuilder>().addComponents(
+                  new TextInputBuilder()
+                    .setCustomId('ltoken')
+                    .setLabel('ltoken_2')
+                    .setPlaceholder('v2_...')
+                    .setValue(parsedCookie.ltoken || '')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true)
+                    .setMinLength(0)
+                    .setMaxLength(1000),
+                ),
+                new ActionRowBuilder<TextInputBuilder>().addComponents(
+                  new TextInputBuilder()
+                    .setCustomId('ltuid')
+                    .setLabel('ltuid_v2')
+                    .setPlaceholder('30...')
+                    .setValue(parsedCookie.ltuid || '')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true)
+                    .setMinLength(0)
+                    .setMaxLength(30),
+                ),
+                new ActionRowBuilder<TextInputBuilder>().addComponents(
+                  new TextInputBuilder()
+                    .setCustomId('cookieToken')
+                    .setLabel('cookie_token_v2')
+                    .setPlaceholder('v2_...')
+                    .setValue(parsedCookie.cookieToken || '')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true)
+                    .setMinLength(0)
+                    .setMaxLength(1000),
+                ),
+                new ActionRowBuilder<TextInputBuilder>().addComponents(
+                  new TextInputBuilder()
+                    .setCustomId('accountMid')
+                    .setLabel('account_mid_v2')
+                    .setPlaceholder('1lyq...')
+                    .setValue(parsedCookie.accountMid || '')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true)
+                    .setMinLength(0)
+                    .setMaxLength(30),
+                ),
+              ),
+          );
+      }
+    } catch (error: any) {
+      return failedReply(interaction, tr('account_EditFailed'), tr('account_EditFailedDesc'), error.message);
+    }
+  }
+
+  async function handleAccountEditCookieSelect(interaction: StringSelectMenuInteraction, value: string) {
+    try {
+      const accountIndex = value;
+      const account = userAccounts[accountIndex];
+      const parsedCookie = parseCookie(account.cookie);
+
+      return interaction.showModal(
         new ModalBuilder()
           .setCustomId(`cookie_set-${accountIndex}`)
           .setTitle(tr('account_SetUserCookie'))
@@ -310,81 +389,32 @@ async function handleAccountAction(interaction: StringSelectMenuInteraction, use
             ),
           ),
       );
+    } catch (error: any) {
+      return failedReply(interaction, tr('account_EditFailed'), tr('account_EditFailedDesc'), error.message);
     }
-  } else if (interaction.customId == 'account_DeleteAccountSelect') {
-    await interaction.update({ fetchReply: true }).catch(() => {});
-    const accountIndex = value;
-    const accounts = (await database.get(`${interaction.user.id}.account`)) ?? '';
-    const uid = accounts[accountIndex].uid;
+  }
 
-    if (accounts.length <= 1) await database.delete(`${interaction.user.id}.account`);
-    else {
+  async function handleAccountDelete(interaction: StringSelectMenuInteraction, value: string) {
+    try {
+      await interaction.update({ withResponse: true }).catch(() => {});
+
+      const accountIndex = value;
+      const accounts = (await database.get(`${interaction.user.id}.account`)) || [];
+
+      const deletedAccount = accounts[accountIndex];
+      if (!deletedAccount) throw new Error(tr('account_DeleteFailedDesc'));
+
       accounts.splice(accountIndex, 1);
       await database.set(`${interaction.user.id}.account`, accounts);
+
+      return interaction.editReply({
+        embeds: [new EmbedBuilder().setColor('#F6F1F1').setTitle(`${tr('account_DeletedSuccess')} \`${deletedAccount.uid}\``)],
+        components: [],
+        flags: MessageFlags.Ephemeral as any,
+      });
+    } catch (error: any) {
+      return failedReply(interaction, tr('account_DeleteFailed'), tr('account_DeleteFailedDesc'), error.message);
     }
-
-    interaction.editReply({
-      embeds: [new EmbedBuilder().setColor('#F6F1F1').setTitle(`${tr('account_DeletedSuccess')} \`${uid}\``)],
-      components: [],
-      flags: MessageFlags.Ephemeral as any,
-    });
-    return;
-  } else if (interaction.customId == 'account_SetUserCookieSelect') {
-    const accountIndex = value;
-    const userAccountCookie = account[accountIndex].cookie;
-    const parsedCookie = parseCookie(userAccountCookie);
-
-    await interaction.showModal(
-      new ModalBuilder()
-        .setCustomId(`cookie_set-${accountIndex}`)
-        .setTitle(tr('account_SetUserCookie'))
-        .addComponents(
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('ltoken')
-              .setLabel('ltoken_2')
-              .setPlaceholder('v2_...')
-              .setValue(parsedCookie.ltoken || '')
-              .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMinLength(0)
-              .setMaxLength(1000),
-          ),
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('ltuid')
-              .setLabel('ltuid_v2')
-              .setPlaceholder('30...')
-              .setValue(parsedCookie.ltuid || '')
-              .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMinLength(0)
-              .setMaxLength(30),
-          ),
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('cookieToken')
-              .setLabel('cookie_token_v2')
-              .setPlaceholder('v2_...')
-              .setValue(parsedCookie.cookieToken || '')
-              .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMinLength(0)
-              .setMaxLength(1000),
-          ),
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('accountMid')
-              .setLabel('account_mid_v2')
-              .setPlaceholder('1lyq...')
-              .setValue(parsedCookie.accountMid || '')
-              .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMinLength(0)
-              .setMaxLength(30),
-          ),
-        ),
-    );
   }
 }
 

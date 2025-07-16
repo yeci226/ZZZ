@@ -38,11 +38,9 @@ export function createTranslator(lang: LanguageEnum) {
 
   return function i18n(string: string, options?: Record<string, string>, ...args: any[]): string {
     let str = langs[lang][string] ?? langs['en-us'][string];
-    if (str == undefined) return str;
-    else {
-      if (options) for (let [key, value] of Object.entries(options)) str = str.replace(`<${key}>`, `${value}`);
-      if (args) for (let [index, value] of Object.entries(args)) str = str.replace(`%${index}%`, `${value}`);
-    }
+    if (!str) return string;
+    if (options) for (let [key, value] of Object.entries(options)) str = str.replace(`<${key}>`, `${value}`);
+    if (args) for (let [index, value] of Object.entries(args)) str = str.replace(`%${index}%`, `${value}`);
     return str;
   };
 }
