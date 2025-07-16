@@ -208,6 +208,7 @@ export async function getSingalLog() {
 }
 
 export async function handleSignalLogDraw() {
+  return 'https://media.discordapp.net/attachments/1149960935654559835/1185194443322687528/cookieT.png';
   // const drawTask = async () => {
   //   try {
   //     // // Request

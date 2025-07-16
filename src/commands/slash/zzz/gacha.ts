@@ -1,7 +1,7 @@
-import { SlashCommandBuilder, TextInputStyle, ActionRowBuilder, ModalBuilder, EmbedBuilder, TextInputBuilder, MessageFlags, ChatInputCommandInteraction, ColorResolvable } from 'discord.js';
-import { LanguageEnum } from '@yeci226/hoyoapi';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 
-import { getRandomColor } from '@/utilities';
+import { discordToHoyolabLang, failedReply, getUserLang, setupDefaultLang } from '@/utilities';
+import { handleHowToGetGachaLogCommand, handleGachaDrawCommand } from '@/utilities/zzz/gacha';
 import { createTranslator } from '@/utilities/core/i18n';
 
 export default {
@@ -57,13 +57,14 @@ export default {
   /**
    * @description 調頻
    * @param interaction - 交互實例
-   * @param locale - 語言
    * @param _args - 參數
    */
-  async execute(interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) {
-    await interaction.deferReply();
+  async execute(interaction: ChatInputCommandInteraction, ..._args: string[]) {
+    const interactionUser = interaction.user;
+    const interactionLocale = interaction.locale;
 
-    const tr = createTranslator(locale);
+    const userLocale = (await getUserLang(interactionUser.id)) || (await setupDefaultLang(interactionUser.id, discordToHoyolabLang(interactionLocale)));
+    const tr = createTranslator(userLocale);
 
     const subcommand = interaction.options.getSubcommand();
     const selectedOption = interaction.options.getString('options');
@@ -72,47 +73,14 @@ export default {
       case 'log':
         switch (selectedOption) {
           case 'how':
-            return interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setColor(getRandomColor())
-                  .setTitle(tr('gacha_HowToGet'))
-                  .setDescription(
-                    tr('gacha_HowToGetDesc', {
-                      z: `\`\`\`powershell\nStart-Process powershell -Verb runAs -ArgumentList '-NoExit -Command "Invoke-Expression  (New-Object Net.WebClient).DownloadString(\\"https://raw.githubusercontent.com/yeci226/ZZZ-ToS-PP/main/getSignal.ps1\\")"'\n\`\`\``,
-                    }),
-                  ),
-              ],
-              flags: MessageFlags.Ephemeral,
-            });
-
+            return handleHowToGetGachaLogCommand(interaction);
           case 'query':
-            return interaction.showModal(
-              new ModalBuilder()
-                .setCustomId('signal_log')
-                .setTitle(tr('gacha_LogTitle'))
-                .addComponents(
-                  new ActionRowBuilder<TextInputBuilder>().addComponents(
-                    new TextInputBuilder()
-                      .setCustomId('signalUrl')
-                      .setLabel(tr('gacha_LogDesc'))
-                      .setPlaceholder('URL')
-                      .setStyle(TextInputStyle.Paragraph)
-                      .setRequired(true)
-                      .setMinLength(50)
-                      .setMaxLength(4000),
-                  ),
-                ),
-            );
+            return handleGachaDrawCommand(interaction);
           default:
-            return interaction.reply({
-              embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('gacha_InvalidSubcommand')).setDescription(tr('gacha_InvalidSubcommandDesc'))],
-            });
+            return failedReply(interaction, tr('gacha_InvalidSubcommand'), tr('gacha_InvalidSubcommandDesc'));
         }
       default:
-        return interaction.reply({
-          embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('gacha_InvalidSubcommand')).setDescription(tr('gacha_InvalidSubcommandDesc'))],
-        });
+        return failedReply(interaction, tr('gacha_InvalidSubcommand'), tr('gacha_InvalidSubcommandDesc'));
     }
   },
 };

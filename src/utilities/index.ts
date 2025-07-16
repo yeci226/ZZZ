@@ -242,7 +242,7 @@ export function getRandomColor(): ColorResolvable {
  * @param stamina - 體力
  * @returns 體力的顏色
  */
-export function getStaminaColor(stamina: number) {
+export function getStaminaColor(stamina: number): ColorResolvable {
   const staminaColor: { [key: string]: string } = {
     0: '#AAC8A7',
     60: '#C3EDC0',
@@ -252,13 +252,13 @@ export function getStaminaColor(stamina: number) {
     220: '#BB2525',
   };
 
-  let selectedColor = null;
+  let selectedColor: ColorResolvable | null = null;
 
   for (const key in staminaColor) {
-    if (stamina >= parseInt(key)) selectedColor = staminaColor[key];
+    if (stamina >= parseInt(key)) selectedColor = staminaColor[key] as ColorResolvable;
   }
 
-  return selectedColor;
+  return selectedColor ?? '#000000';
 }
 
 /**

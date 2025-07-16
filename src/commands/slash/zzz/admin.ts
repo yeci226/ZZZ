@@ -1,8 +1,7 @@
-import { SlashCommandBuilder, EmbedBuilder, ChannelType, PermissionsBitField, MessageFlags, ChatInputCommandInteraction, ColorResolvable, GuildChannelResolvable } from 'discord.js';
-import { LanguageEnum } from '@yeci226/hoyoapi';
-import { database } from '@/index';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 
-import { failedReply } from '@/utilities';
+import { discordToHoyolabLang, failedReply, getUserLang, setupDefaultLang } from '@/utilities';
+import { handleRemoveFeatureNotifyCommand, handleMoveFeatureNotifyCommand } from '@/utilities/zzz/admin';
 import { createTranslator } from '@/utilities/core/i18n';
 
 export default {
@@ -182,155 +181,23 @@ export default {
   /**
    * @description 執行指令
    * @param interaction - 互動實例
-   * @param locale - 語言
    * @param _args - 參數
    */
-  async execute(interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) {
-    const tr = createTranslator(locale);
+  async execute(interaction: ChatInputCommandInteraction, ..._args: string[]) {
+    const interactionUser = interaction.user;
+    const interactionLocale = interaction.locale;
 
-    const interactionMember = interaction.member;
-
-    if (interactionMember?.permissions instanceof PermissionsBitField && !interactionMember?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-      return failedReply(interaction, tr('admin_NoPermission'), tr('admin_NoPermissionDesc'));
-    }
+    const userLocale = (await getUserLang(interactionUser.id)) || (await setupDefaultLang(interactionUser.id, discordToHoyolabLang(interactionLocale)));
+    const tr = createTranslator(userLocale);
 
     const subcommand = interaction.options.getSubcommand();
     switch (subcommand) {
       case 'remove':
-        return handleRemove(interaction, locale);
+        return handleRemoveFeatureNotifyCommand(interaction);
       case 'move':
-        return handleMove(interaction, locale);
+        return handleMoveFeatureNotifyCommand(interaction);
+      default:
+        return failedReply(interaction, tr('admin_InvalidSubcommand'), tr('admin_InvalidSubcommandDesc'));
     }
   },
-};
-
-const handleRemove = async (interaction: ChatInputCommandInteraction, locale: LanguageEnum) => {
-  const tr = createTranslator(locale);
-
-  try {
-    const interactionUser = interaction.user;
-    const selectedUser = interaction.options.getUser('user') ?? interactionUser;
-    const selectedFeature = interaction.options.getString('feature');
-    const channels = interaction.guild?.channels.cache.map((c) => c.id).filter(Boolean) ?? [];
-
-    const featureData = await database.get(selectedFeature ?? '');
-    const userFeatureData = featureData[selectedUser.id];
-
-    if (!selectedUser.id) {
-      return failedReply(interaction, tr('admin_RemoveFail'), tr('admin_RemoveFailDesc'));
-    }
-    if (!Object.keys(featureData).includes(selectedUser.id)) {
-      return failedReply(interaction, tr('admin_RemoveFail'), tr('admin_UserNotSet', { user: `<@${selectedUser.id}>` }));
-    }
-    if (!channels.includes(userFeatureData?.channelId ?? '')) {
-      return failedReply(interaction, tr('admin_RemoveFail'), tr('admin_RemoveFailUserOtherServer', { user: `<@${selectedUser.id}>` }));
-    }
-
-    await database.delete(`${selectedFeature}.${selectedUser.id}`);
-
-    return interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor('#F6F1F1')
-          .setTitle(tr('admin_RemoveSuccess'))
-          .setDescription(tr('admin_RemoveSuccessMessage', { user: `<@${selectedUser.id}>`, channel: `<#${userFeatureData.channelId}>` })),
-      ],
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error: any) {
-    return failedReply(interaction, tr('admin_RemoveFail'), tr('admin_RemoveFailDesc'), error.message);
-  }
-};
-
-const handleMove = async (interaction: ChatInputCommandInteraction, locale: LanguageEnum) => {
-  const tr = createTranslator(locale);
-
-  try {
-    const selectedChannel = interaction.options.getChannel('channel');
-    const selectedFeature = (interaction.options.getString('feature') as 'autoDaily' | 'autoRedeem' | 'all') ?? 'all';
-    const clientMember = interaction.guild?.members.me;
-
-    const channelIdSet = new Set(interaction.guild?.channels.cache.map((c) => c.id).filter(Boolean) ?? []);
-
-    if (!selectedChannel) {
-      return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveNoChannel'));
-    }
-    if (!clientMember) {
-      return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveNoBot'));
-    }
-    if (!clientMember.permissionsIn(selectedChannel as GuildChannelResolvable).has(PermissionsBitField.Flags.SendMessages)) {
-      return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveNoPermission', { channel: `<#${selectedChannel.id}>` }));
-    }
-    if (![ChannelType.GuildText, ChannelType.PrivateThread, ChannelType.PublicThread, ChannelType.GuildVoice].includes(selectedChannel.type)) {
-      return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveNoPermission', { channel: `<#${selectedChannel.id}>` }));
-    }
-
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-    const moveAutoDaily = async (): Promise<number> => {
-      let successCount = 0;
-      const autoDailyData = (await database.get('autoDaily')) ?? {};
-
-      const matchedUsers = Object.entries(autoDailyData)
-        .filter(([, info]) => channelIdSet.has((info as any).channelId))
-        .map(([userId]) => userId);
-
-      for (const userId of matchedUsers) {
-        const userAutoDailyData = autoDailyData[userId];
-        if (userAutoDailyData) {
-          userAutoDailyData.channelId = selectedChannel?.id ?? '';
-          await database.set(`autoDaily.${userId}`, userAutoDailyData);
-        }
-      }
-
-      return successCount;
-    };
-
-    const moveAutoRedeem = async (): Promise<number> => {
-      let successCount = 0;
-      const autoRedeemData = (await database.get('autoRedeem')) ?? {};
-
-      const matchedUsers = Object.entries(autoRedeemData)
-        .filter(([, info]) => channelIdSet.has((info as any).channelId))
-        .map(([userId]) => userId);
-
-      for (const userId of matchedUsers) {
-        const userAutoRedeemData = autoRedeemData[userId];
-        if (userAutoRedeemData) {
-          userAutoRedeemData.channelId = selectedChannel?.id ?? '';
-          await database.set(`autoRedeem.${userId}`, userAutoRedeemData);
-          successCount++;
-        }
-      }
-
-      return successCount;
-    };
-
-    const successCount = await (async () => {
-      switch (selectedFeature) {
-        case 'autoDaily':
-          return await moveAutoDaily();
-        case 'autoRedeem':
-          return await moveAutoRedeem();
-        case 'all':
-          return (await moveAutoDaily()) + (await moveAutoRedeem());
-      }
-    })();
-
-    if (successCount === 0) {
-      return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveNoUser'));
-    }
-
-    return interaction.editReply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor('#F6F1F1')
-          .setTitle(tr('admin_MoveSuccess'))
-          .setDescription(tr('admin_MoveSuccessMessage', { count: successCount.toString(), channel: `<#${selectedChannel?.id}>` })),
-      ],
-      flags: MessageFlags.Ephemeral as any,
-    });
-  } catch (error: any) {
-    return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveFailDesc'), error.message);
-  }
 };

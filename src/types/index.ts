@@ -30,9 +30,8 @@ export type SlashCommand = {
 
   /**
    * @param interaction - 互動實例
-   * @param locale - 語言
    * @param _args - 參數
    * @returns
    */
-  execute: (interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) => Promise<any>;
+  execute: (interaction: ChatInputCommandInteraction, ..._args: string[]) => Promise<any>;
 };

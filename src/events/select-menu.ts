@@ -4,38 +4,21 @@ import {
   ActionRowBuilder,
   StringSelectMenuBuilder,
   EmbedBuilder,
-  ModalBuilder,
   ButtonBuilder,
   ButtonStyle,
-  TextInputBuilder,
-  TextInputStyle,
   AttachmentBuilder,
-  MessageFlags,
   StringSelectMenuInteraction,
   ButtonInteraction,
   ColorResolvable,
 } from 'discord.js';
-import { LanguageEnum } from '@yeci226/hoyoapi';
 import { client, database } from '@/index.js';
 
-import {
-  getUserLang,
-  getNewsList,
-  getPostFull,
-  parsePostContent,
-  getRandomColor,
-  getUserZZZData,
-  drawInQueueReply,
-  getUserHoyolabData,
-  setupDefaultLang,
-  parseCookie,
-  discordToHoyolabLang,
-  failedReply,
-} from '@/utilities';
-import { drawMainImage, drawCharacterImage } from '@/renderers/profile';
+import { getUserLang, getUserZZZData, drawInQueueReply, getUserHoyolabData, setupDefaultLang, discordToHoyolabLang } from '@/utilities';
 import { createTranslator } from '@/utilities/core/i18n';
+import { handleEditAccountSelect, handleEditAccountTypeSelect, handleDeleteAccountSelect, handleEditAccountCookieSelect } from '@/utilities/zzz/account';
+import { handleNewsPostSelect, handleNewsTypeSelect } from '@/utilities/zzz/news';
 
-import { Account } from '@/types';
+import { drawMainImage, drawCharacterImage } from '@/renderers/profile';
 
 import emoji from '@/assets/emoji';
 
@@ -67,9 +50,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const userLocale = (await getUserLang(interactionUser.id)) || (await setupDefaultLang(interactionUser.id, discordToHoyolabLang(interactionLocale)));
 
   if (!interactionCustomId.startsWith('account')) await interaction.update({ fetchReply: true }).catch(() => {});
-  if (interactionCustomId.startsWith('news')) handleNews(interaction, userLocale, interactionValues[0]);
-  if (interactionCustomId.startsWith('account')) handleAccountAction(interaction, userLocale, interactionCustomId, interactionValues[0]);
-  if (interactionCustomId.startsWith('profile_SelectCharacter')) handleSelectCharacter(interaction, userLocale, interactionValues[0]);
+  if (interactionCustomId.startsWith('news')) handleNewsAction(interaction);
+  if (interactionCustomId.startsWith('account')) handleAccountAction(interaction);
+  if (interactionCustomId.startsWith('profile_SelectCharacter')) handleSelectCharacter(interaction);
 });
 
 async function handleMindScapeChange(interaction: ButtonInteraction) {
@@ -85,7 +68,13 @@ async function handleMindScapeChange(interaction: ButtonInteraction) {
   });
 }
 
-async function handleSelectCharacter(interaction: StringSelectMenuInteraction, userLocale: LanguageEnum, value: string) {
+async function handleSelectCharacter(interaction: StringSelectMenuInteraction) {
+  const interactionUser = interaction.user;
+  const interactionLocale = interaction.locale;
+  const interactionCustomId = interaction.customId;
+  const interactionValues = interaction.values;
+
+  const userLocale = (await getUserLang(interactionUser.id)) || (await setupDefaultLang(interactionUser.id, discordToHoyolabLang(interactionLocale)));
   const tr = createTranslator(userLocale);
 
   const drawTask = async () => {
@@ -96,7 +85,7 @@ async function handleSelectCharacter(interaction: StringSelectMenuInteraction, u
       });
 
       const requestStartTime = Date.now();
-      const [userId, accountIndex, characterId] = value.split('-');
+      const [userId, accountIndex, characterId] = interactionValues[0].split('-');
       const zzz = await getUserZZZData(interaction, userLocale, userId, parseInt(accountIndex));
       if (!zzz) return;
 
@@ -208,281 +197,26 @@ async function handleSelectCharacter(interaction: StringSelectMenuInteraction, u
   }
 }
 
-async function handleAccountAction(interaction: StringSelectMenuInteraction, userLocale: LanguageEnum, customId: string, value: string) {
-  const tr = createTranslator(userLocale);
-
-  const userAccounts = await database.get(`${interaction.user.id}.account`);
-  if (!userAccounts) return failedReply(interaction, tr('account_nonAcc'), tr('account_nonAccDesc'));
-
-  switch (customId) {
+async function handleAccountAction(interaction: StringSelectMenuInteraction) {
+  const interactionCustomId = interaction.customId;
+  switch (interactionCustomId) {
     case 'account_EditAccountSelect':
-      return handleAccountEditSelect(interaction, value);
+      return handleEditAccountSelect(interaction);
     case 'account_EditAccountSelectType':
-      return handleAccountEditTypeSelect(interaction, value);
+      return handleEditAccountTypeSelect(interaction);
     case 'account_DeleteAccountSelect':
-      return handleAccountDelete(interaction, value);
+      return handleDeleteAccountSelect(interaction);
     case 'account_SetUserCookieSelect':
-      return handleAccountEditCookieSelect(interaction, value);
-  }
-
-  async function handleAccountEditSelect(interaction: StringSelectMenuInteraction, value: string) {
-    try {
-      await interaction.update({ withResponse: true }).catch(() => {});
-      return interaction.editReply({
-        components: [
-          new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-            new StringSelectMenuBuilder()
-              .setPlaceholder(tr('account_SelectAccountEdit'))
-              .setCustomId('account_EditAccountSelectType')
-              .setMinValues(1)
-              .setMaxValues(1)
-              .addOptions({ label: 'UID', value: `uid-${value}` }, { label: 'Cookie', value: `cookie-${value}` }),
-          ),
-        ],
-        flags: MessageFlags.Ephemeral as any,
-      });
-    } catch (error: any) {
-      return failedReply(interaction, tr('account_EditFailed'), tr('account_EditFailedDesc'), error.message);
-    }
-  }
-
-  async function handleAccountEditTypeSelect(interaction: StringSelectMenuInteraction, value: string) {
-    try {
-      const [type, accountIndex] = value.split('-');
-      const account = userAccounts[accountIndex];
-
-      switch (type) {
-        case 'uid':
-          return interaction.showModal(
-            new ModalBuilder()
-              .setCustomId(`accountEdit-${accountIndex}`)
-              .setTitle(tr('account_SetUserID'))
-              .addComponents(
-                new ActionRowBuilder<TextInputBuilder>().addComponents(
-                  new TextInputBuilder()
-                    .setCustomId('uid')
-                    .setLabel(tr('account_SetUserIDDesc'))
-                    .setValue(account.uid || '')
-                    .setPlaceholder('e.g. 809279679')
-                    .setStyle(TextInputStyle.Short)
-                    .setRequired(true)
-                    .setMinLength(9)
-                    .setMaxLength(10),
-                ),
-              ),
-          );
-
-        case 'cookie':
-          const parsedCookie = parseCookie(account.cookie);
-
-          return interaction.showModal(
-            new ModalBuilder()
-              .setCustomId(`cookie_set-${accountIndex}`)
-              .setTitle(tr('account_SetUserCookie'))
-              .addComponents(
-                new ActionRowBuilder<TextInputBuilder>().addComponents(
-                  new TextInputBuilder()
-                    .setCustomId('ltoken')
-                    .setLabel('ltoken_2')
-                    .setPlaceholder('v2_...')
-                    .setValue(parsedCookie.ltoken || '')
-                    .setStyle(TextInputStyle.Short)
-                    .setRequired(true)
-                    .setMinLength(0)
-                    .setMaxLength(1000),
-                ),
-                new ActionRowBuilder<TextInputBuilder>().addComponents(
-                  new TextInputBuilder()
-                    .setCustomId('ltuid')
-                    .setLabel('ltuid_v2')
-                    .setPlaceholder('30...')
-                    .setValue(parsedCookie.ltuid || '')
-                    .setStyle(TextInputStyle.Short)
-                    .setRequired(true)
-                    .setMinLength(0)
-                    .setMaxLength(30),
-                ),
-                new ActionRowBuilder<TextInputBuilder>().addComponents(
-                  new TextInputBuilder()
-                    .setCustomId('cookieToken')
-                    .setLabel('cookie_token_v2')
-                    .setPlaceholder('v2_...')
-                    .setValue(parsedCookie.cookieToken || '')
-                    .setStyle(TextInputStyle.Short)
-                    .setRequired(true)
-                    .setMinLength(0)
-                    .setMaxLength(1000),
-                ),
-                new ActionRowBuilder<TextInputBuilder>().addComponents(
-                  new TextInputBuilder()
-                    .setCustomId('accountMid')
-                    .setLabel('account_mid_v2')
-                    .setPlaceholder('1lyq...')
-                    .setValue(parsedCookie.accountMid || '')
-                    .setStyle(TextInputStyle.Short)
-                    .setRequired(true)
-                    .setMinLength(0)
-                    .setMaxLength(30),
-                ),
-              ),
-          );
-      }
-    } catch (error: any) {
-      return failedReply(interaction, tr('account_EditFailed'), tr('account_EditFailedDesc'), error.message);
-    }
-  }
-
-  async function handleAccountEditCookieSelect(interaction: StringSelectMenuInteraction, value: string) {
-    try {
-      const accountIndex = value;
-      const account = userAccounts[accountIndex];
-      const parsedCookie = parseCookie(account.cookie);
-
-      return interaction.showModal(
-        new ModalBuilder()
-          .setCustomId(`cookie_set-${accountIndex}`)
-          .setTitle(tr('account_SetUserCookie'))
-          .addComponents(
-            new ActionRowBuilder<TextInputBuilder>().addComponents(
-              new TextInputBuilder()
-                .setCustomId('ltoken')
-                .setLabel('ltoken_2')
-                .setPlaceholder('v2_...')
-                .setValue(parsedCookie.ltoken || '')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(0)
-                .setMaxLength(1000),
-            ),
-            new ActionRowBuilder<TextInputBuilder>().addComponents(
-              new TextInputBuilder()
-                .setCustomId('ltuid')
-                .setLabel('ltuid_v2')
-                .setPlaceholder('30...')
-                .setValue(parsedCookie.ltuid || '')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(0)
-                .setMaxLength(30),
-            ),
-            new ActionRowBuilder<TextInputBuilder>().addComponents(
-              new TextInputBuilder()
-                .setCustomId('cookieToken')
-                .setLabel('cookie_token_v2')
-                .setPlaceholder('v2_...')
-                .setValue(parsedCookie.cookieToken || '')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(0)
-                .setMaxLength(1000),
-            ),
-            new ActionRowBuilder<TextInputBuilder>().addComponents(
-              new TextInputBuilder()
-                .setCustomId('accountMid')
-                .setLabel('account_mid_v2')
-                .setPlaceholder('1lyq...')
-                .setValue(parsedCookie.accountMid || '')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(0)
-                .setMaxLength(30),
-            ),
-          ),
-      );
-    } catch (error: any) {
-      return failedReply(interaction, tr('account_EditFailed'), tr('account_EditFailedDesc'), error.message);
-    }
-  }
-
-  async function handleAccountDelete(interaction: StringSelectMenuInteraction, value: string) {
-    try {
-      await interaction.update({ withResponse: true }).catch(() => {});
-
-      const accountIndex = value;
-      const accounts = (await database.get(`${interaction.user.id}.account`)) || [];
-
-      const deletedAccount = accounts[accountIndex];
-      if (!deletedAccount) throw new Error(tr('account_DeleteFailedDesc'));
-
-      accounts.splice(accountIndex, 1);
-      await database.set(`${interaction.user.id}.account`, accounts);
-
-      return interaction.editReply({
-        embeds: [new EmbedBuilder().setColor('#F6F1F1').setTitle(`${tr('account_DeletedSuccess')} \`${deletedAccount.uid}\``)],
-        components: [],
-        flags: MessageFlags.Ephemeral as any,
-      });
-    } catch (error: any) {
-      return failedReply(interaction, tr('account_DeleteFailed'), tr('account_DeleteFailedDesc'), error.message);
-    }
+      return handleEditAccountCookieSelect(interaction);
   }
 }
 
-async function handleNews(interaction: StringSelectMenuInteraction, userLocale: LanguageEnum, value: string) {
-  const tr = createTranslator(userLocale);
-
-  if (interaction.customId == 'news_type') {
-    const type = value;
-    const newsData = await getNewsList(userLocale, type);
-
-    return interaction.editReply({
-      components: [
-        new ActionRowBuilder()
-          .addComponents(
-            new StringSelectMenuBuilder()
-              .setPlaceholder(tr('news_SelectPost'))
-              .setCustomId('news_post')
-              .setMinValues(1)
-              .setMaxValues(1)
-              .addOptions(
-                // TODO: 修改類型
-                newsData.data.list.map((data: any) => {
-                  const date = new Date(data.post.created_at * 1000);
-                  return {
-                    label: `${data.post.subject.length < 100 ? data.post.subject : data.post.subject.slice(0, 97).concat('...')}`,
-                    description: date.getUTCFullYear() + tr('Year') + (date.getUTCMonth() + 1) + tr('Month') + date.getUTCDate() + tr('Day'),
-                    value: `${data.post.post_id}`,
-                  };
-                }),
-              ),
-          )
-          .toJSON(),
-        new ActionRowBuilder()
-          .addComponents(
-            new StringSelectMenuBuilder()
-              .setPlaceholder(tr('news_SelectType'))
-              .setCustomId('news_type')
-              .setMinValues(1)
-              .setMaxValues(1)
-              .addOptions({ label: tr('news_Notice'), emoji: '🔔', value: '1' }, { label: tr('news_Events'), emoji: '🔥', value: '2' }, { label: tr('news_Info'), emoji: '🗞️', value: '3' }),
-          )
-          .toJSON(),
-      ],
-    });
-  } else if (interaction.customId == 'news_post') {
-    const postId = value;
-    const postData = await getPostFull(userLocale, postId);
-    const { post, user, image_list, cover_list } = postData.post;
-    const content = await parsePostContent(post.content);
-    const date = new Date(post.created_at * 1000);
-
-    return interaction.editReply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(getRandomColor())
-          .setAuthor({
-            iconURL: user.avatar_url ?? '',
-            name: user.nickname ?? '',
-            url: `https://www.hoyolab.com/accountCenter?id=${user.uid}`,
-          })
-          .setTitle(post.subject ?? tr('None'))
-          .setURL(`https://www.hoyolab.com/article/${post.post_id}`)
-          .setDescription(content.length < 4096 ? content : (content.slice(0, 4096 - 3).concat('...') ?? tr('None')))
-          .setFooter({
-            text: date.getUTCFullYear() + tr('Year') + (date.getUTCMonth() + 1) + tr('Month') + date.getUTCDate() + tr('Day'),
-          })
-          .setImage(image_list[0]?.url ?? cover_list[0]?.url),
-      ],
-    });
+async function handleNewsAction(interaction: StringSelectMenuInteraction) {
+  const interactionCustomId = interaction.customId;
+  switch (interactionCustomId) {
+    case 'news_post':
+      return handleNewsPostSelect(interaction);
+    case 'news_type':
+      return handleNewsTypeSelect(interaction);
   }
 }

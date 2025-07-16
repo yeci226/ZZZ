@@ -1,14 +1,8 @@
-import { SlashCommandBuilder, EmbedBuilder, MessageFlags, ChatInputCommandInteraction, ColorResolvable } from 'discord.js';
-import { LanguageEnum } from '@yeci226/hoyoapi';
-import { database } from '@/index';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 
-import { getRandomColor, getUserZZZData } from '@/utilities';
-import { createTranslator } from '@/utilities/core/i18n';
+import { handleDailyCheckInCommand } from '@/utilities/zzz/daily';
 
-const timeChoices = Array.from({ length: 24 }, (_, i) => ({
-  name: i + 1 < 10 ? `0${i + 1}` : `${i + 1}`,
-  value: `${i + 1}`,
-}));
+const timeChoices = Array.from({ length: 24 }, (_, i) => ({ name: i + 1 < 10 ? `0${i + 1}` : `${i + 1}`, value: `${i + 1}` }));
 
 export default {
   data: new SlashCommandBuilder()
@@ -126,107 +120,9 @@ export default {
   /**
    * @description 執行指令
    * @param interaction - 指令互動
-   * @param locale - 語言
    * @param _args - 參數
    */
-  async execute(interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) {
-    const tr = createTranslator(locale);
-
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-    const interactionUser = interaction.user;
-    const selectedUser = interaction.options.getUser('user') ?? interactionUser;
-    const selectedAutoSign = interaction.options.getString('autosign');
-    const selectedTime = interaction.options.getString('time');
-    const selectedTag = interaction.options.getString('tag');
-    const channelId = interaction.channel?.id;
-
-    const hasAccount = await database.has(`${selectedUser.id}.account`);
-    if (!hasAccount) {
-      return interaction.editReply({
-        embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('daily_NonAccount')).setDescription(tr('daily_NonAccountDesc'))],
-      });
-    }
-
-    if (selectedAutoSign === 'off') {
-      await database.delete(`autoDaily.${interactionUser.id}`);
-      return interaction.editReply({
-        embeds: [new EmbedBuilder().setTitle(tr('autoDaily_Off')).setColor('#E76161')],
-      });
-    } else if (selectedTime || selectedTag || selectedAutoSign === 'on') {
-      await database.set(`autoDaily.${interactionUser.id}`, {
-        channelId,
-        time: selectedTime,
-        tag: selectedTag,
-      });
-      return interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor('#A2CDB0')
-            .setTitle(tr('autoDaily_On'))
-            .setDescription(
-              tr('autoDaily_Time', {
-                time: selectedTime ? '`' + selectedTime + ':00`' : '`12:00`',
-              }) +
-                '\n' +
-                tr('autoDaily_Tag', {
-                  z: selectedTag === 'true' ? '`' + tr('True') + '`' : '`' + tr('False') + '`',
-                }),
-            ),
-        ],
-      });
-    }
-
-    const zzz = await getUserZZZData(interaction, locale, selectedUser.id);
-    if (!zzz) {
-      return interaction.editReply({
-        embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('daily_Failed'))],
-      });
-    }
-
-    const info = await zzz.daily.info();
-    const reward = await zzz.daily.reward();
-    const rewards = await zzz.daily.rewards();
-    const todaySign = rewards.awards[info.total_sign_day - 1] || rewards.awards[0];
-    const tmrSign = rewards.awards[info.total_sign_day];
-    const res = await zzz.daily.claim();
-
-    if (res.code === -5003 || res.info.is_sign)
-      return interaction.editReply({
-        embeds: [new EmbedBuilder().setColor('#E76161').setTitle(`${tr('daily_Failed')} ${tr('daily_Signed')}`)],
-      });
-
-    return interaction.editReply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(getRandomColor())
-          .setTitle(tr('daily_SignSuccess'))
-          .setThumbnail(todaySign?.icon)
-          .setDescription(
-            `${tr('daily_Description', { a: `\`${todaySign?.name}x${todaySign?.cnt}\`` })}${info.month_last_day ? '' : `\n\n${tr('daily_DescriptionTmr', { b: `\`${tmrSign?.name}x${tmrSign?.cnt}\`` })}`}`,
-          )
-          .addFields(
-            {
-              name: `${reward.month} ${tr('daily_Month')}`,
-              value: '\u200b',
-              inline: true,
-            },
-            {
-              name: tr('daily_SignedDay', {
-                z: '`' + info.total_sign_day + '`',
-              }),
-              value: '\u200b',
-              inline: true,
-            },
-            {
-              name: tr('daily_MissedDay', {
-                z: '`' + info.sign_cnt_missed + '`',
-              }),
-              value: '\u200b',
-              inline: true,
-            },
-          ),
-      ],
-    });
+  async execute(interaction: ChatInputCommandInteraction, ..._args: string[]) {
+    return handleDailyCheckInCommand(interaction);
   },
 };

@@ -1,9 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
-import { LanguageEnum } from '@yeci226/hoyoapi';
 
-import { getUserLang } from '@/utilities';
-import { createTranslator, toI18nLang } from '@/utilities/core/i18n';
-import { handleInterknotDraw } from '@/renderers/interknot';
+import { handleInterknotDrawCommand } from '@/utilities/zzz/interknot';
 
 export default {
   data: new SlashCommandBuilder()
@@ -19,18 +16,9 @@ export default {
   /**
    * @description 繩網
    * @param interaction - 交互實例
-   * @param locale - 語言
    * @param _args - 參數
    */
-  async execute(interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) {
-    const tr = createTranslator(locale);
-
-    await interaction.reply({
-      content: tr('interknot_Connecting'),
-    });
-
-    const userLocale = (await getUserLang(interaction.user.id)) || toI18nLang(interaction.locale) || 'en';
-
-    handleInterknotDraw();
+  async execute(interaction: ChatInputCommandInteraction, ..._args: string[]) {
+    return handleInterknotDrawCommand(interaction);
   },
 };

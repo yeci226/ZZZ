@@ -47,6 +47,7 @@ const fonts = {
 // }
 
 export async function handleShiyuDraw() {
+  return 'https://media.discordapp.net/attachments/1361321499549499432/1361321500000000000/image.png';
   // const drawTask = async () => {
   //   try {
   //     interaction.editReply({

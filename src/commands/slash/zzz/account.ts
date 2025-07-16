@@ -1,24 +1,16 @@
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+
+import { failedReply, setupDefaultLang, getUserLang, discordToHoyolabLang } from '@/utilities';
 import {
-  SlashCommandBuilder,
-  EmbedBuilder,
-  ModalBuilder,
-  ActionRowBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-  StringSelectMenuBuilder,
-  MessageFlags,
-  ColorResolvable,
-  BitFieldResolvable,
-  ChatInputCommandInteraction,
-} from 'discord.js';
-import { LanguageEnum } from '@yeci226/hoyoapi';
-
-import { database } from '@/index';
-
-import { failedReply, getRandomColor } from '@/utilities';
+  handleViewAccountsCommand,
+  handleLoginAccountCommand,
+  handleSetUIDCommand,
+  handleSetCookieCommand,
+  handleEditAccountsCommand,
+  handleDeleteAccountsCommand,
+  handleAccountHowToSetUpCommand,
+} from '@/utilities/zzz/account';
 import { createTranslator } from '@/utilities/core/i18n';
-
-import emoji from '@/assets/emoji';
 
 export default {
   data: new SlashCommandBuilder()
@@ -114,176 +106,33 @@ export default {
   /**
    * @description 執行指令
    * @param interaction - 互動實例
-   * @param locale - 語言
    * @param _args - 參數
    */
-  async execute(interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) {
-    const tr = createTranslator(locale);
-
+  async execute(interaction: ChatInputCommandInteraction, ..._args: string[]) {
     const interactionUser = interaction.user;
+    const interactionLocale = interaction.locale;
+
+    const userLocale = (await getUserLang(interactionUser.id)) || (await setupDefaultLang(interactionUser.id, discordToHoyolabLang(interactionLocale)));
+    const tr = createTranslator(userLocale);
+
     const selectedOption = interaction.options.get('options')?.value;
-
-    const accounts = (await database.get(`${interactionUser.id}.account`)) || [];
-
     switch (selectedOption) {
       case 'HowToSetUpAccount':
-        return interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle(tr('account_HowToSetUpAccount'))
-              .setDescription(tr('account_HowToSetUpAccountDesc'))
-              .setColor(getRandomColor())
-              .setImage('https://media.discordapp.net/attachments/1149960935654559835/1185194443322687528/cookieT.png'),
-          ],
-          flags: MessageFlags.Ephemeral,
-        });
-
+        return handleAccountHowToSetUpCommand(interaction);
       case 'LoginAccount':
-        return interaction.showModal(
-          new ModalBuilder()
-            .setCustomId('account_LoginAccountModal')
-            .setTitle(tr('account_LoginAccount'))
-            .addComponents(
-              new ActionRowBuilder<TextInputBuilder>().addComponents(
-                new TextInputBuilder()
-                  .setCustomId('account_LoginAccountModalField')
-                  .setLabel(tr('account_LoginAccountDesc'))
-                  .setPlaceholder('example@gmail.com')
-                  .setStyle(TextInputStyle.Short)
-                  .setRequired(true),
-              ),
-              new ActionRowBuilder<TextInputBuilder>().addComponents(
-                new TextInputBuilder()
-                  .setCustomId('account_LoginAccountModalField2')
-                  .setLabel(tr('account_LoginAccountDesc2'))
-                  .setPlaceholder('mypassword')
-                  .setStyle(TextInputStyle.Short)
-                  .setRequired(true),
-              ),
-            ),
-        );
-
+        return handleLoginAccountCommand(interaction);
       case 'SetUID':
-        return interaction.showModal(
-          new ModalBuilder()
-            .setCustomId('account_SetUserIDModal')
-            .setTitle(tr('account_SetUserID'))
-            .addComponents(
-              new ActionRowBuilder<TextInputBuilder>().addComponents(
-                new TextInputBuilder()
-                  .setCustomId('account_SetUserIDModalField')
-                  .setLabel(tr('account_SetUserIDDesc'))
-                  .setPlaceholder('e.g. 1300007596')
-                  .setStyle(TextInputStyle.Short)
-                  .setRequired(true)
-                  .setMinLength(9)
-                  .setMaxLength(10),
-              ),
-            ),
-        );
-
+        return handleSetUIDCommand(interaction);
       case 'SetCookie':
-        if (accounts.length === 0) {
-          return failedReply(interaction, tr('account_NoAccount'), tr('account_NoAccountDesc'));
-        }
-
-        return interaction.reply({
-          components: [
-            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-              new StringSelectMenuBuilder()
-                .setPlaceholder(tr('account_SelectAccountSetCookie'))
-                .setCustomId('account_SetUserCookieSelect')
-                .setMinValues(1)
-                .setMaxValues(1)
-                .addOptions(
-                  accounts.map((account: any, index: number) => ({
-                    emoji: emoji.avatarIcon,
-                    label: `${account.uid} ${account.nickname ? `- ${account.nickname}` : ''}`,
-                    value: `${index}`,
-                  })),
-                ),
-            ),
-          ],
-          flags: MessageFlags.Ephemeral,
-        });
-
+        return handleSetCookieCommand(interaction);
       case 'ViewAccounts':
-        if (accounts.length === 0) {
-          return failedReply(interaction, tr('account_NoAccount'), tr('account_NoAccountDesc'));
-        }
-
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        return interaction.editReply({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(getRandomColor())
-              .setAuthor({
-                name: tr('account_ListOfAccount', { Username: interactionUser.username }),
-                iconURL: interactionUser.displayAvatarURL({ size: 4096 }),
-              })
-              .addFields(
-                accounts.map((account: any) => ({
-                  name: `${emoji.avatarIcon} ${account.uid} ${account.nickname ? `- ${account.nickname}` : ''}`,
-                  value: `${account.cookie ? `🔗 \`${tr('account_Linked')}\`` : `❌ \`${tr('account_NotLinked')}\``}`,
-                  inline: true,
-                })),
-              ),
-          ],
-        });
-
+        return handleViewAccountsCommand(interaction);
       case 'EditAccounts':
-        if (accounts.length === 0) {
-          return failedReply(interaction, tr('account_NoAccount'), tr('account_NoAccountDesc'));
-        }
-
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        return interaction.editReply({
-          components: [
-            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-              new StringSelectMenuBuilder()
-                .setPlaceholder(tr('account_SelectAccountEdit'))
-                .setCustomId('account_EditAccountSelect')
-                .setMinValues(1)
-                .setMaxValues(1)
-                .addOptions(
-                  accounts.map((account: any, index: number) => {
-                    return {
-                      emoji: emoji.avatarIcon,
-                      label: `${account.uid} ${account.nickname ? `- ${account.nickname}` : ''}`,
-                      value: `${index}`,
-                    };
-                  }),
-                ),
-            ),
-          ],
-          flags: MessageFlags.Ephemeral as BitFieldResolvable<'SuppressEmbeds' | 'IsComponentsV2', MessageFlags.SuppressEmbeds | MessageFlags.IsComponentsV2>,
-        });
-
+        return handleEditAccountsCommand(interaction);
       case 'DeleteAccounts':
-        if (accounts.length === 0) {
-          return failedReply(interaction, tr('account_NoAccount'), tr('account_NoAccountDesc'));
-        }
-
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        return interaction.editReply({
-          components: [
-            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-              new StringSelectMenuBuilder()
-                .setPlaceholder(tr('account_SelectAccountDelete'))
-                .setCustomId('account_DeleteAccountSelect')
-                .setMinValues(1)
-                .setMaxValues(1)
-                .addOptions(
-                  accounts.map((account: any, index: number) => ({
-                    emoji: emoji.avatarIcon,
-                    label: `${account.uid} ${account.nickname ? `- ${account.nickname}` : ''}`,
-                    value: `${index}`,
-                  })),
-                ),
-            ),
-          ],
-          flags: MessageFlags.Ephemeral as BitFieldResolvable<'SuppressEmbeds' | 'IsComponentsV2', MessageFlags.SuppressEmbeds | MessageFlags.IsComponentsV2>,
-        });
+        return handleDeleteAccountsCommand(interaction);
+      default:
+        return failedReply(interaction, tr('account_InvalidSubcommand'), tr('account_InvalidSubcommandDesc'));
     }
   },
 };

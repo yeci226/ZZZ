@@ -1,9 +1,6 @@
-import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { LanguageEnum } from '@yeci226/hoyoapi';
+import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 
-import { getUserZZZData } from '@/utilities';
-import { createTranslator } from '@/utilities/core/i18n';
-import { handleDeadlyDraw } from '@/renderers/deadly';
+import { handleDeadlyDrawCommand } from '@/utilities/zzz/deadly';
 
 export default {
   data: new SlashCommandBuilder()
@@ -80,26 +77,9 @@ export default {
   /**
    * @description 危局強襲戰
    * @param interaction - 交互實例
-   * @param locale - 語言
    * @param _args - 參數
    */
-  async execute(interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) {
-    await interaction.deferReply();
-    const tr = createTranslator(locale);
-
-    const interactionUser = interaction.user;
-    const selectedUser = interaction.options.getUser('user') || interactionUser;
-    const selectedAccountIndex = parseInt(interaction.options.getString('account') ?? '0');
-    const selectedSchedule = parseInt(interaction.options.getString('schedule') ?? '1');
-
-    const zzz = await getUserZZZData(interaction, locale, selectedUser.id, selectedAccountIndex);
-    if (zzz == null) {
-      return interaction.editReply({
-        embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('AccountNotFound')).setDescription(tr('AccountNotFoundDesc'))],
-        flags: MessageFlags.Ephemeral as any,
-      });
-    }
-
-    return handleDeadlyDraw();
+  async execute(interaction: ChatInputCommandInteraction, ..._args: string[]) {
+    return handleDeadlyDrawCommand(interaction);
   },
 };
