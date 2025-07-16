@@ -77,8 +77,6 @@ export async function handleMoveFeatureNotifyCommand(interaction: ChatInputComma
       return failedReply(interaction, tr('admin_MoveFail'), tr('admin_MoveNoPermission', { channel: `<#${selectedChannel.id}>` }));
     }
 
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
     const moveAutoDaily = async (): Promise<number> => {
       let successCount = 0;
       const autoDailyData = (await database.get('autoDaily')) ?? {};

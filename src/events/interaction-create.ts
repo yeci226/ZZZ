@@ -1,7 +1,7 @@
 import { ApplicationCommandOptionType, ChannelType, EmbedBuilder, Events, MessageFlags, WebhookClient, Interaction, ChatInputCommandInteraction } from 'discord.js';
 import { client, commands } from '@/index';
 
-import { getUserLang, discordToHoyolabLang, setupDefaultLang } from '@/utilities';
+import { getUserLang, discordToHoyolabLang, setupDefaultLang, failedReply } from '@/utilities';
 import Logger from '@/utilities/core/logger';
 
 const webhook = process.env.CMD_WEBHOOK ? new WebhookClient({ url: process.env.CMD_WEBHOOK }) : null;
@@ -59,12 +59,9 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
           ],
         });
       }
-    } catch (e: any) {
-      new Logger('指令').error(`${command.data.name} - 錯誤訊息：${e.message}`);
-      await interaction.reply({
-        content: '哦喲，好像出了一點小問題，請重試',
-        flags: MessageFlags.Ephemeral,
-      });
+    } catch (error: any) {
+      new Logger('指令').error(`${interactionUser.displayName}(${interactionUser.id}) 執行 ${command.data.name} - 錯誤訊息：${error.message}`);
+      await failedReply(interaction, '哦喲', '好像出了一點小問題，請重試，若問題持續發生，可以截圖下方錯誤訊息並附上錯誤碼 <errorCode> 聯絡開發者，我們會盡快處理', `[${error.code}] ${error.message}`);
     }
   }
   // else if (interaction.isContextMenuCommand()) {

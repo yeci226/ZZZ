@@ -80,7 +80,7 @@ export async function handleGachaLogSubmit(interaction: ModalSubmitInteraction) 
     const requestTime = ((requestEndTime - requestStartTime) / 1000).toFixed(2);
 
     return interaction.editReply({
-      embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('gacha_Success')).setDescription(tr('gacha_SuccessDesc')).setImage(image)],
+      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('gacha_Success')).setDescription(tr('gacha_SuccessDesc')).setImage(image)],
     });
   } catch (error: any) {
     return failedReply(interaction, tr('gacha_Failed'), tr('gacha_FailedDesc'), error.message);
