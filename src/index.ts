@@ -55,7 +55,7 @@ async function getMessageCommands(paths: string[]) {
   const result: any[] = [];
 
   for (let path of paths) {
-    const file = (await import(`file://${path}`))?.default;
+    const file = (await import(path))?.default;
     const splitted = path.split('/');
     const folder = splitted[splitted.length - 2];
 
@@ -78,7 +78,7 @@ async function getSlashCommands(paths: string[]) {
   const result: any[] = [];
 
   for (let path of paths) {
-    const file = (await import(`file://${path}`))?.default;
+    const file = (await import(path))?.default;
 
     if (file.data && file.execute) {
       commands.slash.set(file.data.name, file);
@@ -103,7 +103,7 @@ async function getSlashCommands(paths: string[]) {
  */
 async function bindEvents(paths: string[]) {
   for (let path of paths) {
-    await import(`file://${path}`);
+    await import(path);
   }
 }
 
@@ -112,15 +112,15 @@ async function bindEvents(paths: string[]) {
  */
 export async function load() {
   // 訊息指令
-  const messageCommandPaths = await getAllFiles(`${process.cwd()}/src/commands/message`, ['.js', '.ts']);
+  const messageCommandPaths = await getAllFiles(`${__dirname}/commands/message`, ['.js']);
   const messageCommands = await getMessageCommands(messageCommandPaths);
 
   // 斜線指令
-  const slashCommandPaths = await getAllFiles(`${process.cwd()}/src/commands/slash`, ['.js', '.ts']);
+  const slashCommandPaths = await getAllFiles(`${__dirname}/commands/slash`, ['.js']);
   const slashCommands = await getSlashCommands(slashCommandPaths);
 
   // 事件
-  const eventPaths = await getAllFiles(`${process.cwd()}/src/events`, ['.js', '.ts']);
+  const eventPaths = await getAllFiles(`${__dirname}/events`, ['.js']);
   await bindEvents(eventPaths);
 
   new Logger('系統').success(`已載入 ${eventPaths.length} 事件、${slashCommands.length} 斜線指令、${messageCommands.length} 訊息指令`);

@@ -19,20 +19,20 @@ async function updatePresence() {
 
 client.on(Events.ClientReady, async () => {
   new Logger('系統').success(`${client.user?.tag} 已經上線！`);
-  autoDailySign();
-  autoRedeem();
-  autoDownloadIcons();
+  await autoDailySign();
+  await autoRedeem();
+  await autoDownloadIcons();
 
-  schedule.scheduleJob('0 * * * *', function () {
+  schedule.scheduleJob('0 * * * *', async () => {
     if (cluster.id == 0) {
-      autoDailySign();
-      autoRedeem();
+      await autoDailySign();
+      await autoRedeem();
     }
   });
 
-  schedule.scheduleJob('0 3 * * *', function () {
+  schedule.scheduleJob('0 3 * * *', async () => {
     if (cluster.id == 0) {
-      autoDownloadIcons();
+      await autoDownloadIcons();
     }
   });
 

@@ -8,7 +8,7 @@ import Logger from '@/utilities/core/logger';
 /**
  * @description 分片管理器
  */
-const clusterManager = new ClusterManager(`${__dirname}/index.ts`, {
+const clusterManager = new ClusterManager(`${__dirname}/index.js`, {
   totalShards: 'auto',
   totalClusters: 5,
   mode: 'worker',
