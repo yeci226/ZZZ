@@ -1,9 +1,6 @@
-import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { LanguageEnum } from '@yeci226/hoyoapi';
+import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 
-import { getUserZZZData } from '@/utilities';
-import { handleProfileDraw } from '@/renderers/profile';
-import { createTranslator } from '@/utilities/core/i18n';
+import { handleProfileDrawCommand } from '@/utilities/zzz/profile';
 
 export default {
   data: new SlashCommandBuilder()
@@ -46,23 +43,9 @@ export default {
   /**
    * @description 執行指令
    * @param interaction - 交互實例
-   * @param locale - 語言
    * @param _args - 參數
    */
-  async execute(interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) {
-    await interaction.deferReply();
-    const tr = createTranslator(locale);
-
-    const interactionUser = interaction.user;
-    const selectedUser = interaction.options.getUser('user') || interactionUser;
-    const selectedAccountIndex = parseInt(interaction.options.getString('account') ?? '0');
-
-    const zzz = await getUserZZZData(locale, selectedUser.id, selectedAccountIndex);
-    if (zzz == null)
-      return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('AccountNotFound')).setDescription(tr('AccountNotFoundDesc'))],
-      });
-
-    return handleProfileDraw();
+  async execute(interaction: ChatInputCommandInteraction, ..._args: string[]) {
+    return handleProfileDrawCommand(interaction);
   },
 };
