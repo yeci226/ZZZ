@@ -265,7 +265,7 @@ const handleList = async (interaction: ChatInputCommandInteraction, locale: Lang
     embeds: [
       new EmbedBuilder()
         .setTimestamp()
-        .setColor(getRandomColor() as ColorResolvable)
+        .setColor(getRandomColor())
         .setTitle(tr('redeem_Codelist'))
         .setFooter({ text: tr('redeem_CodeTip') })
         .setDescription(
@@ -346,7 +346,7 @@ const handleRedeemAll = async (interaction: ChatInputCommandInteraction, locale:
 
   if (results.success.length + results.already.length + results.invalid.length + results.failed.length === 0) {
     return interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(getRandomColor() as ColorResolvable).setTitle(tr('redeem_NoCode'))],
+      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('redeem_NoCode'))],
       flags: MessageFlags.Ephemeral as any,
     });
   }
@@ -358,7 +358,7 @@ const handleRedeemAll = async (interaction: ChatInputCommandInteraction, locale:
   return interaction.editReply({
     embeds: [
       new EmbedBuilder()
-        .setColor(getRandomColor() as ColorResolvable)
+        .setColor(getRandomColor())
         .setTitle(tr('redeem_SuccessDesc'))
         .setDescription(
           results.success.map((code: { code: string; message: string }) => `✅ **${code.code}** (${code.message})`).join('\n') +
@@ -403,12 +403,7 @@ const handleRedeem = async (interaction: ChatInputCommandInteraction, locale: La
       await database.set(`${userUid}.redeemedCodes`, userRedeemedCodes);
 
       return interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(getRandomColor() as ColorResolvable)
-            .setTitle(tr('redeem_Success'))
-            .setThumbnail('https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png'),
-        ],
+        embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('redeem_Success')).setThumbnail('https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png')],
         flags: MessageFlags.Ephemeral as any,
       });
     } else if (res.retcode == -2017 || res.retcode == -2018) {
@@ -523,20 +518,20 @@ function createProgressEmbed(codes: { code: string; status: string; message: str
   const processedResults = codes
     .slice(0, currentIndex)
     .map((code: { code: string; status: string; message: string }) => {
-      const statusMap = {
+      const statusMap: Record<string, string> = {
         success: '✅',
         already: 'ℹ️',
         invalid: '⚠️',
         failed: '❌',
         processing: '⏳',
       };
-      const icon = statusMap[code.status as keyof typeof statusMap] || '⏳';
+      const icon = statusMap[code.status] || '⏳';
       return `${icon} ${code.code} (${code.message || tr('redeem_Processing')})`;
     })
     .join('\n');
 
   return new EmbedBuilder()
-    .setColor(getRandomColor() as ColorResolvable)
+    .setColor(getRandomColor())
     .setTitle(`${tr('redeem_Redeeming')} ${codes[currentIndex]?.code}`)
     .setDescription(
       tr('redeem_ProcessingDesc', { noRedeemedCodes: (codes.length - currentIndex).toString(), seconds: ((codes.length - currentIndex) * 3).toString() }) +

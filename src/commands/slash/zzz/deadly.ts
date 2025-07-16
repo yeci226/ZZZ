@@ -3,7 +3,7 @@ import { LanguageEnum } from '@yeci226/hoyoapi';
 
 import { getUserZZZData } from '@/utilities';
 import { createTranslator } from '@/utilities/core/i18n';
-import { handleDeadlyDraw } from '@/utilities/zzz/deadly';
+import { handleDeadlyDraw } from '@/renderers/deadly';
 
 export default {
   data: new SlashCommandBuilder()
@@ -100,6 +100,6 @@ export default {
       });
     }
 
-    return handleDeadlyDraw(interaction, locale, selectedUser, zzz, selectedSchedule);
+    return handleDeadlyDraw();
   },
 };

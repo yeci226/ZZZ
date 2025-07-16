@@ -2,7 +2,7 @@ import { join, extname } from 'path';
 import { readdir } from 'fs/promises';
 import axios from 'axios';
 import { loadImage } from '@napi-rs/canvas';
-import { EmbedBuilder, MessageFlags, ChatInputCommandInteraction, InteractionReplyOptions } from 'discord.js';
+import { EmbedBuilder, MessageFlags, ChatInputCommandInteraction, InteractionReplyOptions, ColorResolvable, Interaction, AutocompleteInteraction } from 'discord.js';
 import { ZenlessZoneZero, LanguageEnum, HoyoAPIError, Hoyolab } from '@yeci226/hoyoapi';
 import { database } from '@/index';
 
@@ -228,7 +228,7 @@ export async function getUserLang(userId: string) {
  * @description 獲取一個隨機顏色
  * @returns 隨機顏色
  */
-export function getRandomColor() {
+export function getRandomColor(): ColorResolvable {
   const letters = '0123456789ABCDEF';
   let color = '#';
   for (let i = 0; i < 6; i++) {
@@ -239,7 +239,7 @@ export function getRandomColor() {
   const isValidHex = /^#[0-9A-F]{6}$/i.test(color);
   if (!isValidHex) return '#000000';
 
-  return color;
+  return color as ColorResolvable;
 }
 
 /**
@@ -271,11 +271,13 @@ export function getStaminaColor(stamina: number) {
  * @param interaction - 交互
  * @param title - 標題
  */
-export async function drawInQueueReply(interaction: ChatInputCommandInteraction, title = '') {
-  interaction.editReply({
-    embeds: [new EmbedBuilder().setTitle(title).setThumbnail('https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif')],
-    // fetchReply: true,
-  });
+export async function drawInQueueReply(interaction: Interaction, title = '') {
+  if (interaction instanceof ChatInputCommandInteraction) {
+    interaction.editReply({
+      embeds: [new EmbedBuilder().setTitle(title).setThumbnail('https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif')],
+      // fetchReply: true,
+    });
+  }
 }
 
 /**
@@ -330,7 +332,7 @@ export async function setupDefaultLang(userId: string, userSystemLang: string) {
  * @param userId - 用戶 ID
  * @param accountIndex - 帳號索引
  */
-export async function getUserHoyolabData(interaction: ChatInputCommandInteraction, locale: LanguageEnum, userId: string, accountIndex = 0) {
+export async function getUserHoyolabData(interaction: Interaction, locale: LanguageEnum, userId: string, accountIndex = 0) {
   const [cookie, uid] = await Promise.all([getUserCookie(userId, accountIndex), getUserUid(userId, accountIndex)]);
 
   try {
@@ -434,7 +436,7 @@ export async function getCharacterData(characterId: string) {
  * @param accountIndex - 帳號索引
  * @returns ZZZ 的數據
  */
-export async function getUserZZZData(interaction: ChatInputCommandInteraction, locale: LanguageEnum, userId: string, accountIndex = 0) {
+export async function getUserZZZData(interaction: Interaction, locale: LanguageEnum, userId: string, accountIndex = 0) {
   const tr = createTranslator(locale);
 
   const [cookie, uid] = await Promise.all([getUserCookie(userId, accountIndex), getUserUid(userId, accountIndex)]);
@@ -484,7 +486,7 @@ export async function getUserZZZData(interaction: ChatInputCommandInteraction, l
  * @param data - 要檢查的帳號數據
  */
 export function checkAccount(
-  interaction: ChatInputCommandInteraction,
+  interaction: Interaction,
   locale: LanguageEnum,
   userId: string,
   data: {
@@ -549,16 +551,14 @@ export async function updateCookie(userId: string, accountIndex: number, cookieO
 
   const response = await fetch(webAPI, {
     method: 'GET',
-    headers: {
-      Cookie: cookie,
-    },
+    headers: { Cookie: cookie },
   });
 
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  const responseData = await response.json();
+  const responseData = (await response.json()) as { code: number; message: string; data: { cookie_info: { cookie_token: string } } };
   if (responseData?.code !== 200)
     return {
       error: true,
@@ -607,14 +607,15 @@ export async function updateCookie(userId: string, accountIndex: number, cookieO
  * @param options - 選項
  * @returns 回復或追隨
  */
-const replyOrfollowUp = async (interaction: ChatInputCommandInteraction, options: InteractionReplyOptions) => {
-  if (interaction.replied) {
+const replyOrfollowUp = async (interaction: Interaction, options: InteractionReplyOptions) => {
+  if (interaction instanceof AutocompleteInteraction) return;
+  if (interaction instanceof ChatInputCommandInteraction && interaction.replied) {
     return interaction.editReply({
       embeds: options.embeds,
       components: options.components,
     });
   }
-  if (interaction.deferred) {
+  if (interaction instanceof ChatInputCommandInteraction && interaction.deferred) {
     return interaction.followUp(options);
   }
   return interaction.reply(options);

@@ -75,7 +75,7 @@ export default {
             return interaction.reply({
               embeds: [
                 new EmbedBuilder()
-                  .setColor(getRandomColor() as ColorResolvable)
+                  .setColor(getRandomColor())
                   .setTitle(tr('gacha_HowToGet'))
                   .setDescription(
                     tr('gacha_HowToGetDesc', {

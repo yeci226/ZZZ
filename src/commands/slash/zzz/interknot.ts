@@ -3,7 +3,7 @@ import { LanguageEnum } from '@yeci226/hoyoapi';
 
 import { getUserLang } from '@/utilities';
 import { createTranslator, toI18nLang } from '@/utilities/core/i18n';
-import { handleInterknotDraw } from '@/utilities/zzz/interknot';
+import { handleInterknotDraw } from '@/renderers/interknot';
 
 export default {
   data: new SlashCommandBuilder()
@@ -31,6 +31,6 @@ export default {
 
     const userLocale = (await getUserLang(interaction.user.id)) || toI18nLang(interaction.locale) || 'en';
 
-    handleInterknotDraw(interaction, locale, userLocale);
+    handleInterknotDraw();
   },
 };

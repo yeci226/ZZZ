@@ -5,9 +5,14 @@ import { Client, GatewayIntentBits, Partials, Collection, ApplicationCommandType
 import { ClusterClient, getInfo } from 'discord-hybrid-sharding';
 import { QuickDB } from 'quick.db';
 
+// Types
+import type { MessageCommand, SlashCommand } from '@/types';
+
 // Utilities
 import Logger from '@/utilities/core/logger';
 import { getAllFiles } from '@/utilities';
+
+console.log(process.env.NODE_ENV === 'dev' ? process.env.TEST_TOKEN : process.env.TOKEN);
 
 /**
  * @description Discord 客戶端
@@ -20,12 +25,8 @@ const client = new Client({
     repliedUser: false,
   },
   shards: getInfo().SHARD_LIST,
+  shardCount: getInfo().TOTAL_SHARDS,
 });
-
-/**
- * @description 資料庫
- */
-const database = new QuickDB();
 
 /**
  * @description 集群客戶端
@@ -33,11 +34,16 @@ const database = new QuickDB();
 const cluster = new ClusterClient(client);
 
 /**
+ * @description 資料庫
+ */
+const database = new QuickDB();
+
+/**
  * @description 指令集合
  */
 const commands = {
-  slash: new Collection(),
-  message: new Collection(),
+  slash: new Collection<string, SlashCommand>(),
+  message: new Collection<string, MessageCommand>(),
 };
 
 /**

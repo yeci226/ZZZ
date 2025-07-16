@@ -12,11 +12,7 @@ class Logger {
    * @param {string} message - 訊息
    */
   info(message: string) {
-    console.log(
-      `${chalk.gray(new Date().toLocaleString())} ${chalk.cyan(
-        `[${this.origin}]`,
-      )} ${message}`,
-    );
+    console.log(`${chalk.gray(new Date().toLocaleString())} ${chalk.cyan(`[${this.origin}]`)} ${message}`);
   }
 
   /**
@@ -24,11 +20,7 @@ class Logger {
    * @param {string} message - 訊息
    */
   command(message: string) {
-    console.log(
-      `${chalk.gray(new Date().toLocaleString())} ${chalk.hex('#F3CCF3')(
-        `[${this.origin}]`,
-      )} ${message}`,
-    );
+    console.log(`${chalk.gray(new Date().toLocaleString())} ${chalk.hex('#F3CCF3')(`[${this.origin}]`)} ${message}`);
   }
 
   /**
@@ -36,11 +28,7 @@ class Logger {
    * @param {string} message - 訊息
    */
   success(message: string) {
-    console.log(
-      `${chalk.gray(new Date().toLocaleString())} ${chalk.green(
-        `[${this.origin}]`,
-      )} ${message}`,
-    );
+    console.log(`${chalk.gray(new Date().toLocaleString())} ${chalk.green(`[${this.origin}]`)} ${message}`);
   }
 
   /**
@@ -48,11 +36,7 @@ class Logger {
    * @param {string} message - 訊息
    */
   warn(message: string) {
-    console.warn(
-      `${chalk.gray(new Date().toLocaleString())} ${chalk.yellow(
-        `[${this.origin}]`,
-      )} ${message}`,
-    );
+    console.warn(`${chalk.gray(new Date().toLocaleString())} ${chalk.yellow(`[${this.origin}]`)} ${message}`);
   }
 
   /**
@@ -60,11 +44,7 @@ class Logger {
    * @param {string} message - 訊息
    */
   error(message: string) {
-    console.error(
-      `${chalk.gray(new Date().toLocaleString())} ${chalk.red(
-        `[${this.origin}]`,
-      )} ${message}`,
-    );
+    console.error(`${chalk.gray(new Date().toLocaleString())} ${chalk.red(`[${this.origin}]`)} ${message}`);
   }
 }
 

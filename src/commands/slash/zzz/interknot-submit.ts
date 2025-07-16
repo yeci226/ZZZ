@@ -1,6 +1,5 @@
 import { ContextMenuCommandBuilder, ApplicationCommandType, ChatInputCommandInteraction } from 'discord.js';
-
-import { Language } from '@/types';
+import { LanguageEnum } from '@yeci226/hoyoapi';
 
 export default {
   data: new ContextMenuCommandBuilder()
@@ -16,5 +15,5 @@ export default {
    * @param locale - 語言
    * @param _args - 參數
    */
-  async execute(interaction: ChatInputCommandInteraction, locale: Language, ..._args: string[]) {},
+  async execute(interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) {},
 };

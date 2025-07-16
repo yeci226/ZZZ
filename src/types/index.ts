@@ -1,7 +1,25 @@
+import { LanguageEnum } from '@yeci226/hoyoapi';
+import { ChatInputCommandInteraction, Message, SlashCommandBuilder } from 'discord.js';
+
 export type Account = {
-  uid: string;
+  uid: number;
   cookie: string;
   nickname: string;
 };
 
-export type Language = 'en' | 'fr' | 'vi' | 'zh-CN' | 'zh-TW' | 'jp' | 'kr';
+export type MessageCommand = {
+  name: string;
+  description: string;
+  usage?: string;
+  aliases?: string[];
+  category?: string;
+  cooldown?: number;
+  args?: boolean;
+  guildOnly?: boolean;
+  execute: (message: Message, ..._args: string[]) => Promise<any>;
+};
+
+export type SlashCommand = {
+  data: SlashCommandBuilder;
+  execute: (interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) => Promise<any>;
+};

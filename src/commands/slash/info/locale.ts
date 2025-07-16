@@ -80,7 +80,7 @@ export default {
     const selectedLanguage = locale;
 
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor(getRandomColor() as ColorResolvable).setTitle(newTr('NewLocale', { locale: selectedLanguage }))],
+      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(newTr('NewLocale', { locale: selectedLanguage }))],
       flags: MessageFlags.Ephemeral,
     });
   },

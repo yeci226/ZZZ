@@ -3,11 +3,7 @@ import { client } from '@/index';
 
 import Logger from '@/utilities/core/logger';
 
-const webhook = process.env.ERRWEBHOOK
-  ? new WebhookClient({
-      url: process.env.ERRWEBHOOK,
-    })
-  : null;
+const webhook = process.env.ERR_WEBHOOK ? new WebhookClient({ url: process.env.ERR_WEBHOOK }) : null;
 
 client.on('error', (error: any) => {
   new Logger('系統').error(`錯誤訊息：${error.message}`);

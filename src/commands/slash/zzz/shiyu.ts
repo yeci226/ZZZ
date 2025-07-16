@@ -3,7 +3,7 @@ import { LanguageEnum } from '@yeci226/hoyoapi';
 
 import { getUserZZZData } from '@/utilities';
 import { createTranslator } from '@/utilities/core/i18n';
-import { handleShiyuDraw } from '@/utilities/zzz/shiyu';
+import { handleShiyuDraw } from '@/renderers/shiyu';
 
 export default {
   data: new SlashCommandBuilder()
@@ -98,6 +98,6 @@ export default {
         embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('AccountNotFound')).setDescription(tr('AccountNotFoundDesc'))],
       });
 
-    return handleShiyuDraw(interaction, tr, selectedUser, zzz, selectedSchedule);
+    return handleShiyuDraw();
   },
 };

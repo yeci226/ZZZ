@@ -2,7 +2,7 @@ import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from '
 import { LanguageEnum } from '@yeci226/hoyoapi';
 
 import { getUserZZZData } from '@/utilities';
-import { handleProfileDraw } from '@/utilities/zzz/profile';
+import { handleProfileDraw } from '@/renderers/profile';
 import { createTranslator } from '@/utilities/core/i18n';
 
 export default {
@@ -63,6 +63,6 @@ export default {
         embeds: [new EmbedBuilder().setColor('#E76161').setTitle(tr('AccountNotFound')).setDescription(tr('AccountNotFoundDesc'))],
       });
 
-    return handleProfileDraw(interaction, tr, selectedUser, zzz, selectedAccountIndex);
+    return handleProfileDraw();
   },
 };

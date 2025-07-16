@@ -137,7 +137,7 @@ export default {
           embeds: [
             new EmbedBuilder()
               .setTitle(tr('account_HowToSetUpAccount'))
-              .setColor(getRandomColor() as ColorResolvable)
+              .setColor(getRandomColor())
               .setDescription(tr('account_HowToSetUpAccountDesc'))
               .setImage('https://media.discordapp.net/attachments/1149960935654559835/1185194443322687528/cookieT.png'),
           ],
@@ -213,7 +213,7 @@ export default {
         return interaction.editReply({
           embeds: [
             new EmbedBuilder()
-              .setColor(getRandomColor() as ColorResolvable)
+              .setColor(getRandomColor())
               .setAuthor({
                 name: tr('account_ListOfAccount', {
                   Username: interactionUser.username,

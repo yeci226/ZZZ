@@ -111,11 +111,13 @@ const handleCheck = async (interaction: ChatInputCommandInteraction, locale: Lan
         },
         {
           name: '◉ ' + tr('note_Card'),
+          // @ts-ignore
           value: res.card_sign == 'CardSignDone' ? tr('note_Card_Done') : tr('note_Card_NotDone'),
           inline: false,
         },
         {
           name: '◉ ' + tr('note_VHS'),
+          // @ts-ignore
           value: res.vhs_sale.sale_state == 'SaleStateDoing' ? tr('note_VHS_Doing') : tr('note_VHS_NotDoing'),
           inline: false,
         },

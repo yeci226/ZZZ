@@ -3,7 +3,7 @@ import moment from 'moment';
 
 import { cluster, client } from '@/index';
 
-const webhook = process.env.JLWEBHOOK ? new WebhookClient({ url: process.env.JLWEBHOOK }) : null;
+const webhook = process.env.JL_WEBHOOK ? new WebhookClient({ url: process.env.JL_WEBHOOK }) : null;
 
 client.on(Events.GuildDelete, async (guild: Guild) => {
   const results = await cluster.broadcastEval((client) => client.guilds.cache.size);

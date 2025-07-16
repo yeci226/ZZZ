@@ -199,7 +199,7 @@ export default {
     return interaction.editReply({
       embeds: [
         new EmbedBuilder()
-          .setColor(getRandomColor() as ColorResolvable)
+          .setColor(getRandomColor())
           .setTitle(tr('daily_SignSuccess'))
           .setThumbnail(todaySign?.icon)
           .setDescription(
