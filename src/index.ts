@@ -9,10 +9,8 @@ import { QuickDB } from 'quick.db';
 import type { MessageCommand, SlashCommand } from '@/types';
 
 // Utilities
-import Logger from '@/utilities/core/logger';
 import { getAllFiles } from '@/utilities';
-
-console.log(process.env.NODE_ENV === 'dev' ? process.env.TEST_TOKEN : process.env.TOKEN);
+import Logger from '@/utilities/core/logger';
 
 /**
  * @description Discord 客戶端

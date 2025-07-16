@@ -177,7 +177,6 @@ async function handleSelectCharacter(interaction: StringSelectMenuInteraction) {
         files: [image],
       });
     } catch (error) {
-      console.log(error);
       interaction.editReply({
         embeds: [
           new EmbedBuilder()
