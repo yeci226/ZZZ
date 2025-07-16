@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "node",
+    "jsx": "react",
     "lib": ["ES2022"],
     "types": ["node"],
     "rootDir": ".",

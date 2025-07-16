@@ -1,37 +1,44 @@
-import { client } from '@/index';
-import { EmbedBuilder, AttachmentBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import Queue from 'queue';
-import { getRandomColor, drawInQueueReply, getUserHoyolabData, getUserLang, failedReply } from '@/utilities';
-import emoji from '@/assets/emoji.js';
-import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
-import fs from 'fs';
-import { join } from 'path';
-const drawQueue = new Queue({ autostart: true });
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { LanguageEnum } from '@yeci226/hoyoapi';
 
-GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'en-us.ttf'), 'EN');
-GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'zh-tw.ttf'), 'TW');
-GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'zh-cn.ttf'), 'CN');
-GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'vi-vn.ttf'), 'VI');
-GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'ja-jp.ttf'), 'JP');
-GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'ko-kr.ttf'), 'KR');
-GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'fr-fr.ttf'), 'FR');
-GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'Nunito-BlackItalic.ttf'), 'Nunito');
+import { Card } from '@/components/test';
 
-const zzzStaticUrl = 'https://act-webstatic.hoyoverse.com/game_record/zzz';
+interface ShiyuDrawQuery {
+  userId: string;
+  accountIndex: number;
+}
+
+export async function handleShiyuDraw(locale: LanguageEnum, query: ShiyuDrawQuery) {
+  return '<!DOCTYPE html>' + renderToStaticMarkup(<Card name={'test'} avatar={'https://cdn.discordapp.com/avatars/1234567890/1234567890.png'} />);
+}
+
+// const drawQueue = new Queue({ autostart: true });
+
+// GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'en-us.ttf'), 'EN');
+// GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'zh-tw.ttf'), 'TW');
+// GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'zh-cn.ttf'), 'CN');
+// GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'vi-vn.ttf'), 'VI');
+// GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'ja-jp.ttf'), 'JP');
+// GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'ko-kr.ttf'), 'KR');
+// GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'fr-fr.ttf'), 'FR');
+// GlobalFonts.registerFromPath(join('.', 'src', '.', 'assets', 'Nunito-BlackItalic.ttf'), 'Nunito');
+
+// const zzzStaticUrl = 'https://act-webstatic.hoyoverse.com/game_record/zzz';
 // const verticalUrl = `${zzzStaticUrl}/role_vertical_painting/role_vertical_painting_`;
 // const rectangleUrl = `${zzzStaticUrl}/role_rectangle_avatar/role_rectangle_avatar_`;
 // const bangbooSquareUrl = `${zzzStaticUrl}/bangboo_square_avatar/bangboo_square_avatar_`;
-const bangbooRectangleUrl = `${zzzStaticUrl}/bangboo_rectangle_avatar/bangboo_rectangle_avatar_`;
+// const bangbooRectangleUrl = `${zzzStaticUrl}/bangboo_rectangle_avatar/bangboo_rectangle_avatar_`;
 
-const fonts = {
-  tw: 'TW',
-  cn: 'CN',
-  vi: 'VI',
-  jp: 'JP',
-  kr: 'KR',
-  fr: 'FR',
-  default: 'EN',
-};
+// const fonts = {
+//   tw: 'TW',
+//   cn: 'CN',
+//   vi: 'VI',
+//   jp: 'JP',
+//   kr: 'KR',
+//   fr: 'FR',
+//   default: 'EN',
+// };
 
 // async function loadImageAsync(url, fallbackUrl) {
 //   try {
@@ -45,93 +52,90 @@ const fonts = {
 //   }
 // }
 
-export async function handleShiyuDraw() {
-  return 'https://media.discordapp.net/attachments/1361321499549499432/1361321500000000000/image.png';
-  // const drawTask = async () => {
-  //   try {
-  //     interaction.editReply({
-  //       embeds: [
-  //         new EmbedBuilder()
-  //           .setTitle(tr("Searching"))
-  //           .setColor(getRandomColor())
-  //           .setImage(
-  //             "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
-  //           ),
-  //       ],
-  //       fetchReply: true,
-  //     });
-  //     // Request
-  //     const requestStartTime = Date.now();
-  //     const userLocale =
-  //       (await getUserLang(interaction.user.id)) ||
-  //       toI18nLang(interaction.locale) ||
-  //       "en";
-  //     const shiyuData = await zzz.record.shiyuDefense(schedule);
-  //     if (!shiyuData.has_data)
-  //       return failedReply(interaction, tr("NonData"), tr("NonDataDesc"));
-  //     const requestEndTime = Date.now();
-  //     // Generate
-  //     const drawStartTime = Date.now();
-  //     const imageBuffer = await drawShiyuImage(tr, userLocale, shiyuData);
-  //     if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
-  //     const drawEndTime = Date.now();
-  //     // bla bla bla Builder
-  //     const image = new AttachmentBuilder(imageBuffer, {
-  //       name: `Shiyu_${zzz.uid}.png`,
-  //     });
-  //     interaction.editReply({
-  //       embeds: [
-  //         new EmbedBuilder().setImage(`attachment://${image.name}`).setFooter({
-  //           text: tr("TimeSpent", {
-  //             requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
-  //               2
-  //             ),
-  //             drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-  //           }),
-  //         }),
-  //       ],
-  //       files: [image],
-  //     });
-  //   } catch (error) {
-  //     if (error?.code == "-501000") {
-  //       interaction.editReply({
-  //         embeds: [
-  //           new EmbedBuilder()
-  //             .setTitle(tr("note_Error"))
-  //             .setConfig("#E76161", "sob")
-  //             .setImage(
-  //               "https://media.discordapp.net/attachments/1149960935654559835/1258313139078955039/image.png"
-  //             )
-  //             .setDescription(
-  //               tr("note_Error_Description") + "\n\n" + `\`${error.message}\``
-  //             ),
-  //         ],
-  //         fetchReply: true,
-  //       });
-  //     } else {
-  //       interaction.editReply({
-  //         embeds: [
-  //           new EmbedBuilder()
-  //             .setColor("#E76161")
-  //             .setTitle(tr("DrawError"))
-  //             .setDescription(`\`${error}\``)
-  //             .setThumbnail(
-  //               "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
-  //             ),
-  //         ],
-  //         fetchReply: true,
-  //       });
-  //     }
-  //   }
-  // };
-  // drawQueue.push(drawTask);
-  // if (drawQueue.length !== 1) {
-  //   drawInQueueReply(
-  //     interaction,
-  //     tr("DrawInQueue", { position: drawQueue.length - 1 })
-  //   );
-  // }
-}
+// const drawTask = async () => {
+//   try {
+//     interaction.editReply({
+//       embeds: [
+//         new EmbedBuilder()
+//           .setTitle(tr("Searching"))
+//           .setColor(getRandomColor())
+//           .setImage(
+//             "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+//           ),
+//       ],
+//       fetchReply: true,
+//     });
+//     // Request
+//     const requestStartTime = Date.now();
+//     const userLocale =
+//       (await getUserLang(interaction.user.id)) ||
+//       toI18nLang(interaction.locale) ||
+//       "en";
+//     const shiyuData = await zzz.record.shiyuDefense(schedule);
+//     if (!shiyuData.has_data)
+//       return failedReply(interaction, tr("NonData"), tr("NonDataDesc"));
+//     const requestEndTime = Date.now();
+//     // Generate
+//     const drawStartTime = Date.now();
+//     const imageBuffer = await drawShiyuImage(tr, userLocale, shiyuData);
+//     if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
+//     const drawEndTime = Date.now();
+//     // bla bla bla Builder
+//     const image = new AttachmentBuilder(imageBuffer, {
+//       name: `Shiyu_${zzz.uid}.png`,
+//     });
+//     interaction.editReply({
+//       embeds: [
+//         new EmbedBuilder().setImage(`attachment://${image.name}`).setFooter({
+//           text: tr("TimeSpent", {
+//             requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
+//               2
+//             ),
+//             drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
+//           }),
+//         }),
+//       ],
+//       files: [image],
+//     });
+//   } catch (error) {
+//     if (error?.code == "-501000") {
+//       interaction.editReply({
+//         embeds: [
+//           new EmbedBuilder()
+//             .setTitle(tr("note_Error"))
+//             .setConfig("#E76161", "sob")
+//             .setImage(
+//               "https://media.discordapp.net/attachments/1149960935654559835/1258313139078955039/image.png"
+//             )
+//             .setDescription(
+//               tr("note_Error_Description") + "\n\n" + `\`${error.message}\``
+//             ),
+//         ],
+//         fetchReply: true,
+//       });
+//     } else {
+//       interaction.editReply({
+//         embeds: [
+//           new EmbedBuilder()
+//             .setColor("#E76161")
+//             .setTitle(tr("DrawError"))
+//             .setDescription(`\`${error}\``)
+//             .setThumbnail(
+//               "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
+//             ),
+//         ],
+//         fetchReply: true,
+//       });
+//     }
+//   }
+// };
+// drawQueue.push(drawTask);
+// if (drawQueue.length !== 1) {
+//   drawInQueueReply(
+//     interaction,
+//     tr("DrawInQueue", { position: drawQueue.length - 1 })
+//   );
+// }
 
 // async function drawShiyuImage(tr, userLocale, shiyuData) {
 //   try {

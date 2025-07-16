@@ -1,9 +1,7 @@
 import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 
-import { discordToHoyolabLang, failedReply, getRandomColor, getUserLang, getUserZZZData, setupDefaultLang } from '@/utilities';
+import { discordToHoyolabLang, failedReply, getRandomColor, getUserLang, setupDefaultLang } from '@/utilities';
 import { createTranslator } from '@/utilities/core/i18n';
-
-import { handleDeadlyDraw } from '@/renderers/deadly';
 
 export async function handleDeadlyDrawCommand(interaction: ChatInputCommandInteraction) {
   const interactionUser = interaction.user;
@@ -17,23 +15,13 @@ export async function handleDeadlyDrawCommand(interaction: ChatInputCommandInter
     await interaction.deferReply();
 
     const selectedUser = interactionOptions.getUser('user') || interactionUser;
-    const selectedAccountIndex = parseInt(interactionOptions.getString('account') ?? '0');
-    const selectedSchedule = parseInt(interactionOptions.getString('schedule') ?? '1');
-    const zzz = await getUserZZZData(userLocale, selectedUser.id, selectedAccountIndex);
+    const selectedAccountIndex = interactionOptions.getString('account') ?? '0';
+    const selectedSchedule = interactionOptions.getString('schedule') ?? '1';
 
-    const requestStartTime = Date.now();
-
-    if (!zzz) {
-      return failedReply(interaction, tr('AccountNotFound'), tr('AccountNotFoundDesc'));
-    }
-
-    const image = await handleDeadlyDraw();
-
-    const requestEndTime = Date.now();
-    const requestTime = ((requestEndTime - requestStartTime) / 1000).toFixed(2);
+    const imageUrl = `http://localhost:3000/deadly?locale=${userLocale}&userId=${selectedUser.id}&accountIndex=${selectedAccountIndex}&schedule=${selectedSchedule}`;
 
     return interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('deadly_Success')).setDescription(tr('deadly_SuccessDesc')).setImage(image)],
+      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('deadly_Success')).setDescription(tr('deadly_SuccessDesc')).setImage(imageUrl)],
     });
   } catch (error: any) {
     return failedReply(interaction, tr('deadly_Failed'), tr('deadly_FailedDesc'), error.message);

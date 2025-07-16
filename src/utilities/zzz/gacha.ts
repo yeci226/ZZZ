@@ -1,9 +1,7 @@
 import { ActionRowBuilder, ChatInputCommandInteraction, EmbedBuilder, MessageFlags, ModalBuilder, ModalSubmitInteraction, TextInputBuilder, TextInputStyle } from 'discord.js';
 
-import { discordToHoyolabLang, failedReply, getRandomColor, getUserLang, getUserZZZData, setupDefaultLang } from '@/utilities';
+import { discordToHoyolabLang, failedReply, getRandomColor, getUserLang, setupDefaultLang } from '@/utilities';
 import { createTranslator } from '@/utilities/core/i18n';
-
-import { getSingalLog, handleSignalLogDraw } from '@/renderers/gacha';
 
 export async function handleHowToGetGachaLogCommand(interaction: ChatInputCommandInteraction) {
   const interactionUser = interaction.user;
@@ -59,28 +57,15 @@ export async function handleGachaLogSubmit(interaction: ModalSubmitInteraction) 
     await interaction.deferReply();
 
     const url = interactionFields.getTextInputValue('signalUrl');
-    const signalResults = (await getSingalLog()) as any;
-
-    const requestStartTime = Date.now();
-
-    // interaction.editReply({
-    //   embeds: [new EmbedBuilder().setTitle(tr('Searching')).setColor(getRandomColor()).setImage('https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif')],
-    // });
 
     if (url === '') {
       return failedReply(interaction, tr('gacha_NoSignal'), tr('gacha_NoSignalDesc'));
     }
-    if (!signalResults) {
-      return failedReply(interaction, tr('gacha_NoSignal'), tr('gacha_NoSignalDesc'));
-    }
 
-    const image = await handleSignalLogDraw();
-
-    const requestEndTime = Date.now();
-    const requestTime = ((requestEndTime - requestStartTime) / 1000).toFixed(2);
+    const imageUrl = `http://localhost:3000/gacha?locale=${userLocale}&signalUrl=${url}`; // TODO:
 
     return interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('gacha_Success')).setDescription(tr('gacha_SuccessDesc')).setImage(image)],
+      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('gacha_Success')).setDescription(tr('gacha_SuccessDesc')).setImage(imageUrl)],
     });
   } catch (error: any) {
     return failedReply(interaction, tr('gacha_Failed'), tr('gacha_FailedDesc'), error.message);

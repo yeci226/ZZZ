@@ -3,8 +3,6 @@ import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { discordToHoyolabLang, failedReply, getRandomColor, getUserLang, setupDefaultLang } from '@/utilities';
 import { createTranslator } from '@/utilities/core/i18n';
 
-import { handleInterknotDraw } from '@/renderers/interknot';
-
 export async function handleInterknotDrawCommand(interaction: ChatInputCommandInteraction) {
   const interactionUser = interaction.user;
   const interactionLocale = interaction.locale;
@@ -15,15 +13,10 @@ export async function handleInterknotDrawCommand(interaction: ChatInputCommandIn
   try {
     await interaction.deferReply();
 
-    const requestStartTime = Date.now();
-
-    const image = await handleInterknotDraw();
-
-    const requestEndTime = Date.now();
-    const requestTime = ((requestEndTime - requestStartTime) / 1000).toFixed(2);
+    const imageUrl = `http://localhost:3000/interknot?locale=${userLocale}&userId=${interactionUser.id}&accountIndex=0`;
 
     return interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('interknot_Success')).setDescription(tr('interknot_SuccessDesc')).setImage(image)],
+      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('interknot_Success')).setDescription(tr('interknot_SuccessDesc')).setImage(imageUrl)],
     });
   } catch (error: any) {
     return failedReply(interaction, tr('interknot_Failed'), tr('interknot_FailedDesc'), error.message);

@@ -4,6 +4,7 @@ dotenv.config();
 import { ClusterManager, HeartbeatManager } from 'discord-hybrid-sharding';
 
 import Logger from '@/utilities/core/logger';
+import '@/server';
 
 /**
  * @description 分片管理器
