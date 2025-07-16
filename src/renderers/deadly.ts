@@ -1,7 +1,6 @@
 import { EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import Queue from 'queue';
 import { getRandomColor, drawInQueueReply, getUserLang, failedReply } from '@/utilities';
-import { toI18nLang } from '@/utilities/core/i18n.js';
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { join } from 'path';
 const drawQueue = new Queue({ autostart: true });

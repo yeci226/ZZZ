@@ -1,7 +1,6 @@
 import { client } from '@/index';
 import { EmbedBuilder, AttachmentBuilder, Events, ButtonStyle, ActionRowBuilder, ButtonBuilder, StringSelectMenuBuilder } from 'discord.js';
 import { drawInQueueReply, getUserLang } from '@/utilities';
-import { toI18nLang, createTranslator } from '@/utilities/core/i18n.js';
 import Queue from 'queue';
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { join } from 'path';

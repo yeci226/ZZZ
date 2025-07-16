@@ -44,12 +44,3 @@ export function createTranslator(lang: LanguageEnum) {
     return str;
   };
 }
-
-export function toI18nLang(str: string) {
-  if (str.startsWith('zh')) return 'zh-tw';
-  if (str.startsWith('vi')) return 'vi-vn';
-  if (str.startsWith('fr')) return 'fr-fr';
-  if (str.startsWith('ja')) return 'ja-jp';
-  if (str.startsWith('ko')) return 'ko-kr';
-  return 'en-us';
-}

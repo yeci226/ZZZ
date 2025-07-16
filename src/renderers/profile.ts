@@ -2,7 +2,6 @@ import { client } from '@/index';
 import { EmbedBuilder, AttachmentBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import Queue from 'queue';
 import { getRandomColor, drawInQueueReply, getUserHoyolabData, getUserLang, getCharacterData } from '@/utilities';
-import { toI18nLang } from '../utilities/core/i18n.js';
 import emoji from '../assets/emoji.js';
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import fs from 'fs';
