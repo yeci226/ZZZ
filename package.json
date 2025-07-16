@@ -4,8 +4,8 @@
   "description": "",
   "main": "src/cluster.ts",
   "scripts": {
-    "start": "tsc && tsc-alias -p tsconfig.json && node dist/src/cluster.js",
-    "dev": "cross-env NODE_ENV=dev ts-node src/cluster.ts",
+    "dev": "npm run build && cross-env NODE_ENV=dev node dist/src/cluster.js",
+    "start": "npm run build && node dist/src/cluster.js",
     "build": "tsc && tsc-alias -p tsconfig.json",
     "lint": "eslint src/**/* --ext .js",
     "fmt": "prettier --write src/**/*.{ts,js,json,yaml,yml}",
