@@ -18,7 +18,19 @@ import {
 import { LanguageEnum } from '@yeci226/hoyoapi';
 import { client, database } from '@/index.js';
 
-import { getUserLang, getNewsList, getPostFull, parsePostContent, getRandomColor, getUserZZZData, drawInQueueReply, getUserHoyolabData, setupDefaultLang, parseCookie } from '@/utilities';
+import {
+  getUserLang,
+  getNewsList,
+  getPostFull,
+  parsePostContent,
+  getRandomColor,
+  getUserZZZData,
+  drawInQueueReply,
+  getUserHoyolabData,
+  setupDefaultLang,
+  parseCookie,
+  discordToHoyolabLang,
+} from '@/utilities';
 import { drawMainImage, drawCharacterImage } from '@/renderers/profile';
 import { createTranslator, toI18nLang } from '@/utilities/core/i18n';
 
@@ -35,25 +47,26 @@ const elementId: Record<number, string> = {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
-  await interaction.update({ fetchReply: true }).catch(() => {});
 
-  const { customId } = interaction;
+  const interactionCustomId = interaction.customId;
 
-  if (customId == 'profile_CharacterMindScape') handleMindScapeChange(interaction);
+  if (interactionCustomId == 'profile_CharacterMindScape') handleMindScapeChange(interaction);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isStringSelectMenu()) return;
 
-  const { locale, customId, values } = interaction;
+  const interactionUser = interaction.user;
+  const interactionLocale = interaction.locale;
+  const interactionCustomId = interaction.customId;
+  const interactionValues = interaction.values;
 
-  if (!(await getUserLang(interaction.user.id))) await setupDefaultLang(interaction.user.id, interaction.locale);
-  const userLocale = (await getUserLang(interaction.user.id)) || toI18nLang(locale) || 'en';
+  const userLocale = (await getUserLang(interactionUser.id)) || (await setupDefaultLang(interactionUser.id, discordToHoyolabLang(interactionLocale)));
 
-  if (!customId.startsWith('account')) await interaction.update({ fetchReply: true }).catch(() => {});
-  if (customId.startsWith('news')) handleNews(interaction, userLocale, values[0]);
-  if (customId.startsWith('account')) handleAccountAction(interaction, userLocale, customId, values[0]);
-  if (customId.startsWith('profile_SelectCharacter')) handleSelectCharacter(interaction, userLocale, values[0]);
+  if (!interactionCustomId.startsWith('account')) await interaction.update({ fetchReply: true }).catch(() => {});
+  if (interactionCustomId.startsWith('news')) handleNews(interaction, userLocale, interactionValues[0]);
+  if (interactionCustomId.startsWith('account')) handleAccountAction(interaction, userLocale, interactionCustomId, interactionValues[0]);
+  if (interactionCustomId.startsWith('profile_SelectCharacter')) handleSelectCharacter(interaction, userLocale, interactionValues[0]);
 });
 
 async function handleMindScapeChange(interaction: ButtonInteraction) {

@@ -2,7 +2,7 @@ import { Events, EmbedBuilder, MessageFlags, ModalSubmitInteraction, ModalSubmit
 import { LanguageEnum, ZenlessZoneZero } from '@yeci226/hoyoapi';
 import { client, database } from '@/index.js';
 
-import { getUserHoyolabData, getUserLang, getRandomColor, setupDefaultLang } from '@/utilities';
+import { getUserHoyolabData, getUserLang, getRandomColor, setupDefaultLang, discordToHoyolabLang } from '@/utilities';
 import { createTranslator, toI18nLang } from '@/utilities/core/i18n';
 import loginAccount from '@/utilities/zzz/login';
 
@@ -13,16 +13,18 @@ import { Account } from '@/types';
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isModalSubmit()) return;
 
-  const { locale, customId, fields } = interaction;
+  const interactionUser = interaction.user;
+  const interactionLocale = interaction.locale;
+  const interactionCustomId = interaction.customId;
+  const interactionFields = interaction.fields;
 
-  if (!(await getUserLang(interaction.user.id))) await setupDefaultLang(interaction.user.id, interaction.locale);
-  const userLocale = (await getUserLang(interaction.user.id)) || toI18nLang(locale) || 'en';
+  const userLocale = (await getUserLang(interactionUser.id)) || (await setupDefaultLang(interactionUser.id, discordToHoyolabLang(interactionLocale)));
 
-  if (customId.startsWith('accountEdit')) handleAccountEdit(interaction, userLocale, customId, fields);
-  if (customId == 'account_LoginAccountModal') handleAccountLogin(interaction, userLocale, fields);
-  if (customId == 'account_SetUserIDModal') handleUidSet(interaction, userLocale, fields);
-  if (customId.startsWith('cookie_set')) handleCookieSet(interaction, userLocale, customId, fields);
-  if (customId == 'signal_log') handleWarplog(interaction, userLocale, fields);
+  if (interactionCustomId.startsWith('accountEdit')) handleAccountEdit(interaction, userLocale, interactionCustomId, interactionFields);
+  if (interactionCustomId == 'account_LoginAccountModal') handleAccountLogin(interaction, userLocale, interactionFields);
+  if (interactionCustomId == 'account_SetUserIDModal') handleUidSet(interaction, userLocale, interactionFields);
+  if (interactionCustomId.startsWith('cookie_set')) handleCookieSet(interaction, userLocale, interactionCustomId, interactionFields);
+  if (interactionCustomId == 'signal_log') handleWarplog(interaction, userLocale, interactionFields);
 });
 
 async function handleAccountLogin(interaction: ModalSubmitInteraction, locale: LanguageEnum, fields: ModalSubmitFields) {

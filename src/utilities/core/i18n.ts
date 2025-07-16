@@ -9,21 +9,21 @@ import fr from '@/assets/languages/fr.js';
 import { LanguageEnum } from '@yeci226/hoyoapi';
 
 const langs: { [key in LanguageEnum]: Record<string, string> } = {
-  'en-us': en,
-  'zh-tw': tw,
-  'zh-cn': cn,
-  'vi-vn': vi,
-  'ja-jp': jp,
-  'ko-kr': kr,
-  'fr-fr': fr,
-  'de-de': {},
-  'es-es': {},
-  'id-id': {},
-  'it-it': {},
-  'pt-pt': {},
-  'ru-ru': {},
-  'th-th': {},
-  'tr-tr': {},
+  [LanguageEnum.ENGLISH]: en,
+  [LanguageEnum.TRADIIONAL_CHINESE]: tw,
+  [LanguageEnum.SIMPLIFIED_CHINESE]: cn,
+  [LanguageEnum.VIETNAMESE]: vi,
+  [LanguageEnum.JAPANESE]: jp,
+  [LanguageEnum.KOREAN]: kr,
+  [LanguageEnum.FRENCH]: fr,
+  [LanguageEnum.GERMAN]: {},
+  [LanguageEnum.SPANISH]: {},
+  [LanguageEnum.INDONESIAN]: {},
+  [LanguageEnum.ITALIAN]: {},
+  [LanguageEnum.PORTUGUESE]: {},
+  [LanguageEnum.RUSSIAN]: {},
+  [LanguageEnum.THAI]: {},
+  [LanguageEnum.TURKISH]: {},
 };
 
 /**

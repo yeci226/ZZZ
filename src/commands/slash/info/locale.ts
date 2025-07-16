@@ -1,10 +1,9 @@
-import { SlashCommandBuilder, EmbedBuilder, MessageFlags, ChatInputCommandInteraction, ColorResolvable } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
 import { LanguageEnum } from '@yeci226/hoyoapi';
-
 import { database } from '@/index';
 
-import { createTranslator, toI18nLang } from '@/utilities/core/i18n';
 import { getRandomColor, getUserLang } from '@/utilities';
+import { createTranslator } from '@/utilities/core/i18n';
 
 export default {
   data: new SlashCommandBuilder()
@@ -35,34 +34,13 @@ export default {
         })
         .setRequired(true)
         .addChoices(
-          {
-            name: 'English',
-            value: 'en',
-          },
-          {
-            name: 'Français',
-            value: 'fr',
-          },
-          {
-            name: '繁體中文',
-            value: 'zh-TW',
-          },
-          {
-            name: '简体中文',
-            value: 'zh-CN',
-          },
-          {
-            name: '日本語',
-            value: 'jp',
-          },
-          {
-            name: '한국어',
-            value: 'kr',
-          },
-          {
-            name: 'Tiếng Việt',
-            value: 'vi',
-          },
+          { name: 'English', value: LanguageEnum.ENGLISH },
+          { name: 'Français', value: LanguageEnum.FRENCH },
+          { name: '繁體中文', value: LanguageEnum.TRADIIONAL_CHINESE },
+          { name: '简体中文', value: LanguageEnum.SIMPLIFIED_CHINESE },
+          { name: '日本語', value: LanguageEnum.JAPANESE },
+          { name: '한국어', value: LanguageEnum.KOREAN },
+          { name: 'Tiếng Việt', value: LanguageEnum.VIETNAMESE },
         ),
     ),
   /**
@@ -71,16 +49,17 @@ export default {
    * @param _args - 參數
    */
   async execute(interaction: ChatInputCommandInteraction, ..._args: string[]) {
-    const locale: LanguageEnum = interaction.options.getString('locale') as LanguageEnum;
+    const interactionUser = interaction.user;
+    const interactionOptions = interaction.options;
 
-    await database.set(`${interaction.user.id}.locale`, locale);
+    const selectedLocale: LanguageEnum = interactionOptions.getString('locale') as LanguageEnum;
+    const userLocale = await getUserLang(interactionUser.id);
+    const newTr = createTranslator(selectedLocale || userLocale);
 
-    const userLocale = await getUserLang(interaction.user.id);
-    const newTr = createTranslator(userLocale || toI18nLang(locale));
-    const selectedLanguage = locale;
+    await database.set(`${interactionUser.id}.locale`, selectedLocale);
 
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(newTr('NewLocale', { locale: selectedLanguage }))],
+      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(newTr('NewLocale', { locale: selectedLocale }))],
       flags: MessageFlags.Ephemeral,
     });
   },

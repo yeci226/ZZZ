@@ -16,10 +16,23 @@ export type MessageCommand = {
   cooldown?: number;
   args?: boolean;
   guildOnly?: boolean;
+
+  /**
+   * @param message - 消息
+   * @param _args - 參數
+   * @returns
+   */
   execute: (message: Message, ..._args: string[]) => Promise<any>;
 };
 
 export type SlashCommand = {
   data: SlashCommandBuilder;
+
+  /**
+   * @param interaction - 互動實例
+   * @param locale - 語言
+   * @param _args - 參數
+   * @returns
+   */
   execute: (interaction: ChatInputCommandInteraction, locale: LanguageEnum, ..._args: string[]) => Promise<any>;
 };

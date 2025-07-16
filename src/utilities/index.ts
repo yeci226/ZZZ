@@ -2,7 +2,7 @@ import { join, extname } from 'path';
 import { readdir } from 'fs/promises';
 import axios from 'axios';
 import { loadImage } from '@napi-rs/canvas';
-import { EmbedBuilder, MessageFlags, ChatInputCommandInteraction, InteractionReplyOptions, ColorResolvable, Interaction, AutocompleteInteraction } from 'discord.js';
+import { EmbedBuilder, MessageFlags, ChatInputCommandInteraction, InteractionReplyOptions, ColorResolvable, Interaction, AutocompleteInteraction, Locale } from 'discord.js';
 import { ZenlessZoneZero, LanguageEnum, HoyoAPIError, Hoyolab } from '@yeci226/hoyoapi';
 import { database } from '@/index';
 
@@ -193,10 +193,8 @@ export function secondsToHms(d: number, locale: LanguageEnum) {
  * @returns 用戶的 UID
  */
 export async function getUserUid(userId: string, accountIndex: number) {
-  const accountKey = `${userId}.account`;
-
-  const account = await database.get(accountKey);
-  return account?.[accountIndex]?.uid || null;
+  const account = await database.get(`${userId}.account`);
+  return account?.[accountIndex]?.uid ?? null;
 }
 
 /**
@@ -206,22 +204,18 @@ export async function getUserUid(userId: string, accountIndex: number) {
  * @returns 用戶的 Cookie
  */
 export async function getUserCookie(userId: string, accountIndex: number) {
-  const accountKey = `${userId}.account`;
-
-  const account = await database.get(accountKey);
-  return account?.[accountIndex]?.cookie || null;
+  const account = await database.get(`${userId}.account`);
+  return account?.[accountIndex]?.cookie ?? null;
 }
 
 /**
  * @description 獲取用戶的語言
  * @param userId - 用戶 ID
- * @returns 用戶的語言
+ * @returns 用戶的語言 (Hoyolab)
  */
 export async function getUserLang(userId: string) {
-  const langKey = `${userId}.locale`;
-
-  const lang = await database.get(langKey);
-  return lang || null;
+  const locale = await database.get(`${userId}.locale`);
+  return locale ?? null;
 }
 
 /**
@@ -230,6 +224,7 @@ export async function getUserLang(userId: string) {
  */
 export function getRandomColor(): ColorResolvable {
   const letters = '0123456789ABCDEF';
+
   let color = '#';
   for (let i = 0; i < 6; i++) {
     const index = Math.floor(Math.random() * letters.length) % letters.length;
@@ -315,14 +310,57 @@ export async function failedReply(interaction: ChatInputCommandInteraction, titl
 // }
 
 /**
+ * @description 獲取用戶的語言
+ * @param userId - 用戶 ID
+ * @param userDiscordLocale - 用戶 Discord 語言
+ */
+export function discordToHoyolabLang(discordLocale: Locale) {
+  const convertSheet: Record<Locale, LanguageEnum> = {
+    [Locale.ChineseTW]: LanguageEnum.TRADIIONAL_CHINESE,
+    [Locale.ChineseCN]: LanguageEnum.SIMPLIFIED_CHINESE,
+    [Locale.Vietnamese]: LanguageEnum.VIETNAMESE,
+    [Locale.Japanese]: LanguageEnum.JAPANESE,
+    [Locale.Korean]: LanguageEnum.KOREAN,
+    [Locale.French]: LanguageEnum.FRENCH,
+    [Locale.EnglishUS]: LanguageEnum.ENGLISH,
+    [Locale.EnglishGB]: LanguageEnum.ENGLISH,
+    [Locale.Bulgarian]: LanguageEnum.ENGLISH,
+    [Locale.Czech]: LanguageEnum.ENGLISH,
+    [Locale.Danish]: LanguageEnum.ENGLISH,
+    [Locale.Dutch]: LanguageEnum.ENGLISH,
+    [Locale.Finnish]: LanguageEnum.ENGLISH,
+    [Locale.Croatian]: LanguageEnum.ENGLISH,
+    [Locale.German]: LanguageEnum.GERMAN,
+    [Locale.Greek]: LanguageEnum.ENGLISH,
+    [Locale.Hindi]: LanguageEnum.ENGLISH,
+    [Locale.Hungarian]: LanguageEnum.ENGLISH,
+    [Locale.Italian]: LanguageEnum.ITALIAN,
+    [Locale.Lithuanian]: LanguageEnum.ENGLISH,
+    [Locale.Norwegian]: LanguageEnum.ENGLISH,
+    [Locale.Polish]: LanguageEnum.ENGLISH,
+    [Locale.PortugueseBR]: LanguageEnum.PORTUGUESE,
+    [Locale.Romanian]: LanguageEnum.ENGLISH,
+    [Locale.Russian]: LanguageEnum.RUSSIAN,
+    [Locale.SpanishES]: LanguageEnum.SPANISH,
+    [Locale.SpanishLATAM]: LanguageEnum.SPANISH,
+    [Locale.Swedish]: LanguageEnum.ENGLISH,
+    [Locale.Thai]: LanguageEnum.THAI,
+    [Locale.Turkish]: LanguageEnum.TURKISH,
+    [Locale.Ukrainian]: LanguageEnum.ENGLISH,
+    [Locale.Indonesian]: LanguageEnum.INDONESIAN,
+  };
+
+  return convertSheet[discordLocale];
+}
+
+/**
  * @description 設置用戶的默認語言
  * @param userId - 用戶 ID
- * @param userSystemLang - 用戶系統語言
+ * @param locale - 用戶語言 (Hoyolab)
  */
-export async function setupDefaultLang(userId: string, userSystemLang: string) {
-  const langCode = userSystemLang;
-
-  await database.set(`${userId}.locale`, langCode);
+export async function setupDefaultLang(userId: string, locale: LanguageEnum) {
+  await database.set(`${userId}.locale`, locale);
+  return locale;
 }
 
 /**
