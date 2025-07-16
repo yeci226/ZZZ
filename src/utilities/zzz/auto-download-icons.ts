@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import fetch from 'node-fetch';
 
+import Logger from '@/utilities/core/logger';
+
 const equipmentURL = 'https://api.hakush.in/zzz/data/equipment.json';
 const iconDir = path.resolve('src/assets/images/icons/diskdrives');
 
@@ -22,7 +24,7 @@ const downloadImage = async (url: string, filepath: string) => {
 };
 
 export default async function autoDownloadIcons() {
-  console.log('[autoDownloadIcons] 開始偵測缺漏圖片...');
+  new Logger('自動下載').info('開始偵測缺漏圖片...');
 
   const response = await fetch(equipmentURL);
   const data = (await response.json()) as Record<string, any>;
@@ -38,20 +40,21 @@ export default async function autoDownloadIcons() {
       const filePath = path.join(iconDir, fileName);
       if (!fs.existsSync(filePath)) {
         const url = `https://api.hakush.in/zzz/UI/Item${baseName}_${suffix}.webp`;
-        console.log(`[autoDownloadIcons] 下載中：${url} -> ${fileName}`);
+        new Logger('自動下載').info(`下載中：${url} -> ${fileName}`);
+
         try {
           const success = await downloadImage(url, filePath);
           if (success) {
-            console.log(`[✓] 成功下載 ${fileName}`);
+            new Logger('自動下載').info(`成功下載 ${fileName}`);
           } else {
-            console.warn(`[!] 無法下載 ${url}`);
+            new Logger('自動下載').warn(`無法下載 ${url}`);
           }
         } catch (err: any) {
-          console.error(`[錯誤] ${fileName}：`, err.message);
+          new Logger('自動下載').error(`自動下載 ${fileName} 失敗: ${err.message}`);
         }
       }
     }
   }
 
-  console.log('[autoDownloadIcons] 檢查完成。');
+  new Logger('自動下載').info('檢查完成。');
 }
