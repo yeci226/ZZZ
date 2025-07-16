@@ -32,7 +32,7 @@
     "node-fetch": "^3.3.2",
     "node-rsa": "^1.1.1",
     "node-schedule": "^2.1.1",
-    "queue": "6",
+    "queue": "^7.0.0",
     "quick.db": "^9.1.7",
     "quickmongo": "^5.2.0",
     "ts-node": "^10.9.2",
