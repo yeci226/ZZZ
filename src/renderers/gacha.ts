@@ -1,29 +1,26 @@
-import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import puppeteer from 'puppeteer';
 import { LanguageEnum } from '@yeci226/hoyoapi';
 
-import { Card } from '@/components/test';
+const browserPromise = puppeteer.launch({ args: ['--no-sandbox'] });
 
 interface SignalLogDrawQuery {
   signalUrl: string;
 }
 
 export async function handleSignalLogDraw(locale: LanguageEnum, query: SignalLogDrawQuery) {
-  return '<!DOCTYPE html>' + renderToStaticMarkup(<Card name={'test'} avatar={'https://cdn.discordapp.com/avatars/1234567890/1234567890.png'} />);
+  const { signalUrl } = query;
+
+  const browser = await browserPromise;
+  const page = await browser.newPage();
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  await page.goto(`http://localhost:3000/gacha?locale=${locale}&signalUrl=${signalUrl}`, { waitUntil: 'networkidle0' });
+  const buffer = await page.screenshot({ type: 'png' });
+  await page.close();
+
+  return buffer;
 }
 
 // const drawQueue = new Queue({ autostart: true });
-
-// const fontPaths = {
-//   EN: 'en-us.ttf',
-//   TW: 'zh-tw.ttf',
-//   CN: 'zh-cn.ttf',
-//   VI: 'vi-vn.ttf',
-//   JP: 'ja-jp.ttf',
-//   KR: 'ko-kr.ttf',
-//   FR: 'fr-fr.ttf',
-//   Nunito: 'Nunito-BlackItalic.ttf',
-// };
 
 // for (const [key, value] of Object.entries(fontPaths)) GlobalFonts.registerFromPath(join('.', 'src', 'assets', value), key);
 
@@ -45,19 +42,6 @@ export async function handleSignalLogDraw(locale: LanguageEnum, query: SignalLog
 //   }
 // }
 
-// const standardCharacterIds = ['1021', '1041', '1101', '1141', '1181', '1211'];
-// const standardWeaponIds = ['14104', '14102', '14110', '14114', '14121', '14118'];
-
-// const fonts = {
-//   tw: 'TW',
-//   cn: 'CN',
-//   vi: 'VI',
-//   jp: 'JP',
-//   kr: 'KR',
-//   fr: 'FR',
-//   default: 'EN',
-// };
-
 // const countColor = [
 //   { threshold: 50, color: '#9DF1DF' },
 //   { threshold: 70, color: '#FFBB5C' },
@@ -76,143 +60,10 @@ export async function handleSignalLogDraw(locale: LanguageEnum, query: SignalLog
 //   }
 // }
 
-// async function fetchSignalData(query, id, endId) {
-//   query.set("real_gacha_type", id);
-//   query.set("end_id", endId);
+// To get gachaUrl use this in PowerShell
+// Start-Process powershell -Verb runAs -ArgumentList '-NoExit -Command "Invoke-Expression  (New-Object Net.WebClient).DownloadString(\"https://raw.githubusercontent.com/yeci226/ZZZ-ToS-PP/main/getSignal.ps1\")"'
 
-//   const response = await axios.get(
-//     "https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?" +
-//       query
-//   );
-//   return response.data;
-// }
-
-// export async function getSingalLog() {
-//   const baseQueryParams = new URLSearchParams({
-//     authkey_ver: 1,
-//     sign_type: 2,
-//     game_biz: "nap_global",
-//     lang: ["tw", "cn"].includes(userLocale) ? `zh-${userLocale}` : userLocale,
-//     authkey: "",
-//     region: "",
-//     real_gacha_type: 0,
-//     size: 20,
-//     end_id: 0,
-//   });
-//   const type = {
-//     regular: tr("RegularPool"),
-//     character: tr("CharacterPool"),
-//     weapon: tr("WeaponPool"),
-//     bangboo: tr("BangbooPool"),
-//   };
-//   const inputParams = new URLSearchParams(input);
-//   const authkey = inputParams.get("authkey");
-//   const lastId = inputParams.get("end_id");
-//   const gachaTypes = { regular: 1, character: 2, weapon: 3, bangboo: 5 };
-//   if (!authkey) return;
-//   const query = new URLSearchParams(baseQueryParams);
-//   query.set("authkey", authkey);
-//   const allSignalData = [];
-//   for (const [gachaType, id] of Object.entries(gachaTypes)) {
-//     await interaction.editReply({
-//       embeds: [
-//         new EmbedBuilder()
-//           .setTitle(tr("gacha_Loading", { type: type[gachaType] }))
-//           .setColor(getRandomColor())
-//           .setImage(
-//             "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
-//           ),
-//       ],
-//       fetchReply: true,
-//     });
-//     let endId = 0;
-//     const temp = [];
-//     while (true) {
-//       const signalData = await fetchSignalData(query, id, endId);
-//       if (!signalData?.data || !signalData.data.list.length) break;
-//       const list = signalData.data.list;
-//       const signalReachedLastId = list.some((signal) => signal.id == lastId);
-//       temp.push(
-//         ...list.map((signal) => ({
-//           id: signal.item_id,
-//           name: signal.name.toLowerCase().replace(/\s+/g, "_"),
-//           type: signal.item_type.toLowerCase().replace(/\s+/g, "_"),
-//           time: signal.time,
-//           rank:
-//             signal.rank_type == "4" ? "S" : signal.rank_type == "3" ? "A" : "B",
-//         }))
-//       );
-//       if (signalReachedLastId) break;
-//       endId = list[list.length - 1].id;
-//       await new Promise((resolve) => setTimeout(resolve, 250));
-//     }
-//     allSignalData.push({
-//       type: gachaType,
-//       size: temp.length,
-//       data: temp,
-//     });
-//   }
-//   const allSignalSRanklist = {
-//     character: { total: 0, average: 0, pity: 0, data: [] },
-//     weapon: { total: 0, average: 0, pity: 0, data: [] },
-//     regular: { total: 0, average: 0, pity: 0, data: [] },
-//     bangboo: { total: 0, average: 0, pity: 0, data: [] },
-//   };
-//   for (const { type, data } of allSignalData) {
-//     let total = data.length;
-//     let count = 0;
-//     let dataList = [];
-//     for (let i = total - 1; i >= 0; i--) {
-//       count++;
-//       const item = data[i];
-//       if (item.rank === "S") {
-//         dataList.push({ ...item, count });
-//         count = 0;
-//       }
-//     }
-//     allSignalSRanklist[type].data = dataList.reverse();
-//     allSignalSRanklist[type].pity = count;
-//     allSignalSRanklist[type].average =
-//       dataList.length > 1
-//         ? parseFloat(
-//             (
-//               dataList.reduce((acc, i) => acc + i.count, 0) / dataList.length
-//             ).toFixed(2)
-//           )
-//         : 0;
-//     allSignalSRanklist[type].total = total;
-//     allSignalSRanklist[type].data.unshift({}); // Add blank data for showing pities
-//     if (type === "character" || type === "weapon") {
-//       let limitedPullSegments = [];
-//       let counterSinceLastS = 0;
-//       const standardIds =
-//         type === "character" ? standardCharacterIds : standardWeaponIds;
-//       for (let i = data.length - 1; i >= 0; i--) {
-//         counterSinceLastS++;
-//         const item = data[i];
-//         if (item.rank === "S") {
-//           const isLimited = !standardIds.includes(item.id.toString());
-//           if (isLimited) {
-//             limitedPullSegments.push(counterSinceLastS);
-//             counterSinceLastS = 0;
-//           }
-//         }
-//       }
-//       if (limitedPullSegments.length > 0) {
-//         const totalPulls = limitedPullSegments.reduce((sum, c) => sum + c, 0);
-//         const avg = totalPulls / limitedPullSegments.length;
-//         allSignalSRanklist[type].limitedCharacterPullsAverage = parseFloat(
-//           avg.toFixed(2)
-//         );
-//       } else {
-//         allSignalSRanklist[type].limitedCharacterPullsAverage = 0;
-//       }
-//     } else {
-//       allSignalSRanklist[type].limitedCharacterPullsAverage = 0;
-//     }
-//   }
-//   return allSignalSRanklist;
-// }
+// https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?authkey_ver=1&sign_type=2&auth_appid=webview_gacha&win_mode=fullscreen&gacha_id=3ba5ba7ff93f0a9925c25fc93c54230dc9562f1e&timestamp=1752621844&font_thickness_mode=1&init_log_gacha_type=2001&init_log_gacha_base_type=2&ui_layout=&button_mode=default&plat_type=pc&is_gacha=1&no_joypad_close=1&authkey=H4YNsN2aPSLQln57eKXgP6hNw8%2FRpnzQRclzZmbCA8sur%2BAtnzsoluqDr9Tl16wlHpvT69GeL5KFwsPYVRm8HAE1%2Fwh3R9FcgpTAJqRypxokZ198SDQKDU3z%2B5JoZ%2FuT99LTTP1XeaG1wy3FT4XpDh9uCfqGYjecMejRCM7k2CeozWQjxe7rqOYUkJz84X3%2Fc5H42gtcDde7jFtc99MkmBSunB8taW9%2BwXkFQ9Ksq1KNoesGdVrj0e9Xw3SlgMeFInurYXAb6QeehV%2BZZdqE5vHp2Au9P8kMuLNJteSOOMiLV4jegxnazjaVJq2RmuLI%2BngSvwOyErG795OGGyPAqUYR4x18UZT2xL6MY13ynDAGllFluJVlW1w8R6VLFzqyGdTmwnma23O7qmEFNpK4cikwNB45Qacxp%2Blq68%2Bdc6ozeVoMtmCtAs3%2FEBH%2BWNSqiwRSyy3IpVvKVVYpmKIdtNir5zsCs6sheYnbSX4d5%2F2tmZqM1mzmOCPfvifCWe3%2BlN4gMTCh9Rww98A4c88AR3X670leSWcq7YRmKxP9r1ITa8%2B77xvBX0%2BVCgVu%2BHSE2cjoL92R105ei7yQNE7DIlDOnijy%2BErW4Vtf4c3uWXeUM%2BOhyn39CCVjuKlrwyE9jlnTqIg3MJfzNMqnuS8zqlGfOqjSJaDHIRdMI0VRuLoOHeIBc1TUs6v92JJjWFWUVUkp9uMbofkZOjILPM03IBRuv9dmZXc7ZptHrpsFA5O4%2BgJw5v2HaLA%2B2kuE8noD&lang=zh-tw&region=prod_gf_jp&game_biz=nap_global&page=1&size=5&gacha_type=2001&real_gacha_type=2&end_id=
 
 // const drawTask = async () => {
 //   try {
@@ -548,8 +399,3 @@ export async function handleSignalLogDraw(locale: LanguageEnum, query: SignalLog
 //   ctx.fillText(text, x, y);
 //   return textWidth;
 // }
-
-// To get gachaUrl use this in PowerShell
-// Start-Process powershell -Verb runAs -ArgumentList '-NoExit -Command "Invoke-Expression  (New-Object Net.WebClient).DownloadString(\"https://raw.githubusercontent.com/yeci226/ZZZ-ToS-PP/main/getSignal.ps1\")"'
-
-// https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?authkey_ver=1&sign_type=2&auth_appid=webview_gacha&win_mode=fullscreen&gacha_id=ab661a7ad928f17ee22a87f9b1f959b49ef58175&timestamp=1749165432&font_thickness_mode=1&init_log_gacha_type=2001&init_log_gacha_base_type=2&ui_layout=&button_mode=default&plat_type=pc&is_gacha=1&no_joypad_close=1&authkey=GIpnAjPqL54LSBIuuUuVh0fz6inZ3Liui65n6l4ev%2B6i8JihDuk6ujW8k8JQy0GVi8sFLraW3JgP%2BBcI6ttSPAE1%2Fwh3R9FcgpTAJqRypxokZ198SDQKDU3z%2B5JoZ%2FuT99LTTP1XeaG1wy3FT4XpDh9uCfqGYjecMejRCM7k2Ce51JzMoqyso1dANa0sO8ehsaaWDVgVeaDClSi2%2FlJe1jMqcnMTJyaTxCHOMkMsYrMBBHQUoWfCUQYRSlTX2sLCC%2BHTUFJscqq8EW9JSsUi9I1SR22jwKU7RPjwQdI0SUuyYDDjbVnyPYtcMDdcJUAxNhdU2rPDcJ6BcBsNiw9lT5WvcibxBAdIizNeVCAXWnxxNNoUQfcRf3flUCVpeVz0TJztQXnAOx62tfbeRE3tTOEYgKy05hfq%2Ba0g806AjUawFRMILPRS167mANCEVHU9mdgalBwCUHmq%2F7QydriiYlNWFfSP7Cp8O8tJojzEo3f%2BDoIJA6G%2BCZM3MmGnk%2BK4X6AAUWza5tC6fp2%2BLAAiuaw1rYbKlVZKEKTxOdvARVnKaxip9iUxcyOg7f5MhzLJD7JVDnkptykorsY5en1I2oUkGPUW%2BoAJ%2BgbopxWVfI88gSxp1SB64D7I2R5ISKR836W9wvG6QAJHUnQ3%2FSf6E%2Bt9kYjfu6Ex6WeWNVK%2Fhm42Xosr6Lb4NXvr5veGYQIV%2F6ursGChprhKEF8tvjYSKdtT%2BGsWjgpUZ8KN29JCF9EmpIcpmCH2RjlfL9Pr2fjz&lang=zh-tw&region=prod_gf_jp&game_biz=nap_global&page=1&size=5&gacha_type=2001&real_gacha_type=2&end_id=

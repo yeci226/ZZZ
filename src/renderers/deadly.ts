@@ -1,8 +1,7 @@
-import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import puppeteer from 'puppeteer';
 import { LanguageEnum } from '@yeci226/hoyoapi';
 
-import { Card } from '@/components/test';
+const browserPromise = puppeteer.launch({ args: ['--no-sandbox'] });
 
 interface DeadlyDrawQuery {
   userId: string;
@@ -11,7 +10,16 @@ interface DeadlyDrawQuery {
 }
 
 export async function handleDeadlyDraw(locale: LanguageEnum, query: DeadlyDrawQuery) {
-  return '<!DOCTYPE html>' + renderToStaticMarkup(<Card name={'test'} avatar={'https://cdn.discordapp.com/avatars/1234567890/1234567890.png'} />);
+  const { userId, accountIndex, schedule } = query;
+
+  const browser = await browserPromise;
+  const page = await browser.newPage();
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  await page.goto(`http://localhost:3000/deadly?locale=${locale}&userId=${userId}&accountIndex=${accountIndex}&schedule=${schedule}`, { waitUntil: 'networkidle0' });
+  const buffer = await page.screenshot({ type: 'png' });
+  await page.close();
+
+  return buffer;
 }
 
 // const drawQueue = new Queue({ autostart: true });

@@ -1,7 +1,9 @@
-import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { AttachmentBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 
-import { discordToHoyolabLang, failedReply, getRandomColor, getUserLang, getUserZZZData, setupDefaultLang } from '@/utilities';
+import { discordToHoyolabLang, failedReply, getRandomColor, getUserLang, setupDefaultLang } from '@/utilities';
 import { createTranslator } from '@/utilities/core/i18n';
+
+import { handleProfileDraw } from '@/renderers/profile';
 
 export async function handleProfileDrawCommand(interaction: ChatInputCommandInteraction) {
   const interactionUser = interaction.user;
@@ -17,10 +19,18 @@ export async function handleProfileDrawCommand(interaction: ChatInputCommandInte
     const selectedUser = interactionOptions.getUser('user') || interactionUser;
     const selectedAccountIndex = interactionOptions.getString('account') ?? '0';
 
-    const imageUrl = `http://localhost:3000/profile?locale=${userLocale}&userId=${selectedUser.id}&accountIndex=${selectedAccountIndex}`;
+    const buffer = await handleProfileDraw(userLocale, {
+      userId: selectedUser.id,
+      accountIndex: parseInt(selectedAccountIndex),
+    });
+
+    const image = new AttachmentBuilder(Buffer.from(buffer), {
+      name: `profile_${selectedUser.id}.png`,
+    });
 
     return interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('profile_Success')).setDescription(tr('profile_SuccessDesc')).setImage(imageUrl)],
+      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('profile_Success')).setDescription(tr('profile_SuccessDesc')).setImage(`attachment://${image.name}`)],
+      files: [image],
     });
   } catch (error: any) {
     return failedReply(interaction, tr('profile_Failed'), tr('profile_FailedDesc'), error.message);

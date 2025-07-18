@@ -1,8 +1,7 @@
-import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import puppeteer from 'puppeteer';
 import { LanguageEnum } from '@yeci226/hoyoapi';
 
-import { Card } from '@/components/test';
+const browserPromise = puppeteer.launch({ args: ['--no-sandbox'] });
 
 interface ProfileDrawQuery {
   userId: string;
@@ -10,7 +9,16 @@ interface ProfileDrawQuery {
 }
 
 export async function handleProfileDraw(locale: LanguageEnum, query: ProfileDrawQuery) {
-  return '<!DOCTYPE html>' + renderToStaticMarkup(<Card name={'test'} avatar={'https://cdn.discordapp.com/avatars/1234567890/1234567890.png'} />);
+  const { userId, accountIndex } = query;
+
+  const browser = await browserPromise;
+  const page = await browser.newPage();
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  await page.goto(`http://localhost:3000/profile?locale=${locale}&userId=${userId}&accountIndex=${accountIndex}`, { waitUntil: 'networkidle0' });
+  const buffer = await page.screenshot({ type: 'png' });
+  await page.close();
+
+  return buffer;
 }
 
 interface CharacterDrawQuery {
@@ -20,7 +28,16 @@ interface CharacterDrawQuery {
 }
 
 export async function handleCharacterDraw(locale: LanguageEnum, query: CharacterDrawQuery) {
-  return '<!DOCTYPE html>' + renderToStaticMarkup(<Card name={'test'} avatar={'https://cdn.discordapp.com/avatars/1234567890/1234567890.png'} />);
+  const { userId, accountIndex, characterId } = query;
+
+  const browser = await browserPromise;
+  const page = await browser.newPage();
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  await page.goto(`http://localhost:3000/profile/character?locale=${locale}&userId=${userId}&accountIndex=${accountIndex}&characterId=${characterId}`, { waitUntil: 'networkidle0' });
+  const buffer = await page.screenshot({ type: 'png' });
+  await page.close();
+
+  return buffer;
 }
 
 // const drawQueue = new Queue({ autostart: true });

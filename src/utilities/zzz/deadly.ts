@@ -1,7 +1,9 @@
-import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { AttachmentBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 
 import { discordToHoyolabLang, failedReply, getRandomColor, getUserLang, setupDefaultLang } from '@/utilities';
 import { createTranslator } from '@/utilities/core/i18n';
+
+import { handleDeadlyDraw } from '@/renderers/deadly';
 
 export async function handleDeadlyDrawCommand(interaction: ChatInputCommandInteraction) {
   const interactionUser = interaction.user;
@@ -18,10 +20,18 @@ export async function handleDeadlyDrawCommand(interaction: ChatInputCommandInter
     const selectedAccountIndex = interactionOptions.getString('account') ?? '0';
     const selectedSchedule = interactionOptions.getString('schedule') ?? '1';
 
-    const imageUrl = `http://localhost:3000/deadly?locale=${userLocale}&userId=${selectedUser.id}&accountIndex=${selectedAccountIndex}&schedule=${selectedSchedule}`;
+    const buffer = await handleDeadlyDraw(userLocale, {
+      userId: selectedUser.id,
+      accountIndex: parseInt(selectedAccountIndex),
+      schedule: parseInt(selectedSchedule),
+    });
 
+    const image = new AttachmentBuilder(Buffer.from(buffer), {
+      name: `deadly_${selectedUser.id}.png`,
+    });
     return interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('deadly_Success')).setDescription(tr('deadly_SuccessDesc')).setImage(imageUrl)],
+      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('deadly_Success')).setDescription(tr('deadly_SuccessDesc')).setImage(`attachment://${image.name}`)],
+      files: [image],
     });
   } catch (error: any) {
     return failedReply(interaction, tr('deadly_Failed'), tr('deadly_FailedDesc'), error.message);

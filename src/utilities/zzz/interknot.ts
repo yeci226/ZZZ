@@ -1,7 +1,9 @@
-import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { AttachmentBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 
 import { discordToHoyolabLang, failedReply, getRandomColor, getUserLang, setupDefaultLang } from '@/utilities';
 import { createTranslator } from '@/utilities/core/i18n';
+
+import { handleInterknotDraw } from '@/renderers/interknot';
 
 export async function handleInterknotDrawCommand(interaction: ChatInputCommandInteraction) {
   const interactionUser = interaction.user;
@@ -13,10 +15,18 @@ export async function handleInterknotDrawCommand(interaction: ChatInputCommandIn
   try {
     await interaction.deferReply();
 
-    const imageUrl = `http://localhost:3000/interknot?locale=${userLocale}&userId=${interactionUser.id}&accountIndex=0`;
+    const buffer = await handleInterknotDraw(userLocale, {
+      userId: interactionUser.id,
+      accountIndex: 0,
+    });
+
+    const image = new AttachmentBuilder(Buffer.from(buffer), {
+      name: `interknot_${interactionUser.id}.png`,
+    });
 
     return interaction.editReply({
-      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('interknot_Success')).setDescription(tr('interknot_SuccessDesc')).setImage(imageUrl)],
+      embeds: [new EmbedBuilder().setColor(getRandomColor()).setTitle(tr('interknot_Success')).setDescription(tr('interknot_SuccessDesc')).setImage(`attachment://${image.name}`)],
+      files: [image],
     });
   } catch (error: any) {
     return failedReply(interaction, tr('interknot_Failed'), tr('interknot_FailedDesc'), error.message);

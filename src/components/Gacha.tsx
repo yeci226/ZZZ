@@ -1,17 +1,16 @@
 import React from 'react';
-import axios from 'axios';
 import { LanguageEnum } from '@yeci226/hoyoapi';
+
+import { GachaType, SignalDataDetail } from '@/utilities/zzz/gacha';
 
 import style from './style';
 
-const standardCharacterIds = ['1021', '1041', '1101', '1141', '1181', '1211'];
-const standardWeaponIds = ['14104', '14102', '14110', '14114', '14121', '14118'];
-
 export interface GachaProps {
   locale: LanguageEnum;
+  signalDataDetails: SignalDataDetail;
 }
 
-export const Card: React.FC<GachaProps> = async ({ locale }) => {
+export const Gacha: React.FC<GachaProps> = ({ locale, signalDataDetails }) => {
   return (
     <html lang="zh-TW" style={{ height: '100vh', width: '100vw' }}>
       <head>
@@ -47,7 +46,7 @@ export const Card: React.FC<GachaProps> = async ({ locale }) => {
               fontWeight: 'bold',
             }}
           >
-            繩網通訊
+            {`繩網通訊`}
           </div>
           <div
             id="status-right"
@@ -133,55 +132,56 @@ export const Card: React.FC<GachaProps> = async ({ locale }) => {
             </div>
           </div>
 
-          <div
-            id="characters-section"
-            style={{
-              display: 'grid',
-              flex: 1,
-              gap: '10px',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))',
-            }}
-          >
-            {Array.from({ length: 10 }).map((_, index) => (
-              <div
-                id="character-item"
-                style={{
-                  position: 'relative',
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div
+              id="characters-section"
+              style={{
+                display: 'grid',
+                gap: '10px',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))',
+              }}
+            >
+              {Array.from({ length: 10 }).map((_, index) => (
                 <div
-                  id="character-avatar"
+                  id="character-item"
                   style={{
-                    width: '100%',
-                    aspectRatio: '1/1',
-                    borderRadius: '8px',
-                    background: 'linear-gradient(135deg, #4a4a4a, #6a6a6a)',
-                    overflow: 'hidden',
+                    position: 'relative',
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '8px',
                   }}
-                />
-                <div id="character-name" style={{ textAlign: 'center', lineHeight: '1.2' }}>{`橘福福`}</div>
-                <div id="character-name-container" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                >
                   <div
-                    id="character-pity"
+                    id="character-avatar"
                     style={{
-                      position: 'absolute',
-                      top: '-4px',
-                      left: '-4px',
-                      minWidth: '20px',
-                      textAlign: 'center',
-                      backgroundColor: index * 10 > 80 ? '#FF6969' : index * 10 > 70 ? '#FFBB5C' : '#9DF1DF',
-                      padding: '2px 4px',
+                      width: '100%',
+                      aspectRatio: '1/1',
                       borderRadius: '8px',
+                      background: 'linear-gradient(135deg, #4a4a4a, #6a6a6a)',
+                      overflow: 'hidden',
                     }}
-                  >{`${index * 10}`}</div>
+                  />
+                  <div id="character-name" style={{ textAlign: 'center', lineHeight: '1.2' }}>{`橘福福`}</div>
+                  <div id="character-name-container" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                    <div
+                      id="character-pity"
+                      style={{
+                        position: 'absolute',
+                        top: '-4px',
+                        left: '-4px',
+                        minWidth: '20px',
+                        textAlign: 'center',
+                        backgroundColor: index * 10 > 80 ? '#FF6969' : index * 10 > 70 ? '#FFBB5C' : '#9DF1DF',
+                        padding: '2px 4px',
+                        borderRadius: '8px',
+                      }}
+                    >{`${index * 10}`}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           <div
@@ -265,142 +265,3 @@ export const Card: React.FC<GachaProps> = async ({ locale }) => {
     </html>
   );
 };
-
-async function fetchSignalData(query: URLSearchParams, id: number, endId: number) {
-  query.set('real_gacha_type', id.toString());
-  query.set('end_id', endId.toString());
-
-  const response = await axios.get('https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?' + query);
-
-  return response.data as {
-    data: {
-      list: {
-        id: number;
-        name: string;
-        item_id: number;
-        item_type: string;
-        rank_type: string;
-        time: number;
-      }[];
-    };
-  };
-}
-
-type SignalData = {
-  id: number;
-  name: string;
-  type: string;
-  time: number;
-  rank: string;
-};
-
-type SignalDataDetail = {
-  total: number;
-  average: number;
-  pity: number;
-  data: SignalData[];
-  limitedPullsAverage: number;
-};
-
-export async function getSingalLog(input: string, userLocale: LanguageEnum) {
-  const baseQueryParams = new URLSearchParams({
-    authkey_ver: '1',
-    sign_type: '2',
-    game_biz: 'nap_global',
-    lang: userLocale,
-    authkey: '',
-    region: 'tw',
-    real_gacha_type: '0',
-    size: '20',
-    end_id: '0',
-  });
-
-  const gachaTypes = {
-    regular: 1,
-    character: 2,
-    weapon: 3,
-    bangboo: 5,
-  };
-
-  const inputParams = new URLSearchParams(input);
-  const authkey = inputParams.get('authkey') ?? '';
-  const lastId = inputParams.get('end_id') ?? '0';
-  if (!authkey) return null;
-
-  const query = new URLSearchParams(baseQueryParams);
-  query.set('authkey', authkey);
-
-  const allSignalDatas: { [key in keyof typeof gachaTypes]: SignalData[] } = {
-    character: [],
-    weapon: [],
-    regular: [],
-    bangboo: [],
-  };
-  const allSignalSRankDetail: { [key in keyof typeof gachaTypes]: SignalDataDetail } = {
-    character: { total: 0, average: 0, pity: 0, data: [], limitedPullsAverage: 0 },
-    weapon: { total: 0, average: 0, pity: 0, data: [], limitedPullsAverage: 0 },
-    regular: { total: 0, average: 0, pity: 0, data: [], limitedPullsAverage: 0 },
-    bangboo: { total: 0, average: 0, pity: 0, data: [], limitedPullsAverage: 0 },
-  };
-
-  for (const [gachaType, id] of Object.entries(gachaTypes) as [keyof typeof gachaTypes, number][]) {
-    let endId = 0;
-    const temp = [];
-
-    while (true) {
-      const signalData = await fetchSignalData(query, id, endId);
-      if (!signalData?.data || !signalData.data.list.length) break;
-      const list = signalData.data.list;
-      const reachedLastId = list.some((signal) => signal.id == parseInt(lastId));
-      temp.push(
-        ...list.map((signal) => ({
-          id: signal.item_id,
-          name: signal.name.toLowerCase().replace(/\s+/g, '_'),
-          type: signal.item_type.toLowerCase().replace(/\s+/g, '_'),
-          time: signal.time,
-          rank: signal.rank_type == '4' ? 'S' : signal.rank_type == '3' ? 'A' : 'B',
-        })),
-      );
-
-      if (reachedLastId) break;
-      else endId = list[list.length - 1].id;
-
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
-
-    allSignalDatas[gachaType] = temp;
-  }
-
-  for (const [type, signalData] of Object.entries(allSignalDatas) as [keyof typeof gachaTypes, SignalData[]][]) {
-    const totalPulls = signalData.length;
-
-    // 計算 S 等級的抽卡次數
-    let pity = 0;
-    const data = signalData.reduce(
-      (acc, item) => {
-        pity++;
-        if (item.rank === 'S') {
-          acc.push({ ...item, pity });
-          pity = 0;
-        }
-        return acc;
-      },
-      [] as { id: number; name: string; type: string; time: number; rank: string; pity: number }[],
-    );
-
-    allSignalSRankDetail[type].data = data.reverse();
-    allSignalSRankDetail[type].pity = pity;
-    allSignalSRankDetail[type].average = data.length > 1 ? parseFloat((data.reduce((acc, i) => acc + i.pity, 0) / data.length).toFixed(2)) : 0;
-    allSignalSRankDetail[type].total = totalPulls;
-    allSignalSRankDetail[type].data.unshift({} as SignalData); // Add blank data for showing pities
-
-    if (type === 'character' || type === 'weapon') {
-      const limitedPullSegments: number[] = data.reduce((acc: number[], item) => ([...standardCharacterIds, ...standardWeaponIds].includes(item.id.toString()) ? [...acc, item.pity] : acc), []);
-      const avg = limitedPullSegments.length > 0 ? totalPulls / limitedPullSegments.length : 0;
-      allSignalSRankDetail[type].limitedPullsAverage = parseFloat(avg.toFixed(2));
-    } else {
-      allSignalSRankDetail[type].limitedPullsAverage = 0;
-    }
-  }
-  return allSignalSRankDetail;
-}
