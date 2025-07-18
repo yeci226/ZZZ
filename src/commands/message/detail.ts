@@ -5,7 +5,7 @@ import { parseCookie } from '@/utilities';
 
 import { type Account } from '@/types';
 
-import emoji from '@/assets/emoji';
+import emoji from '@/emoji';
 
 export default {
   name: 'detail',

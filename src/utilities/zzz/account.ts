@@ -21,7 +21,7 @@ import { createTranslator } from '@/utilities/core/i18n';
 
 import { Account } from '@/types';
 
-import emoji from '@/assets/emoji';
+import emoji from '@/emoji';
 
 export async function handleAccountHowToSetUpCommand(interaction: ChatInputCommandInteraction) {
   const interactionUser = interaction.user;

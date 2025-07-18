@@ -18,7 +18,7 @@ import { createTranslator } from '@/utilities/core/i18n';
 import { handleEditAccountSelect, handleEditAccountTypeSelect, handleDeleteAccountSelect, handleEditAccountCookieSelect } from '@/utilities/zzz/account';
 import { handleNewsPostSelect, handleNewsTypeSelect } from '@/utilities/zzz/news';
 
-import emoji from '@/assets/emoji';
+import emoji from '@/emoji';
 
 const drawQueue = new Queue({ autostart: true });
 const elementId: Record<number, string> = {

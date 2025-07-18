@@ -1,10 +1,10 @@
-import en from '@/assets/languages/en.js';
-import tw from '@/assets/languages/tw.js';
-import cn from '@/assets/languages/cn.js';
-import vi from '@/assets/languages/vi.js';
-import jp from '@/assets/languages/jp.js';
-import kr from '@/assets/languages/kr.js';
-import fr from '@/assets/languages/fr.js';
+import en from '@/languages/en.js';
+import tw from '@/languages/tw.js';
+import cn from '@/languages/cn.js';
+import vi from '@/languages/vi.js';
+import jp from '@/languages/jp.js';
+import kr from '@/languages/kr.js';
+import fr from '@/languages/fr.js';
 
 import { LanguageEnum } from '@yeci226/hoyoapi';
 

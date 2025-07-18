@@ -9,7 +9,7 @@ import { database } from '@/index';
 import Logger from '@/utilities/core/logger';
 import { createTranslator } from '@/utilities/core/i18n';
 
-import emoji from '@/assets/emoji';
+import emoji from '@/emoji';
 
 const BASE_URL = 'https://bbs-api-os.hoyolab.com/community/post/wapi/';
 
