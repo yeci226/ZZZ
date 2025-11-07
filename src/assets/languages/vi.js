@@ -30,7 +30,7 @@ const langs = {
   DrawError: "Lỗi",
   MainPage: "Trang chủ",
   CostTime:
-    "Time spent: Request <requestTime> seconds • Draw <drawTime> seconds",
+    "-# Time spent: Request <requestTime> seconds • Draw <drawTime> seconds",
   levelFormat: "Lv. <level>",
   levelFormat2: "Lv. <level>",
   MindScape: "Hiện hiệu ứng cung mệnh",
@@ -69,6 +69,7 @@ const langs = {
   account_LoginFailed: "Đăng nhập thất bại",
   account_LoginFailedDesc: "Vui lòng kiểm tra lại tài khoản và mật khẩu!",
   account_LoginSuccess: "Đăng nhập thành công, đã thiết lập Cookie",
+  account_LoginSuccessDesc: "Đã cập nhật Cookie cho tài khoản <z>",
   account_Linked: "Đã liên kết tài khoản",
   account_NotLinked: "Chưa liên kết tài khoản",
   account_ListOfAccount: "<Username> đã thiết lập tài khoản",
@@ -170,13 +171,12 @@ const langs = {
   NonData: "Không tìm thấy dữ liệu cho chế độ này",
   NonDataDesc: "Bản ghi chiến đấu cập nhật khoảng 1 giờ, vui lòng thử lại sau",
   EnemyWeakness: "Điểm yếu của kẻ thù",
-  TimeSpent: "Thời gian: Yêu cầu <requestTime> giây • Vẽ <drawTime> giây",
   ShiyuDefense: "Phòng Thủ Shiyu",
   RatingStats: "Thống kê xếp hạng",
   FastestTime: "Thời gian nhanh nhất",
   Node1: "Nút 1",
   Node2: "Nút 2",
-  CostTime: "Thời gian",
+  SpentTime: "-# Thời gian",
 
   // Deadly Assault
   DeadlyAssault: "Tấn Công Nguy Hiểm",

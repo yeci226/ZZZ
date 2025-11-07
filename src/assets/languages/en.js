@@ -30,7 +30,7 @@ const langs = {
   DrawError: "Drawing failed",
   MainPage: "Home Page",
   CostTime:
-    "Time spent: Request <requestTime> seconds • Draw <drawTime> seconds",
+    "-# Time spent: Request <requestTime> seconds • Draw <drawTime> seconds",
   levelFormat: "Lv. <level>",
   levelFormat2: "Level <level>",
   MindScape: "Show cinema effect",
@@ -70,6 +70,7 @@ const langs = {
   account_LoginFailed: "Login failed",
   account_LoginFailedDesc: "Please check if the account password is correct",
   account_LoginSuccess: "Logged in to the account and set the Cookie",
+  account_LoginSuccessDesc: "Updated account <z> Cookie",
   account_Linked: "Linked",
   account_NotLinked: "Not linked",
   account_ListOfAccount: "<Username> Account that has been set",
@@ -174,14 +175,12 @@ const langs = {
   NonDataDesc:
     "Battle records update approximately takes a few hours, please try again later",
   EnemyWeakness: "Enemy Weakness",
-  TimeSpent:
-    "Time spent: Request <requestTime> seconds • Draw <drawTime> seconds",
   ShiyuDefense: "Shiyu Defense",
   RatingStats: "Rating Stats",
   FastestTime: "Fastest Time",
   Node1: "Node 1",
   Node2: "Node 2",
-  CostTime: "Time spent",
+  SpentTime: "-# Time spent",
 
   // Deadly Assault
   DeadlyAssault: "Deadly Assault",

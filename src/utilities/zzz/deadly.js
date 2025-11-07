@@ -78,7 +78,7 @@ export async function handleDeadlyDraw(interaction, tr, user, zzz, schedule) {
               "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
             ),
         ],
-        fetchReply: true,
+        withResponse: true,
       });
 
       // Request
@@ -104,16 +104,11 @@ export async function handleDeadlyDraw(interaction, tr, user, zzz, schedule) {
       });
 
       interaction.editReply({
-        embeds: [
-          new EmbedBuilder().setImage(`attachment://${image.name}`).setFooter({
-            text: tr("TimeSpent", {
-              requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
-                2
-              ),
-              drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-            }),
-          }),
-        ],
+        content: `${tr("CostTime", {
+          requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(2),
+          drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
+        })}`,
+        embeds: [],
         files: [image],
       });
     } catch (error) {
@@ -130,7 +125,7 @@ export async function handleDeadlyDraw(interaction, tr, user, zzz, schedule) {
                 tr("note_Error_Description") + "\n\n" + `\`${error.message}\``
               ),
           ],
-          fetchReply: true,
+          withResponse: true,
         });
       } else {
         interaction.editReply({
@@ -143,7 +138,7 @@ export async function handleDeadlyDraw(interaction, tr, user, zzz, schedule) {
                 "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
               ),
           ],
-          fetchReply: true,
+          withResponse: true,
         });
       }
     }

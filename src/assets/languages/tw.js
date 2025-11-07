@@ -28,7 +28,8 @@ const langs = {
   DrawInQueue: "正在排隊中，目前排隊位置：<position>",
   DrawError: "繪製失敗",
   MainPage: "首頁",
-  CostTime: "耗時：請求 <requestTime> 秒 • 繪製 <drawTime> 秒",
+  CostTime:
+    "-# 📣11/7 ~ 11/30 DC 群有周邊抽獎活動 \n-# ✨《MST瑪思塔周邊屋》高雄快閃店盛大啟幕：<https://www.facebook.com/share/p/17UWFggQF1>\n-# ✨魔儲賣場活動：<https://reurl.cc/MMZlXv>", // -# 耗時：請求 <requestTime> 秒 • 繪製 <drawTime> 秒",
   levelFormat: "等級 <level>",
   levelFormat2: "等級 <level>",
   MindScape: "顯示影畫效果",
@@ -68,6 +69,7 @@ const langs = {
   account_LoginFailed: "登入失敗",
   account_LoginFailedDesc: "請確認帳號密碼是否正確",
   account_LoginSuccess: "帳號登入成功，並且已設定 Cookie",
+  account_LoginSuccessDesc: "已更新帳號 <z> 的 Cookie",
   account_Linked: "已綁定",
   account_NotLinked: "未綁定",
   account_ListOfAccount: "<Username> 已設定的帳號",
@@ -167,13 +169,12 @@ const langs = {
   NonData: "找不到這個模式的戰鬥紀錄",
   NonDataDesc: "戰鬥記錄更新約需要數個小時，請稍後再試",
   EnemyWeakness: "敵人弱點",
-  TimeSpent: "耗時：請求 <requestTime> 秒 • 繪製 <drawTime> 秒",
   ShiyuDefense: "式輿防衛戰",
   RatingStats: "評級統計",
   FastestTime: "最快通關時間",
   Node1: "節點1",
   Node2: "節點2",
-  CostTime: "花費時間",
+  SpentTime: "-# 花費時間",
 
   // Deadly Assault
   DeadlyAssault: "危局強襲戰",

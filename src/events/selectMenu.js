@@ -38,7 +38,7 @@ const elementId = {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
-  await interaction.update({ fetchReply: true }).catch(() => {});
+  await interaction.update({ withResponse: true }).catch(() => {});
   const { locale, customId } = interaction;
   const userLocale =
     (await getUserLang(interaction.user.id)) || toI18nLang(locale) || "en";
@@ -57,7 +57,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const tr = createTranslator(userLocale);
 
   if (!customId.startsWith("account"))
-    await interaction.update({ fetchReply: true }).catch(() => {});
+    await interaction.update({ withResponse: true }).catch(() => {});
   if (customId.startsWith("news")) handleNews(interaction, tr, values[0]);
   if (customId.startsWith("account"))
     handleAccountAction(interaction, tr, customId, values[0]);
@@ -97,7 +97,7 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
             ),
         ],
         components: [],
-        fetchReply: true,
+        withResponse: true,
       });
 
       const requestStartTime = Date.now();
@@ -195,23 +195,12 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
           .setStyle(userMindScape ? ButtonStyle.Success : ButtonStyle.Secondary)
       );
 
-      const embed = new EmbedBuilder()
-        .setImage(`attachment://${image.name}`)
-        .setFooter({
-          text: tr("TimeSpent", {
-            requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
-              2
-            ),
-            drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-          }),
-        });
-
-      if (characterId != "main") {
-        embed.setColor(`${selectedCharacter.vertical_painting_color}`);
-      }
-
       interaction.editReply({
-        embeds: [embed],
+        content: `${tr("CostTime", {
+          requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(2),
+          drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
+        })}`,
+        embeds: [],
         components: [...rowSelects, rowMindScape],
         files: [image],
       });
@@ -227,7 +216,7 @@ async function handleSelectCharacter(interaction, tr, value, userLocale) {
               "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
             ),
         ],
-        fetchReply: true,
+        withResponse: true,
       });
     }
   };
@@ -255,7 +244,7 @@ async function handleAccountAction(interaction, tr, customId, value) {
     });
 
   if (customId == "account_EditAccountSelect") {
-    await interaction.update({ fetchReply: true }).catch(() => {});
+    await interaction.update({ withResponse: true }).catch(() => {});
     const accountIndex = value;
     interaction.editReply({
       components: [
@@ -277,7 +266,7 @@ async function handleAccountAction(interaction, tr, customId, value) {
             )
         ),
       ],
-      fetchReply: true,
+      withResponse: true,
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -381,7 +370,7 @@ async function handleAccountAction(interaction, tr, customId, value) {
       );
     }
   } else if (interaction.customId == "account_DeleteAccountSelect") {
-    await interaction.update({ fetchReply: true }).catch(() => {});
+    await interaction.update({ withResponse: true }).catch(() => {});
     const accountIndex = value;
     const accounts = (await db.get(`${interaction.user.id}.account`)) ?? "";
     const uid = accounts[accountIndex].uid;
@@ -540,7 +529,7 @@ async function handleNews(interaction, tr, value) {
             )
         ),
       ],
-      fetchReply: true,
+      withResponse: true,
     });
   } else if (interaction.customId == "news_post") {
     const postId = value;
@@ -579,7 +568,7 @@ async function handleNews(interaction, tr, value) {
           })
           .setImage(image_list[0]?.url ?? cover_list[0]?.url),
       ],
-      fetchReply: true,
+      withResponse: true,
     });
   }
 }

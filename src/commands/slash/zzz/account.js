@@ -37,15 +37,15 @@ export default {
         })
         .setRequired(true)
         .addChoices(
-          {
-            name: "🔥Login with account and password🔥",
-            name_localizations: {
-              "zh-TW": "🔥帳號密碼登入🔥",
-              vi: "🔥Đăng nhập tài khoản mật khẩu🔥",
-              fr: "🔥Connexion par mot de passe🔥",
-            },
-            value: "LoginAccount",
-          },
+          // {
+          //   name: "🔥Login with account and password🔥",
+          //   name_localizations: {
+          //     "zh-TW": "🔥帳號密碼登入🔥",
+          //     vi: "🔥Đăng nhập tài khoản mật khẩu🔥",
+          //     fr: "🔥Connexion par mot de passe🔥",
+          //   },
+          //   value: "LoginAccount",
+          // },
           {
             name: "❓ How to set up account",
             name_localizations: {

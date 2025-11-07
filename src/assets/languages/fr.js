@@ -28,7 +28,7 @@ const langs = {
   DrawError: "La génération a échoué",
   MainPage: "Page d'accueil",
   CostTime:
-    "Le temps consommé: Demande <requestTime> seconde • Générer <drawTime> seconde",
+    "-# Le temps consommé: Demande <requestTime> seconde • Générer <drawTime> seconde",
   levelFormat: "Niveau <level>",
   levelFormat2: "Niveau <level>",
   MindScape: "Montrer la vision",
@@ -68,6 +68,7 @@ const langs = {
   account_LoginFailedDesc:
     "Veuillez vérifier votre nom d'utilisateur et mot de passe.",
   account_LoginSuccess: "Connecté avec succès et Cookie défini.",
+  account_LoginSuccessDesc: "Cookie mis à jour pour <z>",
   account_Linked: "compte lié",
   account_NotLinked: "compte non lié",
   account_ListOfAccount: "<Username> Liste de comptes",
@@ -171,14 +172,12 @@ const langs = {
   NonDataDesc:
     "Les enregistrements de combat sont mis à jour environ une heure, veuillez réessayer plus tard",
   EnemyWeakness: "Faiblesse ennemie",
-  TimeSpent:
-    "Temps passé: Demande <requestTime> seconde • Générer <drawTime> seconde",
   ShiyuDefense: "Défense de Shiyu",
   RatingStats: "Statistiques de classement",
   FastestTime: "Temps le plus rapide",
   Node1: "Nœud 1",
   Node2: "Nœud 2",
-  CostTime: "Temps passé",
+  SpentTime: "-# Temps passé",
 
   // Deadly Assault
   DeadlyAssault: "Assaut Mortel",

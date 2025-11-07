@@ -51,46 +51,58 @@ async function handleAccountLogin(interaction, tr, fields) {
       });
     }
 
+    const loginData = await loginAccount(email, password);
+    const { uid, nickname, cookie } = loginData;
     const existedAccounts =
       (await db.get(`${interaction.user.id}.account`)) || [];
 
-    if (existedAccounts.length >= 5) {
-      return interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle(tr("account_LimitExceeded"))
-            .setConfig("#E76161", "sob"),
-        ],
-      });
-    }
-
-    const loginData = await loginAccount(email, password);
-    const { uid, nickname, cookie } = loginData;
-
     await db.delete(`${uid}.cookieExpired`);
 
-    interaction.editReply({
-      embeds: [
-        new EmbedBuilder()
-          .setConfig("#F6F1F1", "wiggle")
-          .setTitle(tr("account_LoginSuccess")),
-      ],
-    });
+    // 檢查是否已經綁定過這個UID
+    const existingAccountIndex = existedAccounts.findIndex(
+      (account) => account.uid == uid
+    );
 
-    if (existedAccounts.some((account) => account.uid == uid)) {
-      existedAccounts.map(async (account) => {
-        if (account.uid == uid) {
-          account.cookie = cookie;
-          account.nickname = nickname;
+    if (existingAccountIndex !== -1) {
+      // 如果已經綁定過，直接更新該帳號的Cookie
+      existedAccounts[existingAccountIndex].cookie = cookie;
+      existedAccounts[existingAccountIndex].nickname = nickname;
 
-          await db.set(`${interaction.user.id}.account`, existedAccounts);
-        }
+      await db.set(`${interaction.user.id}.account`, existedAccounts);
+
+      interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setConfig("#F6F1F1", "wiggle")
+            .setTitle(tr("account_LoginSuccess"))
+            .setDescription(tr("account_LoginSuccessDesc", { z: `${uid}` })),
+        ],
       });
     } else {
+      // 如果是新帳號，檢查數量限制
+      if (existedAccounts.length >= 5) {
+        return interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(tr("account_LimitExceeded"))
+              .setConfig("#E76161", "sob"),
+          ],
+        });
+      }
+
+      // 添加新帳號
       await db.push(`${interaction.user.id}.account`, {
         uid: uid,
         cookie: cookie,
         nickname: nickname,
+      });
+
+      interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setConfig("#F6F1F1", "wiggle")
+            .setTitle(tr("account_LoginSuccess")),
+        ],
       });
     }
   } catch (error) {
@@ -119,7 +131,7 @@ async function handleWarplog(interaction, tr, fields) {
           "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
         ),
     ],
-    fetchReply: true,
+    withResponse: true,
   });
 
   const userLocale =
@@ -325,4 +337,16 @@ async function handleCookieSet(interaction, tr, customId, fields) {
       ],
     });
   }
+}
+
+// 輔助函數：獲取類別顯示名稱
+function getCategoryDisplayName(category) {
+  const categoryNames = {
+    general: "全部",
+    official: "官方",
+    discussion: "討論",
+    question: "提問",
+    info: "資訊",
+  };
+  return categoryNames[category] || category;
 }

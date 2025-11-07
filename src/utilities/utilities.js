@@ -182,7 +182,7 @@ export async function drawInQueueReply(interaction, title = "") {
           "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
         ),
     ],
-    fetchReply: true,
+    withResponse: true,
   });
 }
 
@@ -194,7 +194,7 @@ export async function failedReply(interaction, title = "", description = "") {
   replyOrfollowUp(interaction, {
     embeds: [embed],
     flags: MessageFlags.Ephemeral,
-    fetchReply: true,
+    withResponse: true,
   });
 }
 
@@ -490,24 +490,24 @@ export async function updateCookie(userId, accountIndex, cookieObj) {
 
   let originalCookie = account[accountIndex].cookie.split("; ").filter(Boolean);
 
-  let cookieTokenExists = false;
+  let cookieTokenV2Exists = false;
 
   const updatedCookie = originalCookie.map((item) => {
-    if (item.startsWith("cookie_token=")) {
-      cookieTokenExists = true;
-      return `cookie_token=${newCookieToken}`;
+    if (item.startsWith("cookie_token_v2=")) {
+      cookieTokenV2Exists = true;
+      return `cookie_token_v2=${newCookieToken}`;
     }
     return item;
   });
 
-  if (!cookieTokenExists) {
+  if (!cookieTokenV2Exists) {
     const finalCookie = [];
     let inserted = false;
 
     for (const item of updatedCookie) {
       finalCookie.push(item);
       if (!inserted && item.startsWith("ltuid_v2=")) {
-        finalCookie.push(`cookie_token=${newCookieToken}`);
+        finalCookie.push(`cookie_token_v2=${newCookieToken}`);
         inserted = true;
       }
     }

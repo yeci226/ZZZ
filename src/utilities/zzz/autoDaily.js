@@ -41,6 +41,7 @@ class AutoDailySignSystem {
       success: 0,
       failed: 0,
       alreadySigned: 0,
+      skipped: 0,
     };
   }
 
@@ -57,6 +58,25 @@ class AutoDailySignSystem {
 
   getLanguage(locale) {
     return LANGUAGE_MAPPING[locale] || LANGUAGE_MAPPING.default;
+  }
+
+  // 檢查是否為可跳過的錯誤
+  isSkippableError(errorMessage) {
+    const skipPatterns = [
+      "尚未登入",
+      "Not logged in",
+      "未登入",
+      "登入失敗",
+      "Login failed",
+      "Cookie 已過期",
+      "Cookie expired",
+      "無效的 Cookie",
+      "Invalid cookie",
+    ];
+
+    return skipPatterns.some((pattern) =>
+      errorMessage.toLowerCase().includes(pattern.toLowerCase())
+    );
   }
 
   async processSignIn(zzz, context) {
@@ -156,12 +176,29 @@ class AutoDailySignSystem {
       switch (result.status) {
         case "success":
           this.stats.success++;
+          // this.logger.success(
+          //   `[用戶 ${userId}] [帳號 ${account.uid}] 簽到成功`
+          // );
           break;
         case "already_signed":
           this.stats.alreadySigned++;
+          // this.logger.info(
+          //   `[用戶 ${userId}] [帳號 ${account.uid}] 已經簽到過了`
+          // );
           break;
         case "failed":
-          this.stats.failed++;
+          const errorMessage = result.error;
+          if (this.isSkippableError(errorMessage)) {
+            this.stats.skipped++;
+            // this.logger.info(
+            //   `[用戶 ${userId}] [帳號 ${account.uid}] 跳過處理: ${errorMessage}`
+            // );
+          } else {
+            this.stats.failed++;
+            // this.logger.error(
+            //   `[用戶 ${userId}] [帳號 ${account.uid}] 簽到失敗: ${errorMessage}`
+            // );
+          }
           break;
       }
 
@@ -177,9 +214,21 @@ class AutoDailySignSystem {
 
       return result;
     } catch (error) {
-      this.logger.error(`處理帳號 ${account.uid} 時發生錯誤: ${error.message}`);
-      this.stats.failed++;
-      return { status: "failed", error: error.message };
+      const errorMessage = error.message;
+
+      if (this.isSkippableError(errorMessage)) {
+        this.stats.skipped++;
+        // this.logger.info(
+        //   `[用戶 ${userId}] [帳號 ${account.uid}] 跳過處理: ${errorMessage}`
+        // );
+      } else {
+        this.stats.failed++;
+        // this.logger.error(
+        //   `[用戶 ${userId}] [帳號 ${account.uid}] 簽到失敗: ${errorMessage}`
+        // );
+      }
+
+      return { status: "failed", error: errorMessage };
     }
   }
 
@@ -187,7 +236,11 @@ class AutoDailySignSystem {
     const userLang = (await getUserLang(userId)) || CONFIG.DEFAULT_LANGUAGE;
     const accounts = await this.db.get(`${userId}.account`);
 
-    if (!accounts?.length) return;
+    if (!accounts?.length) {
+      // this.logger.info(`[用戶 ${userId}] 沒有配置帳號，跳過處理`);
+      this.stats.skipped++;
+      return;
+    }
 
     const channelId = dailyData[userId].channelId;
     const tag = dailyData[userId].tag === "true" ? `<@${userId}>` : "";
@@ -196,7 +249,14 @@ class AutoDailySignSystem {
     for (const account of accounts) {
       this.stats.total++;
       const cookie = await getUserCookie(userId, accounts.indexOf(account));
-      if (!cookie) continue;
+
+      if (!cookie) {
+        // this.logger.info(
+        //   `[用戶 ${userId}] [帳號 ${account.uid}] 缺少 Cookie，跳過處理`
+        // );
+        this.stats.skipped++;
+        continue;
+      }
 
       await this.processAccount(account, {
         userId,
@@ -232,6 +292,12 @@ class AutoDailySignSystem {
     const duration = (endTime - startTime) / 1000;
     const averageTime = this.stats.total > 0 ? duration / this.stats.total : 0;
 
+    this.logger.success(
+      `已完成 ${currentHour}:00 自動簽到: ${this.stats.total} 總數, ` +
+        `${this.stats.success} 成功, ${this.stats.alreadySigned} 已簽到, ` +
+        `${this.stats.skipped} 跳過, ${this.stats.failed} 失敗`
+    );
+
     const statsEmbed = new EmbedBuilder()
       .setColor("#F2BE22")
       .setTitle(`${currentHour}:00 自動簽到統計`)
@@ -249,6 +315,11 @@ class AutoDailySignSystem {
         },
         {
           name: `已簽到: \`${this.stats.alreadySigned}\``,
+          value: "\u200b",
+          inline: true,
+        },
+        {
+          name: `跳過: \`${this.stats.skipped}\``,
           value: "\u200b",
           inline: true,
         },
@@ -272,11 +343,6 @@ class AutoDailySignSystem {
     if (this.webhook) {
       await this.webhook.send({ embeds: [statsEmbed] });
     }
-    this.logger.success(
-      `已完成 ${currentHour}:00 自動簽到: ${this.stats.total} 總數, ` +
-        `${this.stats.success} 成功, ${this.stats.alreadySigned} 已簽到, ` +
-        `${this.stats.failed} 失敗`
-    );
   }
 }
 
@@ -293,7 +359,7 @@ export default async function autoDailySign() {
   });
 
   const startTime = Date.now();
-  system.logger.info(`正在進行 ${currentHour}:00 自動簽到`);
+  system.logger.success(`開始 ${currentHour}:00 自動簽到`);
 
   try {
     for (const userId of Object.keys(dailyData)) {

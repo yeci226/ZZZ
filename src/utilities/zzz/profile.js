@@ -24,6 +24,7 @@ const db = client.db;
 const drawQueue = new Queue({ autostart: true });
 
 const offsetCharacter = {
+  // Default { x: -180, y: -160, title: "", element: "" }
   1091: { x: -70, title: "VoidHunter", element: "frost" }, // Miyabi
   1101: { x: 0 }, // Koleda
   1121: { x: 0 }, // Ben
@@ -38,11 +39,19 @@ const offsetCharacter = {
   1351: { x: 0 }, // Pulchra
   1371: { title: "GrandMaster", element: "auricink" }, // Yixuan
   1381: { x: -70 }, // Zero Anby
-  1391: { x: 0 }, // Jufufu
+  1391: { x: 0, y: -220 }, // Jufufu
+  1401: { x: 0 }, // Alice
+  1411: { x: -100, y: -380 }, // Yuzuha
 };
 const offsetCharacterSkin = {
   1031: {
-    3110311: { x: 0 }, // 皮膚ID
+    3110311: { x: 0 },
+  },
+  1401: {
+    3114011: { x: -200 },
+  },
+  1411: {
+    3114111: { x: 0, y: -160 },
   },
 };
 
@@ -144,6 +153,10 @@ GlobalFonts.registerFromPath(
   "FR"
 );
 GlobalFonts.registerFromPath(
+  join(".", "src", ".", "assets", "impact.ttf"),
+  "Impact"
+);
+GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "Nunito-BlackItalic.ttf"),
   "Nunito"
 );
@@ -188,7 +201,7 @@ export async function handleProfileDraw(
               "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
             ),
         ],
-        fetchReply: true,
+        withResponse: true,
       });
 
       // Request
@@ -261,16 +274,11 @@ export async function handleProfileDraw(
       );
 
       interaction.editReply({
-        embeds: [
-          new EmbedBuilder().setImage(`attachment://${image.name}`).setFooter({
-            text: tr("TimeSpent", {
-              requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
-                2
-              ),
-              drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-            }),
-          }),
-        ],
+        content: `${tr("CostTime", {
+          requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(2),
+          drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
+        })}`,
+        embeds: [],
         components: [...rowSelects, rowMindScape],
         files: [image],
       });
@@ -288,7 +296,7 @@ export async function handleProfileDraw(
                 tr("note_Error_Description") + "\n\n" + `\`${error.message}\``
               ),
           ],
-          fetchReply: true,
+          withResponse: true,
         });
       } else {
         interaction.editReply({
@@ -301,7 +309,7 @@ export async function handleProfileDraw(
                 "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
               ),
           ],
-          fetchReply: true,
+          withResponse: true,
         });
       }
     }
@@ -373,7 +381,44 @@ export async function drawMainImage(tr, userLocale, userData, record) {
     }
 
     // Draw User Info
-    ctx.drawImage(userHeadIcon, 54, 94, 129, 129);
+    // Draw circular background for user head icon
+    const headIconX = 54;
+    const headIconY = 94;
+    const headIconSize = 129;
+
+    // Draw circular background
+    ctx.beginPath();
+    ctx.arc(
+      headIconX + headIconSize / 2,
+      headIconY + headIconSize / 2,
+      headIconSize / 2 + 2.5,
+      0,
+      Math.PI * 2
+    );
+    ctx.fillStyle = "rgba(162, 162, 162, 1)";
+    ctx.fill();
+
+    // Draw border
+    ctx.beginPath();
+    ctx.arc(
+      headIconX + headIconSize / 2,
+      headIconY + headIconSize / 2,
+      headIconSize / 2 + 2.5,
+      0,
+      Math.PI * 2
+    );
+    ctx.strokeStyle = "rgba(22, 22, 22, 1)";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Draw user head icon
+    ctx.drawImage(
+      userHeadIcon,
+      headIconX,
+      headIconY,
+      headIconSize,
+      headIconSize
+    );
 
     const userNameX = 200;
     // Draw User Name
@@ -491,13 +536,41 @@ export async function drawMainImage(tr, userLocale, userData, record) {
 
         ctx.fillStyle = "white";
         ctx.textAlign = "center";
-        ctx.font = `36px Impact`;
-        ctx.fillText(`${medal.number}`, medalIconX + 32, medalIconY + 67);
+        ctx.font = `28px Impact`;
+
+        function formatNumber(num) {
+          const units = [
+            { value: 1_000_000_000, suffix: "B" }, // 十億以上顯示 B
+            { value: 1_000_000, suffix: "M" }, // 百萬以上顯示 M
+            { value: 1_000, suffix: "K" }, // 千以上顯示 K
+          ];
+
+          for (const unit of units) {
+            if (num >= unit.value) {
+              const value = num / unit.value;
+              // 根據數字大小決定小數位
+              if (value >= 1000) {
+                // 超過 1000x 的單位，繼續進位 (例如 1000M = 1B)
+                continue;
+              } else if (value >= 100) {
+                return value.toFixed(1) + unit.suffix; // 100~999.X
+              } else {
+                return value.toFixed(2) + unit.suffix; // <100 顯示兩位小數
+              }
+            }
+          }
+
+          return num.toString(); // 小於 1000 就直接顯示原數字
+        }
+
+        // 使用範例
+        let displayNumber = formatNumber(medal.number);
+        ctx.fillText(displayNumber, medalIconX + 32, medalIconY + 67);
 
         // Text Outline
         ctx.strokeStyle = "black";
         ctx.lineWidth = 1.75;
-        ctx.strokeText(`${medal.number}`, medalIconX + 32, medalIconY + 67);
+        ctx.strokeText(displayNumber, medalIconX + 32, medalIconY + 67);
       }
     }
 
@@ -687,19 +760,9 @@ export async function drawCharacterImage(
       }
     }
     character.equip.sort((a, b) => a.equipment_type - b.equipment_type);
-    const propertyLength = 16;
 
-    // 檢查 character.id 對應的圖片是否存在
-    const characterSpecificImagePath = `./src/assets/images/icons/mindscape/${character.id}.png`;
-    const defaultImagePath = `./src/assets/images/icons/mindscape/m0.png`;
-    const userMindScapeImagePath = `./src/assets/images/icons/mindscape/m${userMindScape ? character.rank : 0}.png`;
-
-    // 如果 characterSpecificImagePath 不存在，將 userMindScapeImagePath 改為 defaultImagePath
-    let finalMindScapeImagePath = userMindScapeImagePath;
-    if (!fs.existsSync(characterSpecificImagePath)) {
-      finalMindScapeImagePath = defaultImagePath;
-    }
-
+    const characterSpecificImagePath = `https://api.hakush.in/zzz/UI/Mindscape_${character.id}_${character.rank <= 2 ? 1 : character.rank <= 5 ? 2 : 3}.webp`;
+    const finalMindScapeImagePath = `./src/assets/images/icons/mindscape/m${userMindScape ? character.rank : 0}.png`;
     const characterData = await getCharacterData(character.id);
 
     // 如果 character.skin_list 有值，且 characterData.skin 有值，優先使用 unlocked: true 且 is_original: false 的皮膚
@@ -817,7 +880,21 @@ export async function drawCharacterImage(
     });
 
     // Draw BG
-    ctx.drawImage(characterRankImage, 0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const scaleFactor = 1.3;
+    const scaledWidth = canvas.width * scaleFactor;
+    const scaledHeight = canvas.height * scaleFactor;
+    const offsetX = (canvas.width - scaledWidth) / 2;
+    const offsetY = (canvas.height - scaledHeight) / 2;
+
+    ctx.drawImage(
+      characterRankImage,
+      offsetX,
+      offsetY,
+      scaledWidth,
+      scaledHeight
+    );
     ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
 
     // Draw Paint

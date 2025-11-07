@@ -29,7 +29,7 @@ const langs = {
   DrawInQueue: "대기열에 있습니다. 현재 대기열 위치: <position>",
   DrawError: "그리기 실패",
   MainPage: "홈페이지",
-  CostTime: "소요 시간: 요청 <requestTime> 초 • 그리기 <drawTime> 초",
+  CostTime: "-# 소요 시간: 요청 <requestTime> 초 • 그리기 <drawTime> 초",
   levelFormat: "레벨 <level>",
   levelFormat2: "레벨 <level>",
   MindScape: "영화 효과 표시",
@@ -69,6 +69,7 @@ const langs = {
   account_LoginFailed: "로그인 실패",
   account_LoginFailedDesc: "계정 정보가 올바른지 확인하세요",
   account_LoginSuccess: "계정 로그인 성공 및 쿠키 설정",
+  account_LoginSuccessDesc: "계정 <z>의 쿠키가 업데이트되었습니다",
   account_Linked: "연결됨",
   account_NotLinked: "연결되지 않음",
   account_ListOfAccount: "<Username> 설정된 계정",
@@ -171,13 +172,12 @@ const langs = {
   NonDataDesc:
     "전투 기록은 약 1시간에 한 번씩 업데이트됩니다. 나중에 다시 시도해 주세요",
   EnemyWeakness: "적 약점",
-  TimeSpent: "소요 시간: 요청 <requestTime> 초 • 그리기 <drawTime> 초",
   ShiyuDefense: "식여 방어전",
   RatingStats: "등급 통계",
   FastestTime: "최단 시간",
   Node1: "노드1",
   Node2: "노드2",
-  CostTime: "소요 시간",
+  SpentTime: "-# 소요 시간",
 
   // Deadly Assault
   DeadlyAssault: "위국 강습",

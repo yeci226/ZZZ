@@ -96,7 +96,7 @@ export async function handleShiyuDraw(interaction, tr, user, zzz, schedule) {
               "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
             ),
         ],
-        fetchReply: true,
+        withResponse: true,
       });
 
       // Request
@@ -122,16 +122,11 @@ export async function handleShiyuDraw(interaction, tr, user, zzz, schedule) {
       });
 
       interaction.editReply({
-        embeds: [
-          new EmbedBuilder().setImage(`attachment://${image.name}`).setFooter({
-            text: tr("TimeSpent", {
-              requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(
-                2
-              ),
-              drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-            }),
-          }),
-        ],
+        content: `${tr("CostTime", {
+          requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(2),
+          drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
+        })}`,
+        embeds: [],
         files: [image],
       });
     } catch (error) {
@@ -148,7 +143,7 @@ export async function handleShiyuDraw(interaction, tr, user, zzz, schedule) {
                 tr("note_Error_Description") + "\n\n" + `\`${error.message}\``
               ),
           ],
-          fetchReply: true,
+          withResponse: true,
         });
       } else {
         interaction.editReply({
@@ -161,7 +156,7 @@ export async function handleShiyuDraw(interaction, tr, user, zzz, schedule) {
                 "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
               ),
           ],
-          fetchReply: true,
+          withResponse: true,
         });
       }
     }
@@ -503,7 +498,7 @@ async function drawShiyuImage(tr, userLocale, shiyuData) {
         ctx.fillStyle = "#E3E3E3";
         ctx.font = `22px ${selectedFont}`;
         ctx.fillText(
-          `${tr("CostTime") || "花費時間"} ${totalMinutes}:${totalSeconds}`,
+          `${tr("SpentTime") || "花費時間"} ${totalMinutes}:${totalSeconds}`,
           canvas.width - 70,
           currentY + 47.5
         );
@@ -953,6 +948,21 @@ async function drawNode(
         ctx.textAlign = "left";
       }
 
+      // 顯示角色稀有度
+      if (avatar.rank) {
+        // 繪製黑色圓形背景
+        ctx.beginPath();
+        ctx.arc(avatarX + 70, currentY + 215, 14, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = `16px ${selectedFont}`;
+        ctx.textAlign = "center";
+        ctx.fillText(avatar.rank.toString(), avatarX + 70, currentY + 220);
+        ctx.textAlign = "left";
+      }
+
       avatarX += 105;
     }
   }
@@ -1010,7 +1020,7 @@ async function drawNode(
 
     // 添加小圖標或提示
     ctx.fillText(
-      `${tr("CostTime")} ${battleMinutes}:${battleSeconds}`,
+      `${tr("SpentTime")} ${battleMinutes}:${battleSeconds}`,
       x + width - 20, // 靠右顯示
       currentY + 172.5 // 與標題在同一行
     );

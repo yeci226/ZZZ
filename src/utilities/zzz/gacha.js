@@ -94,6 +94,11 @@ async function fetchSignalData(query, id, endId) {
   query.set("real_gacha_type", id);
   query.set("end_id", endId);
 
+  console.log(
+    "https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?" +
+      query
+  );
+
   const response = await axios.get(
     "https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?" +
       query
@@ -143,7 +148,7 @@ export async function getSingalLog(interaction, tr, userLocale, input) {
             "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
           ),
       ],
-      fetchReply: true,
+      withResponse: true,
     });
 
     let endId = 0;
@@ -170,6 +175,7 @@ export async function getSingalLog(interaction, tr, userLocale, input) {
       if (signalReachedLastId) break;
 
       endId = list[list.length - 1].id;
+      console.log(endId);
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
 
@@ -305,14 +311,11 @@ export async function handleSignalLogDraw(
       );
 
       const resMessage = await interaction.editReply({
-        embeds: [
-          new EmbedBuilder().setImage(`attachment://${image.name}`).setFooter({
-            text: tr("TimeSpent", {
-              requestTime: requestTime,
-              drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-            }),
-          }),
-        ],
+        content: `${tr("CostTime", {
+          requestTime: requestTime,
+          drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
+        })}`,
+        embeds: [],
         components: [rowGachaTypeSelecter],
         files: [image],
       });
@@ -326,7 +329,7 @@ export async function handleSignalLogDraw(
         const { values } = interaction;
         const type = values[0];
 
-        await interaction.deferUpdate({ fetchReply: true }).catch(() => {});
+        await interaction.deferUpdate({ withResponse: true }).catch(() => {});
         await interaction.editReply({
           embeds: [
             new EmbedBuilder()
@@ -337,7 +340,7 @@ export async function handleSignalLogDraw(
               ),
           ],
           components: [],
-          fetchReply: true,
+          withResponse: true,
         });
 
         handleSignalLogDraw(
@@ -367,7 +370,7 @@ export async function handleSignalLogDraw(
               "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
             ),
         ],
-        fetchReply: true,
+        withResponse: true,
       });
     }
   };

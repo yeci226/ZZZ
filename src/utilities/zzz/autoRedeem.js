@@ -168,9 +168,9 @@ class AutoRedeemSystem {
 
     const isCookieExpired = await this.db.get(`${account.uid}.cookieExpired`);
     if (isCookieExpired) {
-      this.logger.warn(
-        `[用戶 ${userId}] [帳號 #${accountIndex}] 的Cookie已過期，跳過兌換流程`
-      );
+      // this.logger.warn(
+      //   `[用戶 ${userId}] [帳號 #${accountIndex}] 的Cookie已過期，跳過兌換流程`
+      // );
       return null;
     }
 
@@ -186,40 +186,47 @@ class AutoRedeemSystem {
       (code) => !userRedeemedCodes.includes(code.code)
     );
 
-    this.logger.info(
-      `[用戶 ${userId}] [帳號 #${accountIndex}] 正在處理禮包碼，總數: ${unRedeemedCodes.length}`
-    );
+    // this.logger.info(
+    //   `[用戶 ${userId}] [帳號 #${accountIndex}] 正在處理禮包碼，總數: ${unRedeemedCodes.length}`
+    // );
+
+    // 檢查是否需要更新Cookie（無論是否有未兌換的禮包碼）
+    const lastCookieRefresh =
+      (await this.db.get(`${account.uid}.lastCookieRefresh`)) || 0;
+    const currentTime = Date.now();
+    const oneDayInMs = 24 * 60 * 60 * 1000; // 24小时的毫秒数
+    const shouldRefreshCookie = currentTime - lastCookieRefresh >= oneDayInMs;
 
     if (!unRedeemedCodes || unRedeemedCodes.length === 0) {
       try {
-        // 获取上次刷新Cookie的时间
-        const lastCookieRefresh =
-          (await this.db.get(`${account.uid}.lastCookieRefresh`)) || 0;
-        const currentTime = Date.now();
-        const oneDayInMs = 24 * 60 * 60 * 1000; // 24小时的毫秒数
-
         // 如果距离上次刷新已经过了24小时，则刷新Cookie
-        if (currentTime - lastCookieRefresh >= oneDayInMs) {
+        if (shouldRefreshCookie) {
           await updateCookie(userId, accountIndex, account.cookie);
           await this.db.set(`${account.uid}.lastCookieRefresh`, currentTime);
-          this.logger.success(
-            `[用戶 ${userId}] [帳號 #${accountIndex}] 沒有未兌換的禮包碼，已刷新Cookie以防止過期`
-          );
+          // this.logger.success(
+          //   `[用戶 ${userId}] [帳號 #${accountIndex}] 沒有未兌換的禮包碼，已刷新Cookie以防止過期`
+          // );
         } else {
-          this.logger.info(
-            `[用戶 ${userId}] [帳號 #${accountIndex}] 沒有未兌換的禮包碼，且Cookie最近已刷新，跳過`
-          );
+          // this.logger.info(
+          //   `[用戶 ${userId}] [帳號 #${accountIndex}] 沒有未兌換的禮包碼，且Cookie最近已刷新，跳過`
+          // );
         }
       } catch (error) {
         this.logger.error(
           `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 刷新失敗: ${error.message}`
         );
       }
-      return null;
+      return {
+        uid: account.uid,
+        nickname: accountNickname,
+        description: `ℹ️ ${tr("redeem_Already")}: ${codes.length} 個禮包碼已全部兌換`,
+        hasSuccess: false,
+      };
     }
-    this.logger.info(
-      `[用戶 ${userId}] [帳號 #${accountIndex}] 發現 ${unRedeemedCodes.length} 個未兌換的禮包碼`
-    );
+
+    // this.logger.info(
+    //   `[用戶 ${userId}] [帳號 #${accountIndex}] 發現 ${unRedeemedCodes.length} 個未兌換的禮包碼`
+    // );
 
     const results = [];
     let hasSuccessfulRedeem = false;
@@ -227,9 +234,9 @@ class AutoRedeemSystem {
     for (const code of unRedeemedCodes) {
       try {
         this.stats.total++;
-        this.logger.info(
-          `[用戶 ${userId}] [帳號 #${accountIndex}] 正在兌換: ${code.code}`
-        );
+        // this.logger.info(
+        //   `[用戶 ${userId}] [帳號 #${accountIndex}] 正在兌換: ${code.code}`
+        // );
         const result = await this.processCode(
           zzz,
           code,
@@ -237,29 +244,35 @@ class AutoRedeemSystem {
           account.uid
         );
         if (result.status.tokenInvalid) {
-          this.logger.warn(
-            `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 已過期，跳過兌換流程`
-          );
-          return null;
+          // this.logger.warn(
+          //   `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 已過期，跳過兌換流程`
+          // );
+          await this.db.set(`${account.uid}.cookieExpired`, true);
+          return {
+            uid: account.uid,
+            nickname: accountNickname,
+            description: `❌ Cookie 已過期，無法兌換禮包碼`,
+            hasSuccess: false,
+          };
         }
 
         if (result.status.success) {
-          this.logger.success(
-            `[用戶 ${userId}] [帳號 #${accountIndex}] 兌換成功: ${code.code}`
-          );
+          // this.logger.success(
+          //   `[用戶 ${userId}] [帳號 #${accountIndex}] 兌換成功: ${code.code}`
+          // );
           hasSuccessfulRedeem = true;
         } else if (result.status.alreadyClaimed) {
-          this.logger.info(
-            `[用戶 ${userId}] [帳號 #${accountIndex}] 已經兌換過: ${code.code}`
-          );
+          // this.logger.info(
+          //   `[用戶 ${userId}] [帳號 #${accountIndex}] 已經兌換過: ${code.code}`
+          // );
         } else if (result.status.invalid) {
-          this.logger.warn(
-            `[用戶 ${userId}] [帳號 #${accountIndex}] 無效的禮包碼: ${code.code}`
-          );
+          // this.logger.warn(
+          //   `[用戶 ${userId}] [帳號 #${accountIndex}] 無效的禮包碼: ${code.code}`
+          // );
         } else {
-          this.logger.error(
-            `[用戶 ${userId}] [帳號 #${accountIndex}] 兌換失敗: ${code.code} - ${result.message}`
-          );
+          // this.logger.error(
+          //   `[用戶 ${userId}] [帳號 #${accountIndex}] 兌換失敗: ${code.code} - ${result.message}`
+          // );
           await this.db.set(`${account.uid}.cookieExpired`, true);
         }
 
@@ -274,17 +287,19 @@ class AutoRedeemSystem {
       }
     }
 
-    if (hasSuccessfulRedeem) {
-      try {
+    // 更新Cookie的邏輯：無論是否有成功兌換，都定期更新Cookie
+    try {
+      if (hasSuccessfulRedeem || shouldRefreshCookie) {
         await updateCookie(userId, accountIndex, account.cookie);
-        this.logger.success(
-          `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 更新成功`
-        );
-      } catch (error) {
-        this.logger.error(
-          `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 更新失敗: ${error.message}`
-        );
+        await this.db.set(`${account.uid}.lastCookieRefresh`, currentTime);
+        // this.logger.success(
+        //   `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 更新成功`
+        // );
       }
+    } catch (error) {
+      this.logger.error(
+        `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 更新失敗: ${error.message}`
+      );
     }
 
     await this.db.set(`${account.uid}.redeemedCodes`, [
