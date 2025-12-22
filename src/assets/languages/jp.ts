@@ -104,7 +104,7 @@ const langs = {
   admin_MoveFail: "移動に失敗しました",
   admin_MoveNoPermission: "<channel> に `メッセージを送信` 権限がありません",
   admin_MoveSuccess: "移動に成功しました",
-  admin_MoveNoUser: "このサーバーにユーザーのメッセージ通知設定がありません",
+  admin_MoveNoUser: "このサーバーにユーザー의メッセージ通知設定がありません",
   admin_MoveSuccessMessage:
     "`<count>` 人のユーザーのメッセージ通知を <channel> に移動しました",
   admin_MoveFailMessage: "<channel> にメッセージ通知を設定できませんでした",
@@ -132,7 +132,8 @@ const langs = {
   redeem_Invalid: "無効または期限切れ",
   redeem_Failed: "引き換え失敗",
   redeem_Processing: "処理中...",
-  redeem_ProcessingDesc: "引き換え処理中です。後で再試行してください",
+  redeem_ProcessingDesc:
+    "残り <noRedeemedCodes> 個の未引き換えギフトコードがあります。約 <seconds> 秒残っています",
   redeem_Processed: "処理された引き換えコード",
   redeem_Redeeming: "引き換え中...",
   redeem_RedeemStats: "引き換え結果の統計:",
@@ -158,16 +159,16 @@ const langs = {
   BangbooPool: "バングブープール",
   gacha_HowToGet: "信号記録の取得方法",
   gacha_HowToGetDesc:
-    "1. PCでZZZを開きます\n2. 信号記録の信号詳細を開きます\n3. Windows PowerShellを開き、以下のコマンドを貼り付けます\n<z>\n4. URLをコピーし、コマンドを使って信号記録を照会します",
+    "**1.** PCでZZZを開きます\n**2.** 信号記録の信号詳細を開きます\n**3.** Windows PowerShellを開き、以下のコマンドを貼り付けます <z>\n**4.** URLをコピーし、コマンドを使って信号記録を照会します",
   gacha_LogTitle: "信号記録を見る",
   gacha_LogDesc: "ここに信号記録のリンクを入力してください",
   gacha_NoSignal: "利用可能な信号記録がありません",
   gacha_Loading: "<type>のデータを読み込み中",
-  gacha_SelectType: "表示するデータタイプを選択",
+  gacha_SelectType: "表示する data type を選択",
   gacha_TotalCount: "総抽選数",
   gacha_SRankCount: "Sランク数",
   gacha_SRankAverage: "Sランク平均抽選数",
-  gacha_Pity: "<pity>抽",
+  gacha_Pity: "垫<pity>抽",
   gacha_Count: "<count>抽",
   gacha_LimitedCharacterPulls: "限定Sランク平均抽選数",
 

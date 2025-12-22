@@ -1,4 +1,3 @@
-
 import { client } from "../index.js";
 import Logger from "../utilities/core/logger.js";
 import {
@@ -44,10 +43,12 @@ const elementId: Record<string, string> = {
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (!interaction.isButton()) return;
   const buttonInteraction = interaction as ButtonInteraction;
-  await buttonInteraction.deferUpdate().catch(() => { });
+  await buttonInteraction.deferUpdate().catch(() => {});
   const { locale, customId } = buttonInteraction;
   const userLocale =
-    (await getUserLang(buttonInteraction.user.id)) || toI18nLang(locale) || "en";
+    (await getUserLang(buttonInteraction.user.id)) ||
+    toI18nLang(locale) ||
+    "en";
   const tr = createTranslator(userLocale);
 
   if (customId == "profile_CharacterMindScape") {
@@ -60,11 +61,13 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   const selectInteraction = interaction as StringSelectMenuInteraction;
   const { locale, customId, values } = selectInteraction;
   const userLocale =
-    (await getUserLang(selectInteraction.user.id)) || toI18nLang(locale) || "en";
+    (await getUserLang(selectInteraction.user.id)) ||
+    toI18nLang(locale) ||
+    "en";
   const tr = createTranslator(userLocale);
 
   if (!customId.startsWith("account"))
-    await selectInteraction.deferUpdate().catch(() => { });
+    await selectInteraction.deferUpdate().catch(() => {});
   if (customId.startsWith("news")) handleNews(selectInteraction, tr, values[0]);
   if (customId.startsWith("account"))
     handleAccountAction(selectInteraction, tr, customId, values[0]);
@@ -81,8 +84,8 @@ async function handleMindScapeChange(interaction: ButtonInteraction, tr: any) {
   row2.components = row2.components.map((button: any) =>
     button.customId === interaction.customId
       ? ButtonBuilder.from(button as any).setStyle(
-        mindScape ? ButtonStyle.Secondary : ButtonStyle.Success
-      )
+          mindScape ? ButtonStyle.Secondary : ButtonStyle.Success
+        )
       : button
   );
 
@@ -90,7 +93,12 @@ async function handleMindScapeChange(interaction: ButtonInteraction, tr: any) {
   await db.set(mindScapeKey, !mindScape);
 }
 
-async function handleSelectCharacter(interaction: StringSelectMenuInteraction, tr: any, value: string, userLocale: string) {
+async function handleSelectCharacter(
+  interaction: StringSelectMenuInteraction,
+  tr: any,
+  value: string,
+  userLocale: string
+) {
   const drawTask = async () => {
     try {
       interaction.editReply({
@@ -105,7 +113,9 @@ async function handleSelectCharacter(interaction: StringSelectMenuInteraction, t
       });
 
       const requestStartTime = Date.now();
-      const [userId, accountIndex, characterId] = value.split("-");
+      const [userId, accountIndex, characterId] = value
+        .split("-")
+        .map((v) => v.trim());
       const zzz = await getUserZZZData(
         interaction as any,
         tr,
@@ -118,17 +128,26 @@ async function handleSelectCharacter(interaction: StringSelectMenuInteraction, t
       const characters = await zzz.record.characters();
       const requestEndTime = Date.now();
       const drawStartTime = Date.now();
-      const selectedCharacter =
+      let selectedCharacter =
         characterId !== "main"
-          ? (await zzz.record.character(parseInt(characterId)))
+          ? await zzz.record.character(parseInt(characterId))
           : null;
+
+      if (Array.isArray(selectedCharacter))
+        selectedCharacter = selectedCharacter[0];
+
       let imageBuffer;
 
       if (characterId == "main") {
         const record = await zzz.record.records();
-        const userData = await getUserHoyolabData(interaction as any, tr, userId);
+        const userData = await getUserHoyolabData(
+          interaction as any,
+          tr,
+          userId
+        );
         imageBuffer = await drawMainImage(tr, userLocale, userData, record);
       } else {
+        if (!selectedCharacter) throw new Error(tr("AccountNotFound"));
         imageBuffer = await drawCharacterImage(
           interaction,
           tr,
@@ -158,39 +177,39 @@ async function handleSelectCharacter(interaction: StringSelectMenuInteraction, t
       const characterOptions =
         characterId === "main"
           ? characters.map((character: any) => ({
-            emoji: (emoji as any)[elementId[character.element_type]],
-            label: `${character.name_mi18n} `,
-            value: `${userId} -${character.id} `,
-          }))
-          : [
-            {
-              emoji: emoji.avatarIcon,
-              label: tr("MainPage"),
-              value: `${userId} -${accountIndex} -main`,
-            },
-            ...characters.map((character: any) => ({
               emoji: (emoji as any)[elementId[character.element_type]],
-              label: `${character.name_mi18n} `,
-              description: `${tr("profile_CharactersFormat", {
-                level: character.level,
-                rank: character.rank,
-              })
-                } `,
-              value: `${userId} -${accountIndex} -${character.id} `,
-            })),
-          ];
+              label: `${character.name_mi18n}`,
+              value: `${userId}-${accountIndex}-${character.id}`,
+            }))
+          : [
+              {
+                emoji: emoji.avatarIcon,
+                label: tr("MainPage"),
+                value: `${userId}-${accountIndex}-main`,
+              },
+              ...characters.map((character: any) => ({
+                emoji: (emoji as any)[elementId[character.element_type]],
+                label: `${character.name_mi18n}`,
+                description: `${tr("profile_CharactersFormat", {
+                  level: character.level,
+                  rank: character.rank,
+                })}`,
+                value: `${userId}-${accountIndex}-${character.id}`,
+              })),
+            ];
 
       const optionChunks = chunkArray(characterOptions, 25);
 
-      const rowSelects = optionChunks.map((optionsChunk: any, index: number) =>
-        new ActionRowBuilder().addComponents(
-          new StringSelectMenuBuilder()
-            .setPlaceholder(`${tr("profile_SelectCharacter")} (${index + 1})`)
-            .setCustomId(`profile_SelectCharacter - ${index} `)
-            .setMinValues(1)
-            .setMaxValues(1)
-            .addOptions(optionsChunk)
-        ) as any
+      const rowSelects = optionChunks.map(
+        (optionsChunk: any, index: number) =>
+          new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setPlaceholder(`${tr("profile_SelectCharacter")} (${index + 1})`)
+              .setCustomId(`profile_SelectCharacter-${index}`)
+              .setMinValues(1)
+              .setMaxValues(1)
+              .addOptions(optionsChunk)
+          ) as any
       );
 
       const rowMindScape = new ActionRowBuilder().addComponents(
@@ -204,8 +223,7 @@ async function handleSelectCharacter(interaction: StringSelectMenuInteraction, t
         content: `${tr("CostTime", {
           requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(2),
           drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-        })
-          } `,
+        })} `,
         embeds: [],
         components: [...rowSelects, rowMindScape] as any[],
         files: [image],
@@ -237,7 +255,12 @@ async function handleSelectCharacter(interaction: StringSelectMenuInteraction, t
   }
 }
 
-async function handleAccountAction(interaction: StringSelectMenuInteraction, tr: any, customId: string, value: string) {
+async function handleAccountAction(
+  interaction: StringSelectMenuInteraction,
+  tr: any,
+  customId: string,
+  value: string
+) {
   const account: any = await db.get(`${interaction.user.id}.account`);
   if (!account)
     return interaction.reply({
@@ -250,7 +273,7 @@ async function handleAccountAction(interaction: StringSelectMenuInteraction, tr:
     });
 
   if (customId == "account_EditAccountSelect") {
-    await interaction.deferUpdate().catch(() => { });
+    await interaction.deferUpdate().catch(() => {});
     const accountIndex = value;
     interaction.editReply({
       components: [
@@ -375,11 +398,10 @@ async function handleAccountAction(interaction: StringSelectMenuInteraction, tr:
       );
     }
   } else if (interaction.customId == "account_DeleteAccountSelect") {
-    await interaction.deferUpdate().catch(() => { });
+    await interaction.deferUpdate().catch(() => {});
     const accountIndex = value;
     const accounts = (await db.get(`${interaction.user.id}.account`)) ?? [];
     const uid = accounts[parseInt(accountIndex)].uid;
-
 
     if (accounts.length <= 1) await db.delete(`${interaction.user.id}.account`);
     else {
@@ -476,10 +498,17 @@ async function handleAccountAction(interaction: StringSelectMenuInteraction, tr:
   }
 }
 
-async function handleNews(interaction: StringSelectMenuInteraction, tr: any, value: string) {
+async function handleNews(
+  interaction: StringSelectMenuInteraction,
+  tr: any,
+  value: string
+) {
   if (interaction.customId == "news_type") {
     const type = value;
-    const newsData = await getNewsList(interaction.locale.toLowerCase(), parseInt(type));
+    const newsData = await getNewsList(
+      interaction.locale.toLowerCase(),
+      parseInt(type)
+    );
 
     return interaction.editReply({
       components: [
@@ -493,10 +522,11 @@ async function handleNews(interaction: StringSelectMenuInteraction, tr: any, val
               newsData.data.list.map((data: any, i: number) => {
                 const date = new Date(data.post.created_at * 1000);
                 return {
-                  label: `${data.post.subject.length < 100
-                    ? data.post.subject
-                    : data.post.subject.slice(0, 97).concat("...")
-                    }`,
+                  label: `${
+                    data.post.subject.length < 100
+                      ? data.post.subject
+                      : data.post.subject.slice(0, 97).concat("...")
+                  }`,
                   description:
                     date.getUTCFullYear() +
                     tr("Year") +

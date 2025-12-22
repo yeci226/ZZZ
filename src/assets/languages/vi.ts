@@ -24,7 +24,7 @@ const langs = {
     "Không sử dụng được lệnh này do Người Kết Nỗi vẫn chưa thiết lập tài khoản!",
   AccountNotFound: "Không tìm thấy thông tin tài khoản!",
   AccountNotFoundDesc:
-    "Vui lòng kiểm tra lại các thông tin sau đã được thiết lập đúng hay chưa:\n- Cookie： `<hasCookie>`\n- UID： `<hasUid>`",
+    "### Vui lòng kiểm tra lại các thông tin sau đã được thiết lập đúng hay chưa:\n- Cookie： `<hasCookie>`\n- UID： `<hasUid>`",
   Searching: "Đang tìm kiếm, Chủ nhân vui lòng đợi ~",
   DrawInQueue: "Đang trong hàng đợi, vị trí hàng đợi hiện tại: ：<position>",
   DrawError: "Lỗi",
@@ -41,11 +41,14 @@ const langs = {
   ActiveDays: "Số ngày năng động",
   PeriodZoneLayer: "Phòng Tuyến Bảo Vệ Trụ Shiyu",
   InterKnotReputation: "Danh vọng Inter-Knot",
+
+  //news
   news_Notice: "Thông báo",
   news_Events: "Hoạt động",
   news_Info: "Thông tin",
   news_SelectType: "Vui lòng chọn phân loại danh mục tin tức",
   news_SelectPost: "🐣 Vui lòng chọn một bài viết",
+
   daily_Failed: "Điểm danh thất bại",
   daily_Signed: "Proxy, hôm nay bạn đã điểm danh rồi nha ~",
   daily_SignSuccess: "Đã điểm danh thành công!",
@@ -90,6 +93,7 @@ const langs = {
   account_LimitExceeded: "Bạn chỉ có thể thiết lập tối đa 5 tài khoản!",
   account_AlreadySet: "Tài khoản đã được liên kết <z> rồi!",
   account_UidSetSuccess: "Đã liên kết UID <z> thành công!",
+
   admin_NoPermission: "Bạn không có quyền sử dụng lệnh này!",
   admin_RemoveFail: "Xoá không thành công!",
   admin_UserNotSet: "<user> vẫn chưa thiết lập tính năng này!",
@@ -107,6 +111,7 @@ const langs = {
     "Đã chuyển <count> thông báo người dùng đến kênh <channel>",
   admin_MoveFailMessage: "Không thể gửi tin nhắn ở kênh <channel>",
   admin_NoData: "Không tìm thấy dữ liệu!",
+
   note_Title: "Ghi chú",
   note_Vitality: "Năng động hôm nay",
   note_Energy: "Điện lượng",
@@ -129,13 +134,13 @@ const langs = {
   redeem_Invalid: "Mã đổi thưởng không hợp lệ hoặc đã hết hạn",
   redeem_Failed: "Đổi thưởng thất bại",
   redeem_Processing: "Đang xử lý...",
-  redeem_Processed: "Mã đổi thưởng đã xử lý",
-  redeem_Redeeming: "Đang đổi thưởng...",
   redeem_ProcessingDesc:
     "Còn <noRedeemedCodes> mã đổi thưởng chưa được đổi, khoảng <seconds> giây",
+  redeem_Processed: "Mã đổi thưởng đã xử lý",
+  redeem_Redeeming: "Đang đổi thưởng...",
+  redeem_RedeemStats: "Thống kê kết quả đổi thưởng:",
   redeem_SystemBusy: "Hệ thống bận, vui lòng thử lại sau",
   redeem_CookieTokenInvalid: "CookieToken đã hết hạn, vui lòng thiết lập lại",
-  redeem_RedeemStats: "Thống kê kết quả đổi thưởng:",
   redeem_NoCookie: "Chưa thiết lập CookieToken hay AccountMid",
   redeem_Codelist: "Danh sách các mã đổi quà có sẵn",
   redeem_CodeTip:
@@ -145,6 +150,7 @@ const langs = {
   autoRedeem_Off: "Tự động đổi mã phần thưởng: Tắt",
   autoRedeem_On: "Tự đổng đổi mã phần thưởng: Bật",
   autoRedeem_Tag: "Ping khi đổi thưởng：<z>",
+
   profile_SelectCharacter: "Chọn nhân vật",
   profile_NoImageData: "Không thể lấy dữ liệu hình ảnh",
   profile_CharactersFormat: "Level <level> • Cung mệnh <rank>",
@@ -155,7 +161,7 @@ const langs = {
   BangbooPool: "Hồ sơ Bangboo",
   gacha_HowToGet: "Cách lấy bản ghi tín hiệu",
   gacha_HowToGetDesc:
-    "1. Mở ZZZ trên PC\n2. Mở Ghi chép tín hiệu trong Chi tiết tín hiệu\n3. Mở Windows PowerShell và dán lệnh sau<z>\n4. Sao chép URL và sử dụng lệnh để tra cứu các bản ghi tín hiệu",
+    "**1.** Mở ZZZ trên PC\n**2.** Mở Ghi chép tín hiệu trong Chi tiết tín hiệu\n**3.** Mở Windows PowerShell và dán lệnh sau <z>\n**4.** Sao chép URL và sử dụng lệnh để tra cứu các bản ghi tín hiệu",
   gacha_LogTitle: "Xem bản ghi tín hiệu",
   gacha_LogDesc: "Vui lòng nhập liên kết bản ghi tín hiệu tại đây",
   gacha_NoSignal: "Không có bản ghi tín hiệu khả dụng",
@@ -164,8 +170,8 @@ const langs = {
   gacha_TotalCount: "Tổng số lần rút",
   gacha_SRankCount: "S-rank số lượng",
   gacha_SRankAverage: "S-rank trung bình số lần rút",
-  gacha_Pity: "<pity> lần rút",
-  gacha_Count: "<count> lần rút",
+  gacha_Pity: "垫<pity>lần rút",
+  gacha_Count: " <count>lần rút",
   gacha_LimitedCharacterPulls: "Số lần rút S-rank giới hạn",
 
   NonData: "Không tìm thấy dữ liệu cho chế độ này",

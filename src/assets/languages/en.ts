@@ -135,9 +135,9 @@ const langs = {
     "<noRedeemedCodes> unredeemed gift codes remaining, <seconds> seconds remaining",
   redeem_Processed: "Processed Redeem Codes",
   redeem_Redeeming: "Redeeming...",
+  redeem_RedeemStats: "Redeem Result Statistics:",
   redeem_SystemBusy: "The system is busy, please try again later",
   redeem_CookieTokenInvalid: "CookieToken has expired, please reset it",
-  redeem_RedeemStats: "Redeem Result Statistics:",
   redeem_NoCookie: "CookieToken or AccountMid has not been set yet",
   redeem_Codelist: "Currently available redemption codes",
   redeem_CodeTip:

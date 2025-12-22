@@ -19,7 +19,10 @@ client.commands = {
   message: new Collection(),
 };
 
-async function getMessageCommands(client: Client, messageCommandPaths: string[]) {
+async function getMessageCommands(
+  client: Client,
+  messageCommandPaths: string[]
+) {
   const result = [];
 
   for (let path of messageCommandPaths) {
@@ -94,7 +97,7 @@ export async function load(client: Client) {
     `已載入 ${eventPaths.length} 事件、${slashCommands.length} 斜線指令、${messageCommands.length} 訊息指令`
   );
 
-  client.on("ready", async () => {
+  client.on("clientReady", async () => {
     await client.application?.commands.set(slashCommands);
   });
 }
@@ -106,5 +109,7 @@ import { getConfig } from "./utilities/core/config.js";
 const config = getConfig();
 
 client.login(
-  process.env.NODE_ENV === "dev" ? config.TEST_TOKEN || config.TOKEN : config.TOKEN
+  process.env.NODE_ENV === "dev"
+    ? config.TEST_TOKEN || config.TOKEN
+    : config.TOKEN
 );

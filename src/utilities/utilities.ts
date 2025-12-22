@@ -1,7 +1,11 @@
 import { client } from "../index.js";
 import axios from "axios";
 import emoji from "../assets/emoji.js";
-import { EmbedBuilder, MessageFlags, ChatInputCommandInteraction } from "discord.js";
+import {
+  EmbedBuilder,
+  MessageFlags,
+  ChatInputCommandInteraction,
+} from "discord.js";
 import Logger from "./core/logger.js";
 import {
   ZenlessZoneZero,
@@ -183,7 +187,10 @@ export function getStaminaColor(stamina: number) {
   return selectedColor;
 }
 
-export async function drawInQueueReply(interaction: ChatInputCommandInteraction, title = "") {
+export async function drawInQueueReply(
+  interaction: ChatInputCommandInteraction,
+  title = ""
+) {
   interaction.editReply({
     embeds: [
       new EmbedBuilder()
@@ -196,7 +203,11 @@ export async function drawInQueueReply(interaction: ChatInputCommandInteraction,
   } as any);
 }
 
-export async function failedReply(interaction: ChatInputCommandInteraction, title = "", description = "") {
+export async function failedReply(
+  interaction: ChatInputCommandInteraction,
+  title = "",
+  description = ""
+) {
   const embed = new EmbedBuilder().setTitle(title).setConfig("#E76161", "sob");
 
   if (description) embed.setDescription(description);
@@ -246,7 +257,8 @@ export async function setupDefaultLang(userId: string, userSystemLang: string) {
 
   const langCode = langMap[userSystemLang] || userSystemLang;
 
-  if (languageMapping[langCode as keyof typeof languageMapping]) await db.set(`${userId}.locale`, langCode);
+  if (languageMapping[langCode as keyof typeof languageMapping])
+    await db.set(`${userId}.locale`, langCode);
 }
 
 export async function getUserHoyolabData(
@@ -263,7 +275,8 @@ export async function getUserHoyolabData(
   if (!userLang) userLang = await getUserLang(userId);
 
   const getLanguage = (locale: any) =>
-    languageMapping[locale as keyof typeof languageMapping] || languageMapping.default;
+    languageMapping[locale as keyof typeof languageMapping] ||
+    languageMapping.default;
   const lang = userLang
     ? getLanguage(userLang)
     : getLanguage(interaction.locale);
@@ -271,7 +284,9 @@ export async function getUserHoyolabData(
   try {
     const hoyolab = new Hoyolab({ cookie, lang, uid } as any);
     const gameRecord = await hoyolab.gameRecordCard();
-    const filteredData = (gameRecord as any).filter((item: any) => item.game_id === 8);
+    const filteredData = (gameRecord as any).filter(
+      (item: any) => item.game_id === 8
+    );
 
     return filteredData[0];
   } catch (error) {
@@ -284,14 +299,14 @@ export async function getUserHoyolabData(
       userId,
       isHoyoAPIError && error.code == 10035
         ? {
-          ErrorCode: error.code,
-        }
+            ErrorCode: error.code,
+          }
         : {
-          hasCookie: cookie != null,
-          Lang: lang,
-          hasUid: uid != null,
-          ErrorCode: errorCode,
-        }
+            hasCookie: cookie != null,
+            Lang: lang,
+            hasUid: uid != null,
+            ErrorCode: errorCode,
+          }
     );
     return null;
   }
@@ -327,7 +342,9 @@ export async function getWeaponData(weaponId: string) {
   }
 }
 
-export async function getCharacterData(characterId: string) {
+export async function getCharacterData(characterId: string | number) {
+  const id = String(characterId || "");
+  if (!id) throw new Error("Character ID is required");
   try {
     const apiUrl = `https://api.hakush.in/zzz/data/en/character/${characterId}.json`;
     const response = await axios.get(apiUrl).then((response) => response.data);
@@ -384,7 +401,8 @@ export async function getUserZZZData(
   if (!userLang) userLang = await getUserLang(userId);
 
   const getLanguage = (locale: string) =>
-    languageMapping[locale as keyof typeof languageMapping] || languageMapping.default;
+    languageMapping[locale as keyof typeof languageMapping] ||
+    languageMapping.default;
   const lang = userLang
     ? getLanguage(userLang)
     : getLanguage(interaction.locale);
@@ -405,20 +423,25 @@ export async function getUserZZZData(
       userId,
       isHoyoAPIError && error.code == 10035
         ? {
-          ErrorCode: error.code,
-        }
+            ErrorCode: error.code,
+          }
         : {
-          hasCookie: cookie != null,
-          Lang: lang,
-          hasUid: uid != null,
-          ErrorCode: errorCode,
-        }
+            hasCookie: cookie != null,
+            Lang: lang,
+            hasUid: uid != null,
+            ErrorCode: errorCode,
+          }
     );
     return null;
   }
 }
 
-export function checkAccount(interaction: ChatInputCommandInteraction, tr: (key: string, args?: any) => string, userId: string, data: any) {
+export function checkAccount(
+  interaction: ChatInputCommandInteraction,
+  tr: (key: string, args?: any) => string,
+  userId: string,
+  data: any
+) {
   if (data.ErrorCode == 10035) {
     replyOrfollowUp(interaction, {
       embeds: [
@@ -441,10 +464,10 @@ export function checkAccount(interaction: ChatInputCommandInteraction, tr: (key:
               hasCookie: tr(accountStats.hasCookie ? "isSet" : "isNotSet"),
               hasUid: tr(accountStats.hasUid ? "isSet" : "isNotSet"),
             }) +
-            "\n\n" +
-            "`" +
-            accountStats.ErrorCode +
-            "`"
+              "\n\n" +
+              "`" +
+              accountStats.ErrorCode +
+              "`"
           ),
       ],
       flags: MessageFlags.Ephemeral,
@@ -461,7 +484,11 @@ export function checkAccount(interaction: ChatInputCommandInteraction, tr: (key:
   }
 }
 
-export async function updateCookie(userId: string, accountIndex: number, cookieObj: string) {
+export async function updateCookie(
+  userId: string,
+  accountIndex: number,
+  cookieObj: string
+) {
   const webAPI =
     "https://webapi-os.account.hoyoverse.com/Api/fetch_cookie_accountinfo";
   const parsedCookie = Object.fromEntries(
@@ -530,19 +557,27 @@ export async function updateCookie(userId: string, accountIndex: number, cookieO
   await db.set(accountKey, account);
 }
 
-global.replyOrfollowUp = async function (interaction: ChatInputCommandInteraction, ...args: any[]) {
+global.replyOrfollowUp = async function (
+  interaction: ChatInputCommandInteraction,
+  ...args: any[]
+) {
   if (interaction.replied) return interaction.editReply(args[0]);
   if (interaction.deferred) return await interaction.followUp(args[0]);
   return await interaction.reply(args[0]);
 };
 
-export async function getUserGameUid(cookie: string, gameName = "Zenless Zone Zero") {
+export async function getUserGameUid(
+  cookie: string,
+  gameName = "Zenless Zone Zero"
+) {
   const hoyolab = new Hoyolab({
     cookie: cookie,
   } as any);
 
   const gameRecord = await hoyolab.gameRecordCard();
-  const filteredData = (gameRecord as any).filter((item: any) => item.game_name === gameName);
+  const filteredData = (gameRecord as any).filter(
+    (item: any) => item.game_name === gameName
+  );
 
   return {
     uid: filteredData[0].game_role_id,

@@ -2,10 +2,6 @@ import { client } from "../../index.js";
 import {
   EmbedBuilder,
   AttachmentBuilder,
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-  ButtonBuilder,
-  ButtonStyle,
   ChatInputCommandInteraction,
   User,
 } from "discord.js";
@@ -14,14 +10,11 @@ import Queue from "queue";
 import {
   getRandomColor,
   drawInQueueReply,
-  getUserHoyolabData,
   getUserLang,
   failedReply,
 } from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
-import emoji from "../../assets/emoji.js";
 import { createCanvas, loadImage, GlobalFonts } from "@napi-rs/canvas";
-import fs from "fs";
 import { join } from "path";
 const db = client.db;
 const drawQueue = new Queue({ autostart: true });
@@ -97,7 +90,7 @@ export async function handleShiyuDraw(
 ) {
   const drawTask = async () => {
     try {
-      interaction.editReply({
+      await interaction.editReply({
         embeds: [
           new EmbedBuilder()
             .setTitle(tr("Searching"))
@@ -179,9 +172,14 @@ export async function handleShiyuDraw(
   }
 }
 
-async function drawShiyuImage(tr: (key: string) => string, userLocale: string, shiyuData: any) {
+async function drawShiyuImage(
+  tr: (key: string) => string,
+  userLocale: string,
+  shiyuData: any
+) {
   try {
-    const selectedFont = fonts[userLocale as keyof typeof fonts] || fonts.default;
+    const selectedFont =
+      fonts[userLocale as keyof typeof fonts] || fonts.default;
 
     // 減少每層高度
     const floorDetails = shiyuData.all_floor_detail.slice(0, 3);
@@ -257,12 +255,14 @@ async function drawShiyuImage(tr: (key: string) => string, userLocale: string, s
     // 加載所有圖像
     const images = await Promise.all(
       imagePaths.map((path) =>
-        loadImageAsync(path, "./src/assets/images/None.png").catch((err: any) => {
-          console.error(`Error loading image from ${path}:`, err);
-          // 返回一個1x1的透明圖像作為替代
-          const errorCanvas = createCanvas(1, 1);
-          return errorCanvas;
-        })
+        loadImageAsync(path, "./src/assets/images/None.png").catch(
+          (err: any) => {
+            console.error(`Error loading image from ${path}:`, err);
+            // 返回一個1x1的透明圖像作為替代
+            const errorCanvas = createCanvas(1, 1);
+            return errorCanvas;
+          }
+        )
       )
     );
 
@@ -343,7 +343,8 @@ async function drawShiyuImage(tr: (key: string) => string, userLocale: string, s
       const times = shiyuData.rating_list[0].times;
 
       // 使用 layerGrade 圖片，置中
-      const ratingImg = layerRatingImages[rating as keyof typeof layerRatingImages];
+      const ratingImg =
+        layerRatingImages[rating as keyof typeof layerRatingImages];
       const centerX = canvas.width / 2 - 45;
       ctx.drawImage(ratingImg, centerX, 160, 40, 40);
 
@@ -362,7 +363,8 @@ async function drawShiyuImage(tr: (key: string) => string, userLocale: string, s
         const times = ratingItem.times;
 
         // 使用 layerGrade 圖片
-        const ratingImg = layerRatingImages[rating as keyof typeof layerRatingImages];
+        const ratingImg =
+          layerRatingImages[rating as keyof typeof layerRatingImages];
         ctx.drawImage(ratingImg, startX, 160, 40, 40);
 
         // 顯示次數在右側，白色
@@ -478,7 +480,8 @@ async function drawShiyuImage(tr: (key: string) => string, userLocale: string, s
       );
 
       // 使用 gradeRatingImages 繪製評級 - 放在名稱左側
-      const ratingImg = gradeRatingImages[floor.rating as keyof typeof gradeRatingImages];
+      const ratingImg =
+        gradeRatingImages[floor.rating as keyof typeof gradeRatingImages];
       if (ratingImg) {
         ctx.drawImage(ratingImg, 65, currentY + 12.5, 60, 60);
       }
@@ -505,7 +508,7 @@ async function drawShiyuImage(tr: (key: string) => string, userLocale: string, s
         ctx.fillStyle = "#E3E3E3";
         ctx.font = `22px ${selectedFont}`;
         ctx.fillText(
-          `${tr("SpentTime") || "花費時間"} ${totalMinutes}:${totalSeconds}`,
+          `${tr("SpentTime").replace("-#", "") || "花費時間"} ${totalMinutes}:${totalSeconds}`,
           canvas.width - 70,
           currentY + 47.5
         );
@@ -592,7 +595,14 @@ function drawRoundedRect(
   }
 }
 
-function drawCircleImage(ctx: any, img: any, x: number, y: number, size: number, scaleFactor = 1.2) {
+function drawCircleImage(
+  ctx: any,
+  img: any,
+  x: number,
+  y: number,
+  size: number,
+  scaleFactor = 1.2
+) {
   ctx.save();
 
   const centerX = x + size / 2;
@@ -617,7 +627,12 @@ function drawCircleImage(ctx: any, img: any, x: number, y: number, size: number,
 }
 
 // 添加估算文本高度的辅助函数
-function estimateTextHeight(ctx: any, text: string, maxWidth: number, fontFamily: string) {
+function estimateTextHeight(
+  ctx: any,
+  text: string,
+  maxWidth: number,
+  fontFamily: string
+) {
   // 保存当前上下文状态
   const originalFont = ctx.font;
 
@@ -665,7 +680,14 @@ function estimateTextHeight(ctx: any, text: string, maxWidth: number, fontFamily
 }
 
 // 改进 drawBuffText 函数
-function drawBuffText(ctx: any, text: string, x: number, y: number, maxWidth: number, fontFamily: string) {
+function drawBuffText(
+  ctx: any,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  fontFamily: string
+) {
   // 替換換行符為實際的斷行
   text = text.replace(/\\n/g, "\n");
 
@@ -796,7 +818,14 @@ function drawBuffText(ctx: any, text: string, x: number, y: number, maxWidth: nu
   return currentY;
 
   // 輔助函數：繪製帶顏色的文本行
-  function drawColoredLine(ctx: any, line: string, lineX: number, lineY: number, colorSegments: any[], startIndex: number) {
+  function drawColoredLine(
+    ctx: any,
+    line: string,
+    lineX: number,
+    lineY: number,
+    colorSegments: any[],
+    startIndex: number
+  ) {
     let currentX = lineX;
     const chars = Array.from(line);
 
@@ -1027,7 +1056,7 @@ async function drawNode(
 
     // 添加小圖標或提示
     ctx.fillText(
-      `${tr("SpentTime")} ${battleMinutes}:${battleSeconds}`,
+      `${tr("SpentTime").replace("-#", "")} ${battleMinutes}:${battleSeconds}`,
       x + width - 20, // 靠右顯示
       currentY + 172.5 // 與標題在同一行
     );

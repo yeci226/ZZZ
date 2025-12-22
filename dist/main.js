@@ -67,9 +67,13 @@ export async function load(client) {
     // Event
     const eventPaths = await bindEvents();
     new Logger("系統").success(`已載入 ${eventPaths.length} 事件、${slashCommands.length} 斜線指令、${messageCommands.length} 訊息指令`);
-    client.on("ready", async () => {
+    client.on("clientReady", async () => {
         await client.application?.commands.set(slashCommands);
     });
 }
 await load(client);
-client.login(process.env.NODE_ENV === "dev" ? process.env.TESTOKEN : process.env.TOKEN);
+import { getConfig } from "./utilities/core/config.js";
+const config = getConfig();
+client.login(process.env.NODE_ENV === "dev"
+    ? config.TEST_TOKEN || config.TOKEN
+    : config.TOKEN);

@@ -130,7 +130,8 @@ const langs = {
   redeem_Invalid: "유효하지 않거나 만료됨",
   redeem_Failed: "교환 실패",
   redeem_Processing: "처리 중...",
-  redeem_ProcessingDesc: "교환 처리 중입니다. 나중에 다시 시도하세요",
+  redeem_ProcessingDesc:
+    "남은 <noRedeemedCodes> 개의 미교환 기프트 코드가 있습니다. 약 <seconds> 초 남았습니다",
   redeem_Processed: "처리된 교환 코드",
   redeem_Redeeming: "교환 중...",
   redeem_RedeemStats: "교환 결과 통계:",
@@ -155,7 +156,7 @@ const langs = {
   BangbooPool: "방부 풀",
   gacha_HowToGet: "신호 기록 얻는 방법",
   gacha_HowToGetDesc:
-    "1. PC에서 ZZZ를 엽니다\n2. 신호 기록의 신호 세부정보를 엽니다\n3. Windows PowerShell을 열고 다음 명령을 붙여넣습니다<z>\n4. URL을 복사하고 명령을 사용하여 신호 기록을 조회합니다",
+    "**1.** PC에서 ZZZ를 엽니다\n**2.** 신호 기록의 신호 세부정보를 엽니다\n**3.** Windows PowerShell을 열고 다음 명령을 붙여넣습니다 <z>\n**4.** URL을 복사하고 명령을 사용하여 신호 기록을 조회합니다",
   gacha_LogTitle: "신호 기록 보기",
   gacha_LogDesc: "여기에 신호 기록 링크를 입력해 주세요",
   gacha_NoSignal: "사용 가능한 신호 기록이 없습니다",
@@ -164,8 +165,8 @@ const langs = {
   gacha_TotalCount: "총 뽑기 수",
   gacha_SRankCount: "S랭크 수",
   gacha_SRankAverage: "S랭크 평균 뽑기 수",
-  gacha_Pity: "<pity> 뽑기",
-  gacha_Count: "<count> 뽑기",
+  gacha_Pity: "垫<pity>抽",
+  gacha_Count: "<count>抽",
   gacha_LimitedCharacterPulls: "한정 S등급 뽑기 횟수",
 
   NonData: "이 모드의 전투 기록을 찾을 수 없습니다",

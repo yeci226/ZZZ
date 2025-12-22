@@ -9,8 +9,10 @@ const langs = {
   Month: "Mois",
   Day: "Jour",
   Auto: "Automatique",
+
   VoidHunter: "Chasseur de void",
   GrandMaster: "Maître Grand",
+
   isSet: "Est réglé",
   isNotSet: "N'est pas réglé",
   NewLocale: "La langue est réglé <locale>",
@@ -39,11 +41,14 @@ const langs = {
   ActiveDays: "Active days",
   PeriodZoneLayer: "Défense de shiyu",
   InterKnotReputation: "Réputation sur Inter-nœud",
+
+  //Commands
   news_Notice: "Annonces",
   news_Events: "Événements",
   news_Info: "Infos",
   news_SelectType: "Veuillez sélectionner une catégorie d'actualités.",
   news_SelectPost: "🐣 Veuillez sélectionner un article.",
+
   daily_Failed: "Le connexion a échoué.",
   daily_Signed: "Vous avez déjà signé.",
   daily_SignSuccess: "Connectez-vous avec succès.",
@@ -89,6 +94,7 @@ const langs = {
   account_LimitExceeded: "Atteindre la limite de 5 compte！",
   account_AlreadySet: "<z> est déjà défini!",
   account_UidSetSuccess: "UID <z> définir avec succès!",
+
   admin_NoPermission: "Aucune autorisation",
   admin_RemoveFail: "Supprimer l'échec",
   admin_UserNotSet: "<user> fonction non réglé",
@@ -107,6 +113,7 @@ const langs = {
     "<count> utilisateurs ont été déplacés vers <channel>.",
   admin_MoveFailMessage: "Impossible de définir le message sur <channel>.",
   admin_NoData: "Aucune donnée disponible",
+
   note_Title: "Donnés en temps réel",
   note_Vitality: "Engagement",
   note_Energy: "Charges de batterie",
@@ -134,9 +141,9 @@ const langs = {
     "<noRedeemedCodes> codes cadeaux non utilisés restants, environ <seconds> secondes restantes",
   redeem_Processed: "Codes échangés",
   redeem_Redeeming: "En cours d'échange...",
+  redeem_RedeemStats: "Statistiques d'échange",
   redeem_SystemBusy: "Le système est occupé, veuillez réessayer plus tard",
   redeem_CookieTokenInvalid: "CookieToken a expiré, veuillez régler à nouveau",
-  redeem_RedeemStats: "Statistiques d'échange",
   redeem_NoCookie: "Cookietoken ou Comptemid pas encore configuré.",
   redeem_Codelist: "Discount codes currently available",
   redeem_CodeTip: "Le code échangé par le bot sera affiché racheté.",
@@ -145,6 +152,7 @@ const langs = {
   autoRedeem_Off: "L'auto-redemption est désactivée.",
   autoRedeem_On: "L'auto-redemption est activée.",
   autoRedeem_Tag: "Marquez l'utilisateur lorsqu'il est racheté: <z>",
+
   profile_SelectCharacter: "Sélectionnez un agent",
   profile_NoImageData: "Impossible d'obtenir des données d'image.",
   profile_CharactersFormat: "Niv. <level> • Vision <rank>",
@@ -155,7 +163,7 @@ const langs = {
   BangbooPool: "Pool Bangboo",
   gacha_HowToGet: "Comment obtenir des enregistrements de signal",
   gacha_HowToGetDesc:
-    "1. Ouvrez ZZZ sur PC\n2. Ouvrez le Enregistrement des signaux dans Détails des signaux\n3. Ouvrez Windows PowerShell et collez la commande suivante<z>\n4. Copiez l'URL et utilisez la commande pour interroger les enregistrements de signaux",
+    "**1.** Ouvrez ZZZ sur PC\n**2.** Ouvrez le Enregistrement des signaux dans Détails des signaux\n**3.** Ouvrez Windows PowerShell et collez la commande suivante <z>\n**4.** Copiez l'URL et utilisez la commande pour interroger les enregistrements de signaux",
   gacha_LogTitle: "Voir les enregistrements de signal",
   gacha_LogDesc: "Veuillez entrer le lien des enregistrements de signal ici",
   gacha_NoSignal: "Aucun enregistrement de signal disponible",
@@ -164,8 +172,8 @@ const langs = {
   gacha_TotalCount: "Total des tirages",
   gacha_SRankCount: "Quantité S-rang",
   gacha_SRankAverage: "Moyenne des tirages S-rang",
-  gacha_Pity: "<pity> tirages",
-  gacha_Count: "<count> tirages",
+  gacha_Pity: "垫<pity>tirages",
+  gacha_Count: " <count>tirages",
   gacha_LimitedCharacterPulls: "Tirages de personnage S limité",
 
   NonData: "Aucune donnée trouvée pour ce mode",

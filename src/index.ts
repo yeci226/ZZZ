@@ -1,5 +1,5 @@
 import { loadConfig } from "./utilities/core/config.js";
-loadConfig(); // Initialize config
+loadConfig();
 
 import "./utilities/index.js";
 import { Client, GatewayIntentBits, Partials } from "discord.js";

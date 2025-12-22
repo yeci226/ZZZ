@@ -7,7 +7,13 @@ import {
   failedReply,
 } from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
-import { createCanvas, loadImage, GlobalFonts, SKRSContext2D, Image } from "@napi-rs/canvas";
+import {
+  createCanvas,
+  loadImage,
+  GlobalFonts,
+  SKRSContext2D,
+  Image,
+} from "@napi-rs/canvas";
 import { join } from "path";
 const drawQueue = new Queue({ autostart: true });
 
@@ -67,10 +73,16 @@ async function loadImageAsync(url: string, fallbackUrl?: string) {
   }
 }
 
-export async function handleDeadlyDraw(interaction: any, tr: any, user: any, zzz: any, schedule: any) {
+export async function handleDeadlyDraw(
+  interaction: any,
+  tr: any,
+  user: any,
+  zzz: any,
+  schedule: any
+) {
   const drawTask = async () => {
     try {
-      interaction.editReply({
+      await interaction.editReply({
         embeds: [
           new EmbedBuilder()
             .setTitle(tr("Searching"))
@@ -157,7 +169,8 @@ export async function handleDeadlyDraw(interaction: any, tr: any, user: any, zzz
 
 async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
   try {
-    const selectedFont = fonts[userLocale as keyof typeof fonts] || fonts.default;
+    const selectedFont =
+      fonts[userLocale as keyof typeof fonts] || fonts.default;
 
     // 计算画布高度 - 考虑到每个战斗记录可能有BUFF
     const recordCount = deadlyData.list ? deadlyData.list.length : 0;
@@ -317,7 +330,8 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
 
       ctx.font = `24px ${selectedFont}`;
       ctx.fillText(
-        `${beginDate.getMonth() + 1}月${beginDate.getDate()}日 - ${endDate.getMonth() + 1
+        `${beginDate.getMonth() + 1}月${beginDate.getDate()}日 - ${
+          endDate.getMonth() + 1
         }月${endDate.getDate()}日`,
         canvas.width / 2,
         120
@@ -575,7 +589,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
                 ctx.textAlign = "center";
                 ctx.fillText(
                   tr("levelFormat", { level: avatar.level }) ||
-                  `Lv.${avatar.level}`,
+                    `Lv.${avatar.level}`,
                   avatarX + 40,
                   currentY + 150
                 );
@@ -621,7 +635,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
             ctx.textAlign = "center";
             ctx.fillText(
               tr("levelFormat", { level: battle.buddy.level }) ||
-              `Lv.${battle.buddy.level}`,
+                `Lv.${battle.buddy.level}`,
               avatarX + 40,
               currentY + 140
             );
@@ -696,7 +710,14 @@ function drawRoundedRect(
 }
 
 // 绘制圆形图像
-function drawCircleImage(ctx: SKRSContext2D, img: Image, x: number, y: number, size: number, scaleFactor = 1.2) {
+function drawCircleImage(
+  ctx: SKRSContext2D,
+  img: Image,
+  x: number,
+  y: number,
+  size: number,
+  scaleFactor = 1.2
+) {
   ctx.save();
 
   const centerX = x + size / 2;
@@ -721,7 +742,12 @@ function drawCircleImage(ctx: SKRSContext2D, img: Image, x: number, y: number, s
 }
 
 // 估算文本高度的辅助函数
-function estimateTextHeight(ctx: SKRSContext2D, text: string, maxWidth: number, fontFamily: string) {
+function estimateTextHeight(
+  ctx: SKRSContext2D,
+  text: string,
+  maxWidth: number,
+  fontFamily: string
+) {
   // 保存当前上下文状态
   const originalFont = ctx.font;
 
@@ -769,7 +795,14 @@ function estimateTextHeight(ctx: SKRSContext2D, text: string, maxWidth: number, 
 }
 
 // 绘制BUFF文本函数
-function drawBuffText(ctx: SKRSContext2D, text: string, x: number, y: number, maxWidth: number, fontFamily: string) {
+function drawBuffText(
+  ctx: SKRSContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  fontFamily: string
+) {
   // 替換換行符為實際的斷行
   text = text.replace(/\\n/g, "\n");
 
@@ -899,7 +932,14 @@ function drawBuffText(ctx: SKRSContext2D, text: string, x: number, y: number, ma
   return currentY;
 
   // 輔助函數：繪製帶顏色的文本行
-  function drawColoredLine(ctx: SKRSContext2D, line: string, lineX: number, lineY: number, colorSegments: any[], startIndex: number) {
+  function drawColoredLine(
+    ctx: SKRSContext2D,
+    line: string,
+    lineX: number,
+    lineY: number,
+    colorSegments: any[],
+    startIndex: number
+  ) {
     let currentX = lineX;
     const chars = Array.from(line);
 
