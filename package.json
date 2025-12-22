@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/cluster.ts",
   "scripts": {
-    "start": "node dist/cluster.js",
+    "start": "yarn build && node dist/cluster.js",
     "dev": "yarn build && cross-env NODE_ENV=dev node dist/cluster.js",
     "build": "tsc",
     "lint": "eslint src/**/* --ext .ts",

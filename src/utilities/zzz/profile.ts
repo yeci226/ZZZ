@@ -1277,7 +1277,6 @@ function drawEquipmentBox(
       ctx.fillText(`+${equip.level}`, 1465 + offset_x, 110 + offset_y);
 
       // Main Prop
-      console.log(equip);
       equip.main_properties?.forEach((prop: any) => {
         const pImage =
           propertyImageMap[

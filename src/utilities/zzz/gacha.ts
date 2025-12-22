@@ -16,7 +16,13 @@ import {
   getBangbooData,
 } from "../utilities.js";
 import Queue from "queue";
-import { createCanvas, loadImage, GlobalFonts, SKRSContext2D, Image } from "@napi-rs/canvas";
+import {
+  createCanvas,
+  loadImage,
+  GlobalFonts,
+  SKRSContext2D,
+  Image,
+} from "@napi-rs/canvas";
 import { join } from "path";
 
 interface Agent {
@@ -93,7 +99,8 @@ async function loadImageAsync(url: string, fallbackUrl?: string) {
     return await loadImage(url);
   } catch {
     try {
-      if (fallbackUrl) { // Check if fallbackUrl is provided
+      if (fallbackUrl) {
+        // Check if fallbackUrl is provided
         return await loadImage(fallbackUrl);
       } else {
         return await loadImage("./src/assets/images/None.png");
@@ -104,23 +111,32 @@ async function loadImageAsync(url: string, fallbackUrl?: string) {
   }
 }
 
-async function fetchSignalData(query: URLSearchParams, id: number, endId: number | string) {
+async function fetchSignalData(
+  query: URLSearchParams,
+  id: number,
+  endId: number | string
+) {
   query.set("real_gacha_type", id.toString());
   query.set("end_id", endId.toString());
 
   console.log(
     "https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?" +
-    query
+      query
   );
 
   const response = await axios.get(
     "https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?" +
-    query
+      query
   );
   return response.data;
 }
 
-export async function getSingalLog(interaction: ChatInputCommandInteraction, tr: (key: string, args?: any) => string, userLocale: string, input: Record<string, string>) {
+export async function getSingalLog(
+  interaction: ChatInputCommandInteraction,
+  tr: (key: string, args?: any) => string,
+  userLocale: string,
+  input: Record<string, string>
+) {
   const baseQueryParams = new URLSearchParams({
     authkey_ver: "1",
     sign_type: "2",
@@ -156,7 +172,9 @@ export async function getSingalLog(interaction: ChatInputCommandInteraction, tr:
     await interaction.editReply({
       embeds: [
         new EmbedBuilder()
-          .setTitle(tr("gacha_Loading", { type: type[gachaType as keyof typeof type] }))
+          .setTitle(
+            tr("gacha_Loading", { type: type[gachaType as keyof typeof type] })
+          )
           .setColor(getRandomColor() as any)
           .setImage(
             "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
@@ -172,7 +190,9 @@ export async function getSingalLog(interaction: ChatInputCommandInteraction, tr:
       if (!signalData?.data || !signalData.data.list.length) break;
 
       const list = signalData.data.list;
-      const signalReachedLastId = list.some((signal: any) => signal.id == lastId);
+      const signalReachedLastId = list.some(
+        (signal: any) => signal.id == lastId
+      );
 
       temp.push(
         ...list.map((signal: any) => ({
@@ -188,7 +208,6 @@ export async function getSingalLog(interaction: ChatInputCommandInteraction, tr:
       if (signalReachedLastId) break;
 
       endId = list[list.length - 1].id;
-      console.log(endId);
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
 
@@ -233,10 +252,10 @@ export async function getSingalLog(interaction: ChatInputCommandInteraction, tr:
     allSignalSRanklist[type].average =
       dataList.length > 1
         ? parseFloat(
-          (
-            dataList.reduce((acc, i) => acc + i.count, 0) / dataList.length
-          ).toFixed(2)
-        )
+            (
+              dataList.reduce((acc, i) => acc + i.count, 0) / dataList.length
+            ).toFixed(2)
+          )
         : 0;
     allSignalSRanklist[type].total = total;
     allSignalSRanklist[type].data.unshift({}); // Add blank data for showing pities
@@ -350,7 +369,7 @@ export async function handleSignalLogDraw(
         const { values } = interaction;
         const type = values[0];
 
-        await interaction.deferUpdate().catch(() => { });
+        await interaction.deferUpdate().catch(() => {});
         await interaction.editReply({
           embeds: [
             new EmbedBuilder()
@@ -403,9 +422,15 @@ export async function handleSignalLogDraw(
   }
 }
 
-export async function drawSignalLogImage(tr: (key: string, args?: any) => string, userLocale: string, signalResults: any, type: string) {
+export async function drawSignalLogImage(
+  tr: (key: string, args?: any) => string,
+  userLocale: string,
+  signalResults: any,
+  type: string
+) {
   try {
-    const selectedFont = fonts[userLocale as keyof typeof fonts] || fonts.default;
+    const selectedFont =
+      fonts[userLocale as keyof typeof fonts] || fonts.default;
     const canvas = createCanvas(1000, 1600);
     const ctx = canvas.getContext("2d");
 
@@ -419,7 +444,9 @@ export async function drawSignalLogImage(tr: (key: string, args?: any) => string
       "./src/assets/images/icons/gacha/y.png",
       ...(await Promise.all(signalResults.data.map(getAgentImageUrl))),
     ];
-    const images = await Promise.all(imagePaths.map((url) => loadImageAsync(url)));
+    const images = await Promise.all(
+      imagePaths.map((url) => loadImageAsync(url))
+    );
     const [
       bg,
       characterImage,
@@ -777,7 +804,15 @@ export async function drawSignalLogImage(tr: (key: string, args?: any) => string
   }
 }
 
-function drawRoundedRect(ctx: SKRSContext2D, x: number, y: number, width: number, height: number, radius: number, color: string) {
+function drawRoundedRect(
+  ctx: SKRSContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  color: string
+) {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
   ctx.arcTo(x + width, y, x + width, y + height, radius);
@@ -790,7 +825,15 @@ function drawRoundedRect(ctx: SKRSContext2D, x: number, y: number, width: number
   ctx.fill();
 }
 
-function drawRoundedRectImage(ctx: SKRSContext2D, img: Image, x: number, y: number, width: number, height: number, radius: number) {
+function drawRoundedRectImage(
+  ctx: SKRSContext2D,
+  img: Image,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+) {
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
