@@ -28,8 +28,7 @@ const langs = {
   DrawInQueue: "正在排隊中，目前排隊位置：<position>",
   DrawError: "繪製失敗",
   MainPage: "首頁",
-  CostTime:
-    "-# 📣11/7 ~ 11/30 DC 群有周邊抽獎活動 \n-# ✨《MST瑪思塔周邊屋》高雄快閃店盛大啟幕：<https://www.facebook.com/share/p/17UWFggQF1>\n-# ✨魔儲賣場活動：<https://reurl.cc/MMZlXv>", // -# 耗時：請求 <requestTime> 秒 • 繪製 <drawTime> 秒",
+  CostTime: "-# 耗時：請求 <requestTime> 秒 • 繪製 <drawTime> 秒",
   levelFormat: "等級 <level>",
   levelFormat2: "等級 <level>",
   MindScape: "顯示影畫效果",
