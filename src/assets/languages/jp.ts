@@ -180,7 +180,13 @@ const langs = {
   FastestTime: "最速クリア時間",
   Node1: "ノード1",
   Node2: "ノード2",
-  SpentTime: "-# 所要時間",
+  SpentTime: "クリア時間",
+  TotalTime: "総クリア時間",
+  FirstFrontier: "劇変ノード第一防衛戦",
+  SecondFrontier: "劇変ノード第二防衛戦",
+  ThirdFrontier: "劇変ノード第三防衛戦",
+  FourthFrontier: "劇変ノード第四防衛戦",
+  FifthFrontier: "劇変ノード第五防衛戦",
 
   // Deadly Assault
   DeadlyAssault: "危局強襲戦",

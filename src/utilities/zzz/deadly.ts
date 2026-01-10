@@ -117,10 +117,6 @@ export async function handleDeadlyDraw(
       });
 
       interaction.editReply({
-        content: `${tr("CostTime", {
-          requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(2),
-          drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-        })}`,
         embeds: [],
         files: [image],
       });
@@ -189,16 +185,28 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
       "./src/assets/images/icons/deadly/star_dark.png"
     );
 
-    // 0% ~ ?% rankbg-1
-    // ?% ~ ?% rankbg-2
-    // ?% ~ ?% rankbg-3
-    // ?% ~ 50% rankbg-4
-    // 50%+ rankbg-5
+    // 0% ~ 1% rankbg-1
+    // 1% ~ 2% rankbg-2
+    // 2% ~ 5% rankbg-3
+    // 5% ~ 20% rankbg-4
+    // 20%+ rankbg-5
     const percent = deadlyData.rank_percent / 100;
     let rankbg;
-    if (percent >= 50) {
+    if (percent >= 20) {
       rankbg = await loadImageAsync(
         "./src/assets/images/icons/deadly/rankbg-5.png"
+      );
+    } else if (percent >= 5) {
+      rankbg = await loadImageAsync(
+        "./src/assets/images/icons/deadly/rankbg-4.png"
+      );
+    } else if (percent >= 2) {
+      rankbg = await loadImageAsync(
+        "./src/assets/images/icons/deadly/rankbg-3.png"
+      );
+    } else if (percent >= 1) {
+      rankbg = await loadImageAsync(
+        "./src/assets/images/icons/deadly/rankbg-2.png"
       );
     } else {
       rankbg = await loadImageAsync(
@@ -220,7 +228,6 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
       loadImageAsync(`./src/assets/images/icons/element/ether.webp`),
     ]);
 
-    // 加载角色和助手图像
     // 加载角色和助手图像
     const avatarImages: Record<string, Image> = {};
     const buddyImages: Record<string, Image> = {};

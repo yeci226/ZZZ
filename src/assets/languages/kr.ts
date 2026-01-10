@@ -178,7 +178,13 @@ const langs = {
   FastestTime: "최단 시간",
   Node1: "노드1",
   Node2: "노드2",
-  SpentTime: "-# 소요 시간",
+  SpentTime: "소요 시간",
+  TotalTime: "총 소요 시간",
+  FirstFrontier: "격변 노드 제 1 방어선",
+  SecondFrontier: "격변 노드 제 2 방어선",
+  ThirdFrontier: "격변 노드 제 3 방어선",
+  FourthFrontier: "격변 노드 제 4 방어선",
+  FifthFrontier: "격변 노드 제 5 방어선",
 
   // Deadly Assault
   DeadlyAssault: "위국 강습",

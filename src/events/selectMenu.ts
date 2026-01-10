@@ -220,10 +220,6 @@ async function handleSelectCharacter(
       );
 
       interaction.editReply({
-        content: `${tr("CostTime", {
-          requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(2),
-          drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-        })} `,
         embeds: [],
         components: [...rowSelects, rowMindScape] as any[],
         files: [image],

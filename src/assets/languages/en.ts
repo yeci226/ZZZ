@@ -180,7 +180,13 @@ const langs = {
   FastestTime: "Fastest Time",
   Node1: "Node 1",
   Node2: "Node 2",
-  SpentTime: "-# Time spent",
+  SpentTime: "Time Spent",
+  TotalTime: "Total Time",
+  FirstFrontier: "First Frontier",
+  SecondFrontier: "Second Frontier",
+  ThirdFrontier: "Third Frontier",
+  FourthFrontier: "Fourth Frontier",
+  FifthFrontier: "Fifth Frontier",
 
   // Deadly Assault
   DeadlyAssault: "Deadly Assault",

@@ -182,7 +182,13 @@ const langs = {
   FastestTime: "Thời gian nhanh nhất",
   Node1: "Nút 1",
   Node2: "Nút 2",
-  SpentTime: "-# Thời gian",
+  SpentTime: "Thời gian",
+  TotalTime: "Tổng thời gian",
+  FirstFrontier: "Tuyến Phòng Thủ 1",
+  SecondFrontier: "Tuyến Phòng Thủ 2",
+  ThirdFrontier: "Tuyến Phòng Thủ 3",
+  FourthFrontier: "Tuyến Phòng Thủ 4",
+  FifthFrontier: "Tuyến Phòng Thủ 5",
 
   // Deadly Assault
   DeadlyAssault: "Tấn Công Nguy Hiểm",

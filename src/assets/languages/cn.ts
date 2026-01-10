@@ -173,7 +173,13 @@ const langs = {
   FastestTime: "最快通关时间",
   Node1: "节点1",
   Node2: "节点2",
-  SpentTime: "-# 耗时",
+  SpentTime: "通关用时",
+  TotalTime: "总通关用时",
+  FirstFrontier: "剧变节点第一防线",
+  SecondFrontier: "剧变节点第二防线",
+  ThirdFrontier: "剧变节点第三防线",
+  FourthFrontier: "剧变节点第四防线",
+  FifthFrontier: "剧变节点第五防线",
 
   // Deadly Assault
   DeadlyAssault: "危局强袭戦",

@@ -185,7 +185,13 @@ const langs = {
   FastestTime: "Temps le plus rapide",
   Node1: "Nœud 1",
   Node2: "Nœud 2",
-  SpentTime: "-# Temps passé",
+  SpentTime: "Temps écoulé",
+  TotalTime: "Temps total",
+  FirstFrontier: "Première Frontière",
+  SecondFrontier: "Deuxième Frontière",
+  ThirdFrontier: "Troisième Frontière",
+  FourthFrontier: "Quatrième Frontière",
+  FifthFrontier: "Cinquième Frontière",
 
   // Deadly Assault
   DeadlyAssault: "Assaut Mortel",

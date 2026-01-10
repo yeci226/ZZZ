@@ -351,10 +351,6 @@ export async function handleSignalLogDraw(
       );
 
       const resMessage = await interaction.editReply({
-        content: `${tr("CostTime", {
-          requestTime: requestTime,
-          drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-        })}`,
         embeds: [],
         components: [rowGachaTypeSelecter],
         files: [image],

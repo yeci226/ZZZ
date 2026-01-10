@@ -55,6 +55,9 @@ const offsetCharacterSkin = {
   1411: {
     3114111: { x: 0, y: -160 },
   },
+  1431: {
+    3114311: { x: -200 },
+  },
 };
 
 const elementId = {
@@ -276,10 +279,6 @@ export async function handleProfileDraw(
       );
 
       interaction.editReply({
-        content: `${tr("CostTime", {
-          requestTime: ((requestEndTime - requestStartTime) / 1000).toFixed(2),
-          drawTime: ((drawEndTime - drawStartTime) / 1000).toFixed(2),
-        })}`,
         embeds: [],
         components: [...rowSelects, rowMindScape],
         files: [image],
