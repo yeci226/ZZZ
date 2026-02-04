@@ -93,12 +93,12 @@ export async function parsePostContent(content: string) {
   content = content.replace(
     /<([a-z]+)\s+(?:[^>]*?\s+)?href="([^"]*)"[^>]*>(.*?)<\/\1>/gi,
     (match, tag, href, text) =>
-      href == text ? `${emoji.link}${href}` : `${emoji.link}[${text}](${href})`
+      href == text ? `${emoji.link}${href}` : `${emoji.link}[${text}](${href})`,
   );
 
   content = content.replace(
     /<iframe[^>]*src="([^"]*)"[^>]*><\/iframe>/gi,
-    (match, p1) => `### ${emoji.link}[影片](${p1})`
+    (match, p1) => `### ${emoji.link}[影片](${p1})`,
   );
 
   content = content.replace(/\s*class="[^"]*"/g, "");
@@ -189,14 +189,14 @@ export function getStaminaColor(stamina: number) {
 
 export async function drawInQueueReply(
   interaction: ChatInputCommandInteraction,
-  title = ""
+  title = "",
 ) {
   interaction.editReply({
     embeds: [
       new EmbedBuilder()
         .setTitle(title)
         .setThumbnail(
-          "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+          "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif",
         ),
     ] as any,
     fetchReply: true,
@@ -206,7 +206,7 @@ export async function drawInQueueReply(
 export async function failedReply(
   interaction: ChatInputCommandInteraction,
   title = "",
-  description = ""
+  description = "",
 ) {
   const embed = new EmbedBuilder().setTitle(title).setConfig("#E76161", "sob");
 
@@ -266,7 +266,7 @@ export async function getUserHoyolabData(
   tr: (key: string, args?: any) => string,
   userId: string,
   userLang?: string,
-  accountIndex = 0
+  accountIndex = 0,
 ) {
   const [cookie, uid] = await Promise.all([
     getUserCookie(userId, accountIndex),
@@ -285,7 +285,7 @@ export async function getUserHoyolabData(
     const hoyolab = new Hoyolab({ cookie, lang, uid } as any);
     const gameRecord = await hoyolab.gameRecordCard();
     const filteredData = (gameRecord as any).filter(
-      (item: any) => item.game_id === 8
+      (item: any) => item.game_id === 8,
     );
 
     return filteredData[0];
@@ -306,7 +306,7 @@ export async function getUserHoyolabData(
             Lang: lang,
             hasUid: uid != null,
             ErrorCode: errorCode,
-          }
+          },
     );
     return null;
   }
@@ -375,7 +375,7 @@ export async function getUserZZZData(
   tr: (key: string, args?: any) => string,
   userId: string,
   userLang?: string,
-  accountIndex = 0
+  accountIndex = 0,
 ) {
   const [cookie, uid] = await Promise.all([
     getUserCookie(userId, accountIndex),
@@ -391,7 +391,7 @@ export async function getUserZZZData(
             tr("AccountNotFoundDesc", {
               hasCookie: tr(cookie ? "isSet" : "isNotSet"),
               hasUid: tr(uid ? "isSet" : "isNotSet"),
-            })
+            }),
           ),
       ],
       flags: MessageFlags.Ephemeral,
@@ -430,7 +430,7 @@ export async function getUserZZZData(
             Lang: lang,
             hasUid: uid != null,
             ErrorCode: errorCode,
-          }
+          },
     );
     return null;
   }
@@ -440,7 +440,7 @@ export function checkAccount(
   interaction: ChatInputCommandInteraction,
   tr: (key: string, args?: any) => string,
   userId: string,
-  data: any
+  data: any,
 ) {
   if (data.ErrorCode == 10035) {
     replyOrfollowUp(interaction, {
@@ -467,7 +467,7 @@ export function checkAccount(
               "\n\n" +
               "`" +
               accountStats.ErrorCode +
-              "`"
+              "`",
           ),
       ],
       flags: MessageFlags.Ephemeral,
@@ -487,7 +487,7 @@ export function checkAccount(
 export async function updateCookie(
   userId: string,
   accountIndex: number,
-  cookieObj: string
+  cookieObj: string,
 ) {
   const webAPI =
     "https://webapi-os.account.hoyoverse.com/Api/fetch_cookie_accountinfo";
@@ -495,7 +495,7 @@ export async function updateCookie(
     cookieObj
       .split("; ")
       .filter(Boolean)
-      .map((cookie) => cookie.split("="))
+      .map((cookie) => cookie.split("=")),
   );
 
   const cookie = [
@@ -568,16 +568,24 @@ global.replyOrfollowUp = async function (
 
 export async function getUserGameUid(
   cookie: string,
-  gameName = "Zenless Zone Zero"
+  gameName = "Zenless Zone Zero",
 ) {
   const hoyolab = new Hoyolab({
     cookie: cookie,
   } as any);
 
   const gameRecord = await hoyolab.gameRecordCard();
+  if (!gameRecord || !Array.isArray(gameRecord)) {
+    throw new Error("無法獲取遊戲紀錄卡或資料格式不正確");
+  }
+
   const filteredData = (gameRecord as any).filter(
-    (item: any) => item.game_name === gameName
+    (item: any) => item.game_name === gameName,
   );
+
+  if (filteredData.length === 0) {
+    throw new Error(`在此 Hoyolab 帳號中找不到 ${gameName} 角色資料`);
+  }
 
   return {
     uid: filteredData[0].game_role_id,
@@ -591,7 +599,7 @@ export async function updateAccountInfo(userId: string, newAccountInfo: any) {
 
   // 檢查是否存在相同 UID 的帳號
   const existingIndex = accounts.findIndex(
-    (acc: any) => acc.uid === newAccountInfo.uid
+    (acc: any) => acc.uid === newAccountInfo.uid,
   );
 
   if (existingIndex !== -1) {
@@ -604,7 +612,7 @@ export async function updateAccountInfo(userId: string, newAccountInfo: any) {
     };
 
     new Logger("Utilities").info(
-      `[用戶 ${userId}] 更新現有帳號 [UID: ${newAccountInfo.uid}]`
+      `[用戶 ${userId}] 更新現有帳號 [UID: ${newAccountInfo.uid}]`,
     );
   } else {
     // 添加新帳號
@@ -616,7 +624,7 @@ export async function updateAccountInfo(userId: string, newAccountInfo: any) {
     });
 
     new Logger("Utilities").info(
-      `[用戶 ${userId}] 添加新帳號 [UID: ${newAccountInfo.uid}]`
+      `[用戶 ${userId}] 添加新帳號 [UID: ${newAccountInfo.uid}]`,
     );
   }
 

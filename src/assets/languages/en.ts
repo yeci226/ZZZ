@@ -63,6 +63,10 @@ const langs = {
   autoDaily_On: "Automatic check-in is turned on",
   autoDaily_Time: "Automatic check-in time: <time>",
   autoDaily_Tag: "Mention when checking in: <z>",
+  account_QuickLink: "① Account Login (Recommended)",
+  account_QuickLinkModal: "Quick Account Login",
+  account_QuickLinkDesc:
+    "Quickly login and link your account using email and password",
 
   account_LoginAccount: "Login Account (Info won't be saved)",
   account_LoginAccountDesc: "Account (Email)",
@@ -158,7 +162,7 @@ const langs = {
   BangbooPool: "Bangboo Pool",
   gacha_HowToGet: "How to get Signal records",
   gacha_HowToGetDesc:
-    "**1.** Open ZZZ on PC\n**2.** Open the `Signal record` of `Signal details`\n**3.** Open Windows PowerShell and paste the following command<z >\n**4.** Copy the URL and use the command to query signal records",
+    "**1.** Open ZZZ on PC\n**2.** Open the `Signal record` of `Signal details`\n**3.** Open Windows PowerShell and paste the following command <z>\n**4.** Copy the URL and use the command to query signal records",
   gacha_LogTitle: "View Signal Records",
   gacha_LogDesc: "Please enter the signal record link here",
   gacha_NoSignal: "No available signal records",

@@ -61,6 +61,9 @@ const langs = {
   autoDaily_On: "已開啟自動簽到",
   autoDaily_Time: "自動簽到時間：<time>",
   autoDaily_Tag: "簽到時提及：<z>",
+  account_QuickLink: "① 帳密登入 (推薦)",
+  account_QuickLinkModal: "帳號登入",
+  account_QuickLinkDesc: "使用帳號密碼快速完成登入與綁定",
 
   account_LoginAccount: "使用帳號密碼登入 (我們不會儲存您的帳號和密碼)",
   account_LoginAccountDesc: "帳號(Email)",

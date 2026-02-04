@@ -62,6 +62,10 @@ const langs = {
   autoDaily_On: "자동 출석 체크가 켜졌습니다",
   autoDaily_Time: "자동 출석 체크 시간: <time>",
   autoDaily_Tag: "출석 체크 시 태그: <z>",
+  account_QuickLink: "① 계정 로그인 (추천)",
+  account_QuickLinkModal: "빠른 계정 로그인",
+  account_QuickLinkDesc:
+    "이메일과 비밀번호로 빠르게 로그인하고 계정을 연결하세요",
 
   account_LoginAccount: "계정으로 로그인(계정 정보는 저장되지 않습니다)",
   account_LoginAccountDesc: "계정(이메일)",

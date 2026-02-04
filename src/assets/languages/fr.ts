@@ -64,6 +64,10 @@ const langs = {
   autoDaily_On: "Le signé automatique est activée",
   autoDaily_Time: "Le temps de signé automatiquement: <time>",
   autoDaily_Tag: "Tag lorsqu'il est connecté: <z>",
+  account_QuickLink: "① Connexion par compte (Recommandé)",
+  account_QuickLinkModal: "Connexion rapide par compte",
+  account_QuickLinkDesc:
+    "Connectez-vous rapidement et liez votre compte avec votre email et mot de passe",
 
   account_LoginAccount: "Se connecter avec un compte",
   account_LoginAccountDesc:

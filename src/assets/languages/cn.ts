@@ -61,6 +61,9 @@ const langs = {
   autoDaily_On: "已开启自动签到",
   autoDaily_Time: "自动签到时间：<time>",
   autoDaily_Tag: "签到时提及：<z>",
+  account_QuickLink: "① 帐号登入 (推荐)",
+  account_QuickLinkModal: "快速帐号登入",
+  account_QuickLinkDesc: "使用帐号密码快速登入并绑定帐号",
 
   account_LoginAccount: "使用帐号密码登入 (我们不会储存您的帐号和密码)",
   account_LoginAccountDesc: "帐号(Email)",

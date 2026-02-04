@@ -7,6 +7,7 @@ import { ApplicationCommandType, Client } from "discord.js";
 import { getAllFiles } from "./utilities/getAllFiles.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import { VerificationServer } from "./utilities/core/VerificationServer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,7 +22,7 @@ client.commands = {
 
 async function getMessageCommands(
   client: Client,
-  messageCommandPaths: string[]
+  messageCommandPaths: string[],
 ) {
   const result = [];
 
@@ -61,14 +62,14 @@ async function getSlashCommands(client: Client, slashCommandPaths: string[]) {
       client.commands.slash.set(file.data.name, file);
     } else {
       new Logger("系統").error(
-        `${path} 處的指令缺少必要的「資料」或「執行」屬性`
+        `${path} 處的指令缺少必要的「資料」或「執行」屬性`,
       );
     }
     client.commands.slash.set(file.name, file);
 
     if (
       [ApplicationCommandType.Message, ApplicationCommandType.User].includes(
-        file.type
+        file.type,
       )
     )
       delete file.description;
@@ -94,7 +95,7 @@ export async function load(client: Client) {
   const eventPaths = await bindEvents();
 
   new Logger("系統").success(
-    `已載入 ${eventPaths.length} 事件、${slashCommands.length} 斜線指令、${messageCommands.length} 訊息指令`
+    `已載入 ${eventPaths.length} 事件、${slashCommands.length} 斜線指令、${messageCommands.length} 訊息指令`,
   );
 
   client.on("clientReady", async () => {
@@ -104,6 +105,13 @@ export async function load(client: Client) {
 
 await load(client);
 
+// Start Verification Server
+if (client.cluster.id === 0) {
+  new VerificationServer(client.cluster as any).start();
+} else {
+  new VerificationServer(client.cluster as any);
+}
+
 import { getConfig } from "./utilities/core/config.js";
 
 const config = getConfig();
@@ -111,5 +119,5 @@ const config = getConfig();
 client.login(
   process.env.NODE_ENV === "dev"
     ? config.TEST_TOKEN || config.TOKEN
-    : config.TOKEN
+    : config.TOKEN,
 );

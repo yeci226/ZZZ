@@ -1,14 +1,27 @@
 import { client } from "../index.js";
-import { Events, EmbedBuilder, MessageFlags, ModalSubmitInteraction, BaseInteraction, ColorResolvable } from "discord.js";
+import {
+  Events,
+  EmbedBuilder,
+  MessageFlags,
+  ModalSubmitInteraction,
+  BaseInteraction,
+  ColorResolvable,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  TextInputBuilder,
+} from "discord.js";
 import { ZenlessZoneZero } from "@yeci226/hoyoapi";
 import {
   getUserHoyolabData,
   getUserLang,
   getRandomColor,
+  getUserGameUid,
 } from "../utilities/utilities.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import { handleSignalLogDraw, getSingalLog } from "../utilities/zzz/gacha.js";
 import loginAccount from "../utilities/zzz/login.js";
+import { VerificationServer } from "../utilities/core/VerificationServer.js";
 
 const db = client.db;
 
@@ -24,16 +37,17 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
 
   if (customId.startsWith("accountEdit"))
     handleAccountEdit(modalInteraction, tr, customId, fields as any);
-  if (customId == "account_LoginAccountModal")
+  if (customId == "account_QuickLinkModal")
     handleAccountLogin(modalInteraction, tr, fields as any);
-  if (customId == "account_SetUserIDModal")
-    handleUidSet(modalInteraction, tr, fields as any);
-  if (customId.startsWith("cookie_set"))
-    handleCookieSet(modalInteraction, tr, customId, fields as any);
-  if (customId == "signal_log") handleWarplog(modalInteraction, tr, fields as any);
+  if (customId == "signal_log")
+    handleWarplog(modalInteraction, tr, fields as any);
 });
 
-async function handleAccountLogin(interaction: ModalSubmitInteraction, tr: any, fields: any) {
+async function handleAccountLogin(
+  interaction: ModalSubmitInteraction,
+  tr: any,
+  fields: any,
+) {
   const email = fields.getTextInputValue("account_LoginAccountModalField");
   const password = fields.getTextInputValue("account_LoginAccountModalField2");
 
@@ -53,60 +67,61 @@ async function handleAccountLogin(interaction: ModalSubmitInteraction, tr: any, 
       });
     }
 
-    const loginData = await loginAccount(email, password);
-    const { uid, nickname, cookie } = loginData;
-    const existedAccounts =
-      (await db.get(`${interaction.user.id}.account`)) || [];
+    const loginRes = await loginAccount(email, password);
 
-    await db.delete(`${uid}.cookieExpired`);
+    if ((loginRes as any).captcha) {
+      const { geetestId, riskType, challenge } = (loginRes as any).data.captcha;
+      const sessionId = Math.random().toString(36).substring(2, 12);
+      const config = (await import("../utilities/core/config.js")).getConfig();
+      const baseUrl =
+        (config as any).VERIFY_PUBLIC_URL ||
+        `http://localhost:${(config as any).WEBSERVER_PORT || 3000}`;
+      const verifyUrl = `${baseUrl}/verify?captchaId=${geetestId}&riskType=${encodeURIComponent(riskType)}&challenge=${challenge}&session=${sessionId}`;
 
-    // 檢查是否已經綁定過這個UID
-    const existingAccountIndex = existedAccounts.findIndex(
-      (account: any) => account.uid == uid
-    );
-
-    if (existingAccountIndex !== -1) {
-      // 如果已經綁定過，直接更新該帳號的Cookie
-      existedAccounts[existingAccountIndex].cookie = cookie;
-      existedAccounts[existingAccountIndex].nickname = nickname;
-
-      await db.set(`${interaction.user.id}.account`, existedAccounts);
-
-      interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setConfig("#F6F1F1", "wiggle")
-            .setTitle(tr("account_LoginSuccess"))
-            .setDescription(tr("account_LoginSuccessDesc", { z: `${uid}` })),
-        ],
-      });
-    } else {
-      // 如果是新帳號，檢查數量限制
-      if (existedAccounts.length >= 5) {
-        return interaction.editReply({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle(tr("account_LimitExceeded"))
-              .setConfig("#E76161", "sob"),
-          ],
-        });
-      }
-
-      // 添加新帳號
-      await db.push(`${interaction.user.id}.account`, {
-        uid: uid,
-        cookie: cookie,
-        nickname: nickname,
+      VerificationServer.onResult(sessionId, async (captchaResult: any) => {
+        try {
+          const retryRes = await loginAccount(email, password, captchaResult);
+          if (retryRes && (retryRes as any).captcha) {
+            // If it requires captcha again (shouldn't usually happen immediately)
+            await interaction.followUp({
+              content: "❌ 驗證逾期或失敗，請重新嘗試登入。",
+              flags: MessageFlags.Ephemeral,
+            });
+          } else if (retryRes) {
+            await finalizeLogin(interaction, retryRes, tr);
+          }
+        } catch (e: any) {
+          console.error("[Login] Captcha auto-retry failed:", e);
+          await interaction.followUp({
+            content: `❌ 驗證後登入失敗：\`${e.message}\``,
+            flags: MessageFlags.Ephemeral,
+          });
+        }
       });
 
-      interaction.editReply({
+      const verifyBtn = new ButtonBuilder()
+        .setLabel("進行驗證 (Verify)")
+        .setURL(verifyUrl)
+        .setStyle(ButtonStyle.Link);
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        verifyBtn,
+      );
+
+      return interaction.editReply({
         embeds: [
           new EmbedBuilder()
-            .setConfig("#F6F1F1", "wiggle")
-            .setTitle(tr("account_LoginSuccess")),
+            .setTitle("需要進行安全驗證")
+            .setDescription(
+              "為了保護您的帳號安全，請點擊下方按鈕在瀏覽器中完成 Geetest 驗證。驗證完成後，機器人將會自動繼續登入流程。",
+            )
+            .setColor("#FFE9D0"),
         ],
+        components: [row as any],
       });
     }
+
+    await finalizeLogin(interaction, loginRes, tr);
   } catch (error: any) {
     console.log(error);
     await interaction.editReply({
@@ -120,7 +135,77 @@ async function handleAccountLogin(interaction: ModalSubmitInteraction, tr: any, 
   }
 }
 
-async function handleWarplog(interaction: ModalSubmitInteraction, tr: any, fields: any) {
+async function finalizeLogin(interaction: any, loginData: any, tr: any) {
+  const { uid, nickname, cookie } = loginData;
+  const existedAccounts =
+    (await db.get(`${interaction.user.id}.account`)) || [];
+
+  await db.delete(`${uid}.cookieExpired`);
+
+  const existingAccountIndex = existedAccounts.findIndex(
+    (account: any) => account.uid == uid,
+  );
+
+  if (existingAccountIndex !== -1) {
+    existedAccounts[existingAccountIndex].cookie = cookie;
+    existedAccounts[existingAccountIndex].nickname = nickname;
+    await db.set(`${interaction.user.id}.account`, existedAccounts);
+
+    const embed = new EmbedBuilder()
+      .setConfig("#F6F1F1", "wiggle")
+      .setTitle(tr("account_LoginSuccess"))
+      .setDescription(tr("account_LoginSuccessDesc", { z: `${uid}` }));
+
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ embeds: [embed], components: [] });
+    } else {
+      await interaction.reply({
+        embeds: [embed],
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+  } else {
+    if (existedAccounts.length >= 5) {
+      const embed = new EmbedBuilder()
+        .setTitle(tr("account_LimitExceeded"))
+        .setConfig("#E76161", "sob");
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ embeds: [embed], components: [] });
+      } else {
+        await interaction.reply({
+          embeds: [embed],
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+      return;
+    }
+
+    await db.push(`${interaction.user.id}.account`, {
+      uid: uid,
+      cookie: cookie,
+      nickname: nickname,
+    });
+
+    const embed = new EmbedBuilder()
+      .setConfig("#F6F1F1", "wiggle")
+      .setTitle(tr("account_LoginSuccess"));
+
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ embeds: [embed], components: [] });
+    } else {
+      await interaction.reply({
+        embeds: [embed],
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+  }
+}
+
+async function handleWarplog(
+  interaction: ModalSubmitInteraction,
+  tr: any,
+  fields: any,
+) {
   const url = fields.getTextInputValue("signalUrl");
 
   await interaction.deferReply();
@@ -130,7 +215,7 @@ async function handleWarplog(interaction: ModalSubmitInteraction, tr: any, field
         .setTitle(tr("Searching"))
         .setColor(getRandomColor() as any)
         .setImage(
-          "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+          "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif",
         ),
     ],
   });
@@ -163,12 +248,17 @@ async function handleWarplog(interaction: ModalSubmitInteraction, tr: any, field
     userLocale,
     requestTime,
     signalResults,
-    "character"
+    "character",
   );
   // handleSignalLogDraw(interaction, tr, userLocale, "character", url);
 }
 
-async function handleAccountEdit(interaction: ModalSubmitInteraction, tr: any, customId: string, fields: any) {
+async function handleAccountEdit(
+  interaction: ModalSubmitInteraction,
+  tr: any,
+  customId: string,
+  fields: any,
+) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const accountIndex = customId.split("-")[1];
   const uid = fields.getTextInputValue("uid");
@@ -190,7 +280,7 @@ async function handleAccountEdit(interaction: ModalSubmitInteraction, tr: any, c
         new EmbedBuilder().setConfig("#E76161", "sob").setTitle(
           tr("account_AlreadySet", {
             z: `${uid}`,
-          })
+          }),
         ),
       ],
     });
@@ -208,7 +298,11 @@ async function handleAccountEdit(interaction: ModalSubmitInteraction, tr: any, c
   await db.set(`${interaction.user.id}.account`, accounts);
 }
 
-async function handleUidSet(interaction: ModalSubmitInteraction, tr: any, fields: any) {
+async function handleUidSet(
+  interaction: ModalSubmitInteraction,
+  tr: any,
+  fields: any,
+) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const uid = fields.getTextInputValue("account_SetUserIDModalField");
   //   try {
@@ -248,7 +342,7 @@ async function handleUidSet(interaction: ModalSubmitInteraction, tr: any, fields
           new EmbedBuilder().setConfig("#E76161", "sob").setTitle(
             `${tr("account_AlreadySet", {
               z: `${uid}`,
-            })}`
+            })}`,
           ),
         ],
       });
@@ -259,7 +353,7 @@ async function handleUidSet(interaction: ModalSubmitInteraction, tr: any, fields
       new EmbedBuilder().setConfig("#F6F1F1", "wiggle").setTitle(
         `${tr("account_UidSetSuccess", {
           z: `${uid}`,
-        })}`
+        })}`,
       ),
     ],
   });
@@ -269,21 +363,31 @@ async function handleUidSet(interaction: ModalSubmitInteraction, tr: any, fields
   });
 }
 
-async function handleCookieSet(interaction: ModalSubmitInteraction, tr: any, customId: string, fields: any) {
+async function handleCookieSet(
+  interaction: ModalSubmitInteraction,
+  tr: any,
+  customId: string,
+  fields: any,
+) {
   const accountIndex = customId.split("-")[1];
-  const ltoken = fields.getTextInputValue("ltoken")
-    ? `ltoken_v2=${fields.getTextInputValue("ltoken")}; `
+  const ltokenRaw = fields.getTextInputValue("ltoken");
+  const ltuidRaw = fields.getTextInputValue("ltuid");
+  const cookieTokenRaw = fields.getTextInputValue("cookieToken");
+  const accountMidRaw = fields.getTextInputValue("accountMid");
+
+  const isV2 = ltokenRaw.startsWith("v2_");
+
+  const ltoken = ltokenRaw
+    ? `${isV2 ? "ltoken_v2" : "ltoken"}=${ltokenRaw}; `
     : "";
-  const ltuid = fields.getTextInputValue("ltuid")
-    ? `ltuid_v2=${fields.getTextInputValue("ltuid")}; `
+  const ltuid = ltuidRaw ? `${isV2 ? "ltuid_v2" : "ltuid"}=${ltuidRaw}; ` : "";
+  const cookieToken = cookieTokenRaw
+    ? `${cookieTokenRaw.startsWith("v2_") ? "cookie_token_v2" : "cookie_token"}=${cookieTokenRaw}; `
     : "";
-  const cookieToken = fields.getTextInputValue("cookieToken")
-    ? `cookie_token_v2=${fields.getTextInputValue("cookieToken")}; `
-    : "";
-  const accountMid = fields.getTextInputValue("accountMid")
-    ? `account_mid_v2=${fields.getTextInputValue("accountMid")}; `
-    : "";
-  const cookie = ltoken + ltuid + cookieToken + accountMid;
+  const accountMid = accountMidRaw ? `account_mid_v2=${accountMidRaw}; ` : "";
+  const ltmid = isV2 && accountMidRaw ? `ltmid_v2=${accountMidRaw}; ` : "";
+
+  const cookie = ltoken + ltuid + cookieToken + accountMid + ltmid;
   const account = (await db.get(`${interaction.user.id}.account`)) ?? "";
 
   try {
@@ -300,7 +404,7 @@ async function handleCookieSet(interaction: ModalSubmitInteraction, tr: any, cus
       tr,
       interaction.user.id,
       undefined,
-      parseInt(accountIndex)
+      parseInt(accountIndex),
     );
 
     await db.delete(`${account[accountIndex].uid}.cookieExpired`);
@@ -313,7 +417,7 @@ async function handleCookieSet(interaction: ModalSubmitInteraction, tr: any, cus
         new EmbedBuilder().setConfig("#F6F1F1", "wiggle").setTitle(
           tr("account_CookieSetSuccess", {
             z: `${account[accountIndex].uid}`,
-          })
+          }),
         ),
       ],
       flags: MessageFlags.Ephemeral,
@@ -325,14 +429,105 @@ async function handleCookieSet(interaction: ModalSubmitInteraction, tr: any, cus
           .setTitle(
             tr("account_CookieSetFailed", {
               z: `${account[accountIndex].uid}`,
-            })
+            }),
           )
           .setDescription(
             tr("account_CookieSetFailedDesc") +
-            "\n\n" +
-            "`" +
-            error.message +
-            "`"
+              "\n\n" +
+              "`" +
+              error.message +
+              "`",
+          )
+          .setColor("#E76161"),
+      ],
+    });
+  }
+}
+
+async function handleQuickLink(
+  interaction: ModalSubmitInteraction,
+  tr: any,
+  fields: any,
+) {
+  const ltokenRaw = fields.getTextInputValue("ltoken");
+  const ltuidRaw = fields.getTextInputValue("ltuid");
+  const cookieTokenRaw = fields.getTextInputValue("cookieToken");
+  const accountMidRaw = fields.getTextInputValue("accountMid");
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const isV2 = ltokenRaw.startsWith("v2_");
+  const ltoken = ltokenRaw
+    ? `${isV2 ? "ltoken_v2" : "ltoken"}=${ltokenRaw}; `
+    : "";
+  const ltuid = ltuidRaw ? `${isV2 ? "ltuid_v2" : "ltuid"}=${ltuidRaw}; ` : "";
+  const cookieToken = cookieTokenRaw
+    ? `${cookieTokenRaw.startsWith("v2_") ? "cookie_token_v2" : "cookie_token"}=${cookieTokenRaw}; `
+    : "";
+  const accountMid = accountMidRaw ? `account_mid_v2=${accountMidRaw}; ` : "";
+  const ltmid = isV2 && accountMidRaw ? `ltmid_v2=${accountMidRaw}; ` : "";
+
+  const cookie = ltoken + ltuid + cookieToken + accountMid + ltmid;
+
+  try {
+    const { uid, nickname } = await getUserGameUid(cookie);
+
+    const existedAccounts =
+      (await db.get(`${interaction.user.id}.account`)) || [];
+
+    await db.delete(`${uid}.cookieExpired`);
+
+    const existingAccountIndex = existedAccounts.findIndex(
+      (account: any) => account.uid == uid,
+    );
+
+    if (existingAccountIndex !== -1) {
+      existedAccounts[existingAccountIndex].cookie = cookie;
+      existedAccounts[existingAccountIndex].nickname = nickname;
+
+      await db.set(`${interaction.user.id}.account`, existedAccounts);
+
+      interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setConfig("#F6F1F1", "wiggle")
+            .setTitle(tr("account_LoginSuccess"))
+            .setDescription(tr("account_LoginSuccessDesc", { z: `${uid}` })),
+        ],
+      });
+    } else {
+      if (existedAccounts.length >= 5) {
+        return interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(tr("account_LimitExceeded"))
+              .setConfig("#E76161", "sob"),
+          ],
+        });
+      }
+
+      await db.push(`${interaction.user.id}.account`, {
+        uid: uid,
+        cookie: cookie,
+        nickname: nickname,
+      });
+
+      interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setConfig("#F6F1F1", "wiggle")
+            .setTitle(tr("account_LoginSuccess")),
+        ],
+      });
+    }
+  } catch (error: any) {
+    console.log(error);
+    await interaction.editReply({
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(tr("account_CookieSetFailed"))
+          .setDescription(
+            `${tr("account_CookieSetFailedDesc")}\n\n\`${error.message}\``,
           )
           .setColor("#E76161"),
       ],

@@ -20,9 +20,13 @@ function encrypt(source: string) {
   return key.encrypt(source, "base64");
 }
 
-async function loginAccount(account: string, password: string) {
+async function loginAccount(
+  account: string,
+  password: string,
+  captchaResult?: any,
+) {
   const URL =
-    "https://sg-public-api.hoyolab.com/account/ma-passport/api/webLoginByPassword";
+    "https://passport-api-sg.hoyolab.com/account/ma-passport/api/webLoginByPassword";
 
   const payload = {
     account: encrypt(account),
@@ -30,16 +34,29 @@ async function loginAccount(account: string, password: string) {
     token_type: 6,
   };
 
-  const headers = {
+  const headers: Record<string, string> = {
+    accept: "application/json, text/plain, */*",
+    "content-type": "application/json",
     "x-rpc-app_id": "c9oqaq3s3gu8",
     "x-rpc-client_type": "4",
-    "x-rpc-sdk_version": "2.14.1",
+    "x-rpc-sdk_version": "2.49.0",
     "x-rpc-game_biz": "bbs_oversea",
+    "x-rpc-language": "zh-tw",
     "x-rpc-source": "v2.webLogin",
-    "x-rpc-referrer": "https://www.hoyolab.com",
+    "x-rpc-device_id": "59898f79-b602-48c7-9af4-38e7d6f8a659",
+    "x-rpc-device_fp": "38d7f38a087c3",
+    "x-rpc-device_model": "Chrome 144.0.0.0",
+    "x-rpc-device_name": "Chrome",
+    "x-rpc-device_os": "Windows 10 64-bit",
     Origin: "https://account.hoyolab.com",
     Referer: "https://account.hoyolab.com/",
   };
+
+  if (captchaResult) {
+    headers["x-rpc-aigis"] = Buffer.from(
+      JSON.stringify(captchaResult),
+    ).toString("base64");
+  }
 
   try {
     const response = await fetch(URL, {
@@ -53,6 +70,15 @@ async function loginAccount(account: string, password: string) {
     }
 
     const responseData: any = await response.json();
+
+    // Check for Geetest
+    if (responseData.message === "Human-machine verification required.") {
+      return {
+        captcha: true,
+        data: responseData.data,
+      };
+    }
+
     if (responseData.retcode !== 0) {
       throw new Error(`登入失敗: ${responseData.message}`);
     }

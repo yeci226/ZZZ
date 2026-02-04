@@ -64,6 +64,10 @@ const langs = {
   autoDaily_On: "Tính năng điểm danh tự động: Bật",
   autoDaily_Time: "Cài đặt thời gian điểm danh tự động：<time>",
   autoDaily_Tag: "Ping khi điểm danh：<z>",
+  account_QuickLink: "① Đăng nhập tài khoản (Khuyến nghị)",
+  account_QuickLinkModal: "Đăng nhập tài khoản nhanh",
+  account_QuickLinkDesc:
+    "Đăng nhập nhanh và liên kết tài khoản bằng email và mật khẩu",
 
   account_LoginAccount:
     "Đăng nhập bằng tài khoản (Chúng tôi không lưu trữ tài khoản và mật khẩu của bạn)",

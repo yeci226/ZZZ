@@ -63,6 +63,10 @@ const langs = {
   autoDaily_On: "自動サインインがオンになりました",
   autoDaily_Time: "自動サインイン時間：<time>",
   autoDaily_Tag: "サインイン時にタグ付け：<z>",
+  account_QuickLink: "① アカウントログイン (推奨)",
+  account_QuickLinkModal: "クイックアカウントログイン",
+  account_QuickLinkDesc:
+    "メールアドレスとパスワードで素早くログインしてアカウントをリンク",
 
   account_LoginAccount: "アカウントでログイン(アカウント情報は保存されません)",
   account_LoginAccountDesc: "アカウント(メールアドレス)",
