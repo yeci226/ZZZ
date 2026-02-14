@@ -10,7 +10,9 @@ import {
   MessageFlags,
   Client,
   LocalizationMap,
+  AttachmentBuilder,
 } from "discord.js";
+import path from "path";
 import { failedReply, getRandomColor } from "../../../utilities/utilities.js";
 import { QuickDB } from "quick.db";
 
@@ -46,24 +48,17 @@ export default {
             },
             value: "HowToSetUpAccount",
           },
+          // {
+          //   name: "① Quick Login (Recommended)",
+          //   name_localizations: {
+          //     "zh-TW": "① 快速登入 (推薦)",
+          //   },
+          //   value: "QuickLink",
+          // },
           {
-            name: "① Quick Login (Recommended)",
+            name: "② Set Account (Cookie)",
             name_localizations: {
-              "zh-TW": "① 快速登入 (推薦)",
-            },
-            value: "QuickLink",
-          },
-          {
-            name: "② Set UID (Manual)",
-            name_localizations: {
-              "zh-TW": "② 設定 UID (手動)",
-            },
-            value: "SetUserID",
-          },
-          {
-            name: "③ Set Cookie (Manual)",
-            name_localizations: {
-              "zh-TW": "③ 設定 Cookie (手動)",
+              "zh-TW": "② 設定帳號 (Cookie)",
             },
             value: "SetUserCookie",
           },
@@ -141,60 +136,44 @@ export default {
         );
         return;
       case "HowToSetUpAccount":
+        const imagePath = path.resolve(
+          process.cwd(),
+          "src/assets/images/image.png",
+        );
+        const attachment = new AttachmentBuilder(imagePath, {
+          name: "teaching.png",
+        });
+
         interaction.reply({
           embeds: [
             new EmbedBuilder()
               .setTitle(tr("account_HowToSetUpAccount"))
               .setColor(getRandomColor() as any)
               .setDescription(tr("account_HowToSetUpAccountDesc"))
-              .setImage(
-                "https://media.discordapp.net/attachments/1149960935654559835/1185194443322687528/cookieT.png",
-              ),
+              .setImage("attachment://teaching.png"),
           ],
+          files: [attachment],
           flags: MessageFlags.Ephemeral,
         });
         return;
-      case "SetUserID":
+      case "SetUserCookie":
         await interaction.showModal(
           new ModalBuilder()
-            .setCustomId("account_SetUserIDModal")
-            .setTitle(tr("account_SetUserID"))
+            .setCustomId("account_SetUserCookieModal")
+            .setTitle(tr("account_SetUserCookie"))
             .addComponents(
               new ActionRowBuilder<TextInputBuilder>().addComponents(
                 new TextInputBuilder()
-                  .setCustomId("account_SetUserIDModalField")
-                  .setLabel(tr("account_SetUserIDDesc"))
-                  .setPlaceholder("e.g. 1300007596")
-                  .setStyle(TextInputStyle.Short)
-                  .setRequired(true)
-                  .setMinLength(9)
-                  .setMaxLength(10),
+                  .setCustomId("account_SetUserCookieModalField")
+                  .setLabel(tr("account_SetUserCookieDesc"))
+                  .setPlaceholder(
+                    "ltoken_v2=...; ltuid_v2=...; cookie_token_v2=...; account_id_v2=...",
+                  )
+                  .setStyle(TextInputStyle.Paragraph)
+                  .setRequired(true),
               ),
             ),
         );
-        return;
-      case "SetUserCookie":
-        if (!hasAccount)
-          return failedReply(interaction, tr("account_NoAccount"));
-        interaction.reply({
-          components: [
-            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-              new StringSelectMenuBuilder()
-                .setPlaceholder(tr("account_SelectAccountSetCookie"))
-                .setCustomId("account_SetUserCookieSelect")
-                .setMinValues(1)
-                .setMaxValues(1)
-                .addOptions(
-                  accounts.map((account, index) => ({
-                    emoji: emoji.avatarIcon,
-                    label: `${account.uid} ${account.nickname ? `- ${account.nickname}` : ""}`,
-                    value: `${index}`,
-                  })),
-                ),
-            ),
-          ],
-          flags: MessageFlags.Ephemeral,
-        });
         return;
       case "ViewAccount":
         interaction.editReply({

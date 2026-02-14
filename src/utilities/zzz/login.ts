@@ -40,6 +40,7 @@ async function loginAccount(
     "x-rpc-app_id": "c9oqaq3s3gu8",
     "x-rpc-client_type": "4",
     "x-rpc-sdk_version": "2.49.0",
+    "x-rpc-aigis_v4": "true",
     "x-rpc-game_biz": "bbs_oversea",
     "x-rpc-language": "zh-tw",
     "x-rpc-source": "v2.webLogin",
@@ -53,9 +54,40 @@ async function loginAccount(
   };
 
   if (captchaResult) {
-    headers["x-rpc-aigis"] = Buffer.from(
-      JSON.stringify(captchaResult),
-    ).toString("base64");
+    const isV4 = !!captchaResult.lot_number;
+    const mmtType = Number(captchaResult.riskType) || (isV4 ? 2 : 1);
+
+    const aigisPayload = {
+      session_id: captchaResult.session_id,
+      mmt_type: mmtType,
+      data: JSON.stringify(
+        isV4
+          ? {
+              gt: captchaResult.captcha_id,
+              lot_number: captchaResult.lot_number,
+              pass_token: captchaResult.pass_token,
+              gen_time: captchaResult.gen_time,
+              captcha_output: captchaResult.captcha_output,
+              use_v4: true,
+            }
+          : {
+              geetest_challenge: captchaResult.geetest_challenge,
+              geetest_validate: captchaResult.geetest_validate,
+              geetest_seccode: captchaResult.geetest_seccode,
+              success: 1,
+              new_captcha: 1,
+            },
+      ),
+    };
+
+    headers["x-rpc-aigis"] = Buffer.from(JSON.stringify(aigisPayload)).toString(
+      "base64",
+    );
+
+    console.log(
+      "[Login-V4-v6] Final Aigis Header (Decoded):",
+      JSON.stringify(aigisPayload, null, 2),
+    );
   }
 
   try {
@@ -70,16 +102,46 @@ async function loginAccount(
     }
 
     const responseData: any = await response.json();
+    const aigisHeader = response.headers.get("x-rpc-aigis");
 
     // Check for Geetest
-    if (responseData.message === "Human-machine verification required.") {
+    if (
+      responseData.retcode === 1034 ||
+      responseData.message === "Human-machine verification required." ||
+      responseData.retcode === -3101
+    ) {
+      let captchaData = responseData.data?.captcha || responseData.data;
+      let aigisData: any = {};
+
+      if (aigisHeader) {
+        aigisData = JSON.parse(aigisHeader);
+        if (typeof aigisData.data === "string") {
+          captchaData = JSON.parse(aigisData.data);
+        } else {
+          captchaData = aigisData.data;
+        }
+      }
+
       return {
         captcha: true,
-        data: responseData.data,
+        data: {
+          captcha: {
+            geetestId: captchaData?.gt || responseData.data?.captcha?.geetestId,
+            challenge:
+              captchaData?.challenge || responseData.data?.captcha?.challenge,
+            riskType:
+              aigisData?.mmt_type || responseData.data?.captcha?.riskType,
+            risk_type: captchaData?.risk_type,
+            success: captchaData?.success,
+            new_captcha: captchaData?.new_captcha,
+            aigisSessionId: aigisData?.session_id,
+          },
+        },
       };
     }
 
     if (responseData.retcode !== 0) {
+      console.error("[Login] Hoyoverse Login Failed:", responseData);
       throw new Error(`登入失敗: ${responseData.message}`);
     }
 

@@ -19,35 +19,35 @@ const drawQueue = new Queue({ autostart: true });
 
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "en-us.ttf"),
-  "EN"
+  "EN",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "zh-tw.ttf"),
-  "TW"
+  "TW",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "zh-cn.ttf"),
-  "CN"
+  "CN",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "vi-vn.ttf"),
-  "VI"
+  "VI",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "ja-jp.ttf"),
-  "JP"
+  "JP",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "ko-kr.ttf"),
-  "KR"
+  "KR",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "fr-fr.ttf"),
-  "FR"
+  "FR",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "Nunito-BlackItalic.ttf"),
-  "Nunito"
+  "Nunito",
 );
 
 const fonts = {
@@ -78,7 +78,7 @@ export async function handleDeadlyDraw(
   tr: any,
   user: any,
   zzz: any,
-  schedule: any
+  schedule: any,
 ) {
   const drawTask = async () => {
     try {
@@ -88,7 +88,7 @@ export async function handleDeadlyDraw(
             .setTitle(tr("Searching"))
             .setColor(getRandomColor() as any)
             .setImage(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+              "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif",
             ),
         ],
         withResponse: true,
@@ -128,10 +128,10 @@ export async function handleDeadlyDraw(
               .setTitle(tr("note_Error"))
               .setConfig("#E76161", "sob")
               .setImage(
-                "https://media.discordapp.net/attachments/1149960935654559835/1258313139078955039/image.png"
+                "https://media.discordapp.net/attachments/1149960935654559835/1258313139078955039/image.png",
               )
               .setDescription(
-                tr("note_Error_Description") + "\n\n" + `\`${error.message}\``
+                tr("note_Error_Description") + "\n\n" + `\`${error.message}\``,
               ),
           ],
           withResponse: true,
@@ -144,7 +144,7 @@ export async function handleDeadlyDraw(
               .setTitle(tr("DrawError"))
               .setDescription(`\`${error}\``)
               .setThumbnail(
-                "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
+                "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
               ),
           ],
           withResponse: true,
@@ -158,7 +158,7 @@ export async function handleDeadlyDraw(
   if (drawQueue.length !== 1) {
     drawInQueueReply(
       interaction,
-      tr("DrawInQueue", { position: drawQueue.length - 1 })
+      tr("DrawInQueue", { position: drawQueue.length - 1 }),
     );
   }
 }
@@ -179,10 +179,10 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
 
     // 加载所需图像
     const starImg = await loadImageAsync(
-      "./src/assets/images/icons/deadly/star.png"
+      "./src/assets/images/icons/deadly/star.png",
     );
     const starDarkImg = await loadImageAsync(
-      "./src/assets/images/icons/deadly/star_dark.png"
+      "./src/assets/images/icons/deadly/star_dark.png",
     );
 
     // 0% ~ 1% rankbg-1
@@ -194,29 +194,29 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
     let rankbg;
     if (percent >= 20) {
       rankbg = await loadImageAsync(
-        "./src/assets/images/icons/deadly/rankbg-5.png"
+        "./src/assets/images/icons/deadly/rankbg-5.png",
       );
     } else if (percent >= 5) {
       rankbg = await loadImageAsync(
-        "./src/assets/images/icons/deadly/rankbg-4.png"
+        "./src/assets/images/icons/deadly/rankbg-4.png",
       );
     } else if (percent >= 2) {
       rankbg = await loadImageAsync(
-        "./src/assets/images/icons/deadly/rankbg-3.png"
+        "./src/assets/images/icons/deadly/rankbg-3.png",
       );
     } else if (percent >= 1) {
       rankbg = await loadImageAsync(
-        "./src/assets/images/icons/deadly/rankbg-2.png"
+        "./src/assets/images/icons/deadly/rankbg-2.png",
       );
     } else {
       rankbg = await loadImageAsync(
-        "./src/assets/images/icons/deadly/rankbg-4.png"
+        "./src/assets/images/icons/deadly/rankbg-4.png",
       );
     }
 
     // 加载 buff 图标
     const buffImg = await loadImageAsync(
-      "./src/assets/images/icons/deadly/buff.png"
+      "./src/assets/images/icons/deadly/buff.png",
     );
 
     // 加载元素图标
@@ -244,12 +244,12 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
               try {
                 avatarImages[avatar.id] = await loadImageAsync(
                   avatar.role_square_url,
-                  `./src/assets/images/agents/${avatar.id}.webp`
+                  `./src/assets/images/agents/${avatar.id}.webp`,
                 );
               } catch (err) {
                 console.error(
                   `Failed to load avatar image for ${avatar.id}:`,
-                  err
+                  err,
                 );
               }
             }
@@ -264,12 +264,12 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
             try {
               buddyImages[battle.buddy.id] = await loadImageAsync(
                 battle.buddy.bangboo_rectangle_url,
-                `./src/assets/images/bangboos/${battle.buddy.id}.png`
+                `./src/assets/images/bangboos/${battle.buddy.id}.png`,
               );
             } catch (err) {
               console.error(
                 `Failed to load buddy image for ${battle.buddy.id}:`,
-                err
+                err,
               );
             }
           }
@@ -282,14 +282,14 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
               try {
                 bossImages[boss.name] = await loadImageAsync(
                   boss.icon,
-                  `./src/assets/images/bosses/default.png`
+                  `./src/assets/images/bosses/default.png`,
                 );
 
                 // 加載Boss背景
                 if (boss.bg_icon && !bossBgImages[boss.name]) {
                   bossBgImages[boss.name] = await loadImageAsync(
                     boss.bg_icon,
-                    `./src/assets/images/bosses/bg_default.png`
+                    `./src/assets/images/bosses/bg_default.png`,
                   );
                 }
 
@@ -297,13 +297,13 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
                 if (boss.race_icon && !raceIcons[boss.name]) {
                   raceIcons[boss.name] = await loadImageAsync(
                     boss.race_icon,
-                    `./src/assets/images/bosses/race_default.png`
+                    `./src/assets/images/bosses/race_default.png`,
                   );
                 }
               } catch (err) {
                 console.error(
                   `Failed to load boss image for ${boss.name}:`,
-                  err
+                  err,
                 );
               }
             }
@@ -327,12 +327,12 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
       const beginDate = new Date(
         parseInt(deadlyData.start_time.year),
         parseInt(deadlyData.start_time.month) - 1,
-        parseInt(deadlyData.start_time.day)
+        parseInt(deadlyData.start_time.day),
       );
       const endDate = new Date(
         parseInt(deadlyData.end_time.year),
         parseInt(deadlyData.end_time.month) - 1,
-        parseInt(deadlyData.end_time.day)
+        parseInt(deadlyData.end_time.day),
       );
 
       ctx.font = `24px ${selectedFont}`;
@@ -341,7 +341,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
           endDate.getMonth() + 1
         }月${endDate.getDate()}日`,
         canvas.width / 2,
-        120
+        120,
       );
     }
 
@@ -356,13 +356,13 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
     ctx.fillText(
       deadlyData.total_score ? deadlyData.total_score.toString() : "0",
       canvas.width / 2,
-      210
+      210,
     );
 
     // 绘制"总得分"标签
     const totalScoreText = tr("TotalScore") || "總得分";
     const totalScoreWidth = ctx.measureText(
-      deadlyData.total_score.toString()
+      deadlyData.total_score.toString(),
     ).width;
     const totalScoreX = canvas.width / 2 - totalScoreWidth + 50;
     ctx.font = `24px ${selectedFont}`;
@@ -381,12 +381,12 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
         canvas.width / 2 + totalScoreWidth - 110,
         160,
         81 * 1.2,
-        20 * 1.2
+        20 * 1.2,
       );
       ctx.fillText(
         percentText,
         canvas.width / 2 + totalScoreWidth - 72.5,
-        177.5
+        177.5,
       );
     }
 
@@ -420,7 +420,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
               ctx,
               buffer.desc,
               canvas.width - 120,
-              selectedFont
+              selectedFont,
             );
 
             // 根据文本高度动态调整 buff 框高度
@@ -433,7 +433,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
               canvas.width - 100,
               buffBoxHeight,
               20,
-              buffBoxColor
+              buffBoxColor,
             );
 
             // 绘制BUFF标题
@@ -459,7 +459,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
               65,
               buffY + 60,
               canvas.width + 720,
-              selectedFont
+              selectedFont,
             );
 
             // 调整下一个战斗记录的位置
@@ -476,7 +476,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
           canvas.width - 100,
           160,
           20,
-          recordBoxColor
+          recordBoxColor,
         );
 
         // 绘制Boss方形图像在左侧
@@ -499,7 +499,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
               bossX,
               bossY,
               bossBoxWidth,
-              bossBoxHeight
+              bossBoxHeight,
             );
 
             // 绘制边框
@@ -509,7 +509,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
               bossX - 2,
               bossY - 2,
               bossBoxWidth + 4,
-              bossBoxHeight + 4
+              bossBoxHeight + 4,
             );
 
             // 绘制Boss图像
@@ -518,7 +518,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
               bossX,
               bossY,
               bossBoxWidth,
-              bossBoxHeight
+              bossBoxHeight,
             );
 
             // 绘制种族图标（如果有）
@@ -542,7 +542,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
             parseInt(battle.challenge_time.day),
             parseInt(battle.challenge_time.hour),
             parseInt(battle.challenge_time.minute),
-            parseInt(battle.challenge_time.second)
+            parseInt(battle.challenge_time.second),
           );
 
           const timeStr = `${tr("ChallengeTime") || "挑戰時間"} ${challengeDate.toLocaleString()}`;
@@ -563,13 +563,13 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
                 avatarImages[avatar.id],
                 avatarX,
                 currentY + 55,
-                80
+                80,
               );
 
               // 绘制元素图标
               if (avatar.element_type) {
                 const elementIndex = [200, 201, 202, 203, 205].indexOf(
-                  avatar.element_type
+                  avatar.element_type,
                 );
                 if (elementIndex >= 0) {
                   // 绘制元素背景
@@ -584,7 +584,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
                     avatarX - 5,
                     currentY + 55,
                     30,
-                    30
+                    30,
                   );
                 }
               }
@@ -598,7 +598,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
                   tr("levelFormat", { level: avatar.level }) ||
                     `Lv.${avatar.level}`,
                   avatarX + 40,
-                  currentY + 150
+                  currentY + 150,
                 );
               }
 
@@ -616,7 +616,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
                 ctx.fillText(
                   avatar.rank.toString(),
                   avatarX + 70,
-                  currentY + 75
+                  currentY + 75,
                 );
               }
 
@@ -632,7 +632,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
             buddyImages[battle.buddy.id],
             avatarX,
             currentY + 50,
-            70
+            70,
           );
 
           // 绘制助手等级
@@ -644,7 +644,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
               tr("levelFormat", { level: battle.buddy.level }) ||
                 `Lv.${battle.buddy.level}`,
               avatarX + 40,
-              currentY + 140
+              currentY + 140,
             );
           }
         }
@@ -671,7 +671,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
         ctx.fillText(
           battle.score ? battle.score.toString() : "0",
           canvas.width / 2 + 117.5,
-          currentY + 130
+          currentY + 130,
         );
 
         // 更新Y坐标
@@ -696,7 +696,7 @@ function drawRoundedRect(
   radius: number,
   color: string,
   outlineWidth = 0,
-  outlineColor = "black"
+  outlineColor = "black",
 ) {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -723,7 +723,7 @@ function drawCircleImage(
   x: number,
   y: number,
   size: number,
-  scaleFactor = 1.2
+  scaleFactor = 1.2,
 ) {
   ctx.save();
 
@@ -753,7 +753,7 @@ function estimateTextHeight(
   ctx: SKRSContext2D,
   text: string,
   maxWidth: number,
-  fontFamily: string
+  fontFamily: string,
 ) {
   // 保存当前上下文状态
   const originalFont = ctx.font;
@@ -808,7 +808,7 @@ function drawBuffText(
   x: number,
   y: number,
   maxWidth: number,
-  fontFamily: string
+  fontFamily: string,
 ) {
   // 替換換行符為實際的斷行
   text = text.replace(/\\n/g, "\n");
@@ -845,12 +845,12 @@ function drawBuffText(
         // 查找結束標籤
         const endTagIndex = remainingText.indexOf(
           "</color>",
-          colorTagMatch.index
+          colorTagMatch.index,
         );
         if (endTagIndex === -1) {
           // 沒有結束標籤，添加剩餘文本
           plainText += remainingText.substring(
-            colorTagMatch.index + colorTagMatch[0].length
+            colorTagMatch.index + colorTagMatch[0].length,
           );
           break;
         }
@@ -858,7 +858,7 @@ function drawBuffText(
         // 獲取彩色文本
         const coloredText = remainingText.substring(
           colorTagMatch.index + colorTagMatch[0].length,
-          endTagIndex
+          endTagIndex,
         );
         plainText += coloredText;
 
@@ -900,7 +900,7 @@ function drawBuffText(
           currentX - ctx.measureText(currentLine).width,
           currentY,
           colorSegments,
-          currentCharIndex - currentLine.length
+          currentCharIndex - currentLine.length,
         );
 
         // 重置為新行
@@ -924,7 +924,7 @@ function drawBuffText(
         x,
         currentY,
         colorSegments,
-        currentCharIndex - currentLine.length
+        currentCharIndex - currentLine.length,
       );
     }
 
@@ -945,7 +945,7 @@ function drawBuffText(
     lineX: number,
     lineY: number,
     colorSegments: any[],
-    startIndex: number
+    startIndex: number,
   ) {
     let currentX = lineX;
     const chars = Array.from(line);

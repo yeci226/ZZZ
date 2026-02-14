@@ -33,7 +33,7 @@ GlobalFonts.registerFromPath(join(".", "src", "assets", "ko-kr.ttf"), "KR");
 GlobalFonts.registerFromPath(join(".", "src", "assets", "fr-fr.ttf"), "FR");
 GlobalFonts.registerFromPath(
   join(".", "src", "assets", "Nunito-BlackItalic.ttf"),
-  "Nunito"
+  "Nunito",
 );
 
 const fonts = {
@@ -51,7 +51,7 @@ export async function handleShiyuDraw(
   tr: (key: string, args?: any) => string,
   user: User,
   zzz: ZenlessZoneZero,
-  schedule: number
+  schedule: number,
 ) {
   const drawTask = async () => {
     try {
@@ -61,7 +61,7 @@ export async function handleShiyuDraw(
             .setTitle(tr("Searching"))
             .setColor(getRandomColor() as any)
             .setImage(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+              "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif",
             ),
         ],
       });
@@ -91,7 +91,7 @@ export async function handleShiyuDraw(
         hadalData,
         context,
         staticAssets,
-        dynamicImages
+        dynamicImages,
       );
 
       if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
@@ -112,10 +112,10 @@ export async function handleShiyuDraw(
               .setTitle(tr("note_Error"))
               .setColor("#E76161")
               .setImage(
-                "https://media.discordapp.net/attachments/1149960935654559835/1258313139078955039/image.png"
+                "https://media.discordapp.net/attachments/1149960935654559835/1258313139078955039/image.png",
               )
               .setDescription(
-                tr("note_Error_Description") + "\n\n" + `\`${error.message}\``
+                tr("note_Error_Description") + "\n\n" + `\`${error.message}\``,
               ),
           ],
         });
@@ -127,7 +127,7 @@ export async function handleShiyuDraw(
               .setTitle(tr("DrawError"))
               .setDescription(`\`${error}\``)
               .setThumbnail(
-                "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
+                "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
               ),
           ],
         });
@@ -140,7 +140,7 @@ export async function handleShiyuDraw(
   if (drawQueue.length !== 1) {
     drawInQueueReply(
       interaction,
-      tr("DrawInQueue", { position: drawQueue.length - 1 })
+      tr("DrawInQueue", { position: drawQueue.length - 1 }),
     );
   }
 }

@@ -30,7 +30,7 @@ import { drawMainImage, drawCharacterImage } from "../utilities/zzz/profile.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import Queue from "queue";
 import emoji from "../assets/emoji.js";
-const db = client.db;
+// Use client.db directly
 const drawQueue = new Queue({ autostart: true });
 const elementId: Record<string, string> = {
   "200": "physic",
@@ -79,25 +79,25 @@ async function handleMindScapeChange(interaction: ButtonInteraction, tr: any) {
   const [row1, row2] = interaction.message.components as any[];
 
   const mindScapeKey = `${interaction.user.id}.mindscape`;
-  const mindScape = (await db.get(mindScapeKey)) ?? true;
+  const mindScape = (await client.db.get(mindScapeKey)) ?? true;
 
   row2.components = row2.components.map((button: any) =>
     button.customId === interaction.customId
       ? ButtonBuilder.from(button as any).setStyle(
-          mindScape ? ButtonStyle.Secondary : ButtonStyle.Success
+          mindScape ? ButtonStyle.Secondary : ButtonStyle.Success,
         )
-      : button
+      : button,
   );
 
   await interaction.message.edit({ components: [row1, row2] });
-  await db.set(mindScapeKey, !mindScape);
+  await client.db.set(mindScapeKey, !mindScape);
 }
 
 async function handleSelectCharacter(
   interaction: StringSelectMenuInteraction,
   tr: any,
   value: string,
-  userLocale: string
+  userLocale: string,
 ) {
   const drawTask = async () => {
     try {
@@ -106,7 +106,7 @@ async function handleSelectCharacter(
           new EmbedBuilder()
             .setTitle(tr("Searching"))
             .setImage(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+              "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif",
             ),
         ],
         components: [],
@@ -121,7 +121,7 @@ async function handleSelectCharacter(
         tr,
         userId,
         userLocale,
-        parseInt(accountIndex)
+        parseInt(accountIndex),
       );
       if (!zzz) return;
 
@@ -143,7 +143,7 @@ async function handleSelectCharacter(
         const userData = await getUserHoyolabData(
           interaction as any,
           tr,
-          userId
+          userId,
         );
         imageBuffer = await drawMainImage(tr, userLocale, userData, record);
       } else {
@@ -153,7 +153,7 @@ async function handleSelectCharacter(
           tr,
           userLocale,
           String(zzz.uid || ""),
-          selectedCharacter
+          selectedCharacter,
         );
       }
 
@@ -165,12 +165,12 @@ async function handleSelectCharacter(
       });
 
       const userMindScape =
-        (await db.get(`${interaction.user.id}.mindscape`)) ?? true;
+        (await client.db.get(`${interaction.user.id}.mindscape`)) ?? true;
 
       function chunkArray(array: any[], size: number) {
         return Array.from(
           { length: Math.ceil(array.length / size) },
-          (_, index) => array.slice(index * size, (index + 1) * size)
+          (_, index) => array.slice(index * size, (index + 1) * size),
         );
       }
 
@@ -208,15 +208,17 @@ async function handleSelectCharacter(
               .setCustomId(`profile_SelectCharacter-${index}`)
               .setMinValues(1)
               .setMaxValues(1)
-              .addOptions(optionsChunk)
-          ) as any
+              .addOptions(optionsChunk),
+          ) as any,
       );
 
       const rowMindScape = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("profile_CharacterMindScape")
           .setLabel(tr("MindScape"))
-          .setStyle(userMindScape ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setStyle(
+            userMindScape ? ButtonStyle.Success : ButtonStyle.Secondary,
+          ),
       );
 
       interaction.editReply({
@@ -234,7 +236,7 @@ async function handleSelectCharacter(
             .setTitle(tr("DrawError"))
             .setDescription(`\`${(error as Error).message}\``)
             .setThumbnail(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
+              "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
             ),
         ],
       });
@@ -246,7 +248,7 @@ async function handleSelectCharacter(
   if (drawQueue.length !== 1) {
     drawInQueueReply(
       interaction as any,
-      tr("DrawInQueue", { position: drawQueue.length - 1 })
+      tr("DrawInQueue", { position: drawQueue.length - 1 }),
     );
   }
 }
@@ -255,9 +257,9 @@ async function handleAccountAction(
   interaction: StringSelectMenuInteraction,
   tr: any,
   customId: string,
-  value: string
+  value: string,
 ) {
-  const account: any = await db.get(`${interaction.user.id}.account`);
+  const account: any = await client.db.get(`${interaction.user.id}.account`);
   if (!account)
     return interaction.reply({
       embeds: [
@@ -287,8 +289,8 @@ async function handleAccountAction(
               {
                 label: "Cookie",
                 value: `cookie-${accountIndex}`,
-              }
-            )
+              },
+            ),
         ) as any,
       ],
       flags: MessageFlags.Ephemeral as any,
@@ -313,9 +315,9 @@ async function handleAccountAction(
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
                 .setMinLength(9)
-                .setMaxLength(10)
-            ) as any
-          )
+                .setMaxLength(10),
+            ) as any,
+          ),
       );
     } else if (type == "cookie") {
       const userAccountCookie = accountData.cookie;
@@ -355,7 +357,7 @@ async function handleAccountAction(
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
                 .setMinLength(0)
-                .setMaxLength(1000)
+                .setMaxLength(1000),
             ),
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
@@ -366,7 +368,7 @@ async function handleAccountAction(
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
                 .setMinLength(0)
-                .setMaxLength(30)
+                .setMaxLength(30),
             ),
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
@@ -377,7 +379,7 @@ async function handleAccountAction(
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
                 .setMinLength(0)
-                .setMaxLength(1000)
+                .setMaxLength(1000),
             ),
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
@@ -388,21 +390,23 @@ async function handleAccountAction(
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
                 .setMinLength(0)
-                .setMaxLength(30)
-            ) as any
-          )
+                .setMaxLength(30),
+            ) as any,
+          ),
       );
     }
   } else if (interaction.customId == "account_DeleteAccountSelect") {
     await interaction.deferUpdate().catch(() => {});
     const accountIndex = value;
-    const accounts = (await db.get(`${interaction.user.id}.account`)) ?? [];
+    const accounts =
+      (await client.db.get(`${interaction.user.id}.account`)) ?? [];
     const uid = accounts[parseInt(accountIndex)].uid;
 
-    if (accounts.length <= 1) await db.delete(`${interaction.user.id}.account`);
+    if (accounts.length <= 1)
+      await client.db.delete(`${interaction.user.id}.account`);
     else {
       accounts.splice(parseInt(accountIndex), 1);
-      await db.set(`${interaction.user.id}.account`, accounts);
+      await client.db.set(`${interaction.user.id}.account`, accounts);
     }
 
     interaction.editReply({
@@ -454,7 +458,7 @@ async function handleAccountAction(
               .setStyle(TextInputStyle.Short)
               .setRequired(true)
               .setMinLength(0)
-              .setMaxLength(1000)
+              .setMaxLength(1000),
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
@@ -465,7 +469,7 @@ async function handleAccountAction(
               .setStyle(TextInputStyle.Short)
               .setRequired(true)
               .setMinLength(0)
-              .setMaxLength(30)
+              .setMaxLength(30),
           ) as any,
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
@@ -476,7 +480,7 @@ async function handleAccountAction(
               .setStyle(TextInputStyle.Short)
               .setRequired(true)
               .setMinLength(0)
-              .setMaxLength(1000)
+              .setMaxLength(1000),
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
@@ -487,9 +491,9 @@ async function handleAccountAction(
               .setStyle(TextInputStyle.Short)
               .setRequired(true)
               .setMinLength(0)
-              .setMaxLength(30)
-          )
-        ) as any
+              .setMaxLength(30),
+          ),
+        ) as any,
     );
   }
 }
@@ -497,13 +501,13 @@ async function handleAccountAction(
 async function handleNews(
   interaction: StringSelectMenuInteraction,
   tr: any,
-  value: string
+  value: string,
 ) {
   if (interaction.customId == "news_type") {
     const type = value;
     const newsData = await getNewsList(
       interaction.locale.toLowerCase(),
-      parseInt(type)
+      parseInt(type),
     );
 
     return interaction.editReply({
@@ -532,8 +536,8 @@ async function handleNews(
                     tr("Day"),
                   value: `${data.post.post_id}`,
                 };
-              })
-            )
+              }),
+            ),
         ) as any,
         new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
@@ -556,8 +560,8 @@ async function handleNews(
                 label: tr("news_Info"),
                 emoji: "🗞️",
                 value: "3",
-              }
-            )
+              },
+            ),
         ),
       ],
     });
@@ -565,7 +569,7 @@ async function handleNews(
     const postId = value;
     const postData = await getPostFull(
       interaction.locale.toLowerCase(),
-      postId
+      postId,
     );
     const { post, user, image_list, cover_list } = postData.post;
     const content = await parsePostContent(post.content);
@@ -585,7 +589,7 @@ async function handleNews(
           .setDescription(
             content.length < 4096
               ? content
-              : (content.slice(0, 4096 - 3).concat("...") ?? tr("None"))
+              : (content.slice(0, 4096 - 3).concat("...") ?? tr("None")),
           )
           .setFooter({
             text:

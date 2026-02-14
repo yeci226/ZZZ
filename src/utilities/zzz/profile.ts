@@ -26,7 +26,7 @@ import {
 } from "@napi-rs/canvas";
 import fs from "fs";
 import { join } from "path";
-const db = client.db;
+// Use client.db directly
 const drawQueue = new Queue({ autostart: true });
 
 const offsetCharacter: Record<
@@ -131,39 +131,39 @@ const bangbooRectangleUrl = `${zzzStaticUrl}/bangboo_rectangle_avatar/bangboo_re
 
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "en-us.ttf"),
-  "EN"
+  "EN",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "zh-tw.ttf"),
-  "TW"
+  "TW",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "zh-cn.ttf"),
-  "CN"
+  "CN",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "vi-vn.ttf"),
-  "VI"
+  "VI",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "ja-jp.ttf"),
-  "JP"
+  "JP",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "ko-kr.ttf"),
-  "KR"
+  "KR",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "fr-fr.ttf"),
-  "FR"
+  "FR",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "impact.ttf"),
-  "Impact"
+  "Impact",
 );
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "Nunito-BlackItalic.ttf"),
-  "Nunito"
+  "Nunito",
 );
 
 const fonts = {
@@ -194,7 +194,7 @@ export async function handleProfileDraw(
   tr: (key: string, args?: any) => string,
   user: any,
   zzz: any,
-  accountIndex: number
+  accountIndex: number,
 ) {
   const drawTask = async () => {
     try {
@@ -204,14 +204,15 @@ export async function handleProfileDraw(
             .setTitle(tr("Searching"))
             .setColor(getRandomColor() as any)
             .setImage(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+              "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif",
             ),
         ],
       });
 
       // Request
       const requestStartTime = Date.now();
-      const userMindScape = (await db.get(`${user.id}.mindscape`)) ?? true;
+      const userMindScape =
+        (await client.db.get(`${user.id}.mindscape`)) ?? true;
       const userLocale =
         (await getUserLang(interaction.user.id)) ||
         toI18nLang(interaction.locale) ||
@@ -223,7 +224,7 @@ export async function handleProfileDraw(
         tr,
         user.id,
         userLocale,
-        accountIndex
+        accountIndex,
       );
 
       const requestEndTime = Date.now();
@@ -242,7 +243,7 @@ export async function handleProfileDraw(
       function chunkArray(array: any[], size: number) {
         return Array.from(
           { length: Math.ceil(array.length / size) },
-          (_, index) => array.slice(index * size, (index + 1) * size)
+          (_, index) => array.slice(index * size, (index + 1) * size),
         );
       }
 
@@ -267,15 +268,17 @@ export async function handleProfileDraw(
             .setCustomId(`profile_SelectCharacter-${index}`)
             .setMinValues(1)
             .setMaxValues(1)
-            .addOptions(optionsChunk)
-        )
+            .addOptions(optionsChunk),
+        ),
       );
 
       const rowMindScape = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("profile_CharacterMindScape")
           .setLabel(tr("MindScape"))
-          .setStyle(userMindScape ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setStyle(
+            userMindScape ? ButtonStyle.Success : ButtonStyle.Secondary,
+          ),
       );
 
       interaction.editReply({
@@ -291,10 +294,10 @@ export async function handleProfileDraw(
               .setTitle(tr("note_Error"))
               .setConfig("#E76161", "sob")
               .setImage(
-                "https://media.discordapp.net/attachments/1149960935654559835/1258313139078955039/image.png"
+                "https://media.discordapp.net/attachments/1149960935654559835/1258313139078955039/image.png",
               )
               .setDescription(
-                tr("note_Error_Description") + "\n\n" + `\`${error.message}\``
+                tr("note_Error_Description") + "\n\n" + `\`${error.message}\``,
               ),
           ],
           withResponse: true,
@@ -307,7 +310,7 @@ export async function handleProfileDraw(
               .setTitle(tr("DrawError"))
               .setDescription(`\`${error}\``)
               .setThumbnail(
-                "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
+                "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
               ),
           ],
           withResponse: true,
@@ -321,7 +324,7 @@ export async function handleProfileDraw(
   if (drawQueue.length !== 1) {
     drawInQueueReply(
       interaction,
-      tr("DrawInQueue", { position: drawQueue.length - 1 })
+      tr("DrawInQueue", { position: drawQueue.length - 1 }),
     );
   }
 }
@@ -330,7 +333,7 @@ export async function drawMainImage(
   tr: (key: string, args?: any) => string,
   userLocale: string,
   userData: any,
-  record: any
+  record: any,
 ) {
   try {
     const selectedFont =
@@ -342,7 +345,7 @@ export async function drawMainImage(
       `./src/assets/images/profileBg.png`,
       record.cur_head_icon_url,
       ...(await Promise.all(
-        record.avatar_list.map((agent: any) => agent.role_square_url)
+        record.avatar_list.map((agent: any) => agent.role_square_url),
       )),
       "./src/assets/images/icons/other/showmore.png",
       ...record.buddy_list.map((buddy: any) => buddy.bangboo_rectangle_url),
@@ -375,7 +378,7 @@ export async function drawMainImage(
         -(cardImage.width * cardImageScale) / 2 + canvas.width * 0.66,
         0,
         cardImage.width * cardImageScale,
-        cardImageHeight
+        cardImageHeight,
       );
 
       // Underline
@@ -400,7 +403,7 @@ export async function drawMainImage(
       headIconY + headIconSize / 2,
       headIconSize / 2 + 2.5,
       0,
-      Math.PI * 2
+      Math.PI * 2,
     );
     ctx.fillStyle = "rgba(162, 162, 162, 1)";
     ctx.fill();
@@ -412,7 +415,7 @@ export async function drawMainImage(
       headIconY + headIconSize / 2,
       headIconSize / 2 + 2.5,
       0,
-      Math.PI * 2
+      Math.PI * 2,
     );
     ctx.strokeStyle = "rgba(22, 22, 22, 1)";
     ctx.lineWidth = 2.5;
@@ -424,7 +427,7 @@ export async function drawMainImage(
       headIconX,
       headIconY,
       headIconSize,
-      headIconSize
+      headIconSize,
     );
 
     const userNameX = 200;
@@ -438,7 +441,7 @@ export async function drawMainImage(
       46,
       22,
       userNameX,
-      record.game_data_show?.personal_title ? 150 : 180
+      record.game_data_show?.personal_title ? 150 : 180,
     ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
 
     // Draw User Name Outline
@@ -447,7 +450,7 @@ export async function drawMainImage(
     ctx.strokeText(
       userData?.nickname ?? "Unknown",
       userNameX,
-      record.game_data_show?.personal_title ? 150 : 180
+      record.game_data_show?.personal_title ? 150 : 180,
     );
 
     // Draw User level
@@ -463,7 +466,7 @@ export async function drawMainImage(
         textColor: "black",
         backgroundColor: "#FFDE00",
         padding: 7.5,
-      }
+      },
     );
 
     // Draw User title
@@ -599,7 +602,7 @@ export async function drawMainImage(
         160,
         260,
         30,
-        boxColor
+        boxColor,
       ); // (ctx, x, y, width, height, radius, color)
 
       drawCircleImage(
@@ -607,7 +610,7 @@ export async function drawMainImage(
         agentImages[index],
         60 + offset_x + 10,
         360 + offset_y + 10,
-        140
+        140,
       );
 
       // Draw Agent Name
@@ -620,7 +623,7 @@ export async function drawMainImage(
         24,
         20,
         140 + offset_x,
-        550 + offset_y
+        550 + offset_y,
       ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
 
       // Draw Agent Level
@@ -634,7 +637,7 @@ export async function drawMainImage(
             })
           : "",
         140 + offset_x,
-        588 + offset_y
+        588 + offset_y,
       );
 
       // Draw Agent Rank
@@ -646,7 +649,7 @@ export async function drawMainImage(
           45,
           45,
           22.5,
-          "rgba(206, 35, 40, 255)"
+          "rgba(206, 35, 40, 255)",
         ); // (ctx, x, y, width, height, radius, color)
         ctx.fillStyle = "white";
         ctx.textAlign = "center";
@@ -673,7 +676,7 @@ export async function drawMainImage(
         160,
         260,
         30,
-        boxColor
+        boxColor,
       ); // (ctx, x, y, width, height, radius, color)
 
       drawCircleImage(
@@ -681,7 +684,7 @@ export async function drawMainImage(
         buddyImages[index],
         60 + offset_x + 10,
         990 + offset_y + 10,
-        140
+        140,
       ); // (ctx, img, x, y, size, scaleFactor)
 
       // Draw Buddy Name
@@ -694,7 +697,7 @@ export async function drawMainImage(
         24,
         20,
         140 + offset_x,
-        1180 + offset_y
+        1180 + offset_y,
       ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
 
       // Draw Buddy Level
@@ -708,7 +711,7 @@ export async function drawMainImage(
             })
           : "",
         140 + offset_x,
-        1218 + offset_y
+        1218 + offset_y,
       );
 
       // Draw Buddy Rank
@@ -720,7 +723,7 @@ export async function drawMainImage(
           45,
           45,
           22.5,
-          "rgba(206, 35, 40, 255)"
+          "rgba(206, 35, 40, 255)",
         ); // (ctx, x, y, width, height, radius, color)
         ctx.fillStyle = "white";
         ctx.textAlign = "center";
@@ -736,7 +739,7 @@ export async function drawMainImage(
     ctx.fillText(
       `${userData.region_name} | ${userData?.game_role_id ? `UID ${userData.game_role_id}` : ""}`,
       canvas.width - 10,
-      canvas.height - 10
+      canvas.height - 10,
     );
 
     return canvas.toBuffer("image/png");
@@ -751,7 +754,7 @@ export async function drawCharacterImage(
   tr: (key: string, args?: any) => string,
   userLocale: string,
   uid: string,
-  characterDataInput: any
+  characterDataInput: any,
 ) {
   try {
     const character = Array.isArray(characterDataInput)
@@ -761,7 +764,7 @@ export async function drawCharacterImage(
     const selectedFont =
       fonts[userLocale as keyof typeof fonts] || fonts.default;
     const userMindScape =
-      (await db.get(`${interaction.user.id}.mindscape`)) ?? true;
+      (await client.db.get(`${interaction.user.id}.mindscape`)) ?? true;
     const canvas = createCanvas(2080, 870);
     const ctx = canvas.getContext("2d");
 
@@ -777,7 +780,7 @@ export async function drawCharacterImage(
       }
     }
     character.equip.sort(
-      (a: any, b: any) => a.equipment_type - b.equipment_type
+      (a: any, b: any) => a.equipment_type - b.equipment_type,
     );
 
     const characterSpecificImagePath = `https://api.hakush.in/zzz/UI/Mindscape_${character.id}_${character.rank <= 2 ? 1 : character.rank <= 5 ? 2 : 3}.webp`;
@@ -796,7 +799,7 @@ export async function drawCharacterImage(
       characterData.skin
     ) {
       const skin = character.skin_list.find(
-        (skin: any) => skin.unlocked && !skin.is_original
+        (skin: any) => skin.unlocked && !skin.is_original,
       );
 
       if (skin) {
@@ -842,16 +845,16 @@ export async function drawCharacterImage(
       }),
       // 加載所有可能用到的屬性圖示（用於 disk driver）
       ...Object.values(propertiesId).map(
-        (prop) => `./src/assets/images/icons/property/${prop}.png`
+        (prop) => `./src/assets/images/icons/property/${prop}.png`,
       ),
       ...character.skills.map(
         (skill: any) =>
-          `./src/assets/images/icons/skills/${skill.skill_type}.png`
+          `./src/assets/images/icons/skills/${skill.skill_type}.png`,
       ),
       ...character.equip.map((equip: any) =>
         equip?.id
           ? `./src/assets/images/icons/diskdrives/${equip.id.toString().slice(0, 3)}_${equip.rarity}.webp`
-          : "./src/assets/images/icons/other/empty.png"
+          : "./src/assets/images/icons/other/empty.png",
       ),
     ];
 
@@ -869,18 +872,18 @@ export async function drawCharacterImage(
     const propertyImages = restImages.slice(0, character.properties.length);
     const allPropertyImages = restImages.slice(
       character.properties.length,
-      character.properties.length + Object.values(propertiesId).length
+      character.properties.length + Object.values(propertiesId).length,
     );
     const skillImages = restImages.slice(
       character.properties.length + Object.values(propertiesId).length,
       character.properties.length +
         Object.values(propertiesId).length +
-        character.skills.length
+        character.skills.length,
     );
     const equipImages = restImages.slice(
       character.properties.length +
         Object.values(propertiesId).length +
-        character.skills.length
+        character.skills.length,
     );
 
     // 創建屬性圖示映射
@@ -921,7 +924,7 @@ export async function drawCharacterImage(
       offsetX,
       offsetY,
       scaledWidth,
-      scaledHeight
+      scaledHeight,
     );
     ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
 
@@ -940,7 +943,7 @@ export async function drawCharacterImage(
       characterImage,
       character,
       offsetCharacter,
-      offsetCharacterSkin
+      offsetCharacterSkin,
     );
 
     // Draw UI Boxes
@@ -950,23 +953,23 @@ export async function drawCharacterImage(
       selectedFont,
       tr,
       elementImage,
-      professionImage
+      professionImage,
     );
     drawPropertiesBox(
       ctx,
       character,
       propertyImages,
       elementImage,
-      selectedFont
+      selectedFont,
     );
 
     // Draw Agent Skills Box
     const customOrder = [0, 2, 5, 1, 3, 4];
     const reorderedSkillImages = customOrder.map(
-      (orderIndex) => skillImages[orderIndex]
+      (orderIndex) => skillImages[orderIndex],
     );
     const reorderedSkillLevel = customOrder.map(
-      (orderIndex) => character.skills[orderIndex]
+      (orderIndex) => character.skills[orderIndex],
     );
 
     drawSkillsBox(ctx, character, reorderedSkillImages, selectedFont);
@@ -978,7 +981,7 @@ export async function drawCharacterImage(
       character,
       equipImages,
       propertyImageMap,
-      selectedFont
+      selectedFont,
     );
     drawWeaponBox(
       ctx,
@@ -987,7 +990,7 @@ export async function drawCharacterImage(
       weaponStarImage,
       propertyImageMap,
       selectedFont,
-      tr
+      tr,
     );
 
     // Player UID
@@ -1011,11 +1014,11 @@ function drawAgentPortrait(
   characterImage: Image,
   character: any,
   offsetCharacter: any,
-  offsetCharacterSkin: any
+  offsetCharacterSkin: any,
 ) {
   const characterId = character.id;
   const skinId = character.skin_list.find(
-    (skin: any) => skin.unlocked && !skin.is_original
+    (skin: any) => skin.unlocked && !skin.is_original,
   )?.skin_id;
 
   const baseOffset = offsetCharacter[characterId] || {};
@@ -1040,7 +1043,7 @@ function drawAgentPortrait(
     characterImageX,
     characterImageY,
     scaledWidth,
-    scaledHeight
+    scaledHeight,
   );
 }
 
@@ -1050,7 +1053,7 @@ async function drawAgentHeader(
   selectedFont: string,
   tr: any,
   elementImage: Image,
-  professionImage: Image
+  professionImage: Image,
 ) {
   const boxColor = "rgba(34, 33, 34, 0.95)";
   const baseOffset = (offsetCharacter as any)[character.id] || {};
@@ -1085,7 +1088,7 @@ async function drawAgentHeader(
   // Title Icon/Text
   if (baseOffset.title) {
     const TitleIcon = await loadImageAsync(
-      `./src/assets/images/icons/other/${baseOffset.title}.png`
+      `./src/assets/images/icons/other/${baseOffset.title}.png`,
     );
     const iconX = 60 + padding + textWidth + 10;
     ctx.drawImage(TitleIcon, iconX, 75, 40, 40);
@@ -1105,7 +1108,7 @@ async function drawAgentHeader(
     elementX + iconSize + 10,
     iconY,
     iconSize,
-    iconSize
+    iconSize,
   );
 }
 
@@ -1114,7 +1117,7 @@ function drawPropertiesBox(
   character: any,
   propertyImages: Image[],
   elementImage: Image,
-  selectedFont: string
+  selectedFont: string,
 ) {
   const boxColor = "rgba(34, 33, 34, 0.95)";
   const maxTextWidth = 210;
@@ -1126,7 +1129,7 @@ function drawPropertiesBox(
     440,
     20 + character.properties.length * 56 + 10,
     30,
-    boxColor
+    boxColor,
   );
 
   character.properties.forEach((prop: any, index: number) => {
@@ -1143,7 +1146,7 @@ function drawPropertiesBox(
       80,
       (index === character.properties.length - 1 ? -2 : 0) + 180 + offset_y,
       48,
-      48
+      48,
     );
 
     let fontSize = 32;
@@ -1182,7 +1185,7 @@ function drawSkillsBox(
   ctx: SKRSContext2D,
   character: any,
   skillImages: Image[],
-  selectedFont: string
+  selectedFont: string,
 ) {
   const boxColor = "rgba(34, 33, 34, 0.95)";
   const customOrder = [0, 2, 5, 1, 3, 4];
@@ -1206,7 +1209,7 @@ function drawLevelBox(
   ctx: SKRSContext2D,
   character: any,
   selectedFont: string,
-  tr: any
+  tr: any,
 ) {
   const boxColor = "rgba(34, 33, 34, 0.95)";
   const levelText = tr("levelFormat", { level: character.level });
@@ -1229,7 +1232,7 @@ function drawEquipmentBox(
   character: any,
   equipImages: Image[],
   propertyImageMap: any,
-  selectedFont: string
+  selectedFont: string,
 ) {
   const boxColor = "rgba(34, 33, 34, 0.95)";
 
@@ -1246,7 +1249,7 @@ function drawEquipmentBox(
       boxW,
       boxH,
       30,
-      boxColor
+      boxColor,
     );
 
     const image = equipImages[index];
@@ -1256,7 +1259,7 @@ function drawEquipmentBox(
         equip.id ? 1310 + offset_x : 1280 + offset_x + boxW / 2,
         equip.id ? 28 + offset_y : offset_y + boxH / 2,
         equip.id ? 110 : 84,
-        equip.id ? 110 : 84
+        equip.id ? 110 : 84,
       );
     }
 
@@ -1268,7 +1271,7 @@ function drawEquipmentBox(
         84,
         36,
         18,
-        "rgba(255, 255, 255, 0.95)"
+        "rgba(255, 255, 255, 0.95)",
       );
       ctx.font = `32px ${selectedFont}`;
       ctx.fillStyle = "black";
@@ -1313,7 +1316,7 @@ function drawEquipmentBox(
       ctx.fillText(
         "EMPTY",
         1320 + offset_x + boxW / 2,
-        60 + offset_y + boxH / 2 + 50
+        60 + offset_y + boxH / 2 + 50,
       );
     }
   });
@@ -1326,7 +1329,7 @@ function drawWeaponBox(
   weaponStarImage: Image,
   propertyImageMap: any,
   selectedFont: string,
-  tr: any
+  tr: any,
 ) {
   const boxColor = "rgba(34, 33, 34, 0.95)";
   drawRoundedRect(ctx, 1320, 620, 650, 200, 30, boxColor);
@@ -1338,7 +1341,7 @@ function drawWeaponBox(
       1380,
       755,
       weaponStarImage.width / 1.2,
-      weaponStarImage.height / 1.2
+      weaponStarImage.height / 1.2,
     );
 
     character.weapon.main_properties.forEach((prop: any, index: number) => {
@@ -1358,7 +1361,7 @@ function drawWeaponBox(
           32,
           28,
           1620,
-          pY + 32
+          pY + 32,
         );
         ctx.font = `32px ${selectedFont}`;
         ctx.fillStyle = "white";
@@ -1384,7 +1387,7 @@ function drawWeaponBox(
           28,
           24,
           1620,
-          pY + 30
+          pY + 30,
         );
         ctx.font = `28px ${selectedFont}`;
         ctx.fillStyle = "white";
@@ -1398,7 +1401,7 @@ function drawWeaponBox(
     ctx.fillText(
       tr("levelFormat", { level: character.weapon.level }),
       1560,
-      790
+      790,
     );
   } else {
     ctx.font = `48px ${selectedFont}`;
@@ -1417,7 +1420,7 @@ function drawRoundedRect(
   radius: number,
   color: string,
   outlineWidth = 0,
-  outlineColor = "black"
+  outlineColor = "black",
 ) {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -1443,7 +1446,7 @@ function drawCircleImage(
   x: number,
   y: number,
   size: number,
-  scaleFactor = 1.2
+  scaleFactor = 1.2,
 ) {
   ctx.save();
 
@@ -1477,7 +1480,7 @@ function drawText(
   minFontSize: number,
   x: number,
   y: number,
-  color = "white"
+  color = "white",
 ) {
   let fontSize = initialFontSize;
   ctx.font = `${fontSize}px ${selectedFont}`;
@@ -1498,7 +1501,7 @@ function drawTextWithBackground(
   text: string,
   x: number,
   y: number,
-  options: any = {}
+  options: any = {},
 ) {
   // 解構選項參數，提供預設值
   const {
@@ -1537,7 +1540,7 @@ function drawTextWithBackground(
     radius,
     backgroundColor,
     outlineWidth,
-    outlineColor
+    outlineColor,
   );
 
   // 繪製文字
@@ -1549,7 +1552,7 @@ function drawPaintSplatter(
   ctx: SKRSContext2D,
   canvasWidth: number,
   canvasHeight: number,
-  options: any = {}
+  options: any = {},
 ) {
   const {
     splatterCount = 50, // 潑灑總數量

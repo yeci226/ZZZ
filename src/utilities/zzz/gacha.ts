@@ -114,19 +114,14 @@ async function loadImageAsync(url: string, fallbackUrl?: string) {
 async function fetchSignalData(
   query: URLSearchParams,
   id: number,
-  endId: number | string
+  endId: number | string,
 ) {
   query.set("real_gacha_type", id.toString());
   query.set("end_id", endId.toString());
 
-  console.log(
-    "https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?" +
-      query
-  );
-
   const response = await axios.get(
     "https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?" +
-      query
+      query,
   );
   return response.data;
 }
@@ -135,7 +130,7 @@ export async function getSingalLog(
   interaction: ChatInputCommandInteraction,
   tr: (key: string, args?: any) => string,
   userLocale: string,
-  input: Record<string, string>
+  input: Record<string, string>,
 ) {
   const baseQueryParams = new URLSearchParams({
     authkey_ver: "1",
@@ -173,11 +168,11 @@ export async function getSingalLog(
       embeds: [
         new EmbedBuilder()
           .setTitle(
-            tr("gacha_Loading", { type: type[gachaType as keyof typeof type] })
+            tr("gacha_Loading", { type: type[gachaType as keyof typeof type] }),
           )
           .setColor(getRandomColor() as any)
           .setImage(
-            "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+            "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif",
           ),
       ],
     });
@@ -191,7 +186,7 @@ export async function getSingalLog(
 
       const list = signalData.data.list;
       const signalReachedLastId = list.some(
-        (signal: any) => signal.id == lastId
+        (signal: any) => signal.id == lastId,
       );
 
       temp.push(
@@ -202,7 +197,7 @@ export async function getSingalLog(
           time: signal.time,
           rank:
             signal.rank_type == "4" ? "S" : signal.rank_type == "3" ? "A" : "B",
-        }))
+        })),
       );
 
       if (signalReachedLastId) break;
@@ -254,7 +249,7 @@ export async function getSingalLog(
         ? parseFloat(
             (
               dataList.reduce((acc, i) => acc + i.count, 0) / dataList.length
-            ).toFixed(2)
+            ).toFixed(2),
           )
         : 0;
     allSignalSRanklist[type].total = total;
@@ -283,7 +278,7 @@ export async function getSingalLog(
         const totalPulls = limitedPullSegments.reduce((sum, c) => sum + c, 0);
         const avg = totalPulls / limitedPullSegments.length;
         allSignalSRanklist[type].limitedCharacterPullsAverage = parseFloat(
-          avg.toFixed(2)
+          avg.toFixed(2),
         );
       } else {
         allSignalSRanklist[type].limitedCharacterPullsAverage = 0;
@@ -302,7 +297,7 @@ export async function handleSignalLogDraw(
   userLocale: string,
   requestTime: string,
   signalResults: Record<string, any>,
-  type = "character"
+  type = "character",
 ) {
   const drawTask = async () => {
     try {
@@ -320,7 +315,7 @@ export async function handleSignalLogDraw(
         tr,
         userLocale,
         signalResults[type],
-        type
+        type,
       );
       if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
       const drawEndTime = Date.now();
@@ -346,8 +341,8 @@ export async function handleSignalLogDraw(
               .setValue("regular"),
             new StringSelectMenuOptionBuilder()
               .setLabel(tr("BangbooPool"))
-              .setValue("bangboo")
-          )
+              .setValue("bangboo"),
+          ),
       );
 
       const resMessage = await interaction.editReply({
@@ -372,7 +367,7 @@ export async function handleSignalLogDraw(
               .setTitle(tr("Searching"))
               .setColor(getRandomColor() as any)
               .setImage(
-                "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif"
+                "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif",
               ),
           ],
           components: [],
@@ -384,7 +379,7 @@ export async function handleSignalLogDraw(
           userLocale,
           requestTime,
           signalResults,
-          type
+          type,
         );
         collector.stop();
       });
@@ -402,7 +397,7 @@ export async function handleSignalLogDraw(
             .setTitle(tr("DrawError"))
             .setDescription(`\`${error}\``)
             .setThumbnail(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png"
+              "https://static.wikia.nocookie.net/zenless-zone-zero/images/0/02/Sticker_Set_1_Anby_sob.png",
             ),
         ],
       });
@@ -413,7 +408,7 @@ export async function handleSignalLogDraw(
   if (drawQueue.length !== 1) {
     drawInQueueReply(
       interaction,
-      tr("DrawInQueue", { position: drawQueue.length - 1 })
+      tr("DrawInQueue", { position: drawQueue.length - 1 }),
     );
   }
 }
@@ -422,7 +417,7 @@ export async function drawSignalLogImage(
   tr: (key: string, args?: any) => string,
   userLocale: string,
   signalResults: any,
-  type: string
+  type: string,
 ) {
   try {
     const selectedFont =
@@ -441,7 +436,7 @@ export async function drawSignalLogImage(
       ...(await Promise.all(signalResults.data.map(getAgentImageUrl))),
     ];
     const images = await Promise.all(
-      imagePaths.map((url) => loadImageAsync(url))
+      imagePaths.map((url) => loadImageAsync(url)),
     );
     const [
       bg,
@@ -475,7 +470,7 @@ export async function drawSignalLogImage(
       500,
       isLimitedPool ? 270 : 220,
       30,
-      boxColor
+      boxColor,
     ); // (ctx, x, y, width, height, radius, color) - Increased height for new line
     const titleFontSize = 34;
     ctx.textAlign = "left";
@@ -487,7 +482,7 @@ export async function drawSignalLogImage(
       titleFontSize,
       titleFontSize - 4,
       100,
-      isLimitedPool ? 160 : 185
+      isLimitedPool ? 160 : 185,
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
     drawText(
       ctx,
@@ -497,7 +492,7 @@ export async function drawSignalLogImage(
       titleFontSize,
       titleFontSize - 4,
       100,
-      isLimitedPool ? 220 : 245
+      isLimitedPool ? 220 : 245,
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
     drawText(
       ctx,
@@ -507,7 +502,7 @@ export async function drawSignalLogImage(
       titleFontSize,
       titleFontSize - 4,
       100,
-      isLimitedPool ? 280 : 305
+      isLimitedPool ? 280 : 305,
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
     ctx.textAlign = "right";
     drawText(
@@ -518,7 +513,7 @@ export async function drawSignalLogImage(
       titleFontSize,
       titleFontSize - 4,
       540,
-      isLimitedPool ? 160 : 185
+      isLimitedPool ? 160 : 185,
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
     drawText(
       ctx,
@@ -528,7 +523,7 @@ export async function drawSignalLogImage(
       titleFontSize,
       titleFontSize - 4,
       540,
-      isLimitedPool ? 220 : 245
+      isLimitedPool ? 220 : 245,
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
     drawText(
       ctx,
@@ -538,7 +533,7 @@ export async function drawSignalLogImage(
       titleFontSize,
       titleFontSize - 4,
       540,
-      isLimitedPool ? 280 : 305
+      isLimitedPool ? 280 : 305,
     ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
     if (isLimitedPool) {
       drawText(
@@ -549,7 +544,7 @@ export async function drawSignalLogImage(
         titleFontSize,
         titleFontSize - 4,
         540,
-        340
+        340,
       );
       ctx.textAlign = "left";
       drawText(
@@ -560,7 +555,7 @@ export async function drawSignalLogImage(
         titleFontSize,
         titleFontSize - 4,
         100,
-        340
+        340,
       );
     }
 
@@ -577,7 +572,7 @@ export async function drawSignalLogImage(
           390 + offsetY, // Adjusted Y-offset
           160,
           160,
-          30
+          30,
         ); // (ctx, img, x, y, width, height, radius)
 
         // New: Draw y.png overlay for standard characters
@@ -598,7 +593,7 @@ export async function drawSignalLogImage(
             -overlaySize / 2,
             -overlaySize / 2,
             overlaySize,
-            overlaySize
+            overlaySize,
           );
           ctx.restore();
         }
@@ -615,7 +610,7 @@ export async function drawSignalLogImage(
             28,
             150 + offsetX,
             585 + offsetY,
-            "#808080"
+            "#808080",
           ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
         } else {
           const nameText = data?.name ?? "NONE";
@@ -634,7 +629,7 @@ export async function drawSignalLogImage(
             selectedFont,
             maxTextWidth,
             initialFontSize,
-            minFontSize
+            minFontSize,
           );
 
           // Set font for actual drawing
@@ -659,7 +654,7 @@ export async function drawSignalLogImage(
             optimalFontSize,
             optimalFontSize, // Fixed size after calculation
             startX,
-            585 + offsetY
+            585 + offsetY,
           ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
 
           // Draw Agent Count
@@ -678,7 +673,7 @@ export async function drawSignalLogImage(
             optimalFontSize, // Fixed size after calculation
             startX + nameWidth + gap,
             585 + offsetY,
-            color
+            color,
           ); // (ctx, text, selectedFont, maxWidth, initialFontSize, minFontSize, x, y)
         }
       }
@@ -715,7 +710,7 @@ export async function drawSignalLogImage(
         -stampSize / 2,
         -stampSize / 2,
         stampSize,
-        stampSize
+        stampSize,
       );
 
       ctx.restore();
@@ -744,7 +739,7 @@ export async function drawSignalLogImage(
       160,
       160,
       30,
-      "rgba(48, 48, 48, 255)"
+      "rgba(48, 48, 48, 255)",
     );
     drawRoundedRect(
       ctx,
@@ -753,7 +748,7 @@ export async function drawSignalLogImage(
       160,
       160,
       30,
-      "rgba(48, 48, 48, 255)"
+      "rgba(48, 48, 48, 255)",
     );
 
     // Draw Signal Type
@@ -769,28 +764,28 @@ export async function drawSignalLogImage(
       startX + 0 * (iconWidth + iconGap),
       y,
       iconWidth,
-      iconWidth
+      iconWidth,
     );
     ctx.drawImage(
       characterImage,
       startX + 1 * (iconWidth + iconGap),
       y,
       iconWidth,
-      iconWidth
+      iconWidth,
     );
     ctx.drawImage(
       regularImage,
       startX + 2 * (iconWidth + iconGap),
       y,
       iconWidth,
-      iconWidth
+      iconWidth,
     );
     ctx.drawImage(
       booponImage,
       startX + 3 * (iconWidth + iconGap),
       y,
       iconWidth,
-      iconWidth
+      iconWidth,
     );
 
     return canvas.toBuffer("image/png");
@@ -807,7 +802,7 @@ function drawRoundedRect(
   width: number,
   height: number,
   radius: number,
-  color: string
+  color: string,
 ) {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -828,7 +823,7 @@ function drawRoundedRectImage(
   y: number,
   width: number,
   height: number,
-  radius: number
+  radius: number,
 ) {
   ctx.save();
   ctx.beginPath();
@@ -868,7 +863,7 @@ function getOptimalFontSize(
   selectedFont: string,
   maxWidth: number,
   initialFontSize: number,
-  minFontSize: number
+  minFontSize: number,
 ) {
   let fontSize = initialFontSize;
   ctx.font = `${fontSize}px ${selectedFont}`;
@@ -891,7 +886,7 @@ function drawText(
   minFontSize: number,
   x: number,
   y: number,
-  color = "white"
+  color = "white",
 ) {
   let fontSize = initialFontSize;
   ctx.font = `${fontSize}px ${selectedFont}`;

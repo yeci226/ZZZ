@@ -1,6 +1,6 @@
 import { client } from "../index.js";
 import { Events, AutocompleteInteraction } from "discord.js";
-const db = client.db;
+// Use client.db directly
 
 client.on(Events.InteractionCreate, async (interaction: any) => {
   if (!interaction.isAutocomplete()) return;
@@ -9,7 +9,8 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
   const { name: optionName } = focusedOption;
 
   if (optionName == "account") {
-    const userAccounts: any[] = (await db.get(`${interaction.user.id}.account`)) || [];
+    const userAccounts: any[] =
+      (await client.db.get(`${interaction.user.id}.account`)) || [];
     if (!userAccounts) return;
 
     const choices = [];

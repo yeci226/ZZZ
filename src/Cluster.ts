@@ -29,7 +29,7 @@ const clusterManager = new ClusterManager(`${__dirname}/index.js`, {
 });
 
 clusterManager.extend(
-  new HeartbeatManager({ interval: 2000, maxMissedHeartbeats: 5 })
+  new HeartbeatManager({ interval: 2000, maxMissedHeartbeats: 5 }),
 );
 
 clusterManager.on("clusterCreate", (cluster) => {
@@ -49,6 +49,7 @@ clusterManager.on("clusterCreate", (cluster) => {
 
 process.on("uncaughtException", (error) => {
   try {
+    console.log(error);
     new Logger("集群").error(`未捕獲的異常: ${error}`);
   } catch {}
 });

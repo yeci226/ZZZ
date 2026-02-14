@@ -12,6 +12,9 @@
     "fmt": "prettier --write src/**/*.{ts,js,json,yaml,yml}",
     "test": "jest"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "type": "module",
   "keywords": [],
   "author": "",

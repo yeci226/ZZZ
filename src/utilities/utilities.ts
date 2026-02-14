@@ -14,7 +14,7 @@ import {
   Hoyolab,
 } from "@yeci226/hoyoapi";
 import { loadImage } from "@napi-rs/canvas";
-const db = client.db;
+// Use client.db directly in functions to avoid static capture issues
 const BASE_URL = "https://bbs-api-os.hoyolab.com/community/post/wapi/";
 
 declare global {
@@ -108,11 +108,43 @@ export async function parsePostContent(content: string) {
 }
 
 export async function getRedeemCodes() {
-  const res = await axios
-    .get("https://hoyo-codes.seria.moe/codes?game=nap")
-    .then((response) => response.data);
+  const sources = ["https://api.ennead.cc/mihoyo/zenless/codes"];
 
-  return res.codes;
+  const allCodes = new Set<string>();
+  const results: any[] = [];
+
+  for (const url of sources) {
+    try {
+      const res = await axios
+        .get(url, { timeout: 5000 })
+        .then((response) => response.data);
+      if (url.includes("seria.moe")) {
+        res.codes?.forEach((c: any) => {
+          if (!allCodes.has(c.code)) {
+            allCodes.add(c.code);
+            results.push(c);
+          }
+        });
+      } else if (url.includes("ennead.cc")) {
+        res.active?.forEach((c: any) => {
+          if (!allCodes.has(c.code)) {
+            allCodes.add(c.code);
+            results.push({
+              code: c.code,
+              rewards: c.rewards,
+              source: "ennead",
+            });
+          }
+        });
+      }
+    } catch (error) {
+      new Logger("Utilities").error(
+        `獲取禮包碼失敗 (${url}): ${(error as any).message}`,
+      );
+    }
+  }
+
+  return results;
 }
 
 export function secondsToHms(d: number | string, tr: (key: string) => string) {
@@ -135,21 +167,21 @@ export function secondsToHms(d: number | string, tr: (key: string) => string) {
 export async function getUserUid(userId: string, accountIndex: number) {
   const accountKey = `${userId}.account`;
 
-  const account = await db.get(accountKey);
+  const account = await client.db.get(accountKey);
   return account?.[accountIndex]?.uid || null;
 }
 
 export async function getUserCookie(userId: string, accountIndex: number) {
   const accountKey = `${userId}.account`;
 
-  const account = await db.get(accountKey);
+  const account = await client.db.get(accountKey);
   return account?.[accountIndex]?.cookie || null;
 }
 
 export async function getUserLang(userId: string) {
   const langKey = `${userId}.locale`;
 
-  const lang = await db.get(langKey);
+  const lang = await client.db.get(langKey);
   return lang || null;
 }
 
@@ -258,7 +290,7 @@ export async function setupDefaultLang(userId: string, userSystemLang: string) {
   const langCode = langMap[userSystemLang] || userSystemLang;
 
   if (languageMapping[langCode as keyof typeof languageMapping])
-    await db.set(`${userId}.locale`, langCode);
+    await client.db.set(`${userId}.locale`, langCode);
 }
 
 export async function getUserHoyolabData(
@@ -436,6 +468,9 @@ export async function getUserZZZData(
   }
 }
 
+import { loadConfig } from "./core/config.js";
+const config = loadConfig();
+
 export function checkAccount(
   interaction: ChatInputCommandInteraction,
   tr: (key: string, args?: any) => string,
@@ -448,7 +483,9 @@ export function checkAccount(
         new EmbedBuilder()
           .setColor("#FFE9D0")
           .setTitle("請先通過 Geetest 來繼續使用指令！")
-          .setURL(`http://yeci.rocks:3000/geetest/${userId}`),
+          .setURL(
+            `${(config as any).VERIFY_PUBLIC_URL || "https://verify.yeci.lol/zzz"}/verify?session=${Math.random().toString(36).substring(2, 12)}&userid=${userId}`,
+          ),
       ],
       flags: MessageFlags.Ephemeral,
     });
@@ -484,77 +521,154 @@ export function checkAccount(
   }
 }
 
+/**
+ * 從 Cookie 字串中提取指定的欄位
+ * @param {string} cookie Cookie 字串
+ * @param {object} options 選項，支援 whitelist (白名單) 或 blacklist (黑名單)
+ * @returns {string} 處理後的 Cookie 字串
+ */
+export function parseCookie(
+  cookie: string,
+  options: {
+    whitelist?: string[];
+    blacklist?: string[];
+    separator?: string;
+  } = {},
+) {
+  const { whitelist = [], blacklist = [], separator = ";" } = options;
+
+  if (!cookie) return "";
+
+  const cookiesArray = cookie.split(separator).map((c) => c.trim());
+  const cookieMap = Object.fromEntries(
+    cookiesArray.map((c) => {
+      const [key, ...valueParts] = c.split("=");
+      return [key, valueParts.join("=")];
+    }),
+  );
+
+  if (whitelist.length !== 0) {
+    const filteredCookiesArray = Object.keys(cookieMap)
+      .filter((key) => whitelist.includes(key) && cookieMap[key] !== undefined)
+      .map((key) => `${key}=${cookieMap[key]}`);
+
+    return filteredCookiesArray.join(`${separator} `);
+  }
+  if (blacklist.length !== 0) {
+    const filteredCookiesArray = Object.keys(cookieMap)
+      .filter((key) => !blacklist.includes(key))
+      .map((key) => `${key}=${cookieMap[key]}`);
+
+    return filteredCookiesArray.join(`${separator} `);
+  }
+
+  return cookie;
+}
+
 export async function updateCookie(
   userId: string,
   accountIndex: number,
   cookieObj: string,
 ) {
+  const accountKey = `${userId}.account`;
+  const accounts = await client.db.get(accountKey);
+  if (!accounts || !accounts[accountIndex]) {
+    throw new Error("Account not found");
+  }
+
   const webAPI =
     "https://webapi-os.account.hoyoverse.com/Api/fetch_cookie_accountinfo";
-  const parsedCookie = Object.fromEntries(
-    cookieObj
-      .split("; ")
-      .filter(Boolean)
-      .map((cookie) => cookie.split("=")),
-  );
 
-  const cookie = [
-    `cookie_token_v2=${parsedCookie.cookie_token_v2}`,
-    `account_id_v2=${parsedCookie.ltuid_v2}`,
-  ].join("; ");
-
-  const response = await fetch(webAPI, {
-    method: "GET",
-    headers: {
-      Cookie: cookie,
-    },
+  const cookieForRefresh = parseCookie(cookieObj, {
+    whitelist: ["cookie_token_v2", "account_id_v2", "ltuid_v2", "ltoken_v2"],
   });
 
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
+  // 檢查是否有必要欄位進行刷新 (必須有 token 加上任一 ID)
+  const hasToken = cookieForRefresh.includes("cookie_token_v2=");
+  const hasID =
+    cookieForRefresh.includes("ltuid_v2=") ||
+    cookieForRefresh.includes("account_id_v2=");
 
-  const responseData = await response.json();
-  if (responseData?.code !== 200)
+  if (!hasToken || !hasID) {
+    accounts[accountIndex].invalid = true;
+    await client.db.set(accountKey, accounts);
     return {
       error: true,
-      message: `Error: ${responseData.message || "Unknown error"}`,
+      message: "Cookie 資訊不完整（缺少 token 或 ID），已自動標記為跳過更新",
     };
-
-  const newCookieToken = responseData.data.cookie_info.cookie_token;
-  const accountKey = `${userId}.account`;
-  const account = await db.get(accountKey);
-
-  let originalCookie = account[accountIndex].cookie.split("; ").filter(Boolean);
-
-  let cookieTokenV2Exists = false;
-
-  const updatedCookie = originalCookie.map((item: string) => {
-    if (item.startsWith("cookie_token_v2=")) {
-      cookieTokenV2Exists = true;
-      return `cookie_token_v2=${newCookieToken}`;
-    }
-    return item;
-  });
-
-  if (!cookieTokenV2Exists) {
-    const finalCookie = [];
-    let inserted = false;
-
-    for (const item of updatedCookie) {
-      finalCookie.push(item);
-      if (!inserted && item.startsWith("ltuid_v2=")) {
-        finalCookie.push(`cookie_token_v2=${newCookieToken}`);
-        inserted = true;
-      }
-    }
-
-    account[accountIndex].cookie = finalCookie.join("; ");
-  } else {
-    account[accountIndex].cookie = updatedCookie.join("; ");
   }
 
-  await db.set(accountKey, account);
+  // 如果原始 Cookie 中有 ltuid_v2 但沒有 account_id_v2，Hoyoverse API 有時會需要對應
+  let finalCookieForRefresh = cookieForRefresh;
+  const ltuidMatch = cookieForRefresh.match(/ltuid_v2=([^;]+)/);
+  const accountIdMatch = cookieForRefresh.match(/account_id_v2=([^;]+)/);
+
+  if (!accountIdMatch && ltuidMatch) {
+    finalCookieForRefresh = `${cookieForRefresh}; account_id_v2=${ltuidMatch[1]}`;
+  } else if (!ltuidMatch && accountIdMatch) {
+    finalCookieForRefresh = `${cookieForRefresh}; ltuid_v2=${accountIdMatch[1]}`;
+  }
+
+  try {
+    const response = await fetch(webAPI, {
+      method: "GET",
+      headers: {
+        Cookie: finalCookieForRefresh,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const responseData = await response.json();
+    console.log(responseData);
+    if (responseData?.code !== 200) {
+      return {
+        error: true,
+        message: `Error: ${responseData.message || "Unknown error"}`,
+      };
+    }
+
+    const newCookieToken = responseData.data.cookie_info.cookie_token;
+    const accountId = responseData.data.cookie_info.account_id;
+
+    // 保留原始 Cookie 中除了 token 和 id 以外的部分
+    const baseCookie = parseCookie(cookieObj, {
+      blacklist: [
+        "cookie_token_v2",
+        "account_id_v2",
+        "cookie_token",
+        "account_id",
+      ],
+    });
+
+    // 重新組合 Cookie，優先使用 v2 版本
+    // 有些情況下需要保留基本的 login 資訊
+    const newCookie = `${baseCookie}; cookie_token_v2=${newCookieToken}; account_id_v2=${accountId}`;
+
+    // 清理可能重複的欄位
+    const finalCleanCookie = parseCookie(newCookie, {
+      blacklist: [], // 這裡主要用來確保格式統一
+    });
+
+    accounts[accountIndex].cookie = finalCleanCookie;
+    accounts[accountIndex].invalid = false; // 成功更新，確保無效標記被清除
+    accounts[accountIndex].lastUpdate = new Date().toISOString();
+
+    await client.db.set(accountKey, accounts);
+
+    return { success: true, cookie: finalCleanCookie };
+  } catch (error: any) {
+    // 這裡若是 403 / 401 或特定的 status 錯誤，代表 Cookie 可能真的掛了
+    accounts[accountIndex].invalid = true;
+    await client.db.set(accountKey, accounts);
+
+    new Logger("Utilities").error(
+      `[用戶 ${userId}] Cookie 刷新失敗並已標記為無效: ${error.message}`,
+    );
+    throw error;
+  }
 }
 
 global.replyOrfollowUp = async function (
@@ -566,10 +680,7 @@ global.replyOrfollowUp = async function (
   return await interaction.reply(args[0]);
 };
 
-export async function getUserGameUid(
-  cookie: string,
-  gameName = "Zenless Zone Zero",
-) {
+export async function getAllGameRoles(cookie: string) {
   const hoyolab = new Hoyolab({
     cookie: cookie,
   } as any);
@@ -579,23 +690,37 @@ export async function getUserGameUid(
     throw new Error("無法獲取遊戲紀錄卡或資料格式不正確");
   }
 
-  const filteredData = (gameRecord as any).filter(
-    (item: any) => item.game_name === gameName,
-  );
+  // 過濾出有角色的遊戲
+  return (gameRecord as any[])
+    .filter((item: any) => item.has_role)
+    .map((item: any) => ({
+      uid: item.game_role_id,
+      nickname: item.nickname,
+      gameName: item.game_name,
+      gameId: item.game_id,
+      region: item.region,
+      level: item.level,
+    }));
+}
+
+export async function getUserGameUid(cookie: string, game_id = 8) {
+  const roles = await getAllGameRoles(cookie);
+
+  const filteredData = roles.filter((item: any) => item.gameId === game_id);
 
   if (filteredData.length === 0) {
-    throw new Error(`在此 Hoyolab 帳號中找不到 ${gameName} 角色資料`);
+    throw new Error(`在此 Hoyolab 帳號中找不到 ${game_id} 角色資料`);
   }
 
   return {
-    uid: filteredData[0].game_role_id,
+    uid: filteredData[0].uid,
     nickname: filteredData[0].nickname,
   };
 }
 
 export async function updateAccountInfo(userId: string, newAccountInfo: any) {
   const accountKey = `${userId}.account`;
-  let accounts = (await db.get(accountKey)) || [];
+  let accounts = (await client.db.get(accountKey)) || [];
 
   // 檢查是否存在相同 UID 的帳號
   const existingIndex = accounts.findIndex(
@@ -621,6 +746,7 @@ export async function updateAccountInfo(userId: string, newAccountInfo: any) {
       cookie: newAccountInfo.cookie,
       nickname: newAccountInfo.nickname,
       lastUpdate: new Date().toISOString(),
+      invalid: false,
     });
 
     new Logger("Utilities").info(
@@ -629,7 +755,11 @@ export async function updateAccountInfo(userId: string, newAccountInfo: any) {
   }
 
   // 保存更新後的帳號列表
-  await db.set(accountKey, accounts);
+  await client.db.set(accountKey, accounts);
+
+  // 清除過期標記與快取的更新時間，確保新 Cookie 能立即被自動化系統認可
+  await client.db.delete(`${newAccountInfo.uid}.cookieExpired`);
+  await client.db.delete(`${newAccountInfo.uid}.lastCookieRefresh`);
 
   return {
     isNewAccount: existingIndex === -1,

@@ -17,13 +17,15 @@ import {
   getUserLang,
   getRandomColor,
   getUserGameUid,
+  getAllGameRoles,
+  updateAccountInfo,
 } from "../utilities/utilities.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import { handleSignalLogDraw, getSingalLog } from "../utilities/zzz/gacha.js";
 import loginAccount from "../utilities/zzz/login.js";
 import { VerificationServer } from "../utilities/core/VerificationServer.js";
 
-const db = client.db;
+// Use client.db directly
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
@@ -39,6 +41,12 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     handleAccountEdit(modalInteraction, tr, customId, fields as any);
   if (customId == "account_QuickLinkModal")
     handleAccountLogin(modalInteraction, tr, fields as any);
+  if (customId == "account_SetUserIDModal")
+    handleUidSet(modalInteraction, tr, fields as any);
+  if (customId == "account_SetUserCookieModal")
+    handleSetUserCookieModal(modalInteraction, tr, fields as any);
+  if (customId.startsWith("cookie_set-"))
+    handleCookieSet(modalInteraction, tr, customId, fields as any);
   if (customId == "signal_log")
     handleWarplog(modalInteraction, tr, fields as any);
 });
@@ -70,13 +78,52 @@ async function handleAccountLogin(
     const loginRes = await loginAccount(email, password);
 
     if ((loginRes as any).captcha) {
-      const { geetestId, riskType, challenge } = (loginRes as any).data.captcha;
+      const {
+        geetestId,
+        riskType,
+        risk_type,
+        challenge,
+        success,
+        new_captcha,
+        aigisSessionId,
+      } = (loginRes as any).data.captcha;
       const sessionId = Math.random().toString(36).substring(2, 12);
+
+      // If challenge is undefined/empty, it's likely Geetest v4 (mmt_type: 2)
+      // But we should respect the server's original mmt_type (riskType)
+      const finalRiskType = riskType;
       const config = (await import("../utilities/core/config.js")).getConfig();
       const baseUrl =
         (config as any).VERIFY_PUBLIC_URL ||
         `http://localhost:${(config as any).WEBSERVER_PORT || 3000}`;
-      const verifyUrl = `${baseUrl}/verify?captchaId=${geetestId}&riskType=${encodeURIComponent(riskType)}&challenge=${challenge}&session=${sessionId}`;
+
+      // Generate a fake challenge UUID if missing (required for v4 init)
+      // Simple UUID v4 generator
+      const generatedChallenge = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+        /[xy]/g,
+        function (c) {
+          const r = (Math.random() * 16) | 0,
+            v = c == "x" ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        },
+      );
+
+      const finalChallenge =
+        challenge && challenge !== "undefined" ? challenge : generatedChallenge;
+
+      const params = new URLSearchParams({
+        captchaId: geetestId,
+        challenge: finalChallenge,
+        session: sessionId,
+      });
+      if (finalRiskType) params.append("riskType", finalRiskType.toString());
+      if (risk_type) params.append("risk_type", risk_type); // Append the raw v4 string
+      if (success !== undefined) params.append("success", success.toString());
+      if (new_captcha !== undefined)
+        params.append("new_captcha", new_captcha.toString());
+      if (aigisSessionId) params.append("aigisSessionId", aigisSessionId);
+
+      const verifyUrl = `${baseUrl}/verify?${params.toString()}`;
 
       VerificationServer.onResult(sessionId, async (captchaResult: any) => {
         try {
@@ -121,7 +168,11 @@ async function handleAccountLogin(
       });
     }
 
-    await finalizeLogin(interaction, loginRes, tr);
+    if (!loginRes.cookie) {
+      throw new Error("登入後未取得必要的 Cookie 資訊");
+    }
+    const roles = await getAllGameRoles(loginRes.cookie);
+    await finalizeMultiLogin(interaction, loginRes.cookie, roles, tr);
   } catch (error: any) {
     console.log(error);
     await interaction.editReply({
@@ -135,70 +186,60 @@ async function handleAccountLogin(
   }
 }
 
-async function finalizeLogin(interaction: any, loginData: any, tr: any) {
-  const { uid, nickname, cookie } = loginData;
-  const existedAccounts =
-    (await db.get(`${interaction.user.id}.account`)) || [];
+async function finalizeMultiLogin(
+  interaction: any,
+  cookie: string,
+  roles: any[],
+  tr: any,
+) {
+  const zzzRoles = roles.filter((role: any) => role.gameId === 8);
 
-  await db.delete(`${uid}.cookieExpired`);
-
-  const existingAccountIndex = existedAccounts.findIndex(
-    (account: any) => account.uid == uid,
-  );
-
-  if (existingAccountIndex !== -1) {
-    existedAccounts[existingAccountIndex].cookie = cookie;
-    existedAccounts[existingAccountIndex].nickname = nickname;
-    await db.set(`${interaction.user.id}.account`, existedAccounts);
-
+  if (zzzRoles.length === 0) {
     const embed = new EmbedBuilder()
-      .setConfig("#F6F1F1", "wiggle")
-      .setTitle(tr("account_LoginSuccess"))
-      .setDescription(tr("account_LoginSuccessDesc", { z: `${uid}` }));
+      .setConfig("#E76161", "sob")
+      .setTitle("綁定失敗")
+      .setDescription("在此 Hoyolab 帳號中找不到任何《絕區零》的角色資料。");
 
     if (interaction.deferred || interaction.replied) {
-      await interaction.editReply({ embeds: [embed], components: [] });
+      return await interaction.editReply({ embeds: [embed], components: [] });
     } else {
-      await interaction.reply({
-        embeds: [embed],
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-  } else {
-    if (existedAccounts.length >= 5) {
-      const embed = new EmbedBuilder()
-        .setTitle(tr("account_LimitExceeded"))
-        .setConfig("#E76161", "sob");
-      if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed], components: [] });
-      } else {
-        await interaction.reply({
-          embeds: [embed],
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-      return;
-    }
-
-    await db.push(`${interaction.user.id}.account`, {
-      uid: uid,
-      cookie: cookie,
-      nickname: nickname,
-    });
-
-    const embed = new EmbedBuilder()
-      .setConfig("#F6F1F1", "wiggle")
-      .setTitle(tr("account_LoginSuccess"));
-
-    if (interaction.deferred || interaction.replied) {
-      await interaction.editReply({ embeds: [embed], components: [] });
-    } else {
-      await interaction.reply({
+      return await interaction.reply({
         embeds: [embed],
         flags: MessageFlags.Ephemeral,
       });
     }
   }
+
+  for (const role of zzzRoles) {
+    await updateAccountInfo(interaction.user.id, {
+      uid: role.uid,
+      cookie: cookie,
+      nickname: role.nickname,
+    });
+  }
+
+  const welcomeName = zzzRoles[0].nickname;
+  const welcomeTitle = `歡迎繩匠，${welcomeName}`;
+
+  const embed = new EmbedBuilder()
+    .setConfig("#F6F1F1", "wiggle")
+    .setTitle(`綁定成功！${welcomeTitle}`);
+
+  if (interaction.deferred || interaction.replied) {
+    await interaction.editReply({ embeds: [embed], components: [] });
+  } else {
+    await interaction.reply({
+      embeds: [embed],
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+}
+
+// finalizeLogin 已由 finalizeMultiLogin 取代，保持相容性或移除
+async function finalizeLogin(interaction: any, loginData: any, tr: any) {
+  const { cookie } = loginData;
+  const roles = await getAllGameRoles(cookie);
+  return finalizeMultiLogin(interaction, cookie, roles, tr);
 }
 
 async function handleWarplog(
@@ -272,7 +313,8 @@ async function handleAccountEdit(
   // 		]
   // 	});
 
-  const accounts = (await db.get(`${interaction.user.id}.account`)) ?? "";
+  const accounts =
+    (await client.db.get(`${interaction.user.id}.account`)) ?? "";
 
   if (accounts.some((account: any) => account.uid == uid))
     return interaction.editReply({
@@ -295,7 +337,7 @@ async function handleAccountEdit(
     ],
   });
 
-  await db.set(`${interaction.user.id}.account`, accounts);
+  await client.db.set(`${interaction.user.id}.account`, accounts);
 }
 
 async function handleUidSet(
@@ -325,8 +367,9 @@ async function handleUidSet(
   //     throw e;
   //   }
 
-  if (await db.has(`${interaction.user.id}.account`)) {
-    const accounts = (await db.get(`${interaction.user.id}.account`)) || [];
+  if (await client.db.has(`${interaction.user.id}.account`)) {
+    const accounts =
+      (await client.db.get(`${interaction.user.id}.account`)) || [];
     if (accounts.length >= 5)
       return interaction.editReply({
         embeds: [
@@ -357,9 +400,10 @@ async function handleUidSet(
       ),
     ],
   });
-  await db.push(`${interaction.user.id}.account`, {
+  await client.db.push(`${interaction.user.id}.account`, {
     uid: uid,
     cookie: "",
+    invalid: false,
   });
 }
 
@@ -388,55 +432,50 @@ async function handleCookieSet(
   const ltmid = isV2 && accountMidRaw ? `ltmid_v2=${accountMidRaw}; ` : "";
 
   const cookie = ltoken + ltuid + cookieToken + accountMid + ltmid;
-  const account = (await db.get(`${interaction.user.id}.account`)) ?? "";
+  const account = (await client.db.get(`${interaction.user.id}.account`)) ?? "";
 
   try {
-    const zzz = new ZenlessZoneZero({
-      cookie: cookie,
-    });
-    await zzz.daily.info();
-
-    account[accountIndex].cookie = cookie;
-    await db.set(`${interaction.user.id}.account`, account);
-
-    const userData = await getUserHoyolabData(
-      interaction as any,
-      tr,
-      interaction.user.id,
-      undefined,
-      parseInt(accountIndex),
-    );
-
-    await db.delete(`${account[accountIndex].uid}.cookieExpired`);
-
-    account[accountIndex].nickname = userData.nickname;
-    await db.set(`${interaction.user.id}.account`, account);
-
-    return interaction.reply({
-      embeds: [
-        new EmbedBuilder().setConfig("#F6F1F1", "wiggle").setTitle(
-          tr("account_CookieSetSuccess", {
-            z: `${account[accountIndex].uid}`,
-          }),
-        ),
-      ],
-      flags: MessageFlags.Ephemeral,
-    });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const roles = await getAllGameRoles(cookie);
+    await finalizeMultiLogin(interaction, cookie, roles, tr);
   } catch (error: any) {
-    return interaction.reply({
+    return interaction.editReply({
       embeds: [
         new EmbedBuilder()
-          .setTitle(
-            tr("account_CookieSetFailed", {
-              z: `${account[accountIndex].uid}`,
-            }),
-          )
+          .setTitle(tr("account_CookieSetFailed"))
           .setDescription(
             tr("account_CookieSetFailedDesc") +
               "\n\n" +
               "`" +
               error.message +
               "`",
+          )
+          .setColor("#E76161"),
+      ],
+    });
+  }
+}
+
+async function handleSetUserCookieModal(
+  interaction: ModalSubmitInteraction,
+  tr: any,
+  fields: any,
+) {
+  const cookie = fields.getTextInputValue("account_SetUserCookieModalField");
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  try {
+    const roles = await getAllGameRoles(cookie);
+    await finalizeMultiLogin(interaction, cookie, roles, tr);
+  } catch (error: any) {
+    console.log(error);
+    await interaction.editReply({
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(tr("account_CookieSetFailed"))
+          .setDescription(
+            `${tr("account_CookieSetFailedDesc")}\n\n\`${error.message}\``,
           )
           .setColor("#E76161"),
       ],
@@ -470,56 +509,8 @@ async function handleQuickLink(
   const cookie = ltoken + ltuid + cookieToken + accountMid + ltmid;
 
   try {
-    const { uid, nickname } = await getUserGameUid(cookie);
-
-    const existedAccounts =
-      (await db.get(`${interaction.user.id}.account`)) || [];
-
-    await db.delete(`${uid}.cookieExpired`);
-
-    const existingAccountIndex = existedAccounts.findIndex(
-      (account: any) => account.uid == uid,
-    );
-
-    if (existingAccountIndex !== -1) {
-      existedAccounts[existingAccountIndex].cookie = cookie;
-      existedAccounts[existingAccountIndex].nickname = nickname;
-
-      await db.set(`${interaction.user.id}.account`, existedAccounts);
-
-      interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setConfig("#F6F1F1", "wiggle")
-            .setTitle(tr("account_LoginSuccess"))
-            .setDescription(tr("account_LoginSuccessDesc", { z: `${uid}` })),
-        ],
-      });
-    } else {
-      if (existedAccounts.length >= 5) {
-        return interaction.editReply({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle(tr("account_LimitExceeded"))
-              .setConfig("#E76161", "sob"),
-          ],
-        });
-      }
-
-      await db.push(`${interaction.user.id}.account`, {
-        uid: uid,
-        cookie: cookie,
-        nickname: nickname,
-      });
-
-      interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setConfig("#F6F1F1", "wiggle")
-            .setTitle(tr("account_LoginSuccess")),
-        ],
-      });
-    }
+    const roles = await getAllGameRoles(cookie);
+    await finalizeMultiLogin(interaction, cookie, roles, tr);
   } catch (error: any) {
     console.log(error);
     await interaction.editReply({
