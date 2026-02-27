@@ -76,14 +76,14 @@ export class VerificationServer {
     });
 
     VerificationServer.ws.on("close", () => {
-      VerificationServer.logger.warn(
-        "Disconnected from Hub. Reconnecting in 5s...",
-      );
+      // VerificationServer.logger.warn(
+      //   "Disconnected from Hub. Reconnecting in 5s...",
+      // );
       setTimeout(() => this.connect(), 5000);
     });
 
     VerificationServer.ws.on("error", (err) => {
-      VerificationServer.logger.error(`WebSocket Error: ${err.message}`);
+      // VerificationServer.logger.error(`WebSocket Error: ${err}`);
     });
   }
 

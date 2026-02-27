@@ -141,9 +141,9 @@ class AutoRedeemSystem {
       });
 
       const result: any = await response.json();
-      this.logger.info(
-        `[除錯] [參考重構] 兌換 API 回傳內容: ${JSON.stringify(result)}`,
-      );
+      // this.logger.info(
+      //   `[除錯] 兌換 API 回傳內容: ${JSON.stringify(result)}`,
+      // );
 
       const status = {
         success: result.retcode === 0,
@@ -223,13 +223,13 @@ class AutoRedeemSystem {
 
     const isCookieExpired = await this.db.get(`${account.uid}.cookieExpired`);
     if (isCookieExpired) {
-      this.logger.warn(
-        `[用戶 ${userId}] [帳號 #${accountIndex}] 的Cookie已標記為過期`,
-      );
+      // this.logger.warn(
+      //   `[用戶 ${userId}] [帳號 #${accountIndex}] 的Cookie已標記為過期`,
+      // );
       return null;
     }
 
-    this.logger.info(`[除錯] 正在建立 ZZZ 客戶端... UID: ${account.uid}`);
+    // this.logger.info(`[除錯] 正在建立 ZZZ 客戶端... UID: ${account.uid}`);
     const zzz = new ZenlessZoneZero({
       uid: account.uid,
       cookie: account.cookie,
@@ -348,11 +348,11 @@ class AutoRedeemSystem {
 
   async processRedemption(userId: string, redeemData: any, codesList: any[]) {
     const { userLang, accounts } = await this.getUserPreferences(userId);
-    this.logger.info(
-      `[除錯] 用戶 ${userId} 語言: ${userLang}, 帳號數量: ${accounts?.length || 0}`,
-    );
+    // this.logger.info(
+    //   `[除錯] 用戶 ${userId} 語言: ${userLang}, 帳號數量: ${accounts?.length || 0}`,
+    // );
     if (!accounts?.length) {
-      this.logger.info(`[除錯] 用戶 ${userId} 沒有設定角色資料，跳過`);
+      // this.logger.info(`[除錯] 用戶 ${userId} 沒有設定角色資料，跳過`);
       return;
     }
 

@@ -2,9 +2,6 @@ import fs from "fs";
 import path from "path";
 import fetch from "node-fetch";
 
-const equipmentURL = "https://api.hakush.in/zzz/data/equipment.json";
-const iconDir = path.resolve("src/assets/images/icons/diskdrives");
-
 const downloadImage = async (url: string, filepath: string) => {
   const res = await fetch(url);
   if (!res.ok) return false;
@@ -21,37 +18,22 @@ const downloadImage = async (url: string, filepath: string) => {
   return true;
 };
 
-export default async function autoDownloadIcons() {
-  console.log("[autoDownloadIcons] 開始偵測缺漏圖片...");
+export async function downloadPaintingCache(url: string) {
+  if (!url || !url.startsWith("http")) return url;
 
-  const response = await fetch(equipmentURL);
-  const data = await response.json();
+  try {
+    const filename = url.split("/").pop() || `${Date.now()}.png`;
+    const filepath = path.resolve(
+      "src/assets/images/zzz/paintings",
+      filename.split("?")[0],
+    );
 
-  for (const key in (data as any)) {
-    const id = key.substring(0, 3);
-    const iconPath = (data as any)[key].icon; // e.g., UI/Sprite/A1DynamicLoad/IconSuit/UnPacker/SuitProtoPunk.png
-    const baseName = path.basename(iconPath, ".png");
+    if (fs.existsSync(filepath)) return filepath;
 
-    const suffixes = ["S", "A", "B"];
-    for (const suffix of suffixes) {
-      const fileName = `${id}_${suffix}.webp`;
-      const filePath = path.join(iconDir, fileName);
-      if (!fs.existsSync(filePath)) {
-        const url = `https://api.hakush.in/zzz/UI/Item${baseName}_${suffix}.webp`;
-        console.log(`[autoDownloadIcons] 下載中：${url} -> ${fileName}`);
-        try {
-          const success = await downloadImage(url, filePath);
-          if (success) {
-            console.log(`[✓] 成功下載 ${fileName}`);
-          } else {
-            console.warn(`[!] 無法下載 ${url}`);
-          }
-        } catch (err) {
-          console.error(`[錯誤] ${fileName}：`, (err as any).message);
-        }
-      }
-    }
+    const success = await downloadImage(url, filepath);
+    return success ? filepath : url;
+  } catch (error) {
+    console.error(`[downloadPaintingCache] Failed to download ${url}:`, error);
+    return url;
   }
-
-  console.log("[autoDownloadIcons] 檢查完成。");
 }

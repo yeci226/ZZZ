@@ -15,6 +15,7 @@ import {
   getUserLang,
   getCharacterData,
 } from "../utilities.js";
+import { downloadPaintingCache } from "./autoDownloadIcons.js";
 import { toI18nLang } from "../core/i18n.js";
 import emoji from "../../assets/emoji.js";
 import {
@@ -34,31 +35,13 @@ const offsetCharacter: Record<
   { x?: number; y?: number; title?: string; element?: string }
 > = {
   // Default { x: 0, y: 0, title: "", element: "" }
-  1091: { x: -70, title: "VoidHunter", element: "frost" }, // Miyabi
-  1181: { x: -55 }, // Grace
-  1221: { x: 60 }, // Yanagi
-  1251: { x: -70 }, // Qingyi
-  1331: { y: -480 }, // Vivian
+  1091: { title: "VoidHunter", element: "frost" }, // Miyabi
+
   1371: { title: "GrandMaster", element: "auricink" }, // Yixuan
-  1381: { x: -70 }, // Zero Anby
-  1391: { x: 0, y: -220 }, // Jufufu
-  1411: { x: -100, y: -380 }, // Yuzuha
+
   1431: { title: "VoidHunter", element: "honededge" }, // YeShunguang
 };
-const offsetCharacterSkin = {
-  1031: {
-    3110311: { x: 0 },
-  },
-  1401: {
-    3114011: { x: -200 },
-  },
-  1411: {
-    3114111: { x: 0, y: -160 },
-  },
-  1431: {
-    3114311: { x: -200 },
-  },
-};
+const offsetCharacterSkin = {};
 
 const elementId = {
   200: "physic",
@@ -124,9 +107,6 @@ const propertiesId = {
 };
 
 const zzzStaticUrl = "https://act-webstatic.hoyoverse.com/game_record/zzz";
-// const verticalUrl = `${zzzStaticUrl}/role_vertical_painting/role_vertical_painting_`;
-// const rectangleUrl = `${zzzStaticUrl}/role_rectangle_avatar/role_rectangle_avatar_`;
-// const bangbooSquareUrl = `${zzzStaticUrl}/bangboo_square_avatar/bangboo_square_avatar_`;
 const bangbooRectangleUrl = `${zzzStaticUrl}/bangboo_rectangle_avatar/bangboo_rectangle_avatar_`;
 
 GlobalFonts.registerFromPath(
@@ -178,10 +158,14 @@ const fonts = {
 
 async function loadImageAsync(url: string, fallbackUrl?: string) {
   try {
-    return await loadImage(url);
+    const localPath = await downloadPaintingCache(url);
+    return await loadImage(localPath);
   } catch {
     try {
-      if (fallbackUrl) return await loadImage(fallbackUrl);
+      if (fallbackUrl) {
+        const localFallback = await downloadPaintingCache(fallbackUrl);
+        return await loadImage(localFallback);
+      }
       return await loadImage("./src/assets/images/None.png");
     } catch {
       return await loadImage("./src/assets/images/None.png");
@@ -345,7 +329,17 @@ export async function drawMainImage(
       `./src/assets/images/profileBg.png`,
       record.cur_head_icon_url,
       ...(await Promise.all(
-        record.avatar_list.map((agent: any) => agent.role_square_url),
+        record.avatar_list.map((agent: any) => {
+          if (agent.skin_list && agent.skin_list.length > 0) {
+            const skin = agent.skin_list.find(
+              (s: any) => s.unlocked && !s.is_original,
+            );
+            if (skin?.skin_vertical_painting_url) {
+              return skin.skin_vertical_painting_url;
+            }
+          }
+          return agent.role_vertical_painting_url ?? agent.role_square_url;
+        }),
       )),
       "./src/assets/images/icons/other/showmore.png",
       ...record.buddy_list.map((buddy: any) => buddy.bangboo_rectangle_url),
@@ -755,6 +749,8 @@ export async function drawCharacterImage(
   userLocale: string,
   uid: string,
   characterDataInput: any,
+  wikiId?: string,
+  characterName?: string,
 ) {
   try {
     const character = Array.isArray(characterDataInput)
@@ -783,21 +779,28 @@ export async function drawCharacterImage(
       (a: any, b: any) => a.equipment_type - b.equipment_type,
     );
 
-    const characterSpecificImagePath = `https://api.hakush.in/zzz/UI/Mindscape_${character.id}_${character.rank <= 2 ? 1 : character.rank <= 5 ? 2 : 3}.webp`;
-    const finalMindScapeImagePath = `./src/assets/images/icons/mindscape/m${userMindScape ? character.rank : 0}.png`;
-    const characterData = await getCharacterData(character.id);
+    const characterData = await getCharacterData(
+      character.id,
+      wikiId,
+      characterName || character.name,
+    );
+    const mindscapeIndex =
+      character.rank <= 2 ? 0 : character.rank <= 5 ? 1 : 2;
+    const characterSpecificImagePath =
+      characterData?.mindscapes && characterData.mindscapes[mindscapeIndex]
+        ? characterData.mindscapes[mindscapeIndex]
+        : `./src/assets/images/icons/mindscape/default_${mindscapeIndex + 1}.png`;
 
-    // 如果 character.skin_list 有值，且 characterData.skin 有值，優先使用 unlocked: true 且 is_original: false 的皮膚
+    const finalMindScapeImagePath = `./src/assets/images/icons/mindscape/m${userMindScape ? character.rank : 0}.png`;
+
     let characterPath =
+      character.role_vertical_painting_url ??
+      characterData?.header_img_url ??
+      characterData?.portraitUrl ??
       characterData?.iconUrl ??
       `./src/assets/images/agents/${character.id}.webp`;
 
-    if (
-      character.skin_list &&
-      character.skin_list.length > 0 &&
-      characterData &&
-      characterData.skin
-    ) {
+    if (character.skin_list && character.skin_list.length > 0) {
       const skin = character.skin_list.find(
         (skin: any) => skin.unlocked && !skin.is_original,
       );
@@ -809,20 +812,19 @@ export async function drawCharacterImage(
           color: skin.skin_vertical_painting_color,
           name: skin.skin_name,
         };
-        const skinImage =
-          characterData && characterData.skin
-            ? characterData.skin[String(skin.skin_id)]
-            : null;
-        if (skinImage)
-          characterPath = `https://api.hakush.in/zzz/UI/${skinImage.Image}.webp`;
+
+        // 優先使用官方提供的皮膚立繪 URL
+        if (skin.skin_vertical_painting_url) {
+          characterPath = skin.skin_vertical_painting_url;
+        }
       }
     }
 
     // Load images concurrently
     const imagePaths = [
       finalMindScapeImagePath,
-      characterSpecificImagePath,
-      characterPath,
+      characterPath, // characterImage (Index 1)
+      characterSpecificImagePath, // characterRankImage (Index 2)
       (offsetCharacter as any)[character.id]?.element
         ? `./src/assets/images/icons/element/${(offsetCharacter as any)[character.id].element}.webp`
         : `./src/assets/images/icons/element/${elementId[character.element_type as keyof typeof elementId]}.webp`,
@@ -861,8 +863,8 @@ export async function drawCharacterImage(
     const images = await Promise.all(imagePaths.map((p) => loadImageAsync(p)));
     const [
       bg,
-      characterRankImage,
       characterImage,
+      characterRankImage,
       elementImage,
       professionImage,
       weaponImage,
@@ -928,13 +930,13 @@ export async function drawCharacterImage(
     );
     ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
 
-    // Draw Paint
-    drawPaintSplatter(ctx, canvas.width, canvas.height, {
-      splatterCount: 10,
-      minSize: 50,
-      maxSize: 200,
-      colors: [`${character.vertical_painting_color}`],
-    });
+    // // Draw Paint
+    // drawPaintSplatter(ctx, canvas.width, canvas.height, {
+    //   splatterCount: 10,
+    //   minSize: 50,
+    //   maxSize: 200,
+    //   colors: [`${character.vertical_painting_color}`],
+    // });
 
     // Draw Visuals
     drawAgentPortrait(
@@ -1029,14 +1031,20 @@ function drawAgentPortrait(
 
   const offset = {
     x: skinOffset?.x ?? baseOffset.x ?? 0,
-    y: skinOffset?.y ?? baseOffset.y ?? -100,
+    y: skinOffset?.y ?? baseOffset.y ?? 0,
   };
 
-  const scaledWidth = characterImage.width / 1.25;
-  const scaledHeight = characterImage.height / 1.25;
+  // 比例校準邏輯：
+  // 1. 若圖片高度較低 (通常是 Header 圖，如 2500px 或 2376px)，則縮放到 1250px 高度以填滿框位。
+  // 2. 若圖片高度較高 (通常是皮膚全身像，如 4831px)，則維持至少 0.5x 的放大倍率。
+  // 這樣能確保皮膚中的角色大小與 Header 圖像一致，而不會因為圖檔太高就被過度縮小。
+  const scale = Math.max(0.5, 675 / characterImage.height);
+
+  const scaledHeight = characterImage.height * scale;
+  const scaledWidth = characterImage.width * scale;
 
   const characterImageX = canvas.width / 2 - scaledWidth / 2 + offset.x;
-  const characterImageY = canvas.height / 2 - scaledHeight / 8 + offset.y; // Adjusted Y for better centering
+  const characterImageY = canvas.height - scaledHeight + offset.y; // 從底部開始繪製
 
   ctx.drawImage(
     characterImage,
@@ -1344,7 +1352,7 @@ function drawWeaponBox(
       weaponStarImage.height / 1.2,
     );
 
-    character.weapon.main_properties.forEach((prop: any, index: number) => {
+    character.weapon.main_properties?.forEach((prop: any, index: number) => {
       const pY = 640 + index * 56;
       const pImage =
         propertyImageMap[
@@ -1370,7 +1378,7 @@ function drawWeaponBox(
       }
     });
 
-    character.weapon.properties.forEach((prop: any, index: number) => {
+    character.weapon.properties?.forEach((prop: any, index: number) => {
       const pY = 686 + index * 56;
       const pImage =
         propertyImageMap[

@@ -346,13 +346,12 @@ export async function getUserHoyolabData(
 
 export async function getBangbooData(bangbooId: string) {
   try {
-    const apiUrl = `https://api.hakush.in/zzz/data/zh/bangboo/${bangbooId}.json`;
-    const response = await axios.get(apiUrl).then((response) => response.data);
-    const dataFormat = {
+    // Fallback to official CDN directly for bangboo as wiki mapping is less common
+    const iconUrl = `https://act-webstatic.hoyoverse.com/game_record/zzz/bangboo_square_avatar/bangboo_square_avatar_${bangbooId}.png`;
+    return {
       id: bangbooId,
-      iconUrl: `https://api.hakush.in/zzz/UI/${response.Icon.split("/").pop().split(".")[0]}.webp`,
+      iconUrl: iconUrl,
     };
-    return dataFormat;
   } catch (error) {
     console.log(error);
     return null;
@@ -361,41 +360,149 @@ export async function getBangbooData(bangbooId: string) {
 
 export async function getWeaponData(weaponId: string) {
   try {
-    const apiUrl = `https://api.hakush.in/zzz/data/en/weapon/${weaponId}.json`;
-    const response = await axios.get(apiUrl).then((response) => response.data);
-    const dataFormat = {
-      id: response.Id,
-      iconUrl: `https://api.hakush.in/zzz/UI/${response.Icon.split("/").pop().split(".")[0]}.webp`,
+    // Fallback to official CDN for weapon
+    const iconUrl = `https://act-webstatic.hoyoverse.com/game_record/zzz/weapon_square_avatar/weapon_square_avatar_${weaponId}.png`;
+    return {
+      id: weaponId,
+      iconUrl: iconUrl,
     };
-    return dataFormat;
   } catch (error) {
     console.log(error);
     return null;
   }
 }
 
-export async function getCharacterData(characterId: string | number) {
+const wikiSearchCache: Record<string, string> = {};
+
+export async function searchWikiEntry(keyword: string) {
+  const cleanKeyword = keyword.replace(/[「」]/g, "");
+  if (wikiSearchCache[cleanKeyword]) return wikiSearchCache[cleanKeyword];
+
+  try {
+    const response = await axios
+      .get(
+        `https://sg-wiki-api.hoyolab.com/hoyowiki/zzz/wapi/search?keyword=${encodeURIComponent(cleanKeyword)}`,
+        {
+          headers: {
+            "x-rpc-wiki_app": "zzz",
+            "x-rpc-language": "zh-tw",
+            Referer: "https://wiki.hoyolab.com/",
+            Origin: "https://wiki.hoyolab.com",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          },
+        },
+      )
+      .then((res) => res.data);
+
+    if (response.retcode === 0 && response.data?.list) {
+      const list = response.data.list;
+      // Find the best match:
+      // 1. Exact name match
+      // 2. Name that contains the keyword
+      // 3. First item in the list
+      const entry =
+        list.find((e: any) => e.name === cleanKeyword) ||
+        list.find((e: any) => e.name.includes(cleanKeyword)) ||
+        list[0];
+      if (entry) {
+        const id = String(entry.entry_page_id || entry.id);
+        wikiSearchCache[cleanKeyword] = id;
+        return id;
+      }
+    }
+  } catch (error) {
+    console.error(`[Wiki] Search failed for ${keyword}:`, error);
+  }
+  return null;
+}
+
+export async function getCharacterData(
+  characterId: string | number,
+  wikiId?: string,
+  characterName?: string,
+) {
   const id = String(characterId || "");
   if (!id) throw new Error("Character ID is required");
+
+  let resolvedWikiId = wikiId;
+
+  // If wikiId is missing OR points to an aggregate page (which is often generic),
+  // try to resolve by name which is much more specific.
+  if (characterName && (!resolvedWikiId || resolvedWikiId.length < 3)) {
+    const searchedId = await searchWikiEntry(characterName);
+    if (searchedId) {
+      resolvedWikiId = searchedId;
+      // console.log(`[Wiki Debug] Resolved ${characterName} -> ${resolvedWikiId}`);
+    }
+  }
+
   try {
-    const apiUrl = `https://api.hakush.in/zzz/data/en/character/${characterId}.json`;
-    const response = await axios.get(apiUrl).then((response) => response.data);
-    const partnerInfo = response.PartnerInfo;
-    if (!partnerInfo || Object.keys(partnerInfo).length == 0) return null;
+    if (resolvedWikiId) {
+      const response = await axios
+        .get(
+          `https://sg-wiki-api-static.hoyolab.com/hoyowiki/zzz/wapi/entry_page?entry_page_id=${resolvedWikiId}`,
+          {
+            headers: {
+              "x-rpc-wiki_app": "zzz",
+              "x-rpc-language": "zh-tw",
+            },
+          },
+        )
+        .then((res) => res.data);
 
-    const dataFormat = {
-      id: response.Id,
-      name: response.Name,
-      fullName: partnerInfo.FullName,
-      gender: partnerInfo.Gender,
-      birthday: partnerInfo.Birthday,
-      camp: partnerInfo.Race,
-      icon: partnerInfo.Icon,
-      skin: response.Skin,
-      iconUrl: `https://api.hakush.in/zzz/UI/${partnerInfo.RoleIcon.split("/").pop()}.webp`,
+      if (response.retcode === 0 && response.data?.page) {
+        const page = response.data.page;
+        let mindscapeUrls: string[] = [];
+        let paintingUrls: string[] = [];
+
+        // Robust parsing: search all modules for components
+        page.modules?.forEach((module: any) => {
+          module.components?.forEach((component: any) => {
+            if (component.component_id === "summaryList") {
+              try {
+                const msData = JSON.parse(component.data);
+                if (msData.img_list) {
+                  mindscapeUrls = msData.img_list.map(
+                    (img: any) => img.icon_url,
+                  );
+                }
+              } catch (e) {}
+            } else if (component.component_id === "gallery_character") {
+              try {
+                const gData = JSON.parse(component.data);
+                if (gData.list) {
+                  paintingUrls = gData.list.map((p: any) => ({
+                    key: p.key,
+                    img: p.img,
+                  }));
+                }
+              } catch (e) {}
+            }
+          });
+        });
+
+        return {
+          id: id,
+          name: page.name,
+          iconUrl: page.icon_url,
+          portraitUrl: (paintingUrls[0] as any)?.img || page.header_img_url,
+          header_img_url: page.header_img_url, // Add header_img_url explicitly here
+          mindscapes: mindscapeUrls,
+          paintings: paintingUrls,
+          wikiId: wikiId,
+        };
+      } else {
+        // console.log(`[Wiki Debug] Wiki API failed for ${wikiId}:`, response);
+      }
+    }
+
+    // Fallback to official CDN for basic data
+    return {
+      id: id,
+      iconUrl: `https://act-webstatic.hoyoverse.com/game_record/zzz/role_square_avatar/role_square_avatar_${id}.png`,
+      portraitUrl: `https://act-webstatic.hoyoverse.com/game_record/zzz/role_vertical_painting/role_vertical_painting_${id}.png`,
     };
-
-    return dataFormat;
   } catch (error) {
     console.log(error);
     return null;
@@ -622,7 +729,6 @@ export async function updateCookie(
     }
 
     const responseData = await response.json();
-    console.log(responseData);
     if (responseData?.code !== 200) {
       return {
         error: true,
