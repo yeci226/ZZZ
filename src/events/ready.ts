@@ -4,7 +4,6 @@ import Logger from "../utilities/core/logger.js";
 import autoDailySign from "../utilities/zzz/autoDaily.js";
 import autoRedeem from "../utilities/zzz/autoRedeem.js";
 import { updateCookie } from "../utilities/utilities.js";
-import autoDownloadIcons from "../utilities/zzz/autoDownloadIcons.js";
 import schedule from "node-schedule";
 
 async function updatePresence() {
@@ -32,7 +31,6 @@ client.on(Events.ClientReady, async () => {
   if (client.cluster.id == 0) {
     autoDailySign();
     autoRedeem();
-    autoDownloadIcons();
     // 啟動時也執行一次 Cookie 更新
     refreshAllCookies(client);
   }
@@ -55,11 +53,6 @@ client.on(Events.ClientReady, async () => {
     }
   });
 
-  schedule.scheduleJob("0 3 * * *", function () {
-    if (client.cluster.id == 0) {
-      autoDownloadIcons();
-    }
-  });
   setInterval(updatePresence, 10000);
 });
 
