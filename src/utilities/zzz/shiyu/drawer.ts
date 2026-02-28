@@ -325,7 +325,7 @@ export async function drawShiyuCanvas(
           buff.text,
           65,
           currentY + 62.5 + verticalOffset,
-          canvas.width - 140,
+          canvas.width + 600,
           selectedFont,
         );
         currentY += buffBoxHeight + 20;

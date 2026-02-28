@@ -168,11 +168,33 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
     const selectedFont =
       fonts[userLocale as keyof typeof fonts] || fonts.default;
 
-    // 计算画布高度 - 考虑到每个战斗记录可能有BUFF
-    const recordCount = deadlyData.list ? deadlyData.list.length : 0;
+    // 计算画布高度 - 动态计算每个战斗记录和BUFF的实际高度
     const baseHeight = 400; // 顶部信息区域高度
-    const recordHeight = 300; // 每个战斗记录的高度（增加以容纳BUFF）
-    const canvasHeight = baseHeight + recordCount * recordHeight;
+    const recordBaseHeight = 200; // 每个战斗记录的基础高度（不含BUFF）
+    let totalDynamicHeight = 0;
+    const tempCanvas = createCanvas(1000, 1);
+    const tempCtx = tempCanvas.getContext("2d");
+
+    if (deadlyData.list) {
+      for (const battle of deadlyData.list) {
+        // 计算BUFF的高度
+        if (battle.buffer && battle.buffer.length > 0) {
+          for (const buffer of battle.buffer) {
+            tempCtx.font = `18px ${selectedFont}`;
+            const estimatedHeight = estimateTextHeight(
+              tempCtx,
+              buffer.desc,
+              1000 - 120,
+              selectedFont,
+            );
+            const buffBoxHeight = Math.max(100, estimatedHeight + 40);
+            totalDynamicHeight += buffBoxHeight + 20;
+          }
+        }
+        totalDynamicHeight += recordBaseHeight;
+      }
+    }
+    const canvasHeight = baseHeight + totalDynamicHeight;
 
     const canvas = createCanvas(1000, canvasHeight);
     const ctx = canvas.getContext("2d");
@@ -341,10 +363,12 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
       );
 
       ctx.font = `24px ${selectedFont}`;
+      const dateFormat = new Intl.DateTimeFormat(userLocale, {
+        month: "short",
+        day: "numeric",
+      });
       ctx.fillText(
-        `${beginDate.getMonth() + 1}月${beginDate.getDate()}日 - ${
-          endDate.getMonth() + 1
-        }月${endDate.getDate()}日`,
+        `${dateFormat.format(beginDate)} - ${dateFormat.format(endDate)}`,
         canvas.width / 2,
         120,
       );
@@ -680,7 +704,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
         );
 
         // 更新Y坐标
-        currentY += recordHeight - 100;
+        currentY += recordBaseHeight;
       }
     }
 
