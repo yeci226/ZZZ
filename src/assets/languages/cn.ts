@@ -176,6 +176,7 @@ const langs = {
   NonDataDesc: "战斗记录更新约需要数个小时，请稍后再试",
   EnemyWeakness: "敌人弱点",
   ShiyuDefense: "式舆防卫战",
+  ShiyuDefense_Period: "第<period>期式舆防卫战",
   RatingStats: "评级统计",
   FastestTime: "最快通关时间",
   Node1: "节点1",
@@ -190,6 +191,7 @@ const langs = {
 
   // Deadly Assault
   DeadlyAssault: "危局强袭戦",
+  DeadlyAssault_Period: "第<period>期危局强袭戦",
   TotalScore: "总得分",
   DeadlyTip: "总得分为排名依据，排名每半小时更新一次，请稍后刷新",
   BattleRecord: "战斗记录",

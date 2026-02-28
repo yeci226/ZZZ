@@ -179,6 +179,7 @@ const langs = {
     "전투 기록은 약 1시간에 한 번씩 업데이트됩니다. 나중에 다시 시도해 주세요",
   EnemyWeakness: "적 약점",
   ShiyuDefense: "식여 방어전",
+  ShiyuDefense_Period: "제<period>기 식여 방어전",
   RatingStats: "등급 통계",
   FastestTime: "최단 시간",
   Node1: "노드1",
@@ -193,6 +194,7 @@ const langs = {
 
   // Deadly Assault
   DeadlyAssault: "위국 강습",
+  DeadlyAssault_Period: "제<period>기 위국 강습",
   TotalScore: "총 점수",
   DeadlyTip:
     "총 점수는 랭킹에 사용되며, 랭킹은 30분마다 업데이트됩니다. 나중에 새로고침하세요",

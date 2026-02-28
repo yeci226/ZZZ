@@ -186,6 +186,7 @@ const langs = {
     "Les enregistrements de combat sont mis à jour environ une heure, veuillez réessayer plus tard",
   EnemyWeakness: "Faiblesse ennemie",
   ShiyuDefense: "Défense de Shiyu",
+  ShiyuDefense_Period: "Défense de Shiyu Période <period>",
   RatingStats: "Statistiques de classement",
   FastestTime: "Temps le plus rapide",
   Node1: "Nœud 1",
@@ -200,6 +201,7 @@ const langs = {
 
   // Deadly Assault
   DeadlyAssault: "Assaut Mortel",
+  DeadlyAssault_Period: "Assaut Mortel Période <period>",
   TotalScore: "Score Total",
   DeadlyTip:
     "Le score total est utilisé pour le classement, les classements sont mis à jour toutes les demi-heures, veuillez actualiser plus tard",

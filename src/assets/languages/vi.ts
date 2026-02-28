@@ -186,6 +186,7 @@ const langs = {
   NonDataDesc: "Bản ghi chiến đấu cập nhật khoảng 1 giờ, vui lòng thử lại sau",
   EnemyWeakness: "Điểm yếu của kẻ thù",
   ShiyuDefense: "Phòng Thủ Shiyu",
+  ShiyuDefense_Period: "Phòng Thủ Shiyu Chu Kỳ <period>",
   RatingStats: "Thống kê xếp hạng",
   FastestTime: "Thời gian nhanh nhất",
   Node1: "Nút 1",
@@ -200,6 +201,7 @@ const langs = {
 
   // Deadly Assault
   DeadlyAssault: "Tấn Công Nguy Hiểm",
+  DeadlyAssault_Period: "Tấn Công Nguy Hiểm Chu Kỳ <period>",
   TotalScore: "Tổng Điểm",
   DeadlyTip:
     "Tổng điểm được sử dụng để xếp hạng, xếp hạng được cập nhật 30 phút một lần, vui lòng làm mới sau",

@@ -2,7 +2,7 @@ import { ShiyuContext, ShiyuFloor } from "./types.js";
 
 export function processShiyuData(
   hadalData: any,
-  context: ShiyuContext
+  context: ShiyuContext,
 ): ShiyuFloor[] {
   const { tr } = context;
   const floors: ShiyuFloor[] = [];

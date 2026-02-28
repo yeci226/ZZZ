@@ -184,6 +184,7 @@ const langs = {
     "Battle records update approximately takes a few hours, please try again later",
   EnemyWeakness: "Enemy Weakness",
   ShiyuDefense: "Shiyu Defense",
+  ShiyuDefense_Period: "Shiyu Defense Period <period>",
   RatingStats: "Rating Stats",
   FastestTime: "Fastest Time",
   Node1: "Node 1",
@@ -198,6 +199,7 @@ const langs = {
 
   // Deadly Assault
   DeadlyAssault: "Deadly Assault",
+  DeadlyAssault_Period: "Deadly Assault Period <period>",
   TotalScore: "Total Score",
   DeadlyTip:
     "Total score is used for ranking, rankings are updated every half hour, please refresh later",

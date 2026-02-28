@@ -320,7 +320,12 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
     ctx.fillStyle = "white";
     ctx.textAlign = "center";
     ctx.font = `48px ${selectedFont}`;
-    ctx.fillText(tr("DeadlyAssault") || "危局強襲戰", canvas.width / 2, 80);
+    const period = deadlyData.zone_id % 100;
+    const title =
+      tr("DeadlyAssault_Period", { period }) ||
+      tr("DeadlyAssault") ||
+      "危局強襲戰";
+    ctx.fillText(title, canvas.width / 2, 80);
 
     // 绘制挑战期间
     if (deadlyData.start_time && deadlyData.end_time) {

@@ -179,8 +179,9 @@ const langs = {
 
   NonData: "このモードのデータが見つかりません",
   NonDataDesc: "データの更新には数時間かかります。後で再試行してください",
-  EnemyWeakness: "敵の弱点",
+  EnemyWeakness: "敵の弱點",
   ShiyuDefense: "式輿防衛戦",
+  ShiyuDefense_Period: "第<period>期式輿防衛戦",
   RatingStats: "ランク統計",
   FastestTime: "最速クリア時間",
   Node1: "ノード1",
@@ -195,6 +196,7 @@ const langs = {
 
   // Deadly Assault
   DeadlyAssault: "危局強襲戦",
+  DeadlyAssault_Period: "第<period>期危局強襲戦",
   TotalScore: "総合スコア",
   DeadlyTip:
     "総合スコアはランキングに使用され、ランキングは30分ごとに更新されます。後ほど更新してください",

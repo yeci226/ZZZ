@@ -30,7 +30,7 @@ export async function drawShiyuCanvas(
   hadalData: any,
   context: ShiyuContext,
   assets: ShiyuAssets,
-  dynamicImages: any[]
+  dynamicImages: any[],
 ) {
   const { tr, selectedFont, userLocale } = context;
   const {
@@ -88,7 +88,7 @@ export async function drawShiyuCanvas(
           tempCtx,
           buff.text,
           canvasWidth - 120,
-          selectedFont
+          selectedFont,
         );
         const buffBoxHeight = Math.max(120, estimatedHeight + 40);
         layoutY += buffBoxHeight + 20;
@@ -108,7 +108,7 @@ export async function drawShiyuCanvas(
             tempCtx,
             nodeBuffer.text,
             nodeWidth - 40,
-            selectedFont
+            selectedFont,
           );
           const buffBoxHeight = Math.max(120, estimatedHeight + 40);
           if (buffBoxHeight > rowMaxBufferHeight)
@@ -152,18 +152,21 @@ export async function drawShiyuCanvas(
   ctx.fillStyle = "white";
   ctx.textAlign = "center";
   ctx.font = `48px ${selectedFont}`;
-  ctx.fillText(tr("ShiyuDefense") || "式輿防衛戰", canvas.width / 2, 80);
+  const period = hadalData.hadal_info_v2.zone_id % 100;
+  const title =
+    tr("ShiyuDefense_Period", { period }) || tr("ShiyuDefense") || "式輿防衛戰";
+  ctx.fillText(title, canvas.width / 2, 80);
 
   // Date
   const beginDate = new Date(
     parseInt(hadalData.hadal_info_v2.hadal_begin_time.year),
     parseInt(hadalData.hadal_info_v2.hadal_begin_time.month) - 1,
-    parseInt(hadalData.hadal_info_v2.hadal_begin_time.day)
+    parseInt(hadalData.hadal_info_v2.hadal_begin_time.day),
   );
   const endDate = new Date(
     parseInt(hadalData.hadal_info_v2.hadal_end_time.year),
     parseInt(hadalData.hadal_info_v2.hadal_end_time.month) - 1,
-    parseInt(hadalData.hadal_info_v2.hadal_end_time.day)
+    parseInt(hadalData.hadal_info_v2.hadal_end_time.day),
   );
   const dateFormat = new Intl.DateTimeFormat(userLocale, {
     month: "short",
@@ -173,7 +176,7 @@ export async function drawShiyuCanvas(
   ctx.fillText(
     `${dateFormat.format(beginDate)} - ${dateFormat.format(endDate)}`,
     canvas.width / 2,
-    120
+    120,
   );
 
   let currentY = 160;
@@ -191,7 +194,7 @@ export async function drawShiyuCanvas(
         canvas.width - 100,
         160,
         20,
-        headerBoxColor
+        headerBoxColor,
       );
 
       const leftX = 80;
@@ -277,7 +280,7 @@ export async function drawShiyuCanvas(
       ctx.fillText(
         `${tr("TotalTime") || "總通關用時"}：${gMinutes}:${gSeconds}`,
         rightX,
-        currentY + 140
+        currentY + 140,
       );
 
       currentY += 95;
@@ -290,12 +293,12 @@ export async function drawShiyuCanvas(
           ctx,
           buff.text,
           canvas.width - 120,
-          selectedFont
+          selectedFont,
         );
         const buffBoxHeight = Math.max(120, estimatedHeight + 40);
         const verticalOffset = Math.max(
           0,
-          (buffBoxHeight - (estimatedHeight + 50)) / 2
+          (buffBoxHeight - (estimatedHeight + 50)) / 2,
         );
 
         drawRoundedRect(
@@ -305,7 +308,7 @@ export async function drawShiyuCanvas(
           canvas.width - 100,
           buffBoxHeight,
           20,
-          "rgba(48, 48, 48, 255)"
+          "rgba(48, 48, 48, 255)",
         );
 
         ctx.fillStyle = "#FDE68A";
@@ -323,7 +326,7 @@ export async function drawShiyuCanvas(
           65,
           currentY + 62.5 + verticalOffset,
           canvas.width - 140,
-          selectedFont
+          selectedFont,
         );
         currentY += buffBoxHeight + 20;
       }
@@ -335,7 +338,7 @@ export async function drawShiyuCanvas(
         canvas.width - 100,
         80,
         20,
-        "rgba(48, 48, 48, 255)"
+        "rgba(48, 48, 48, 255)",
       );
 
       const ratingImg =
@@ -346,7 +349,7 @@ export async function drawShiyuCanvas(
           canvas.width - 50 - 160 * 0.7,
           currentY + 10,
           160 * 0.7,
-          80 * 0.7
+          80 * 0.7,
         );
       }
 
@@ -363,7 +366,7 @@ export async function drawShiyuCanvas(
       ctx.fillText(
         `${tr("SpentTime") || "通關用時"}：${totalMinutes}:${totalSeconds}`,
         70 + titleWidth + 20,
-        currentY + 47.5
+        currentY + 47.5,
       );
       ctx.textAlign = "center";
     }
@@ -391,7 +394,7 @@ export async function drawShiyuCanvas(
             ctx,
             nodeBuffer.text,
             currentNodeWidth - 40,
-            selectedFont
+            selectedFont,
           );
           const buffBoxHeight = Math.max(120, estimatedHeight + 40);
           if (buffBoxHeight > rowMaxBufferHeight)
@@ -431,7 +434,7 @@ export async function drawShiyuCanvas(
         buffImg,
         node.rating,
         layerRatingImages,
-        floor.level === 5
+        floor.level === 5,
       );
 
       dynamicImageIndex = result.nextImageIndex;
@@ -467,7 +470,7 @@ async function drawNode(
   buffImg: any = null,
   nodeRating: string = "",
   ratingImages: any = {},
-  showScore: boolean = false
+  showScore: boolean = false,
 ) {
   let drawY = currentY;
 
@@ -483,7 +486,7 @@ async function drawNode(
         ctx,
         nodeBuffer.text,
         width - 40,
-        selectedFont
+        selectedFont,
       );
       buffBoxHeight = Math.max(120, estimatedHeight + 40);
     }
@@ -491,7 +494,7 @@ async function drawNode(
       ctx,
       nodeBuffer.text,
       width - 40,
-      selectedFont
+      selectedFont,
     );
     const verticalOffset =
       (buffBoxHeight - (estimatedHeightForOffset + 50)) / 2;
@@ -505,7 +508,7 @@ async function drawNode(
     ctx.fillText(
       `${nodeBuffer.title}`,
       x + 20,
-      drawY + 110 + 32.5 + finalOffset
+      drawY + 110 + 32.5 + finalOffset,
     );
 
     if (buffImg) {
@@ -518,7 +521,7 @@ async function drawNode(
       x + 15,
       drawY + 110 + 62.5 + finalOffset,
       width * 2 - 60,
-      selectedFont
+      selectedFont,
     );
 
     drawY += buffBoxHeight + 10;
@@ -536,7 +539,7 @@ async function drawNode(
     width,
     nodeBoxHeight,
     15,
-    "rgba(35, 35, 35, 255)"
+    "rgba(35, 35, 35, 255)",
   );
 
   if (showScore && nodeData.monster_pic) {
@@ -584,7 +587,7 @@ async function drawNode(
     x + 25,
     showScore ? drawY + 175 : drawY + 140,
     92,
-    32
+    32,
   );
 
   const battleTime = nodeData.battle_time || 0;
@@ -597,7 +600,7 @@ async function drawNode(
   ctx.fillText(
     `${tr("SpentTime") || "通關用時"}：${bMin}:${bSec}`,
     x + 15,
-    showScore ? drawY + 120 + 110 : drawY + 120 + 75
+    showScore ? drawY + 120 + 110 : drawY + 120 + 75,
   );
 
   if (nodeRating && ratingImages) {
@@ -642,7 +645,7 @@ async function drawNode(
           avatarX - 5,
           avatarY,
           30,
-          30
+          30,
         );
       }
 
@@ -653,7 +656,7 @@ async function drawNode(
         ctx.fillText(
           tr("levelFormat", { level: avatar.level }),
           avatarX + 35,
-          showScore ? drawY + 350 : drawY + 330
+          showScore ? drawY + 350 : drawY + 330,
         );
         ctx.textAlign = "left";
       }
@@ -705,7 +708,7 @@ async function drawNode(
       ctx.fillText(
         tr("levelFormat", { level: nodeData.buddy.level }),
         buddyX + 30,
-        buddyY + 85
+        buddyY + 85,
       );
       ctx.fillStyle = "white";
       ctx.textAlign = "left";
