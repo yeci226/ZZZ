@@ -8,7 +8,10 @@ import { getAllFiles } from "./utilities/getAllFiles.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import { VerificationServer } from "./utilities/core/VerificationServer.js";
+import OptimizationManager from "./optimizations/index.js";
+import { getConfig } from "./utilities/core/config.js";
 
+const config = getConfig();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -105,16 +108,100 @@ export async function load(client: Client) {
 
 await load(client);
 
+// ====================================
+// 初始化優化功能
+// ====================================
+const optimizations = new OptimizationManager(client, client.db);
+await optimizations.initialize();
+
+// 將優化工具附加到客户端，以便在其他部分使用
+(client as any).optimizations = optimizations.getManager();
+
+// ====================================
+// 設置統計數據推送到 personalWeb
+// ====================================
+if (optimizations.commandUsageTracker) {
+  const STATS_API = config.STATS_API_URL;
+  const STATS_API_TOKEN = config.STATS_API_TOKEN;
+
+  if (!STATS_API) {
+    new Logger("Stats").error(
+      "STATS_API_URL is not set, stats push is disabled",
+    );
+  } else {
+    setInterval(async () => {
+      try {
+        const stats = optimizations.commandUsageTracker?.getStats();
+        if (stats && Object.keys(stats).length > 0) {
+          // 計算聚合統計
+          const totalCommands = Object.values(
+            stats as Record<string, any>,
+          ).reduce((sum: number, cmd: any) => sum + (cmd.count || 0), 0);
+          const totalErrors = Object.values(
+            stats as Record<string, any>,
+          ).reduce((sum: number, cmd: any) => sum + (cmd.errors || 0), 0);
+
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+          if (STATS_API_TOKEN) {
+            headers.Authorization = `Bearer ${STATS_API_TOKEN}`;
+          }
+
+          await fetch(STATS_API, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              botId: "zzz",
+              botName: "ZZZ",
+              timestamp: Date.now(),
+              stats: {
+                totalCommands24h: totalCommands,
+                totalErrors24h: totalErrors,
+                topCommands: Object.entries(stats as Record<string, any>)
+                  .map(([name, data]: [string, any]) => ({
+                    name,
+                    count: data.count || 0,
+                    avgTimeMs:
+                      data.count > 0
+                        ? Math.round(data.totalExecutionMs / data.count)
+                        : 0,
+                    errors: data.errors || 0,
+                  }))
+                  .sort((a, b) => b.count - a.count)
+                  .slice(0, 10),
+                byCommand: Object.entries(stats as Record<string, any>).map(
+                  ([name, data]: [string, any]) => ({
+                    name,
+                    count: data.count || 0,
+                    errors: data.errors || 0,
+                    avgTimeMs:
+                      data.count > 0
+                        ? Math.round(data.totalExecutionMs / data.count)
+                        : 0,
+                  }),
+                ),
+              },
+            }),
+          }).catch((err) => {
+            new Logger("Stats").error(`Failed to push stats: ${err.message}`);
+          });
+        }
+      } catch (error) {
+        new Logger("Stats").error(
+          `Error pushing stats: ${(error as Error).message}`,
+        );
+      }
+    }, 60_000); // 每 60 秒推送一次
+  }
+}
+
 // Start Verification Server
 if (client.cluster.id === 0) {
   new VerificationServer(client.cluster as any).start();
 } else {
   new VerificationServer(client.cluster as any);
 }
-
-import { getConfig } from "./utilities/core/config.js";
-
-const config = getConfig();
 
 client.login(
   process.env.NODE_ENV === "dev"

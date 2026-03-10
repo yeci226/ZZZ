@@ -1,0 +1,76 @@
+{
+  "botId": "zzz",
+  "generatedAt": "2026-03-10T07:30:03.977Z",
+  "commands": [
+    {
+      "name": "/account",
+      "sourceFile": "src/commands/slash/zzz/account.ts",
+      "updatedAt": "2026-02-10T09:05:06.884Z"
+    },
+    {
+      "name": "/admin",
+      "sourceFile": "src/commands/slash/zzz/admin.ts",
+      "updatedAt": "2026-02-10T09:05:07.115Z"
+    },
+    {
+      "name": "/codes",
+      "sourceFile": "src/commands/slash/zzz/redeem.ts",
+      "updatedAt": "2026-02-10T09:05:07.916Z"
+    },
+    {
+      "name": "/daily",
+      "sourceFile": "src/commands/slash/zzz/daily.ts",
+      "updatedAt": "2026-02-14T08:14:22.196Z"
+    },
+    {
+      "name": "/deadlyassault",
+      "sourceFile": "src/commands/slash/zzz/deadly.ts",
+      "updatedAt": "2025-12-22T09:42:12.620Z"
+    },
+    {
+      "name": "/detail",
+      "sourceFile": "src/commands/message/detail.ts",
+      "updatedAt": "2026-02-10T09:05:06.269Z"
+    },
+    {
+      "name": "/locale",
+      "sourceFile": "src/commands/slash/info/locale.ts",
+      "updatedAt": "2026-02-10T09:05:06.396Z"
+    },
+    {
+      "name": "/news",
+      "sourceFile": "src/commands/slash/info/news.ts",
+      "updatedAt": "2025-12-22T09:42:12.618Z"
+    },
+    {
+      "name": "/note",
+      "sourceFile": "src/commands/slash/zzz/note.ts",
+      "updatedAt": "2026-02-10T09:05:07.209Z"
+    },
+    {
+      "name": "/profile",
+      "sourceFile": "src/commands/slash/zzz/profile.ts",
+      "updatedAt": "2025-12-22T09:42:12.622Z"
+    },
+    {
+      "name": "/shiyudefense",
+      "sourceFile": "src/commands/slash/zzz/shiyu.ts",
+      "updatedAt": "2026-01-10T08:18:43.811Z"
+    },
+    {
+      "name": "/signal",
+      "sourceFile": "src/commands/slash/zzz/gacha.ts",
+      "updatedAt": "2026-02-10T09:05:07.276Z"
+    },
+    {
+      "name": "/status",
+      "sourceFile": "src/commands/message/status.ts",
+      "updatedAt": "2026-02-10T09:05:06.329Z"
+    },
+    {
+      "name": "/test",
+      "sourceFile": "src/commands/slash/info/test.js",
+      "updatedAt": "2025-01-17T04:33:20.776Z"
+    }
+  ]
+}

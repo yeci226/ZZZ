@@ -35,6 +35,15 @@ clusterManager.extend(
 clusterManager.on("clusterCreate", (cluster) => {
   cluster.on("ready", () => {
     new Logger("分片").info(`已啟動分片 #${cluster.id}`);
+    setInterval(
+      () => {
+        const memory = process.memoryUsage();
+        new Logger("系統").info(
+          `[Cluster #${cluster.id}] RSS: ${(memory.rss / 1024 / 1024).toFixed(2)}MB, Heap: ${(memory.heapUsed / 1024 / 1024).toFixed(2)}MB`,
+        );
+      },
+      1000 * 60 * 10,
+    );
   });
 
   cluster.on("reconnecting", () => {

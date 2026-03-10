@@ -17,6 +17,9 @@ interface Config {
   AUTHTOKEN: string;
   WEBSERVER_PORT: number;
   DEVIDS: string[];
+  VERIFY_PUBLIC_URL: string;
+  STATS_API_URL: string;
+  STATS_API_TOKEN: string;
 }
 
 let config: Config | null = null;
