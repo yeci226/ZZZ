@@ -38,7 +38,7 @@ export class OptimizationManager {
     // 1. 命令使用統計追蹤
     if (OPTIMIZATION_CONFIG.commandUsageTracker.enabled) {
       this.commandUsageTracker = new CommandUsageTracker(
-        OPTIMIZATION_CONFIG.commandUsageTracker.flushIntervalMs
+        OPTIMIZATION_CONFIG.commandUsageTracker.flushIntervalMs,
       );
 
       // 設置 flush 回調，定期保存統計到數據庫
@@ -46,11 +46,11 @@ export class OptimizationManager {
         try {
           const timestamp = Date.now();
           await this.db.set(`stats.commands.${timestamp}`, stats);
-          logger.success(`✓ 複數統計已保存 (${Object.keys(stats).length} 條命令)`);
-        } catch (error) {
-          logger.error(
-            `❌ 複數統計保存失敗: ${(error as Error).message}`
+          logger.success(
+            `✓ 複數統計已保存 (${Object.keys(stats).length} 條命令)`,
           );
+        } catch (error) {
+          logger.error(`❌ 複數統計保存失敗: ${(error as Error).message}`);
         }
       });
 
@@ -95,7 +95,10 @@ export class OptimizationManager {
       this.errorHandler = new EnhancedErrorHandler({ logger });
 
       // 設置錯誤回調，發送到 Discord webhook
-      if (OPTIMIZATION_CONFIG.errorHandler.logToWebhook && process.env.ERRWEBHOOK) {
+      if (
+        OPTIMIZATION_CONFIG.errorHandler.logToWebhook &&
+        process.env.ERRWEBHOOK
+      ) {
         const { WebhookClient } = await import("discord.js");
         const webhook = new WebhookClient({ url: process.env.ERRWEBHOOK });
 
@@ -107,11 +110,19 @@ export class OptimizationManager {
                   title: "❌ 命令執行錯誤",
                   description: errorData.message,
                   fields: [
-                    { name: "代碼", value: errorData.code || "N/A", inline: true },
-                    { name: "來源", value: errorData.context?.source || "Unknown", inline: true },
+                    {
+                      name: "代碼",
+                      value: errorData.code || "N/A",
+                      inline: true,
+                    },
+                    {
+                      name: "來源",
+                      value: errorData.context?.source || "Unknown",
+                      inline: true,
+                    },
                     { name: "時間", value: errorData.timestamp, inline: false },
                   ],
-                  color: 0xFF0000,
+                  color: 0xff0000,
                   timestamp: new Date().toISOString(),
                 },
               ],

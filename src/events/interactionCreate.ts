@@ -122,7 +122,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
           {
             timeoutMs: 30_000,
             maxRetries: 1, // 只重試 1 次（避免重複執行）
-          }
+          },
         );
       } else {
         // Fallback：沒有執行器的情況
@@ -252,7 +252,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
               interaction as ContextMenuCommandInteraction,
             );
           },
-          { timeoutMs: 30_000, maxRetries: 1 }
+          { timeoutMs: 30_000, maxRetries: 1 },
         );
       } else {
         await (command as any).execute(
