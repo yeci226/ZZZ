@@ -20,7 +20,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@bot/shared": "workspace:*",
+    "@bot/shared": "*",
     "@napi-rs/canvas": "^0.1.88",
     "@yeci226/hoyoapi": "^1.3.7",
     "axios": "^1.13.2",

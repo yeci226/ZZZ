@@ -62,7 +62,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
         flags: MessageFlags.Ephemeral,
       });
 
-    const args: any[] = [];
+    const args = [];
 
     for (let option of (interaction as ChatInputCommandInteraction).options
       .data) {
@@ -76,84 +76,27 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
 
     try {
       const chatInteraction = interaction as ChatInputCommandInteraction;
-      const commandName = command.data.name;
-      const userId = interaction.user.id;
-      const startTime = Date.now();
-
-      // ========================================
-      // 1. 速率限制檢查
-      // ========================================
-      const optimizations = (client as any).optimizations;
-      if (optimizations?.rateLimiter) {
-        const rateLimitCheck = optimizations.rateLimiter.check(userId);
-        if (!rateLimitCheck.allowed) {
-          const retryAfter = rateLimitCheck.retryAfter || 1;
-          return replyOrFollowUp(interaction, {
-            content: `⏱️ 你操作太頻繁了！請在 ${retryAfter} 秒後重試。`,
-            flags: MessageFlags.Ephemeral,
-          });
-        }
-      }
-
-      // ========================================
-      // 2. 安全確認已 Defer
-      // ========================================
       const ackPlan = getCommandAckPlan(command, { defaultEphemeral: true });
       if (ackPlan.shouldDefer) {
         await ensureDeferredReply(chatInteraction, ackPlan.ephemeral);
       }
 
-      // ========================================
-      // 3. 帶超時的命令執行（有重試機制）
-      // ========================================
-      if (optimizations?.commandExecutor) {
-        await optimizations.commandExecutor.execute(
-          commandName,
-          async () => {
-            return (command as any).execute(
-              client,
-              chatInteraction,
-              args,
-              i18n,
-              client.db,
-              emoji,
-            );
-          },
-          {
-            timeoutMs: 30_000,
-            maxRetries: 1, // 只重試 1 次（避免重複執行）
-          },
-        );
-      } else {
-        // Fallback：沒有執行器的情況
-        await (command as any).execute(
-          client,
-          chatInteraction,
-          args,
-          i18n,
-          client.db,
-          emoji,
-        );
-      }
-
-      // ========================================
-      // 4. 記錄執行和統計
-      // ========================================
-      const executionMs = Date.now() - startTime;
-      const time = `花費 ${(executionMs / 1000).toFixed(2)} 秒`;
+      await (command as any).execute(
+        client,
+        chatInteraction,
+        args,
+        i18n,
+        client.db,
+        emoji,
+      );
+      const time = `花費 ${(
+        (Date.now() - interaction.createdTimestamp) /
+        1000
+      ).toFixed(2)} 秒`;
 
       new Logger("指令").command(
-        `${interaction.user.displayName}(${interaction.user.id}) 執行 ${commandName} - ${time}`,
+        `${interaction.user.displayName}(${interaction.user.id}) 執行 ${command.data.name} - ${time}`,
       );
-
-      // 追蹤命令使用統計
-      if (optimizations?.commandUsageTracker) {
-        optimizations.commandUsageTracker.track(commandName, executionMs);
-      }
-
-      // ========================================
-      // 5. 發送 Webhook 日誌
-      // ========================================
       if (webhook) {
         fireAndForget(
           webhook.send({
@@ -191,30 +134,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
         );
       }
     } catch (e: any) {
-      // ========================================
-      // 強化的錯誤處理
-      // ========================================
-      const optimizations = (client as any).optimizations;
-      const logger = new Logger("指令");
-
-      logger.error(`❌ 命令執行失敗: ${e?.message || String(e)}`);
-
-      // 追蹤錯誤統計
-      if (optimizations?.commandUsageTracker) {
-        optimizations.commandUsageTracker.trackError(command.data.name);
-      }
-
-      // 通過 EnhancedErrorHandler 處理
-      if (optimizations?.errorHandler) {
-        await optimizations.errorHandler.handle(e, {
-          source: "CommandExecution",
-          commandName: command.data.name,
-          userId: interaction.user.id,
-          guildId: interaction.guildId,
-        });
-      }
-
-      // 回覆用戶
+      new Logger("指令").error(`錯誤訊息：${e.message}`);
       await replyOrFollowUp(interaction, {
         content: "哦喲，好像出了一點小問題，請重試",
         flags: MessageFlags.Ephemeral,
@@ -223,69 +143,13 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   } else if (interaction.isContextMenuCommand()) {
     const command = client.commands.slash.get(interaction.commandName);
     if (!command) return;
-
     try {
-      const commandName = command.data.name;
-      const userId = interaction.user.id;
-      const startTime = Date.now();
-
-      // 速率限制檢查
-      const optimizations = (client as any).optimizations;
-      if (optimizations?.rateLimiter) {
-        const rateLimitCheck = optimizations.rateLimiter.check(userId);
-        if (!rateLimitCheck.allowed) {
-          const retryAfter = rateLimitCheck.retryAfter || 1;
-          return replyOrFollowUp(interaction, {
-            content: `⏱️ 你操作太頻繁了！請在 ${retryAfter} 秒後重試。`,
-            flags: MessageFlags.Ephemeral,
-          });
-        }
-      }
-
-      // 執行命令
-      if (optimizations?.commandExecutor) {
-        await optimizations.commandExecutor.execute(
-          commandName,
-          async () => {
-            return (command as any).execute(
-              client,
-              interaction as ContextMenuCommandInteraction,
-            );
-          },
-          { timeoutMs: 30_000, maxRetries: 1 },
-        );
-      } else {
-        await (command as any).execute(
-          client,
-          interaction as ContextMenuCommandInteraction,
-        );
-      }
-
-      // 記錄統計
-      const executionMs = Date.now() - startTime;
-      if (optimizations?.commandUsageTracker) {
-        optimizations.commandUsageTracker.track(commandName, executionMs);
-      }
+      await (command as any).execute(
+        client,
+        interaction as ContextMenuCommandInteraction,
+      );
     } catch (e: any) {
-      // 強化的錯誤處理
-      const optimizations = (client as any).optimizations;
-      const logger = new Logger("指令");
-
-      logger.error(`❌ 上下文菜單執行失敗: ${e?.message || String(e)}`);
-
-      if (optimizations?.commandUsageTracker) {
-        optimizations.commandUsageTracker.trackError(command.data.name);
-      }
-
-      if (optimizations?.errorHandler) {
-        await optimizations.errorHandler.handle(e, {
-          source: "ContextMenuExecution",
-          commandName: command.data.name,
-          userId: interaction.user.id,
-          guildId: interaction.guildId,
-        });
-      }
-
+      new Logger("指令").error(`錯誤訊息：${e.message}`);
       await replyOrFollowUp(interaction, {
         content: "哦喲，好像出了一點小問題，請重試",
         flags: MessageFlags.Ephemeral,

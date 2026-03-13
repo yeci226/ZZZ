@@ -119,10 +119,14 @@ export class AutoDailyService {
 
       for (const userId of userIds) {
         const config = dailyData[userId];
-        let scheduledTime = config.time || "13";
-        if (parseInt(scheduledTime as string) === 24) scheduledTime = 0;
+        let scheduledHour = Number(config.time ?? 13);
+        if (!Number.isFinite(scheduledHour)) scheduledHour = 13;
+        if (scheduledHour === 24) scheduledHour = 0;
+        if (scheduledHour < 0 || scheduledHour > 23) scheduledHour = 13;
 
-        if (parseInt(scheduledTime as string) !== currentHour) continue;
+        // Catch-up behavior: if the bot missed the exact hour (restart/offline),
+        // run once later the same day as long as it has not been processed today.
+        if (currentHour < scheduledHour) continue;
 
         // Skip if already processed today
         const lastProcessed = await this.db.get(`${userId}.lastAutoDaily`);
