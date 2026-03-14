@@ -834,12 +834,13 @@ export async function updateAccountInfo(userId: string, newAccountInfo: any) {
   );
 
   if (existingIndex !== -1) {
-    // 更新現有帳號資訊
+    // 更新現有帳號資訊，同時清除無效標記
     accounts[existingIndex] = {
       ...accounts[existingIndex],
       cookie: newAccountInfo.cookie,
       nickname: newAccountInfo.nickname,
       lastUpdate: new Date().toISOString(),
+      invalid: false,
     };
 
     new Logger("Utilities").info(
