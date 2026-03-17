@@ -79,18 +79,6 @@ export class AutoDailyService {
     );
   }
 
-  private isSkippableError(errorMessage: string) {
-    const skipPatterns = [
-      "failed to fetch",
-      "network error",
-      "timeout",
-      "eai_again",
-    ];
-    return skipPatterns.some((pattern) =>
-      errorMessage.toLowerCase().includes(pattern.toLowerCase()),
-    );
-  }
-
   public async run() {
     if (this.isRunning) return;
     this.isRunning = true;
@@ -173,10 +161,6 @@ export class AutoDailyService {
 
     for (let i = 0; i < accounts.length; i++) {
       const account = accounts[i];
-      if (account.invalid) {
-        stats.skipped++;
-        continue;
-      }
 
       stats.total++;
       try {
@@ -222,39 +206,33 @@ export class AutoDailyService {
         else stats.alreadySigned++;
       } catch (error: any) {
         const errorMessage = error.message;
-        if (this.isSkippableError(errorMessage)) {
-          stats.skipped++;
-        } else {
-          stats.failed++;
-          results.push({
-            uid: account.uid,
-            nickname: account.nickname || "Unknown",
-            status: "failed",
-            error: errorMessage,
-          });
+        stats.failed++;
+        results.push({
+          uid: account.uid,
+          nickname: account.nickname || "Unknown",
+          status: "failed",
+          error: errorMessage,
+        });
 
-          // Track indices of accounts to mark as invalid
-          if (
-            errorMessage.includes("login") ||
-            errorMessage.includes("cookie") ||
-            error.code === -100
-          ) {
-            invalidAccountIndices.push(i);
-          }
+        // Track indices of accounts to mark as invalid
+        if (
+          errorMessage.includes("login") ||
+          errorMessage.includes("cookie") ||
+          error.code === -100
+        ) {
+          invalidAccountIndices.push(i);
+        }
 
-          if (this.errorWebhook) {
-            const errorEmbed = new EmbedBuilder()
-              .setColor("#E76161")
-              .setTitle(`[自動簽到失敗] 用戶: ${userId}`)
-              .addFields(
-                { name: "UID", value: account.uid, inline: true },
-                { name: "錯誤訊息", value: errorMessage, inline: true },
-              )
-              .setTimestamp();
-            await this.errorWebhook
-              .send({ embeds: [errorEmbed] })
-              .catch(() => {});
-          }
+        if (this.errorWebhook) {
+          const errorEmbed = new EmbedBuilder()
+            .setColor("#E76161")
+            .setTitle(`[自動簽到失敗] 用戶: ${userId}`)
+            .addFields(
+              { name: "UID", value: account.uid, inline: true },
+              { name: "錯誤訊息", value: errorMessage, inline: true },
+            )
+            .setTimestamp();
+          await this.errorWebhook.send({ embeds: [errorEmbed] }).catch(() => {});
         }
       }
     }

@@ -68,7 +68,6 @@ async function refreshAllCookies(client: any) {
       if (!accounts || accounts.length === 0) continue;
 
       for (let i = 0; i < accounts.length; i++) {
-        if (accounts[i].invalid) continue;
         try {
           const result = await updateCookie(userId, i, accounts[i].cookie);
           if (result && (result as any).success) {
