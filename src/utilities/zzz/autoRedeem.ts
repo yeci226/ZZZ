@@ -223,10 +223,13 @@ class AutoRedeemSystem {
 
     const isCookieExpired = await this.db.get(`${account.uid}.cookieExpired`);
     if (isCookieExpired) {
-      // this.logger.warn(
-      //   `[用戶 ${userId}] [帳號 #${accountIndex}] 的Cookie已標記為過期`,
-      // );
-      return null;
+      return {
+        uid: account.uid,
+        nickname: accountNickname,
+        description: `❌ Cookie 已標記過期，等待 Cookie 刷新後再嘗試兌換`,
+        hasSuccess: false,
+        hasResults: true,
+      };
     }
 
     // this.logger.info(`[除錯] 正在建立 ZZZ 客戶端... UID: ${account.uid}`);
@@ -283,6 +286,11 @@ class AutoRedeemSystem {
           userRedeemedCodes.push(code.code);
         }
 
+        // Any non-token-invalid response means this cookie is currently usable.
+        if (!(result.status as any).tokenInvalid) {
+          await this.db.delete(`${account.uid}.cookieExpired`);
+        }
+
         if ((result.status as any).tokenInvalid) {
           this.logger.warn(
             `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 已過期，跳過兌換流程`,
@@ -293,6 +301,7 @@ class AutoRedeemSystem {
             nickname: accountNickname,
             description: `❌ Cookie 已過期，無法兌換禮包碼`,
             hasSuccess: false,
+            hasResults: true,
           };
         }
 
@@ -352,12 +361,20 @@ class AutoRedeemSystem {
     //   `[除錯] 用戶 ${userId} 語言: ${userLang}, 帳號數量: ${accounts?.length || 0}`,
     // );
     if (!accounts?.length) {
-      // this.logger.info(`[除錯] 用戶 ${userId} 沒有設定角色資料，跳過`);
+      await this.db.delete(`autoRedeem.${userId}`);
+      this.logger.warn(`用戶 ${userId} 無帳號資料，已自動移除 autoRedeem 設定`);
       return;
     }
 
-    const channelId = redeemData[userId].channelId;
-    const tag = redeemData[userId].tag === "true" ? `<@${userId}>` : "";
+    const userRedeemConfig = redeemData[userId];
+    if (!userRedeemConfig?.channelId) {
+      await this.db.delete(`autoRedeem.${userId}`);
+      this.logger.warn(`用戶 ${userId} 缺少頻道設定，已自動移除 autoRedeem 設定`);
+      return;
+    }
+
+    const channelId = userRedeemConfig.channelId;
+    const tag = userRedeemConfig.tag === "true" ? `<@${userId}>` : "";
     const tr = createTranslator(userLang);
 
     const results = [];
@@ -384,9 +401,8 @@ class AutoRedeemSystem {
       }
     }
 
-    // 如果有任何帳號兌換成功，或有需要通知的訊息
-    const successResults = results.filter((r) => r.hasSuccess);
-    if (successResults.length > 0) {
+    if (results.length > 0) {
+      const hasSuccess = results.some((r) => r.hasSuccess);
       const finalDescription = results
         .map((r) => `## ${r.nickname} (${r.uid})\n${r.description}`)
         .join("\n\n");
@@ -394,6 +410,7 @@ class AutoRedeemSystem {
         tr,
         tag,
         description: finalDescription,
+        hasSuccess,
       });
     }
   }
@@ -401,7 +418,11 @@ class AutoRedeemSystem {
   async sendRedeemMessage(channelId: string, data: any) {
     const embed = new EmbedBuilder()
       .setColor(getRandomColor() as ColorResolvable)
-      .setTitle(data.tr("Auto") + data.tr("redeem_SuccessDesc"))
+      .setTitle(
+        data.hasSuccess
+          ? data.tr("Auto") + data.tr("redeem_SuccessDesc")
+          : data.tr("Auto") + data.tr("redeem_RedeemStats"),
+      )
       .setDescription(data.description)
       .setThumbnail(
         "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png",

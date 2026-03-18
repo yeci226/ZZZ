@@ -51,6 +51,15 @@ interface SignInResult {
   error?: string;
 }
 
+interface ProcessUserStats {
+  total: number;
+  success: number;
+  alreadySigned: number;
+  failed: number;
+  skipped: number;
+  shouldMarkProcessed: boolean;
+}
+
 export class AutoDailyService {
   private client: any;
   private db: any;
@@ -121,16 +130,18 @@ export class AutoDailyService {
         if (lastProcessed === today) continue;
 
         const result = await this.processUser(userId, config);
-        if (result) {
-          stats.total += result.total;
-          stats.success += result.success;
-          stats.alreadySigned += result.alreadySigned;
-          stats.failed += result.failed;
-          stats.skipped += result.skipped;
-        }
+        if (!result) continue;
 
-        // Mark as processed
-        await this.db.set(`${userId}.lastAutoDaily`, today);
+        stats.total += result.total;
+        stats.success += result.success;
+        stats.alreadySigned += result.alreadySigned;
+        stats.failed += result.failed;
+        stats.skipped += result.skipped;
+
+        if (result.shouldMarkProcessed) {
+          // Mark as processed only when at least one account was actually handled.
+          await this.db.set(`${userId}.lastAutoDaily`, today);
+        }
       }
 
       await this.updateStatistics(stats, startTime, currentHour);
@@ -146,17 +157,26 @@ export class AutoDailyService {
     const accounts = await this.db.get(`${userId}.account`);
     const tr = createTranslator(userLang);
 
-    if (!accounts || accounts.length === 0) return null;
-
-    const results: SignInResult[] = [];
-    const stats = {
+    const stats: ProcessUserStats = {
       total: 0,
       success: 0,
       alreadySigned: 0,
       failed: 0,
       skipped: 0,
+      shouldMarkProcessed: false,
     };
 
+    if (!Array.isArray(accounts) || accounts.length === 0) {
+      // Stale autoDaily setting: user has no account data but still enabled auto sign.
+      await this.db.delete(`autoDaily.${userId}`);
+      stats.skipped = 1;
+      this.logger.error(`用戶 ${userId} 無帳號資料，已自動移除 autoDaily 設定`);
+      return stats;
+    }
+
+    const results: SignInResult[] = [];
+
+    const recoveredAccountIndices: number[] = [];
     const invalidAccountIndices: number[] = [];
 
     for (let i = 0; i < accounts.length; i++) {
@@ -204,8 +224,15 @@ export class AutoDailyService {
 
         if (signResult.status === "success") stats.success++;
         else stats.alreadySigned++;
+
+        // Successful API access means this account is usable again.
+        if (account.invalid === true) {
+          recoveredAccountIndices.push(i);
+        }
       } catch (error: any) {
         const errorMessage = error.message;
+        const normalizedErrorMessage = String(errorMessage || "").toLowerCase();
+        const errorCode = Number(error?.code);
         stats.failed++;
         results.push({
           uid: account.uid,
@@ -216,9 +243,12 @@ export class AutoDailyService {
 
         // Track indices of accounts to mark as invalid
         if (
-          errorMessage.includes("login") ||
-          errorMessage.includes("cookie") ||
-          error.code === -100
+          normalizedErrorMessage.includes("login") ||
+          normalizedErrorMessage.includes("cookie") ||
+          normalizedErrorMessage.includes("token") ||
+          normalizedErrorMessage.includes("expired") ||
+          errorCode === -100 ||
+          errorCode === -1071
         ) {
           invalidAccountIndices.push(i);
         }
@@ -232,13 +262,26 @@ export class AutoDailyService {
               { name: "錯誤訊息", value: errorMessage, inline: true },
             )
             .setTimestamp();
-          await this.errorWebhook.send({ embeds: [errorEmbed] }).catch(() => {});
+          await this.errorWebhook
+            .send({ embeds: [errorEmbed] })
+            .catch(() => {});
         }
       }
     }
 
+    // Only mark the day as processed when at least one account completed successfully
+    // (or was already signed). This allows retry on later hourly runs after transient errors.
+    stats.shouldMarkProcessed = stats.success + stats.alreadySigned > 0;
+
     if (results.length > 0) {
       await this.sendNotification(userId, config, results, tr);
+    }
+
+    if (recoveredAccountIndices.length > 0) {
+      for (const idx of recoveredAccountIndices) {
+        accounts[idx].invalid = false;
+      }
+      await this.db.set(`${userId}.account`, accounts);
     }
 
     // Now mark accounts as invalid AFTER notification has been sent

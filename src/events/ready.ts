@@ -60,9 +60,15 @@ async function refreshAllCookies(client: any) {
   const logger = new Logger("Cookie更新");
   try {
     const autoDailyData = await client.db.get("autoDaily");
-    if (!autoDailyData) return;
+    const autoRedeemData = await client.db.get("autoRedeem");
+    if (!autoDailyData && !autoRedeemData) return;
 
-    const userIds = Object.keys(autoDailyData);
+    const userIds = Array.from(
+      new Set([
+        ...Object.keys(autoDailyData || {}),
+        ...Object.keys(autoRedeemData || {}),
+      ]),
+    );
     for (const userId of userIds) {
       const accounts = await client.db.get(`${userId}.account`);
       if (!accounts || accounts.length === 0) continue;

@@ -518,7 +518,7 @@ export default {
             new EmbedBuilder()
               .setConfig("#E76161", "smirk")
               .setColor("#E76161")
-              .setTitle(tr("autoDaily_Off")),
+              .setTitle(tr("autoRedeem_Off")),
           ],
         });
       }
