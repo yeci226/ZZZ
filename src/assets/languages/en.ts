@@ -91,7 +91,7 @@ const langs = {
   account_NoAccount: "Account has not been set yet",
   account_HowToSetUpAccount: "❓ How to set up an account",
   account_HowToSetUpAccountDesc:
-    "1. Go to [ZZZ Official Redemption Page](https://zenless.hoyoverse.com/redemption) and log in\n2. Press `F12` or `Ctrl + Shift + I` to open Developer Tools and switch to the `Network` tab\n3. Enter `ZZZGIFT` and click redeem once\n4. Search for `webExchangeCdkeyRisk` in the filter box and click on the request\n5. Find the `Cookie` field in `Request Headers` and **copy the entire string**\n6. Use the `/account` command, select 'Set Account (Cookie)', and paste it in",
+    "1. Open this redemption link and log in first: [https://zenless.hoyoverse.com/redemption?code=abc](https://zenless.hoyoverse.com/redemption?code=abc)\n2. Press `F12` or `Ctrl + Shift + I` to open Developer Tools\n3. Attempt to redeem once on the page (the code can be invalid)\n4. Go to the `Network` tab and search for `webExchangeCdkeyRisk`\n5. Open that request, then in `Headers` scroll to `Request Headers`\n6. Copy the full `Cookie` value and paste it via `/account` -> 'Set Account (Cookie)'",
   account_CookieSetSuccess: "Cookie has been bound to <z>!",
   account_CookieSetFailed: "Cookie binding failed",
   account_CookieSetFailedDesc: "Please confirm whether the Cookie is correct",

@@ -91,7 +91,7 @@ const langs = {
   account_NoAccount: "Compte non connecté.",
   account_HowToSetUpAccount: "❓ Comment configurer le compte.",
   account_HowToSetUpAccountDesc:
-    "1. Allez sur la [Page de rachat officielle ZZZ](https://zenless.hoyoverse.com/redemption) et connectez-vous\n2. Appuyez sur `F12` ou `Ctrl + Shift + I` pour ouvrir les outils de développement et passez à l'onglet `Network` (Réseau)\n3. Entrez `ZZZGIFT` et cliquez sur échanger une fois\n4. Recherchez `webExchangeCdkeyRisk` dans la zone de filtre et cliquez sur la requête\n5. Trouvez le champ `Cookie` dans `Request Headers` et **copiez toute la chaîne**\n6. Utilisez la commande `/account`, choisissez 'Paramètres du compte (Cookie)' et collez-la",
+    "1. Ouvrez ce lien de rachat et connectez-vous d'abord : https://zenless.hoyoverse.com/redemption?code=abc\n2. Appuyez sur `F12` ou `Ctrl + Shift + I` pour ouvrir les outils de développement\n3. Essayez d'échanger un code une fois sur la page (le code peut être invalide)\n4. Allez dans l'onglet `Network` et recherchez `webExchangeCdkeyRisk`\n5. Ouvrez cette requête puis, dans `Headers`, trouvez `Request Headers`\n6. Copiez la valeur complète de `Cookie`, puis collez-la via `/account` -> 'Paramètres du compte (Cookie)'",
   account_CookieSetSuccess: "Le Cookie est lié à <z>!",
   account_CookieSetFailed: "Cookie linked failed.",
   account_CookieSetFailedDesc: "Veuillez vérifier si le cookie est correct.",

@@ -824,6 +824,111 @@ export async function getUserGameUid(cookie: string, game_id = 8) {
   };
 }
 
+export async function autoRefreshCookie(
+  userId: string,
+  accountIndex: number,
+  cookie: string,
+) {
+  try {
+    const logger = new Logger("AutoRefreshCookie");
+    const accountKey = `${userId}.account`;
+    const accounts = await client.db.get(accountKey);
+    const uid = accounts?.[accountIndex]?.uid;
+
+    // 先向官方驗證端點確認 Cookie 是否仍有效
+    const verifyUrl =
+      "https://passport-api-sg.hoyoverse.com/account/ma-passport/token/verifyCookieToken";
+
+    const response = await fetch(verifyUrl, {
+      method: "POST",
+      headers: {
+        accept: "*/*",
+        "accept-language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-CN;q=0.6",
+        "content-type": "application/json",
+        origin: "https://zenless.hoyoverse.com",
+        referer: "https://zenless.hoyoverse.com/",
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+        cookie,
+        "x-rpc-app_id": "dny1be34nvnk",
+        "x-rpc-client_type": "4",
+        "x-rpc-game_biz": "nap_global",
+      },
+      body: JSON.stringify({}),
+    });
+
+    const result = (await response.json()) as any;
+
+    if (result?.code === 200 || result?.retcode === 0) {
+      logger.success(
+        `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 驗證成功，仍然有效`,
+      );
+
+      if (accounts?.[accountIndex]) {
+        accounts[accountIndex].invalid = false;
+        await client.db.set(accountKey, accounts);
+      }
+
+      if (uid) {
+        await client.db.delete(`${uid}.cookieExpired`);
+        await client.db.delete(`${uid}.needsCookieUpdate`);
+        await client.db.delete(`${uid}.lastCookieRefreshAttempt`);
+      }
+
+      return { success: true, message: "Cookie 驗證成功" };
+    }
+
+    logger.warn(
+      `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 已過期，嘗試自動刷新...`,
+    );
+
+    const refreshResult = await updateCookie(userId, accountIndex, cookie);
+
+    if ((refreshResult as any)?.success) {
+      logger.success(`[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 刷新成功`);
+      if (uid) {
+        await client.db.delete(`${uid}.cookieExpired`);
+        await client.db.delete(`${uid}.needsCookieUpdate`);
+        await client.db.delete(`${uid}.lastCookieRefreshAttempt`);
+      }
+
+      return {
+        success: true,
+        message: "Cookie 已自動刷新",
+        newCookie: (refreshResult as any).cookie,
+      };
+    }
+
+    logger.error(
+      `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 無法刷新: ${(refreshResult as any)?.message || "Unknown error"}`,
+    );
+    if (uid) {
+      await client.db.set(`${uid}.needsCookieUpdate`, true);
+    }
+
+    return {
+      success: false,
+      message: (refreshResult as any)?.message || "Cookie 刷新失敗",
+    };
+  } catch (error: any) {
+    const logger = new Logger("AutoRefreshCookie");
+    logger.error(
+      `[用戶 ${userId}] [帳號 #${accountIndex}] 自動刷新 Cookie 失敗: ${error.message}`,
+    );
+
+    const accounts = await client.db.get(`${userId}.account`);
+    const uid = accounts?.[accountIndex]?.uid;
+    if (uid) {
+      await client.db.set(`${uid}.needsCookieUpdate`, true);
+    }
+
+    return {
+      success: false,
+      message: error.message,
+    };
+  }
+}
+
 export async function updateAccountInfo(userId: string, newAccountInfo: any) {
   const accountKey = `${userId}.account`;
   let accounts = (await client.db.get(accountKey)) || [];

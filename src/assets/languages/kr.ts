@@ -87,7 +87,7 @@ const langs = {
   account_NoAccount: "아직 계정이 설정되지 않았습니다",
   account_HowToSetUpAccount: "❓ 계정 설정 방법",
   account_HowToSetUpAccountDesc:
-    "1. [ZZZ 공식 교환 페이지](https://zenless.hoyoverse.com/redemption)에 접속하여 로그인합니다\n2. `F12` 또는 `Ctrl + Shift + I`를 눌러 개발자 도구를 열고 `Network` (네트워크) 탭으로 전환합니다\n3. `ZZZGIFT`를 입력하고 교환을 한 번 클릭합니다\n4. 검색창에서 `webExchangeCdkeyRisk`를 검색하고 해당 요청을 클릭합니다\n5. `Request Headers`에서 `Cookie` 필드를 찾아 **전체 문자열을 복사**합니다\n6. `/account` 명령어를 사용하고 '계정 설정 (Cookie)'을 선택하여 붙여넣습니다",
+    "1. 이 교환 페이지로 이동해 먼저 로그인하세요: https://zenless.hoyoverse.com/redemption?code=abc\n2. `F12` 또는 `Ctrl + Shift + I`를 눌러 개발자 도구를 엽니다\n3. 페이지에서 교환을 한 번 시도하세요 (코드는 유효하지 않아도 됩니다)\n4. `Network` 탭으로 이동해 `webExchangeCdkeyRisk`를 검색하세요\n5. 해당 요청을 열고 `Headers`에서 `Request Headers`를 확인하세요\n6. `Cookie` 값을 전체 문자열로 복사한 뒤 `/account` -> '계정 설정 (Cookie)'에 붙여넣으세요",
   account_CookieSetSuccess: "쿠키가 <z>에 연결되었습니다!",
   account_CookieSetFailed: "쿠키 설정 실패",
   account_CookieSetFailedDesc: "쿠키가 올바른지 확인하세요",

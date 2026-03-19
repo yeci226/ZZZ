@@ -88,7 +88,7 @@ const langs = {
   account_NoAccount: "尚未设置帐号",
   account_HowToSetUpAccount: "❓ 如何设定帐号",
   account_HowToSetUpAccountDesc:
-    "1. 到 [绝区零官方兑换页面](https://zenless.hoyoverse.com/redemption) 登录\n2. 按下 `F12` 或 `Ctrl + Shift + I` 打开开发者工具并切换至 `Network` (网络) 分页\n3. 输入 `ZZZGIFT` 并点击一次兑换码兑换\n4. 在搜索框搜索 `webExchangeCdkeyRisk` 并点击该请求\n5. 在 `Request Headers` (请求标头) 里面找到 `Cookie` 字段并**整串复制**\n6. 使用 `/account` 指令选择『设定帐号 (Cookie)』并贴入",
+    "1. 点击此连结进入兑换页面并先登录：https://zenless.hoyoverse.com/redemption?code=abc\n2. 按下 `F12` 或 `Ctrl + Shift + I` 打开开发者工具\n3. 在页面上尝试兑换一次（兑换码可无效）\n4. 切换到 `Network` 分页并搜索 `webExchangeCdkeyRisk`\n5. 点进该请求后，在 `Headers` 中找到 `Request Headers`\n6. 复制 `Cookie` 字段的完整字符串，使用 `/account` 选择「设定帐号 (Cookie)」贴上",
   account_CookieSetSuccess: "Cookie 已绑定至 <z>！",
   account_CookieSetFailed: "Cookie 绑定失败",
   account_CookieSetFailedDesc: "请确认 Cookie 是否正确",

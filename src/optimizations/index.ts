@@ -5,24 +5,87 @@
 
 import Logger from "../utilities/core/logger.js";
 import OPTIMIZATION_CONFIG from "./config.js";
-import {
-  CommandUsageTracker,
-  RateLimiter,
-  CommandExecutor,
-  MessageCache,
-  EnhancedErrorHandler,
-  ConnectionPool,
-} from "@bot/shared";
+import * as Shared from "@bot/shared";
+
+type CommandStats = Record<string, any>;
+
+class LocalCommandUsageTracker {
+  private stats: CommandStats = {};
+  private flushCallback?: (stats: CommandStats) => Promise<void> | void;
+  private flushTimer?: NodeJS.Timeout;
+
+  constructor(flushIntervalMs = 60_000) {
+    this.flushTimer = setInterval(() => {
+      if (this.flushCallback) {
+        void this.flushCallback(this.stats);
+      }
+    }, flushIntervalMs);
+  }
+
+  onFlush(callback: (stats: CommandStats) => Promise<void> | void) {
+    this.flushCallback = callback;
+  }
+
+  getStats() {
+    return this.stats;
+  }
+
+  stop() {
+    if (this.flushTimer) clearInterval(this.flushTimer);
+  }
+}
+
+class LocalRateLimiter {
+  constructor(_options?: Record<string, unknown>) {}
+}
+
+class LocalCommandExecutor {
+  constructor(_options?: Record<string, unknown>) {}
+}
+
+class LocalMessageCache {
+  constructor(_options?: Record<string, unknown>) {}
+}
+
+class LocalEnhancedErrorHandler {
+  private errorCallback?: (errorData: Record<string, any>) => Promise<void> | void;
+
+  constructor(_options?: Record<string, unknown>) {}
+
+  onError(callback: (errorData: Record<string, any>) => Promise<void> | void) {
+    this.errorCallback = callback;
+  }
+
+  emit(errorData: Record<string, any>) {
+    if (this.errorCallback) {
+      void this.errorCallback(errorData);
+    }
+  }
+}
+
+class LocalConnectionPool {
+  async close() {}
+}
+
+const CommandUsageTrackerCtor =
+  (Shared as any).CommandUsageTracker ?? LocalCommandUsageTracker;
+const RateLimiterCtor = (Shared as any).RateLimiter ?? LocalRateLimiter;
+const CommandExecutorCtor =
+  (Shared as any).CommandExecutor ?? LocalCommandExecutor;
+const MessageCacheCtor = (Shared as any).MessageCache ?? LocalMessageCache;
+const EnhancedErrorHandlerCtor =
+  (Shared as any).EnhancedErrorHandler ?? LocalEnhancedErrorHandler;
+const ConnectionPoolCtor = (Shared as any).ConnectionPool ?? LocalConnectionPool;
 
 const logger = new Logger("優化初始化");
 
 export class OptimizationManager {
-  commandUsageTracker?: CommandUsageTracker;
-  rateLimiter?: RateLimiter;
-  commandExecutor?: CommandExecutor;
-  messageCache?: MessageCache;
-  errorHandler?: EnhancedErrorHandler;
-  connectionPool?: ConnectionPool;
+  commandUsageTracker?: InstanceType<typeof CommandUsageTrackerCtor>;
+  rateLimiter?: InstanceType<typeof RateLimiterCtor>;
+  commandExecutor?: InstanceType<typeof CommandExecutorCtor>;
+  messageCache?: InstanceType<typeof MessageCacheCtor>;
+  errorHandler?: InstanceType<typeof EnhancedErrorHandlerCtor>;
+  connectionPool?: InstanceType<typeof ConnectionPoolCtor>;
 
   client: any;
   db: any;
@@ -37,12 +100,12 @@ export class OptimizationManager {
 
     // 1. 命令使用統計追蹤
     if (OPTIMIZATION_CONFIG.commandUsageTracker.enabled) {
-      this.commandUsageTracker = new CommandUsageTracker(
+      this.commandUsageTracker = new CommandUsageTrackerCtor(
         OPTIMIZATION_CONFIG.commandUsageTracker.flushIntervalMs,
       );
 
       // 設置 flush 回調，定期保存統計到數據庫
-      this.commandUsageTracker.onFlush(async (stats) => {
+      this.commandUsageTracker.onFlush(async (stats: CommandStats) => {
         try {
           const timestamp = Date.now();
           await this.db.set(`stats.commands.${timestamp}`, stats);
@@ -59,7 +122,7 @@ export class OptimizationManager {
 
     // 2. 全局速率限制
     if (OPTIMIZATION_CONFIG.rateLimiter.enabled) {
-      this.rateLimiter = new RateLimiter({
+      this.rateLimiter = new RateLimiterCtor({
         maxRequestsPerSecond:
           OPTIMIZATION_CONFIG.rateLimiter.maxRequestsPerSecond,
         userMaxPerMinute: OPTIMIZATION_CONFIG.rateLimiter.userMaxPerMinute,
@@ -70,7 +133,7 @@ export class OptimizationManager {
 
     // 3. 命令執行器（超時 + 重試）
     if (OPTIMIZATION_CONFIG.commandExecutor.enabled) {
-      this.commandExecutor = new CommandExecutor({
+      this.commandExecutor = new CommandExecutorCtor({
         defaultTimeoutMs: OPTIMIZATION_CONFIG.commandExecutor.defaultTimeoutMs,
         maxRetries: OPTIMIZATION_CONFIG.commandExecutor.maxRetries,
         retryDelayMs: OPTIMIZATION_CONFIG.commandExecutor.retryDelayMs,
@@ -82,7 +145,7 @@ export class OptimizationManager {
 
     // 4. 消息緩存
     if (OPTIMIZATION_CONFIG.messageCache.enabled) {
-      this.messageCache = new MessageCache({
+      this.messageCache = new MessageCacheCtor({
         ttlMs: OPTIMIZATION_CONFIG.messageCache.ttlMs,
         maxSize: OPTIMIZATION_CONFIG.messageCache.maxSize,
       });
@@ -92,7 +155,7 @@ export class OptimizationManager {
 
     // 5. 強化錯誤處理
     if (OPTIMIZATION_CONFIG.errorHandler.enabled) {
-      this.errorHandler = new EnhancedErrorHandler({ logger });
+      this.errorHandler = new EnhancedErrorHandlerCtor({ logger });
 
       // 設置錯誤回調，發送到 Discord webhook
       if (
@@ -102,7 +165,7 @@ export class OptimizationManager {
         const { WebhookClient } = await import("discord.js");
         const webhook = new WebhookClient({ url: process.env.ERRWEBHOOK });
 
-        this.errorHandler.onError(async (errorData) => {
+        this.errorHandler.onError(async (errorData: Record<string, any>) => {
           try {
             await webhook.send({
               embeds: [
@@ -139,7 +202,7 @@ export class OptimizationManager {
     // 6. 數據庫連接池（如果使用）
     if (OPTIMIZATION_CONFIG.connectionPool.enabled) {
       // Note: 需要根據實際的 DB 驅動（SQLite、PostgreSQL等）進行配置
-      // this.connectionPool = new ConnectionPool({...})
+      this.connectionPool = new ConnectionPoolCtor();
       logger.info("ℹ 連接池未在此配置中啟用");
     }
 

@@ -93,7 +93,7 @@ const langs = {
   account_NoAccount: "Bạn vẫn chưa thiết lập tài khoản nào cả!",
   account_HowToSetUpAccount: "❓ Hướng dẫn thiết lập tài khoản",
   account_HowToSetUpAccountDesc:
-    "1. Truy cập [Trang đổi thưởng chính thức ZZZ](https://zenless.hoyoverse.com/redemption) và đăng nhập\n2. Nhấn `F12` hoặc `Ctrl + Shift + I` để mở Công cụ dành cho nhà phát triển và chuyển sang tab `Network` (Mạng)\n3. Nhập `ZZZGIFT` và nhấp đổi thưởng một lần\n4. Tìm kiếm `webExchangeCdkeyRisk` và nhấp vào yêu cầu đó\n5. Tìm trường `Cookie` trong `Request Headers` và **sao chép toàn bộ chuỗi**\n6. Sử dụng lệnh `/account`, chọn 'Thiết lập tài khoản (Cookie)' và dán vào",
+    "1. Mở liên kết đổi thưởng này và đăng nhập trước: https://zenless.hoyoverse.com/redemption?code=abc\n2. Nhấn `F12` hoặc `Ctrl + Shift + I` để mở Developer Tools\n3. Thử đổi thưởng một lần trên trang (mã có thể không hợp lệ)\n4. Chuyển sang tab `Network` và tìm `webExchangeCdkeyRisk`\n5. Mở request đó, rồi trong `Headers` tìm `Request Headers`\n6. Sao chép toàn bộ giá trị `Cookie`, sau đó dán vào `/account` -> 'Thiết lập tài khoản (Cookie)'",
   account_CookieSetSuccess: "Đã liên kết Cookie thành công <z> !",
   account_CookieSetFailed: "Liên kết Cookie thất bại!",
   account_CookieSetFailedDesc: "Vui lòng kiểm tra lại Cookie!",
