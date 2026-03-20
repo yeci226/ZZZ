@@ -196,6 +196,7 @@ class AutoRedeemSystem {
   async processAccount(account: any, codes: any[], context: any) {
     const { userId, userLang, tr, accountIndex, accountNickname } = context;
 
+    const displayNickname = accountNickname || String(account.uid);
     const isCookieExpired = await this.db.get(`${account.uid}.cookieExpired`);
     if (isCookieExpired) {
       const shouldRetry = await this.shouldRetryCookieRefresh(account.uid);
@@ -205,7 +206,7 @@ class AutoRedeemSystem {
         );
         return {
           uid: account.uid,
-          nickname: accountNickname,
+          nickname: displayNickname,
           description: "",
           hasSuccess: false,
           hasResults: false,
@@ -225,9 +226,12 @@ class AutoRedeemSystem {
       );
 
       if (!refreshResult.success) {
+        this.logger.warn(
+          `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 刷新失敗，跳過本次兌換`,
+        );
         return {
           uid: account.uid,
-          nickname: accountNickname,
+          nickname: displayNickname,
           description: "",
           hasSuccess: false,
           hasResults: false,
@@ -239,7 +243,7 @@ class AutoRedeemSystem {
       if (!refreshedAccounts?.[accountIndex]) {
         return {
           uid: account.uid,
-          nickname: accountNickname,
+          nickname: displayNickname,
           description: "",
           hasSuccess: false,
           hasResults: false,
@@ -267,7 +271,7 @@ class AutoRedeemSystem {
     if (!unRedeemedCodes || unRedeemedCodes.length === 0) {
       return {
         uid: account.uid,
-        nickname: accountNickname,
+        nickname: displayNickname,
         description: `ℹ️ ${tr("redeem_Already")}: ${codes.length} 個禮包碼已全部兌換`,
         hasSuccess: false,
       };
@@ -312,7 +316,7 @@ class AutoRedeemSystem {
           await this.db.set(`${account.uid}.cookieExpired`, true);
           return {
             uid: account.uid,
-            nickname: accountNickname,
+            nickname: displayNickname,
             description: "",
             hasSuccess: false,
             hasResults: false,
@@ -326,7 +330,7 @@ class AutoRedeemSystem {
           await this.db.delete(`${account.uid}.cookieExpired`);
           return {
             uid: account.uid,
-            nickname: accountNickname,
+            nickname: displayNickname,
             description: "",
             hasSuccess: false,
             hasResults: false,
@@ -373,7 +377,7 @@ class AutoRedeemSystem {
 
     return {
       uid: account.uid,
-      nickname: accountNickname || account.nickname || String(account.uid),
+      nickname: displayNickname,
       description,
       hasSuccess: stats.success > 0,
       hasResults,
