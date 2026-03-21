@@ -82,11 +82,7 @@ class AutoRedeemSystem {
     await this.db.set(`${uid}.lastCookieRefreshAttempt`, Date.now());
   }
 
-  async processCode(
-    code: any,
-    account: any,
-    userId: string,
-  ) {
+  async processCode(code: any, account: any, userId: string) {
     try {
       // 根據 UID 判斷 Region ( nap_global )
       const uid = account.uid;
@@ -184,7 +180,6 @@ class AutoRedeemSystem {
         stats.failed++;
       }
     });
-    
 
     return {
       description: description.join("\n"),
@@ -365,9 +360,7 @@ class AutoRedeemSystem {
       }
     }
 
-    await this.db.set(`${account.uid}.redeemedCodes`, [
-      ...redeemedCodeSet,
-    ]);
+    await this.db.set(`${account.uid}.redeemedCodes`, [...redeemedCodeSet]);
 
     const { description, stats, hasResults } = this.formatResults(results, tr);
 

@@ -182,6 +182,16 @@ export class AutoDailyService {
     for (let i = 0; i < accounts.length; i++) {
       const account = accounts[i];
 
+      // Skip accounts that have been marked invalid (login/cookie failure).
+      // They will be un-marked automatically when a successful API call goes through.
+      if (account.invalid === true) {
+        this.logger.info(
+          `[用戶 ${userId}] [帳號 #${i}] UID ${account.uid} 已標記為無效，跳過簽到`,
+        );
+        stats.skipped++;
+        continue;
+      }
+
       stats.total++;
       try {
         const zzz = new ZenlessZoneZero({
@@ -244,9 +254,14 @@ export class AutoDailyService {
         // Track indices of accounts to mark as invalid
         if (
           normalizedErrorMessage.includes("login") ||
+          normalizedErrorMessage.includes("尚未登入") ||
+          normalizedErrorMessage.includes("尚未登录") ||
           normalizedErrorMessage.includes("cookie") ||
           normalizedErrorMessage.includes("token") ||
           normalizedErrorMessage.includes("expired") ||
+          (normalizedErrorMessage.includes("uid") &&
+            normalizedErrorMessage.includes("invalid")) ||
+          normalizedErrorMessage.includes("given uid") ||
           errorCode === -100 ||
           errorCode === -1071
         ) {
