@@ -132,17 +132,9 @@ async function handleSelectCharacter(
       const requestEndTime = Date.now();
       const drawStartTime = Date.now();
       let selectedCharacter = null;
-      let wikiId = "";
-      let characterNameFromRecord = "";
 
       if (characterId !== "main") {
-        const foundChar = characters.find(
-          (c: any) => String(c.id) === characterId,
-        );
-        characterNameFromRecord =
-          (foundChar as any)?.name_mi18n || (foundChar as any)?.name || "";
-
-        // Manually fetch to include need_wiki=true
+        // Manually fetch character details
         const record = zzz.record as any;
         const rawRes = await record.request
           .setQueryParams({
@@ -150,7 +142,6 @@ async function handleSelectCharacter(
             role_id: record.uid,
             lang: record.lang,
             "id_list[]": characterId,
-            need_wiki: "true",
           })
           .send(
             "https://sg-public-api.hoyolab.com/event/game_record_zzz/api/zzz/avatar/info",
@@ -159,12 +150,6 @@ async function handleSelectCharacter(
         if (rawRes.response.retcode === 0 && rawRes.response.data) {
           const resData = rawRes.response.data as any;
           selectedCharacter = resData.avatar_list?.[0];
-
-          if (resData.avatar_wiki && resData.avatar_wiki[characterId]) {
-            const wikiUrl = resData.avatar_wiki[characterId];
-            const match = wikiUrl.match(/\/entry\/(\d+)/);
-            if (match) wikiId = match[1];
-          }
         }
       }
 
@@ -187,10 +172,6 @@ async function handleSelectCharacter(
           userLocale,
           String(zzz.uid || ""),
           selectedCharacter,
-          wikiId,
-          characterNameFromRecord ||
-            (selectedCharacter as any)?.name_mi18n ||
-            (selectedCharacter as any)?.name,
         );
       }
 

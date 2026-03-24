@@ -417,91 +417,18 @@ export async function searchWikiEntry(keyword: string) {
   return null;
 }
 
-export async function getCharacterData(
-  characterId: string | number,
-  wikiId?: string,
-  characterName?: string,
-) {
+export async function getCharacterData(characterId: string | number) {
   const id = String(characterId || "");
   if (!id) throw new Error("Character ID is required");
 
-  let resolvedWikiId = wikiId;
-
-  // If wikiId is missing OR points to an aggregate page (which is often generic),
-  // try to resolve by name which is much more specific.
-  if (characterName && (!resolvedWikiId || resolvedWikiId.length < 3)) {
-    const searchedId = await searchWikiEntry(characterName);
-    if (searchedId) {
-      resolvedWikiId = searchedId;
-      // console.log(`[Wiki Debug] Resolved ${characterName} -> ${resolvedWikiId}`);
-    }
-  }
-
   try {
-    if (resolvedWikiId) {
-      const response = await axios
-        .get(
-          `https://sg-wiki-api-static.hoyolab.com/hoyowiki/zzz/wapi/entry_page?entry_page_id=${resolvedWikiId}`,
-          {
-            headers: {
-              "x-rpc-wiki_app": "zzz",
-              "x-rpc-language": "zh-tw",
-            },
-          },
-        )
-        .then((res) => res.data);
-
-      if (response.retcode === 0 && response.data?.page) {
-        const page = response.data.page;
-        let mindscapeUrls: string[] = [];
-        let paintingUrls: string[] = [];
-
-        // Robust parsing: search all modules for components
-        page.modules?.forEach((module: any) => {
-          module.components?.forEach((component: any) => {
-            if (component.component_id === "summaryList") {
-              try {
-                const msData = JSON.parse(component.data);
-                if (msData.img_list) {
-                  mindscapeUrls = msData.img_list.map(
-                    (img: any) => img.icon_url,
-                  );
-                }
-              } catch (e) {}
-            } else if (component.component_id === "gallery_character") {
-              try {
-                const gData = JSON.parse(component.data);
-                if (gData.list) {
-                  paintingUrls = gData.list.map((p: any) => ({
-                    key: p.key,
-                    img: p.img,
-                  }));
-                }
-              } catch (e) {}
-            }
-          });
-        });
-
-        return {
-          id: id,
-          name: page.name,
-          iconUrl: page.icon_url,
-          portraitUrl: (paintingUrls[0] as any)?.img || page.header_img_url,
-          header_img_url: page.header_img_url, // Add header_img_url explicitly here
-          mindscapes: mindscapeUrls,
-          paintings: paintingUrls,
-          wikiId: wikiId,
-        };
-      } else {
-        // console.log(`[Wiki Debug] Wiki API failed for ${wikiId}:`, response);
-      }
-    }
-
-    // Fallback to official CDN for basic data
     return {
       id: id,
       iconUrl: `https://act-webstatic.hoyoverse.com/game_record/zzz/role_square_avatar/role_square_avatar_${id}.png`,
       portraitUrl: `https://act-webstatic.hoyoverse.com/game_record/zzz/role_vertical_painting/role_vertical_painting_${id}.png`,
+      header_img_url: undefined,
+      mindscapes: [] as string[],
+      paintings: [] as Array<{ key: string; img: string }>,
     };
   } catch (error) {
     console.log(error);
@@ -885,7 +812,9 @@ export async function autoRefreshCookie(
     const refreshResult = await updateCookie(userId, accountIndex, cookie);
 
     if ((refreshResult as any)?.success) {
-      logger.success(`[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 刷新成功`);
+      logger.success(
+        `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 刷新成功`,
+      );
       if (uid) {
         await client.db.delete(`${uid}.cookieExpired`);
         await client.db.delete(`${uid}.needsCookieUpdate`);
