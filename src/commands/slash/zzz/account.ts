@@ -164,12 +164,30 @@ export default {
             .addComponents(
               new ActionRowBuilder<TextInputBuilder>().addComponents(
                 new TextInputBuilder()
-                  .setCustomId("account_SetUserCookieModalField")
-                  .setLabel(tr("account_SetUserCookieDesc"))
-                  .setPlaceholder(
-                    "ltoken_v2=...; ltuid_v2=...; cookie_token_v2=...; account_id_v2=...",
-                  )
-                  .setStyle(TextInputStyle.Paragraph)
+                  .setCustomId("ltoken_v2")
+                  .setLabel("ltoken_v2")
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true),
+              ),
+              new ActionRowBuilder<TextInputBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId("ltuid_v2")
+                  .setLabel("ltuid_v2")
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true),
+              ),
+              new ActionRowBuilder<TextInputBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId("cookie_token_v2")
+                  .setLabel("cookie_token_v2")
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true),
+              ),
+              new ActionRowBuilder<TextInputBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId("account_mid_v2")
+                  .setLabel("account_mid_v2")
+                  .setStyle(TextInputStyle.Short)
                   .setRequired(true),
               ),
             ),

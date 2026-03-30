@@ -14,8 +14,8 @@ import {
 import { QuickDB } from "quick.db";
 
 const timeChoices = Array.from({ length: 24 }, (_, i) => ({
-  name: i + 1 < 10 ? `0${i + 1}` : `${i + 1}`,
-  value: `${i + 1}`,
+  name: i < 10 ? `0${i}` : `${i}`,
+  value: `${i}`,
 }));
 
 export default {

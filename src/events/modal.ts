@@ -413,26 +413,13 @@ async function handleCookieSet(
   customId: string,
   fields: any,
 ) {
-  const accountIndex = customId.split("-")[1];
-  const ltokenRaw = fields.getTextInputValue("ltoken");
-  const ltuidRaw = fields.getTextInputValue("ltuid");
-  const cookieTokenRaw = fields.getTextInputValue("cookieToken");
-  const accountMidRaw = fields.getTextInputValue("accountMid");
+  const ltoken_v2 = fields.getTextInputValue("ltoken_v2") || "";
+  const ltuid_v2 = fields.getTextInputValue("ltuid_v2") || "";
+  const cookie_token_v2 = fields.getTextInputValue("cookie_token_v2") || "";
+  const account_mid_v2 = fields.getTextInputValue("account_mid_v2") || "";
 
-  const isV2 = ltokenRaw.startsWith("v2_");
-
-  const ltoken = ltokenRaw
-    ? `${isV2 ? "ltoken_v2" : "ltoken"}=${ltokenRaw}; `
-    : "";
-  const ltuid = ltuidRaw ? `${isV2 ? "ltuid_v2" : "ltuid"}=${ltuidRaw}; ` : "";
-  const cookieToken = cookieTokenRaw
-    ? `${cookieTokenRaw.startsWith("v2_") ? "cookie_token_v2" : "cookie_token"}=${cookieTokenRaw}; `
-    : "";
-  const accountMid = accountMidRaw ? `account_mid_v2=${accountMidRaw}; ` : "";
-  const ltmid = isV2 && accountMidRaw ? `ltmid_v2=${accountMidRaw}; ` : "";
-
-  const cookie = ltoken + ltuid + cookieToken + accountMid + ltmid;
-  const account = (await client.db.get(`${interaction.user.id}.account`)) ?? "";
+  const cookie = `ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}; cookie_token_v2=${cookie_token_v2}; account_mid_v2=${account_mid_v2}; account_id_v2=${account_mid_v2}; ltmid_v2=${account_mid_v2};`;
+  const account = (await (client as any).db.get(`${interaction.user.id}.account`)) ?? "";
 
   try {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -461,7 +448,12 @@ async function handleSetUserCookieModal(
   tr: any,
   fields: any,
 ) {
-  const cookie = fields.getTextInputValue("account_SetUserCookieModalField");
+  const ltoken_v2 = fields.getTextInputValue("ltoken_v2") || "";
+  const ltuid_v2 = fields.getTextInputValue("ltuid_v2") || "";
+  const cookie_token_v2 = fields.getTextInputValue("cookie_token_v2") || "";
+  const account_mid_v2 = fields.getTextInputValue("account_mid_v2") || "";
+
+  const cookie = `ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}; cookie_token_v2=${cookie_token_v2}; account_mid_v2=${account_mid_v2}; account_id_v2=${account_mid_v2}; ltmid_v2=${account_mid_v2};`;
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -488,25 +480,14 @@ async function handleQuickLink(
   tr: any,
   fields: any,
 ) {
-  const ltokenRaw = fields.getTextInputValue("ltoken");
-  const ltuidRaw = fields.getTextInputValue("ltuid");
-  const cookieTokenRaw = fields.getTextInputValue("cookieToken");
-  const accountMidRaw = fields.getTextInputValue("accountMid");
+  const ltoken_v2 = fields.getTextInputValue("ltoken_v2") || "";
+  const ltuid_v2 = fields.getTextInputValue("ltuid_v2") || "";
+  const cookie_token_v2 = fields.getTextInputValue("cookie_token_v2") || "";
+  const account_mid_v2 = fields.getTextInputValue("account_mid_v2") || "";
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const isV2 = ltokenRaw.startsWith("v2_");
-  const ltoken = ltokenRaw
-    ? `${isV2 ? "ltoken_v2" : "ltoken"}=${ltokenRaw}; `
-    : "";
-  const ltuid = ltuidRaw ? `${isV2 ? "ltuid_v2" : "ltuid"}=${ltuidRaw}; ` : "";
-  const cookieToken = cookieTokenRaw
-    ? `${cookieTokenRaw.startsWith("v2_") ? "cookie_token_v2" : "cookie_token"}=${cookieTokenRaw}; `
-    : "";
-  const accountMid = accountMidRaw ? `account_mid_v2=${accountMidRaw}; ` : "";
-  const ltmid = isV2 && accountMidRaw ? `ltmid_v2=${accountMidRaw}; ` : "";
-
-  const cookie = ltoken + ltuid + cookieToken + accountMid + ltmid;
+  const cookie = `ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}; cookie_token_v2=${cookie_token_v2}; account_mid_v2=${account_mid_v2}; account_id_v2=${account_mid_v2}; ltmid_v2=${account_mid_v2};`;
 
   try {
     const roles = await getAllGameRoles(cookie);

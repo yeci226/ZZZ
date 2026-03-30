@@ -87,11 +87,11 @@ const langs = {
   account_SetUserID: "Set UID (Manual)",
   account_SetUserIDDesc: "UID in the game",
   account_SetUserCookie: "Set Account (Cookie)",
-  account_SetUserCookieDesc: "Please enter the complete Cookie string",
+  account_SetUserCookieDesc: "Please fill in the fields:",
   account_NoAccount: "Account has not been set yet",
   account_HowToSetUpAccount: "❓ How to set up an account",
   account_HowToSetUpAccountDesc:
-    "1. Open this redemption link and log in first: [https://zenless.hoyoverse.com/redemption?code=abc](https://zenless.hoyoverse.com/redemption?code=abc)\n2. Press `F12` or `Ctrl + Shift + I` to open Developer Tools\n3. Attempt to redeem once on the page (the code can be invalid)\n4. Go to the `Network` tab and search for `webExchangeCdkeyRisk`\n5. Open that request, then in `Headers` scroll to `Request Headers`\n6. Copy the full `Cookie` value and paste it via `/account` -> 'Set Account (Cookie)'",
+    "### 🔥 How to get Cookie\n1. Open [Hoyolab](https://www.hoyolab.com/) and log in\n2. Press `F12` or `Ctrl + Shift + I` to open Developer Tools\n3. Switch to `Application` select `Cookies` → `https://www.hoyolab.com` on the left\n4. Find the following fields and copy their values: `ltoken_v2`, `ltuid_v2`, `cookie_token_v2`, `account_mid_v2`\n5. Fill them into the respective fields!",
   account_CookieSetSuccess: "Cookie has been bound to <z>!",
   account_CookieSetFailed: "Cookie binding failed",
   account_CookieSetFailedDesc: "Please confirm whether the Cookie is correct",

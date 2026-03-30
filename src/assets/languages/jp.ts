@@ -85,11 +85,11 @@ const langs = {
   account_SetUserID: "UIDを設定 (手動)",
   account_SetUserIDDesc: "ゲーム内のUID",
   account_SetUserCookie: "アカウント設定 (Cookie)",
-  account_SetUserCookieDesc: "完全な Cookie 文字列を入力してください",
+  account_SetUserCookieDesc: "各フィールドに入력してください：",
   account_NoAccount: "アカウントが設定されていません",
   account_HowToSetUpAccount: "❓ アカウントの設定方法",
   account_HowToSetUpAccountDesc:
-    "1. この交換ページを開いて先にログインします：https://zenless.hoyoverse.com/redemption?code=abc\n2. `F12` または `Ctrl + Shift + I` を押して開発者ツールを開きます\n3. ページ上で1回交換を試します（コードは無効でも可）\n4. `Network` タブに移動し、`webExchangeCdkeyRisk` を検索します\n5. そのリクエストを開き、`Headers` の `Request Headers` を確認します\n6. `Cookie` の値を完全な文字列でコピーし、`/account` の「アカウント設定 (Cookie)」に貼り付けます",
+    "### 🔥 Cookieの取得方法\n1. [Hoyolab](https://www.hoyolab.com/) を開き、ログインします\n2. `F12` または `Ctrl + Shift + I` を押してデベロッパーツールを開きます\n3. `Application` タブを選択し、左側の `Cookies` → `https://www.hoyolab.com` を選択します\n4. 次のフィールドを見つけて値をコピーします：`ltoken_v2`、`ltuid_v2`、`cookie_token_v2`、`account_mid_v2`\n5. それらを各フィールドに入力してください！",
   account_CookieSetSuccess: "クッキーが <z> にリンクされました！",
   account_CookieSetFailed: "クッキーのリンクに失敗しました",
   account_CookieSetFailedDesc: "クッキーが正しいか確認してください",

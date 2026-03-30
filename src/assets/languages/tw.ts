@@ -84,11 +84,11 @@ const langs = {
   account_SetUserID: "設定 UID (手動)",
   account_SetUserIDDesc: "遊戲內的 UID",
   account_SetUserCookie: "設定帳號 (Cookie)",
-  account_SetUserCookieDesc: "請輸入完整的 Cookie 字串",
+  account_SetUserCookieDesc: "請填入各個欄位：",
   account_NoAccount: "尚未設置帳號",
   account_HowToSetUpAccount: "❓ 如何設定帳號",
   account_HowToSetUpAccountDesc:
-    "1. 點擊此連結進入兌換頁面並先登入：https://zenless.hoyoverse.com/redemption?code=abc\n2. 按下 `F12` 或 `Ctrl + Shift + I` 開啟開發者工具\n3. 在頁面上嘗試兌換一次（代碼可無效）\n4. 切換到 `Network` 分頁並搜尋 `webExchangeCdkeyRisk`\n5. 點進該請求後，在 `Headers` 往下找到 `Request Headers`\n6. 複製 `Cookie` 欄位的完整字串，使用 `/account` 選「設定帳號 (Cookie)」貼上",
+    "### 🔥 如何取得 Cookie\n1. 開啟 [Hoyolab](https://www.hoyolab.com/) 網頁並登入帳號\n2. 按下 `F12` 或 `Ctrl + Shift + I` 打開開發者工具\n3. 切換至 `Application` 選擇左邊的 `Cookies` → `https://www.hoyolab.com`\n4. 找到以下欄位並複製其值：`ltoken_v2`、`ltuid_v2`、`cookie_token_v2`、`account_mid_v2`\n5. 將它們填入各個欄位即可！",
   account_CookieSetSuccess: "Cookie 已綁定至 <z>！",
   account_CookieSetFailed: "Cookie 綁定失敗",
   account_CookieSetFailedDesc: "請確認 Cookie 是否正確",

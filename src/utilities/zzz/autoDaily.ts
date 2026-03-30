@@ -118,7 +118,6 @@ export class AutoDailyService {
         const config = dailyData[userId];
         let scheduledHour = Number(config.time ?? 13);
         if (!Number.isFinite(scheduledHour)) scheduledHour = 13;
-        if (scheduledHour === 24) scheduledHour = 0;
         if (scheduledHour < 0 || scheduledHour > 23) scheduledHour = 13;
 
         // Catch-up behavior: if the bot missed the exact hour (restart/offline),

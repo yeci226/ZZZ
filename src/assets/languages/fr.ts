@@ -87,11 +87,11 @@ const langs = {
   account_SetUserID: "Définir l'UID (Manuel)",
   account_SetUserIDDesc: "Définir dans le jeu UID",
   account_SetUserCookie: "Paramètres du compte (Cookie)",
-  account_SetUserCookieDesc: "Veuillez entrer la chaîne Cookie complète",
+  account_SetUserCookieDesc: "Veuillez remplir les champs :",
   account_NoAccount: "Compte non connecté.",
   account_HowToSetUpAccount: "❓ Comment configurer le compte.",
   account_HowToSetUpAccountDesc:
-    "1. Ouvrez ce lien de rachat et connectez-vous d'abord : https://zenless.hoyoverse.com/redemption?code=abc\n2. Appuyez sur `F12` ou `Ctrl + Shift + I` pour ouvrir les outils de développement\n3. Essayez d'échanger un code une fois sur la page (le code peut être invalide)\n4. Allez dans l'onglet `Network` et recherchez `webExchangeCdkeyRisk`\n5. Ouvrez cette requête puis, dans `Headers`, trouvez `Request Headers`\n6. Copiez la valeur complète de `Cookie`, puis collez-la via `/account` -> 'Paramètres du compte (Cookie)'",
+    "### 🔥 Comment obtenir votre Cookie\n1. Ouvrez [Hoyolab](https://www.hoyolab.com/) et connectez-vous\n2. Appuyez sur `F12` ou `Ctrl + Shift + I` pour ouvrir les outils de développement\n3. Allez dans `Application` → `Cookies` → `https://www.hoyolab.com` sur la gauche\n4. Trouvez les champs suivants et copiez leurs valeurs : `ltoken_v2`, `ltuid_v2`, `cookie_token_v2`, `account_mid_v2`\n5. Remplissez-les dans les champs respectifs !",
   account_CookieSetSuccess: "Le Cookie est lié à <z>!",
   account_CookieSetFailed: "Cookie linked failed.",
   account_CookieSetFailedDesc: "Veuillez vérifier si le cookie est correct.",

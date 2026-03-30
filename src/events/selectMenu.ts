@@ -338,28 +338,16 @@ async function handleAccountAction(
           ),
       );
     } else if (type == "cookie") {
-      const userAccountCookie = accountData.cookie;
-      const cookieObject = {
-        ltoken: "",
-        ltuid: "",
-        cookieToken: "",
-        accountMid: "",
+      const userAccountCookie = accountData.cookie || "";
+      const parseCookie = (cookie: string, key: string) => {
+        const match = cookie.match(new RegExp(`${key}=([^;]+)`));
+        return match?.[1]?.trim() ?? "";
       };
 
-      const keyMap: Record<string, string> = {
-        ltoken_v2: "ltoken",
-        ltuid_v2: "ltuid",
-        cookie_token_v2: "cookieToken",
-        account_mid_v2: "accountMid",
-      };
-
-      userAccountCookie.split("; ").reduce((obj: any, cookie: any) => {
-        const [key, value] = cookie.split("=");
-        if (key in keyMap) {
-          obj[keyMap[key]] = value;
-        }
-        return obj;
-      }, cookieObject);
+      const ltokenV2 = parseCookie(userAccountCookie, "ltoken_v2");
+      const ltuidV2 = parseCookie(userAccountCookie, "ltuid_v2");
+      const cookieTokenV2 = parseCookie(userAccountCookie, "cookie_token_v2");
+      const accountMidV2 = parseCookie(userAccountCookie, "account_mid_v2");
 
       await interaction.showModal(
         new ModalBuilder()
@@ -368,47 +356,35 @@ async function handleAccountAction(
           .addComponents(
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
-                .setCustomId("ltoken")
-                .setLabel("ltoken_2")
-                .setPlaceholder("v2_...")
-                .setValue(cookieObject.ltoken || "")
+                .setCustomId("ltoken_v2")
+                .setLabel("ltoken_v2")
+                .setValue(ltokenV2)
                 .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(0)
-                .setMaxLength(1000),
+                .setRequired(true),
             ),
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
-                .setCustomId("ltuid")
+                .setCustomId("ltuid_v2")
                 .setLabel("ltuid_v2")
-                .setPlaceholder("30...")
-                .setValue(cookieObject.ltuid || "")
+                .setValue(ltuidV2)
                 .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(0)
-                .setMaxLength(30),
+                .setRequired(true),
             ),
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
-                .setCustomId("cookieToken")
+                .setCustomId("cookie_token_v2")
                 .setLabel("cookie_token_v2")
-                .setPlaceholder("v2_...")
-                .setValue(cookieObject.cookieToken || "")
+                .setValue(cookieTokenV2)
                 .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(0)
-                .setMaxLength(1000),
+                .setRequired(true),
             ),
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
-                .setCustomId("accountMid")
+                .setCustomId("account_mid_v2")
                 .setLabel("account_mid_v2")
-                .setPlaceholder("1lyq...")
-                .setValue(cookieObject.accountMid || "")
+                .setValue(accountMidV2)
                 .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(0)
-                .setMaxLength(30),
+                .setRequired(true),
             ) as any,
           ),
       );
@@ -439,28 +415,16 @@ async function handleAccountAction(
     return;
   } else if (interaction.customId == "account_SetUserCookieSelect") {
     const accountIndex = value;
-    const userAccountCookie = account[accountIndex].cookie;
-    const cookieObject = {
-      ltoken: "",
-      ltuid: "",
-      cookieToken: "",
-      accountMid: "",
+    const userAccountCookie = account[accountIndex].cookie || "";
+    const parseCookie = (cookie: string, key: string) => {
+        const match = cookie.match(new RegExp(`${key}=([^;]+)`));
+        return match?.[1]?.trim() ?? "";
     };
 
-    const keyMap: Record<string, string> = {
-      ltoken_v2: "ltoken",
-      ltuid_v2: "ltuid",
-      cookie_token_v2: "cookieToken",
-      account_mid_v2: "accountMid",
-    };
-
-    userAccountCookie.split("; ").reduce((obj: any, cookie: any) => {
-      const [key, value] = cookie.split("=");
-      if (key in keyMap) {
-        obj[keyMap[key]] = value;
-      }
-      return obj;
-    }, cookieObject);
+    const ltokenV2 = parseCookie(userAccountCookie, "ltoken_v2");
+    const ltuidV2 = parseCookie(userAccountCookie, "ltuid_v2");
+    const cookieTokenV2 = parseCookie(userAccountCookie, "cookie_token_v2");
+    const accountMidV2 = parseCookie(userAccountCookie, "account_mid_v2");
 
     await interaction.showModal(
       new ModalBuilder()
@@ -469,47 +433,35 @@ async function handleAccountAction(
         .addComponents(
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
-              .setCustomId("ltoken")
-              .setLabel("ltoken_2")
-              .setPlaceholder("v2_...")
-              .setValue(cookieObject.ltoken || "")
+              .setCustomId("ltoken_v2")
+              .setLabel("ltoken_v2")
+              .setValue(ltokenV2)
               .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMinLength(0)
-              .setMaxLength(1000),
+              .setRequired(true),
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
-              .setCustomId("ltuid")
+              .setCustomId("ltuid_v2")
               .setLabel("ltuid_v2")
-              .setPlaceholder("30...")
-              .setValue(cookieObject.ltuid || "")
+              .setValue(ltuidV2)
               .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMinLength(0)
-              .setMaxLength(30),
+              .setRequired(true),
           ) as any,
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
-              .setCustomId("cookieToken")
+              .setCustomId("cookie_token_v2")
               .setLabel("cookie_token_v2")
-              .setPlaceholder("v2_...")
-              .setValue(cookieObject.cookieToken || "")
+              .setValue(cookieTokenV2)
               .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMinLength(0)
-              .setMaxLength(1000),
+              .setRequired(true),
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
-              .setCustomId("accountMid")
+              .setCustomId("account_mid_v2")
               .setLabel("account_mid_v2")
-              .setPlaceholder("1lyq...")
-              .setValue(cookieObject.accountMid || "")
+              .setValue(accountMidV2)
               .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMinLength(0)
-              .setMaxLength(30),
+              .setRequired(true),
           ),
         ) as any,
     );
