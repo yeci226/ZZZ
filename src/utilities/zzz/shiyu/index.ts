@@ -72,6 +72,7 @@ export async function handleShiyuDraw(
         toI18nLang(interaction.locale) ||
         "en";
       const hadalData = await zzz.record.hadalInfo(schedule);
+      console.log(hadalData);
       if (!hadalData.hadal_info_v2.fourth_layer_detail)
         return failedReply(interaction, tr("NonData"), tr("NonDataDesc"));
 
@@ -85,6 +86,8 @@ export async function handleShiyuDraw(
       const floors = processShiyuData(hadalData, context);
       const staticAssets = await loadShiyuAssets();
       const dynamicImages = await loadDynamicImages(floors);
+
+      console.log(floors);
 
       const imageBuffer = await drawShiyuCanvas(
         floors,

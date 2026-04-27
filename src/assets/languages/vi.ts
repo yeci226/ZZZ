@@ -91,6 +91,10 @@ const langs = {
   account_SetUserCookie: "Thiết lập tài khoản (Cookie)",
   account_SetUserCookieDesc: "Vui lòng điền vào các trường:",
   account_NoAccount: "Bạn vẫn chưa thiết lập tài khoản nào cả!",
+  account_WebLoginTitle: "🌐 Liên kết qua đăng nhập Web",
+  account_WebLoginDesc:
+    "Nhấp vào nút bên dưới để mở trang đăng nhập web bảo mật. Bạn sẽ đăng nhập bằng Discord, sau đó nhập thông tin đăng nhập Hoyoverse.\n\nSau khi hoàn tất, các tài khoản Zenless Zone Zero của bạn sẽ được liên kết tự động.",
+  account_WebLoginButton: "Mở đăng nhập Web",
   account_HowToSetUpAccount: "❓ Hướng dẫn thiết lập tài khoản",
   account_HowToSetUpAccountDesc:
     "### 🔥 Cách lấy Cookie\n1. Mở [Hoyolab](https://www.hoyolab.com/) và đăng nhập\n2. Nhấn `F12` hoặc `Ctrl + Shift + I` để mở Công cụ dành cho nhà phát triển\n3. Chuyển sang `Application`, chọn `Cookies` → `https://www.hoyolab.com` ở bên trái\n4. Tìm các trường sau và sao chép giá trị của chúng: `ltoken_v2`, `ltuid_v2`, `cookie_token_v2`, `account_mid_v2`\n5. Điền chúng vào các trường tương ứng!",

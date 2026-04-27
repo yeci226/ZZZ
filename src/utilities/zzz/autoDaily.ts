@@ -10,7 +10,7 @@ import moment from "moment-timezone";
 import Logger from "../core/logger.js";
 import { createTranslator } from "../core/i18n.js";
 import { getUserCookie, getUserLang, getRandomColor } from "../utilities.js";
-import { getConfig } from "../core/config.js";
+import { getConfig, getVerifyBaseUrl } from "../core/config.js";
 
 const CONFIG = {
   TAIPEI_TIMEZONE: "Asia/Taipei",
@@ -321,11 +321,10 @@ export class AutoDailyService {
           .setColor("#E76161")
           .setTitle(`${res.uid} ${tr("daily_Failed")}`);
         if (res.error?.includes("10035")) {
-          const appConfig = getConfig();
           embed
             .setTitle(`${res.uid} 請先通過 Geetest 來繼續自動簽到！`)
             .setURL(
-              `${(appConfig as any).VERIFY_PUBLIC_URL || "https://verify.yeci.lol/zzz"}/verify?session=${Math.random().toString(36).substring(2, 12)}&userid=${userId}`,
+              `${getVerifyBaseUrl()}/verify?session=${Math.random().toString(36).substring(2, 12)}&userid=${userId}`,
             );
         } else {
           embed.setDescription(`Error: ${res.error}`);

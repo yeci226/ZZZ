@@ -43,13 +43,35 @@ const elementId: Record<string, string> = {
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (!interaction.isButton()) return;
   const buttonInteraction = interaction as ButtonInteraction;
-  await buttonInteraction.deferUpdate().catch(() => {});
   const { locale, customId } = buttonInteraction;
   const userLocale =
     (await getUserLang(buttonInteraction.user.id)) ||
     toI18nLang(locale) ||
     "en";
   const tr = createTranslator(userLocale);
+
+  // Buttons that show a modal must NOT call deferUpdate first
+  if (customId === "account_OpenEmailVerifyModal") {
+    const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = await import("discord.js");
+    const modal = new ModalBuilder()
+      .setCustomId("account_EmailVerifyModal")
+      .setTitle("輸入 Email 驗證碼")
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("emailCode")
+            .setLabel("Hoyoverse 寄給你的 6 位數驗證碼")
+            .setPlaceholder("123456")
+            .setMinLength(6)
+            .setMaxLength(6)
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true),
+        ),
+      );
+    return buttonInteraction.showModal(modal);
+  }
+
+  await buttonInteraction.deferUpdate().catch(() => {});
 
   if (customId == "profile_CharacterMindScape") {
     handleMindScapeChange(buttonInteraction, tr);

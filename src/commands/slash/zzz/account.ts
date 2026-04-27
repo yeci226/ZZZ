@@ -11,9 +11,13 @@ import {
   Client,
   LocalizationMap,
   AttachmentBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } from "discord.js";
 import path from "path";
 import { failedReply, getRandomColor } from "../../../utilities/utilities.js";
+import { getConfig } from "../../../utilities/core/config.js";
+import { drainPendingLogins } from "../../../utilities/webhookLogin.js";
 import { QuickDB } from "quick.db";
 
 export default {
@@ -48,13 +52,20 @@ export default {
             },
             value: "HowToSetUpAccount",
           },
-          // {
-          //   name: "① Quick Login (Recommended)",
-          //   name_localizations: {
-          //     "zh-TW": "① 快速登入 (推薦)",
-          //   },
-          //   value: "QuickLink",
-          // },
+          {
+            name: "① Quick Login (Recommended)",
+            name_localizations: {
+              "zh-TW": "① 快速登入 (推薦)",
+            },
+            value: "QuickLink",
+          },
+          {
+            name: "🌐 Bind via Web Login",
+            name_localizations: {
+              "zh-TW": "🌐 透過網頁登入綁定",
+            },
+            value: "BindAccountByWebLogin",
+          },
           {
             name: "② Set Account (Cookie)",
             name_localizations: {
@@ -95,6 +106,19 @@ export default {
   ) {
     const command = interaction.options.getString("options");
     const userId = interaction.user.id;
+
+    // Pull any pending web-logins from Supabase before we read the local DB.
+    // Fast no-op if Supabase is unconfigured or nothing is queued.
+    try {
+      const bound = await drainPendingLogins(userId);
+      if (bound.length > 0) {
+        console.log(`[/account] drain bound ${bound.length} account(s) for ${userId}`);
+      }
+    } catch (e: any) {
+      console.error(`[/account] drainPendingLogins threw: ${e?.message ?? e}`);
+      /* swallow — never block /account on a queue read */
+    }
+
     const accountKey = `${userId}.account`;
     const hasAccount = await db.has(accountKey);
 
@@ -135,6 +159,42 @@ export default {
             ),
         );
         return;
+      case "BindAccountByWebLogin": {
+        const cfg = getConfig();
+        const baseUrl = cfg.WEB_LOGIN_URL;
+        if (!baseUrl) {
+          return failedReply(
+            interaction,
+            "Web login is not configured on this bot. Please contact the administrator.",
+          );
+        }
+        // Map Discord interaction locale → web app locale (en | zh-TW)
+        const rawLocale = String(interaction.locale ?? "").toLowerCase();
+        const webLang =
+          rawLocale === "zh-tw" || rawLocale === "zh-cn" || rawLocale === "zh"
+            ? "zh-TW"
+            : "en";
+        const langQs = webLang === "en" ? "" : `&lang=${webLang}`;
+        const url = `${baseUrl.replace(/\/$/, "")}/login?botId=zzz${langQs}`;
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(getRandomColor() as any)
+              .setTitle(tr("account_WebLoginTitle"))
+              .setDescription(tr("account_WebLoginDesc")),
+          ],
+          components: [
+            new ActionRowBuilder<ButtonBuilder>().addComponents(
+              new ButtonBuilder()
+                .setStyle(ButtonStyle.Link)
+                .setLabel(tr("account_WebLoginButton"))
+                .setURL(url),
+            ),
+          ],
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
       case "HowToSetUpAccount":
         const imagePath = path.resolve(
           process.cwd(),

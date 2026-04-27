@@ -86,6 +86,10 @@ const langs = {
   account_SetUserCookie: "設定帳號 (Cookie)",
   account_SetUserCookieDesc: "請填入各個欄位：",
   account_NoAccount: "尚未設置帳號",
+  account_WebLoginTitle: "🌐 透過網頁登入綁定",
+  account_WebLoginDesc:
+    "點擊下方按鈕前往安全的網頁登入頁面，使用 Discord 驗證身分後輸入 Hoyoverse 帳密。\n\n完成後你的《絕區零》帳號會自動綁定到此 Discord 帳號。",
+  account_WebLoginButton: "開啟網頁登入",
   account_HowToSetUpAccount: "❓ 如何設定帳號",
   account_HowToSetUpAccountDesc:
     "### 🔥 如何取得 Cookie\n1. 開啟 [Hoyolab](https://www.hoyolab.com/) 網頁並登入帳號\n2. 按下 `F12` 或 `Ctrl + Shift + I` 打開開發者工具\n3. 切換至 `Application` 選擇左邊的 `Cookies` → `https://www.hoyolab.com`\n4. 找到以下欄位並複製其值：`ltoken_v2`、`ltuid_v2`、`cookie_token_v2`、`account_mid_v2`\n5. 將它們填入各個欄位即可！",

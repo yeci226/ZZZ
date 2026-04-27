@@ -89,6 +89,10 @@ const langs = {
   account_SetUserCookie: "Set Account (Cookie)",
   account_SetUserCookieDesc: "Please fill in the fields:",
   account_NoAccount: "Account has not been set yet",
+  account_WebLoginTitle: "🌐 Bind via Web Login",
+  account_WebLoginDesc:
+    "Click the button below to open the secure web login page. You will sign in with Discord, then enter your Hoyoverse credentials.\n\nOnce finished your Zenless Zone Zero accounts will be linked automatically.",
+  account_WebLoginButton: "Open Web Login",
   account_HowToSetUpAccount: "❓ How to set up an account",
   account_HowToSetUpAccountDesc:
     "### 🔥 How to get Cookie\n1. Open [Hoyolab](https://www.hoyolab.com/) and log in\n2. Press `F12` or `Ctrl + Shift + I` to open Developer Tools\n3. Switch to `Application` select `Cookies` → `https://www.hoyolab.com` on the left\n4. Find the following fields and copy their values: `ltoken_v2`, `ltuid_v2`, `cookie_token_v2`, `account_mid_v2`\n5. Fill them into the respective fields!",

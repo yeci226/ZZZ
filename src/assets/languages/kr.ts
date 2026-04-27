@@ -85,6 +85,10 @@ const langs = {
   account_SetUserCookie: "계정 설정 (Cookie)",
   account_SetUserCookieDesc: "각 필드에 입력해 주세요:",
   account_NoAccount: "아직 계정이 설정되지 않았습니다",
+  account_WebLoginTitle: "🌐 웹 로그인으로 연동",
+  account_WebLoginDesc:
+    "아래 버튼을 클릭하여 안전한 웹 로그인 페이지로 이동하세요. Discord로 본인 인증 후 Hoyoverse 자격 증명을 입력합니다.\n\n완료되면 젠레스 존 제로 계정이 자동으로 연동됩니다.",
+  account_WebLoginButton: "웹 로그인 열기",
   account_HowToSetUpAccount: "❓ 계정 설정 방법",
   account_HowToSetUpAccountDesc:
     "### 🔥 쿠키를 얻는 방법\n1. [Hoyolab](https://www.hoyolab.com/)을 열고 로그인합니다\n2. `F12` 또는 `Ctrl + Shift + I`를 눌러 개발자 도구를 엽니다\n3. `Application` 탭을 선택하고 왼쪽의 `Cookies` → `https://www.hoyolab.com`을 선택합니다\n4. 다음 필드를 찾아 값을 복사합니다: `ltoken_v2`, `ltuid_v2`, `cookie_token_v2`, `account_mid_v2`\n5. 해당 필드에 입력해 주세요!",

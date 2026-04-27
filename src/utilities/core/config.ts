@@ -20,6 +20,23 @@ interface Config {
   VERIFY_PUBLIC_URL: string;
   STATS_API_URL: string;
   STATS_API_TOKEN: string;
+  /** Vercel proxy API base URL, e.g. https://your-project.vercel.app */
+  PROXY_API_URL?: string;
+  /** Bearer token to authenticate with the Vercel proxy */
+  PROXY_API_TOKEN?: string;
+  /** Shared secret used to authenticate the web-login → bot webhook (Bearer) */
+  WEBHOOK_SECRET?: string;
+  /** Public URL of the web-login app, used in /account button */
+  WEB_LOGIN_URL?: string;
+  /** Port to bind the webhook HTTP server on (default 3002) */
+  WEBHOOK_PORT?: number;
+  /** Supabase project URL — used to pull pending logins from web-login */
+  SUPABASE_URL?: string;
+  /** Supabase service_role key (server-side only) */
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+  /** AES-256-CBC key used to decrypt cookies pulled from Supabase.
+   *  Must match SESSION_SECRET in the web-login .env. */
+  WEB_LOGIN_SESSION_SECRET?: string;
 }
 
 let config: Config | null = null;
@@ -54,6 +71,11 @@ export function getConfig(): Config {
     throw new Error("配置加载失败");
   }
   return loadedConfig;
+}
+
+export function getVerifyBaseUrl(): string {
+  const cfg = loadConfig();
+  return (cfg as any).VERIFY_PUBLIC_URL || "https://verify.yeci.lol/zzz";
 }
 
 // 为了兼容性，也提供环境变量风格的访问

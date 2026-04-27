@@ -87,6 +87,10 @@ const langs = {
   account_SetUserCookie: "アカウント設定 (Cookie)",
   account_SetUserCookieDesc: "各フィールドに入력してください：",
   account_NoAccount: "アカウントが設定されていません",
+  account_WebLoginTitle: "🌐 ウェブログインで連携",
+  account_WebLoginDesc:
+    "下のボタンをクリックして安全なウェブログインページを開いてください。Discord で認証後、Hoyoverse の認証情報を入力します。\n\n完了すると、ゼンレスゾーンゼロのアカウントが自動的に連携されます。",
+  account_WebLoginButton: "ウェブログインを開く",
   account_HowToSetUpAccount: "❓ アカウントの設定方法",
   account_HowToSetUpAccountDesc:
     "### 🔥 Cookieの取得方法\n1. [Hoyolab](https://www.hoyolab.com/) を開き、ログインします\n2. `F12` または `Ctrl + Shift + I` を押してデベロッパーツールを開きます\n3. `Application` タブを選択し、左側の `Cookies` → `https://www.hoyolab.com` を選択します\n4. 次のフィールドを見つけて値をコピーします：`ltoken_v2`、`ltuid_v2`、`cookie_token_v2`、`account_mid_v2`\n5. それらを各フィールドに入力してください！",
