@@ -5,7 +5,7 @@
 
 import Logger from "../utilities/core/logger.js";
 import OPTIMIZATION_CONFIG from "./config.js";
-import * as Shared from "@bot/shared";
+import * as Shared from "../utilities/shared/index.js";
 
 type CommandStats = Record<string, any>;
 

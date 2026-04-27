@@ -21,7 +21,7 @@ import {
   replyOrFollowUp,
   TtlCache,
   fireAndForget,
-} from "@bot/shared";
+} from "../utilities/shared/index.js";
 
 // Use client.db directly
 import { getConfig } from "../utilities/core/config.js";
@@ -35,7 +35,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (!interaction.channel || interaction.channel.type == ChannelType.DM)
     return;
 
-  let userLocale = await localeCache.getOrSetAsync(
+  let userLocale: string | undefined = await localeCache.getOrSetAsync(
     interaction.user.id,
     async () => (await getUserLang(interaction.user.id)) || "",
   );
@@ -46,8 +46,9 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
       toI18nLang(interaction.locale) ||
       "en";
   }
-  localeCache.set(interaction.user.id, userLocale);
-  const i18n = createTranslator(userLocale);
+  const finalLocale: string = userLocale ?? "en";
+  localeCache.set(interaction.user.id, finalLocale);
+  const i18n = createTranslator(finalLocale);
 
   if (interaction.isButton()) {
     const buttonInteraction = interaction as ButtonInteraction;
