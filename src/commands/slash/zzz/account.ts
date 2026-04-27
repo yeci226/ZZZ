@@ -219,39 +219,56 @@ export default {
         );
         return;
       case "BindAccountByWebLogin": {
-        const cfg = getConfig();
-        const baseUrl = cfg.WEB_LOGIN_URL;
-        if (!baseUrl) {
-          return failedReply(
-            interaction,
-            "Web login is not configured on this bot. Please contact the administrator.",
+        try {
+          const cfg = getConfig();
+          const baseUrl = cfg.WEB_LOGIN_URL;
+          console.log(`[/account WebLogin] WEB_LOGIN_URL=${baseUrl ?? "<unset>"}`);
+          if (!baseUrl) {
+            return failedReply(
+              interaction,
+              "Web login is not configured on this bot. Please contact the administrator.",
+            );
+          }
+          // Map Discord interaction locale → web app locale (en | zh-TW)
+          const rawLocale = String(interaction.locale ?? "").toLowerCase();
+          const webLang =
+            rawLocale === "zh-tw" || rawLocale === "zh-cn" || rawLocale === "zh"
+              ? "zh-TW"
+              : "en";
+          const langQs = webLang === "en" ? "" : `&lang=${webLang}`;
+          const url = `${baseUrl.replace(/\/$/, "")}/login?botId=zzz${langQs}`;
+          console.log(`[/account WebLogin] url=${url}`);
+          console.log(
+            `[/account WebLogin] tr keys: title=${tr("account_WebLoginTitle")} desc=${tr("account_WebLoginDesc")?.slice(0, 30)} btn=${tr("account_WebLoginButton")}`,
           );
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setColor(getRandomColor() as any)
+                .setTitle(tr("account_WebLoginTitle"))
+                .setDescription(tr("account_WebLoginDesc")),
+            ],
+            components: [
+              new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder()
+                  .setStyle(ButtonStyle.Link)
+                  .setLabel(tr("account_WebLoginButton"))
+                  .setURL(url),
+              ),
+            ],
+            flags: MessageFlags.Ephemeral,
+          });
+        } catch (err: any) {
+          console.error(
+            `[/account WebLogin] reply failed:`,
+            err?.message ?? err,
+            "\nstack:",
+            err?.stack,
+            "\nerrors[]:",
+            err?.errors,
+          );
+          throw err;
         }
-        // Map Discord interaction locale → web app locale (en | zh-TW)
-        const rawLocale = String(interaction.locale ?? "").toLowerCase();
-        const webLang =
-          rawLocale === "zh-tw" || rawLocale === "zh-cn" || rawLocale === "zh"
-            ? "zh-TW"
-            : "en";
-        const langQs = webLang === "en" ? "" : `&lang=${webLang}`;
-        const url = `${baseUrl.replace(/\/$/, "")}/login?botId=zzz${langQs}`;
-        await interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setColor(getRandomColor() as any)
-              .setTitle(tr("account_WebLoginTitle"))
-              .setDescription(tr("account_WebLoginDesc")),
-          ],
-          components: [
-            new ActionRowBuilder<ButtonBuilder>().addComponents(
-              new ButtonBuilder()
-                .setStyle(ButtonStyle.Link)
-                .setLabel(tr("account_WebLoginButton"))
-                .setURL(url),
-            ),
-          ],
-          flags: MessageFlags.Ephemeral,
-        });
         return;
       }
       case "HowToSetUpAccount":
