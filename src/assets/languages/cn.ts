@@ -86,6 +86,11 @@ const langs = {
   account_SetUserCookie: "设定帐号 (Cookie)",
   account_SetUserCookieDesc: "请填入各个字段：",
   account_NoAccount: "尚未设置帐号",
+  account_View_Region: "区域",
+  account_View_LastSync: "上次同步 {time}",
+  account_View_Linked: "已绑定",
+  account_View_LvShort: "等级",
+  account_View_NoStats: "（尚无数据）",
   account_WebLoginTitle: "🌐 透过网页登入绑定",
   account_WebLoginDesc:
     "点击下方按钮前往安全的网页登入页面，使用 Discord 验证身份后输入 Hoyoverse 账密。\n\n完成后你的《绝区零》账号会自动绑定到此 Discord 账号。",

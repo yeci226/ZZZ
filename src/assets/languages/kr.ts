@@ -85,6 +85,11 @@ const langs = {
   account_SetUserCookie: "계정 설정 (Cookie)",
   account_SetUserCookieDesc: "각 필드에 입력해 주세요:",
   account_NoAccount: "아직 계정이 설정되지 않았습니다",
+  account_View_Region: "지역",
+  account_View_LastSync: "마지막 동기화 {time}",
+  account_View_Linked: "연결됨",
+  account_View_LvShort: "Lv",
+  account_View_NoStats: "(데이터 없음)",
   account_WebLoginTitle: "🌐 웹 로그인으로 연동",
   account_WebLoginDesc:
     "아래 버튼을 클릭하여 안전한 웹 로그인 페이지로 이동하세요. Discord로 본인 인증 후 Hoyoverse 자격 증명을 입력합니다.\n\n완료되면 젠레스 존 제로 계정이 자동으로 연동됩니다.",

@@ -87,6 +87,11 @@ const langs = {
   account_SetUserCookie: "アカウント設定 (Cookie)",
   account_SetUserCookieDesc: "各フィールドに入력してください：",
   account_NoAccount: "アカウントが設定されていません",
+  account_View_Region: "サーバー",
+  account_View_LastSync: "最終同期 {time}",
+  account_View_Linked: "リンク済み",
+  account_View_LvShort: "Lv",
+  account_View_NoStats: "（データなし）",
   account_WebLoginTitle: "🌐 ウェブログインで連携",
   account_WebLoginDesc:
     "下のボタンをクリックして安全なウェブログインページを開いてください。Discord で認証後、Hoyoverse の認証情報を入力します。\n\n完了すると、ゼンレスゾーンゼロのアカウントが自動的に連携されます。",

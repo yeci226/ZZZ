@@ -89,6 +89,11 @@ const langs = {
   account_SetUserCookie: "Set Account (Cookie)",
   account_SetUserCookieDesc: "Please fill in the fields:",
   account_NoAccount: "Account has not been set yet",
+  account_View_Region: "Region",
+  account_View_LastSync: "last sync {time}",
+  account_View_Linked: "Linked",
+  account_View_LvShort: "Lv",
+  account_View_NoStats: "(No stats yet)",
   account_WebLoginTitle: "🌐 Bind via Web Login",
   account_WebLoginDesc:
     "Click the button below to open the secure web login page. You will sign in with Discord, then enter your Hoyoverse credentials.\n\nOnce finished your Zenless Zone Zero accounts will be linked automatically.",

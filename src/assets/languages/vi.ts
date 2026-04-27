@@ -91,6 +91,11 @@ const langs = {
   account_SetUserCookie: "Thiết lập tài khoản (Cookie)",
   account_SetUserCookieDesc: "Vui lòng điền vào các trường:",
   account_NoAccount: "Bạn vẫn chưa thiết lập tài khoản nào cả!",
+  account_View_Region: "Khu vực",
+  account_View_LastSync: "đồng bộ {time} trước",
+  account_View_Linked: "Đã liên kết",
+  account_View_LvShort: "Cấp",
+  account_View_NoStats: "(Chưa có dữ liệu)",
   account_WebLoginTitle: "🌐 Liên kết qua đăng nhập Web",
   account_WebLoginDesc:
     "Nhấp vào nút bên dưới để mở trang đăng nhập web bảo mật. Bạn sẽ đăng nhập bằng Discord, sau đó nhập thông tin đăng nhập Hoyoverse.\n\nSau khi hoàn tất, các tài khoản Zenless Zone Zero của bạn sẽ được liên kết tự động.",
