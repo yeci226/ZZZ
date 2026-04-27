@@ -24,6 +24,22 @@ import {
   type Character,
 } from "../../../utilities/accountStore.js";
 
+/**
+ * Reply to an interaction whether or not it has already been deferred.
+ * If deferred → editReply (Ephemeral flag inherited from defer).
+ * If fresh → reply with Ephemeral flag.
+ */
+async function replyOrEdit(
+  interaction: ChatInputCommandInteraction,
+  payload: any,
+): Promise<void> {
+  if (interaction.deferred || interaction.replied) {
+    await interaction.editReply(payload);
+    return;
+  }
+  await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+}
+
 function formatRelativeFromIso(iso: string | undefined): string {
   if (!iso) return "—";
   const t = Date.parse(iso);
@@ -166,6 +182,18 @@ export default {
     const command = interaction.options.getString("options");
     const userId = interaction.user.id;
 
+    // ACK early for non-modal paths so drain (≤3s budget) can't expire interaction.
+    // QuickLink + SetUserCookie open modals — never defer those.
+    const isModalCommand =
+      command === "QuickLink" || command === "SetUserCookie";
+    if (!isModalCommand && !interaction.deferred && !interaction.replied) {
+      try {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      } catch (e: any) {
+        console.warn(`[/account] deferReply failed: ${e?.message ?? e}`);
+      }
+    }
+
     // Pull any pending web-logins from Supabase before we read the local DB.
     // Fast no-op if Supabase is unconfigured or nothing is queued.
     try {
@@ -187,7 +215,7 @@ export default {
       command == "DeleteAccount"
     ) {
       if (!hasAccount) return failedReply(interaction, tr("account_NoAccount"));
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      // Already deferred above for non-modal commands.
     }
 
     const accounts: any[] = (await db.get(accountKey)) || [];
@@ -241,7 +269,7 @@ export default {
           console.log(
             `[/account WebLogin] tr keys: title=${tr("account_WebLoginTitle")} desc=${tr("account_WebLoginDesc")?.slice(0, 30)} btn=${tr("account_WebLoginButton")}`,
           );
-          await interaction.reply({
+          await replyOrEdit(interaction, {
             embeds: [
               new EmbedBuilder()
                 .setColor(getRandomColor() as any)
@@ -256,7 +284,6 @@ export default {
                   .setURL(url),
               ),
             ],
-            flags: MessageFlags.Ephemeral,
           });
         } catch (err: any) {
           console.error(
@@ -280,7 +307,7 @@ export default {
           name: "teaching.png",
         });
 
-        interaction.reply({
+        await replyOrEdit(interaction, {
           embeds: [
             new EmbedBuilder()
               .setTitle(tr("account_HowToSetUpAccount"))
@@ -289,7 +316,6 @@ export default {
               .setImage("attachment://teaching.png"),
           ],
           files: [attachment],
-          flags: MessageFlags.Ephemeral,
         });
         return;
       case "SetUserCookie":
