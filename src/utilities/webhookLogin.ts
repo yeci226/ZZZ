@@ -239,6 +239,7 @@ export async function drainPendingLogins(
     const enriched = row.enriched;
     const card = enriched?.cards.find((c) => c.game_id === ZZZ_GAME_ID) ?? null;
 
+    let bindOk = false;
     try {
       if (card && enriched) {
         logger.info(`[drain] route=enriched row=${row.id}`);
@@ -250,19 +251,29 @@ export async function drainPendingLogins(
           enriched.fetched_at,
         );
         if (res.ok && res.bound) allBound.push(...res.bound);
+        bindOk = res.ok;
       } else if (enriched) {
         logger.info(`[drain] route=hoyolabOnly row=${row.id} (no ZZZ card in enriched)`);
         await bindHoyolabOnly(discordUserId, row.ltuid_v2, cookieStr);
+        bindOk = true;
       } else {
         logger.info(`[drain] route=legacy row=${row.id} (no enriched payload)`);
         const res = await bindCookieToUser(discordUserId, cookieStr);
         if (res.ok && res.bound) allBound.push(...res.bound);
+        bindOk = res.ok;
       }
     } catch (e: any) {
       logger.error(`[drain] bind FAILED row=${row.id}: ${e?.message ?? e}`);
+      bindOk = false;
     }
-    await markConsumed(row.id);
-    logger.info(`[drain] markConsumed row=${row.id}`);
+    if (bindOk) {
+      await markConsumed(row.id);
+      logger.info(`[drain] markConsumed row=${row.id}`);
+    } else {
+      logger.warn(
+        `[drain] keeping row=${row.id} as pending (bind failed, will retry next drain)`,
+      );
+    }
   }
   logger.info(`[drain] done user=${discordUserId} totalBound=${allBound.length}`);
   return allBound;
