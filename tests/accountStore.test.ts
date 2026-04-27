@@ -85,8 +85,11 @@ describe("loadAccounts (lazy migration)", () => {
 			region: null,
 			invalid: false
 		});
-		// legacy key cleared
-		expect(await db.has("u1.account")).toBe(false);
+		// legacy key kept as mirror so 30+ direct readers stay in sync
+		expect(await db.has("u1.account")).toBe(true);
+		const mirror = await db.get("u1.account") as any[];
+		expect(mirror).toHaveLength(1);
+		expect(mirror[0]).toMatchObject({ uid: "800000001", nickname: "Alice" });
 		// new key written
 		expect(await db.has("u1.hoyolabs")).toBe(true);
 	});

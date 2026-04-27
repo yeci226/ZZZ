@@ -147,8 +147,12 @@ export async function loadAccounts(
 	}
 
 	await db.set(`${userId}.hoyolabs`, hoyolabs);
-	await db.delete(`${userId}.account`);
-	return { hoyolabs };
+	const migrated: AccountStore = { hoyolabs };
+	// Rebuild legacy `.account` mirror so the 30+ direct readers stay in sync.
+	// Without this, migration silently empties `.account` and every command
+	// that reads it sees "no account" until the next saveAccounts() call.
+	await syncLegacyMirror(db, userId, migrated);
+	return migrated;
 }
 
 /**
