@@ -1,5 +1,6 @@
 import { client } from "../index.js";
 import axios from "axios";
+import crypto from "crypto";
 import emoji from "../assets/emoji.js";
 import {
   EmbedBuilder,
@@ -14,6 +15,12 @@ import {
   Hoyolab,
 } from "@yeci226/hoyoapi";
 import { loadImage } from "@napi-rs/canvas";
+import {
+  upsertHoyolab,
+  upsertCharacter,
+  extractLtuidFromCookie,
+  fallbackBucketKey,
+} from "./accountStore.js";
 // Use client.db directly in functions to avoid static capture issues
 const BASE_URL = "https://bbs-api-os.hoyolab.com/community/post/wapi/";
 
@@ -502,7 +509,7 @@ export async function getUserZZZData(
   }
 }
 
-import { loadConfig } from "./core/config.js";
+import { loadConfig, getVerifyBaseUrl } from "./core/config.js";
 const config = loadConfig();
 
 export function checkAccount(
@@ -518,7 +525,7 @@ export function checkAccount(
           .setColor("#FFE9D0")
           .setTitle("請先通過 Geetest 來繼續使用指令！")
           .setURL(
-            `${(config as any).VERIFY_PUBLIC_URL || "https://verify.yeci.lol/zzz"}/verify?session=${Math.random().toString(36).substring(2, 12)}&userid=${userId}`,
+            `${getVerifyBaseUrl()}/verify?session=${Math.random().toString(36).substring(2, 12)}&userid=${userId}`,
           ),
       ],
       flags: MessageFlags.Ephemeral,
@@ -751,159 +758,170 @@ export async function getUserGameUid(cookie: string, game_id = 8) {
   };
 }
 
+// Derive a 32-byte key from bot TOKEN for AES-256 encryption of stored credentials
+function getEncryptionKey(): Buffer {
+  return crypto.createHash("sha256").update((config as any).TOKEN).digest();
+}
+
+export function encryptCredential(text: string): string {
+  const key = getEncryptionKey();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
+  const encrypted = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
+  return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
+
+export function decryptCredential(encrypted: string): string {
+  const key = getEncryptionKey();
+  const [ivHex, dataHex] = encrypted.split(":");
+  const iv = Buffer.from(ivHex, "hex");
+  const data = Buffer.from(dataHex, "hex");
+  const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+  return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
+}
+
+export async function storeUserCredentials(
+  userId: string,
+  accountIndex: number,
+  email: string,
+  password: string,
+  deviceId: string,
+  stoken?: string,
+  ltuid_v2?: string,
+  ltmid_v2?: string,
+) {
+  const accountKey = `${userId}.account`;
+  const accounts = await client.db.get(accountKey);
+  if (!accounts?.[accountIndex]) return;
+
+  accounts[accountIndex].credentials = {
+    email: encryptCredential(email),
+    password: encryptCredential(password),
+    deviceId,
+    ...(stoken && { stoken: encryptCredential(stoken), ltuid_v2, ltmid_v2 }),
+  };
+  await client.db.set(accountKey, accounts);
+}
+
 export async function autoRefreshCookie(
   userId: string,
   accountIndex: number,
-  cookie: string,
+  _cookie: string,
 ) {
+  const logger = new Logger("AutoRefreshCookie");
+  const accountKey = `${userId}.account`;
+
   try {
-    const logger = new Logger("AutoRefreshCookie");
-    const accountKey = `${userId}.account`;
+    const accounts = await client.db.get(accountKey);
+    const account = accounts?.[accountIndex];
+    if (!account) return { success: false, message: "找不到帳號" };
+
+    const uid = account.uid;
+    const creds = account.credentials;
+
+    // Strategy 1: silent refresh via stoken (no captcha needed)
+    const stoken = creds?.stoken ? decryptCredential(creds.stoken) : null;
+    const ltuid_v2 = creds?.ltuid_v2;
+    const ltmid_v2 = creds?.ltmid_v2;
+
+    if (stoken && ltuid_v2 && ltmid_v2) {
+      logger.info(`[用戶 ${userId}] [帳號 #${accountIndex}] 使用 stoken 靜默刷新...`);
+      const { exchangeStokenForCookies } = await import("./zzz/login.js");
+      const newTokens = await exchangeStokenForCookies(stoken, ltuid_v2, ltmid_v2);
+
+      const baseCookie = [
+        `stoken=${stoken}`,
+        `ltuid_v2=${ltuid_v2}`,
+        `ltmid_v2=${ltmid_v2}`,
+        `account_id_v2=${ltuid_v2}`,
+        `account_mid_v2=${ltmid_v2}`,
+        `ltoken_v2=${newTokens.ltoken_v2}`,
+        `cookie_token_v2=${newTokens.cookie_token_v2}`,
+      ].join("; ");
+
+      accounts[accountIndex].cookie = baseCookie;
+      accounts[accountIndex].invalid = false;
+      accounts[accountIndex].lastUpdate = new Date().toISOString();
+      await client.db.set(accountKey, accounts);
+      if (uid) {
+        await client.db.delete(`${uid}.cookieExpired`);
+        await client.db.delete(`${uid}.needsCookieUpdate`);
+      }
+      logger.success(`[用戶 ${userId}] [帳號 #${accountIndex}] stoken 靜默刷新成功`);
+      return { success: true, message: "Cookie 已靜默刷新", newCookie: baseCookie };
+    }
+
+    // Strategy 2: full re-login (only if stoken unavailable/expired)
+    if (!creds?.email || !creds?.password || !creds?.deviceId) {
+      return { success: false, message: "未儲存登入憑證，無法自動刷新" };
+    }
+
+    const email = decryptCredential(creds.email);
+    const password = decryptCredential(creds.password);
+
+    logger.info(`[用戶 ${userId}] [帳號 #${accountIndex}] stoken 不可用，嘗試重新登入...`);
+
+    const { appLoginAccount } = await import("./zzz/login.js");
+    const loginRes: any = await appLoginAccount(email, password, creds.deviceId);
+
+    if (loginRes?.captcha || loginRes?.emailVerification) {
+      if (uid) await client.db.set(`${uid}.needsCookieUpdate`, true);
+      return { success: false, message: "需要人工驗證，請重新登入" };
+    }
+
+    if (!loginRes?.cookie) {
+      return { success: false, message: "重新登入未取得 Cookie" };
+    }
+
+    // Update stoken in credentials if we got a new one
+    if (loginRes.stoken && creds) {
+      creds.stoken = encryptCredential(loginRes.stoken);
+      creds.ltuid_v2 = loginRes.ltuid_v2;
+      creds.ltmid_v2 = loginRes.ltmid_v2;
+      accounts[accountIndex].credentials = creds;
+    }
+
+    accounts[accountIndex].cookie = loginRes.cookie;
+    accounts[accountIndex].invalid = false;
+    accounts[accountIndex].lastUpdate = new Date().toISOString();
+    await client.db.set(accountKey, accounts);
+
+    if (uid) {
+      await client.db.delete(`${uid}.cookieExpired`);
+      await client.db.delete(`${uid}.needsCookieUpdate`);
+    }
+
+    logger.success(`[用戶 ${userId}] [帳號 #${accountIndex}] 重新登入刷新成功`);
+    return { success: true, message: "Cookie 已自動刷新", newCookie: loginRes.cookie };
+  } catch (error: any) {
+    logger.error(`[用戶 ${userId}] [帳號 #${accountIndex}] 自動刷新失敗: ${error.message}`);
     const accounts = await client.db.get(accountKey);
     const uid = accounts?.[accountIndex]?.uid;
-
-    // 先向官方驗證端點確認 Cookie 是否仍有效
-    const verifyUrl =
-      "https://passport-api-sg.hoyoverse.com/account/ma-passport/token/verifyCookieToken";
-
-    const response = await fetch(verifyUrl, {
-      method: "POST",
-      headers: {
-        accept: "*/*",
-        "accept-language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-CN;q=0.6",
-        "content-type": "application/json",
-        origin: "https://zenless.hoyoverse.com",
-        referer: "https://zenless.hoyoverse.com/",
-        "user-agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
-        cookie,
-        "x-rpc-app_id": "dny1be34nvnk",
-        "x-rpc-client_type": "4",
-        "x-rpc-game_biz": "nap_global",
-      },
-      body: JSON.stringify({}),
-    });
-
-    const result = (await response.json()) as any;
-
-    if (result?.code === 200 || result?.retcode === 0) {
-      logger.success(
-        `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 驗證成功，仍然有效`,
-      );
-
-      if (accounts?.[accountIndex]) {
-        accounts[accountIndex].invalid = false;
-        await client.db.set(accountKey, accounts);
-      }
-
-      if (uid) {
-        await client.db.delete(`${uid}.cookieExpired`);
-        await client.db.delete(`${uid}.needsCookieUpdate`);
-        await client.db.delete(`${uid}.lastCookieRefreshAttempt`);
-      }
-
-      return { success: true, message: "Cookie 驗證成功" };
-    }
-
-    logger.warn(
-      `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 已過期，嘗試自動刷新...`,
-    );
-
-    const refreshResult = await updateCookie(userId, accountIndex, cookie);
-
-    if ((refreshResult as any)?.success) {
-      logger.success(
-        `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 刷新成功`,
-      );
-      if (uid) {
-        await client.db.delete(`${uid}.cookieExpired`);
-        await client.db.delete(`${uid}.needsCookieUpdate`);
-        await client.db.delete(`${uid}.lastCookieRefreshAttempt`);
-      }
-
-      return {
-        success: true,
-        message: "Cookie 已自動刷新",
-        newCookie: (refreshResult as any).cookie,
-      };
-    }
-
-    logger.error(
-      `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 無法刷新: ${(refreshResult as any)?.message || "Unknown error"}`,
-    );
-    if (uid) {
-      await client.db.set(`${uid}.needsCookieUpdate`, true);
-    }
-
-    return {
-      success: false,
-      message: (refreshResult as any)?.message || "Cookie 刷新失敗",
-    };
-  } catch (error: any) {
-    const logger = new Logger("AutoRefreshCookie");
-    logger.error(
-      `[用戶 ${userId}] [帳號 #${accountIndex}] 自動刷新 Cookie 失敗: ${error.message}`,
-    );
-
-    const accounts = await client.db.get(`${userId}.account`);
-    const uid = accounts?.[accountIndex]?.uid;
-    if (uid) {
-      await client.db.set(`${uid}.needsCookieUpdate`, true);
-    }
-
-    return {
-      success: false,
-      message: error.message,
-    };
+    if (uid) await client.db.set(`${uid}.needsCookieUpdate`, true);
+    return { success: false, message: error.message };
   }
 }
 
-export async function updateAccountInfo(userId: string, newAccountInfo: any) {
-  const accountKey = `${userId}.account`;
-  let accounts = (await client.db.get(accountKey)) || [];
+export async function updateAccountInfo(
+  userId: string,
+  { uid, cookie, nickname }: { uid: string; cookie: string; nickname?: string },
+): Promise<void> {
+  const ltuid = extractLtuidFromCookie(cookie) ?? fallbackBucketKey(cookie);
+  await upsertHoyolab(client.db, userId, { ltuid_v2: ltuid, cookie });
+  await upsertCharacter(client.db, userId, ltuid, {
+    uid: String(uid),
+    nickname: nickname ?? null,
+    region: null,
+    lastUpdate: new Date().toISOString(),
+    invalid: false,
+  });
 
-  // 檢查是否存在相同 UID 的帳號
-  const existingIndex = accounts.findIndex(
-    (acc: any) => acc.uid === newAccountInfo.uid,
+  // Clear stale invalidation/refresh flags so the new cookie is honored
+  // immediately by the autoDaily/autoRedeem schedulers.
+  await client.db.delete(`${uid}.cookieExpired`);
+  await client.db.delete(`${uid}.lastCookieRefresh`);
+
+  new Logger("Utilities").info(
+    `[用戶 ${userId}] updateAccountInfo OK [UID: ${uid}] (ltuid=${ltuid})`,
   );
-
-  if (existingIndex !== -1) {
-    // 更新現有帳號資訊，同時清除無效標記
-    accounts[existingIndex] = {
-      ...accounts[existingIndex],
-      cookie: newAccountInfo.cookie,
-      nickname: newAccountInfo.nickname,
-      lastUpdate: new Date().toISOString(),
-      invalid: false,
-    };
-
-    new Logger("Utilities").info(
-      `[用戶 ${userId}] 更新現有帳號 [UID: ${newAccountInfo.uid}]`,
-    );
-  } else {
-    // 添加新帳號
-    accounts.push({
-      uid: newAccountInfo.uid,
-      cookie: newAccountInfo.cookie,
-      nickname: newAccountInfo.nickname,
-      lastUpdate: new Date().toISOString(),
-      invalid: false,
-    });
-
-    new Logger("Utilities").info(
-      `[用戶 ${userId}] 添加新帳號 [UID: ${newAccountInfo.uid}]`,
-    );
-  }
-
-  // 保存更新後的帳號列表
-  await client.db.set(accountKey, accounts);
-
-  // 清除過期標記與快取的更新時間，確保新 Cookie 能立即被自動化系統認可
-  await client.db.delete(`${newAccountInfo.uid}.cookieExpired`);
-  await client.db.delete(`${newAccountInfo.uid}.lastCookieRefresh`);
-
-  return {
-    isNewAccount: existingIndex === -1,
-    accountIndex: existingIndex !== -1 ? existingIndex : accounts.length - 1,
-  };
 }

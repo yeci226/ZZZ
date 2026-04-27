@@ -45,11 +45,22 @@ export interface AccountStore {
 	hoyolabs: Hoyolab[];
 }
 
-/** Subset of quick.db API the store relies on. */
+/**
+ * Subset of quick.db API the store relies on.
+ *
+ * `get` returns `T | null | undefined`: quick.db's real `get<T>()` returns
+ * `T | null | undefined` (null for explicit deletes, undefined for missing
+ * keys). `set` returns the stored value (quick.db's real signature is
+ * `Promise<T>`), but we ignore it. Widening the return types here avoids
+ * forcing every caller (notably the live `client.db`) through a
+ * `... as unknown as DbAdapter` cast at the boundary. All consumers in
+ * this file already treat results as falsy-on-miss / fire-and-forget, so
+ * the runtime contract is unchanged.
+ */
 export interface DbAdapter {
-	get<T = unknown>(key: string): Promise<T | undefined> | T | undefined;
-	set<T = unknown>(key: string, value: T): Promise<void> | void;
-	delete(key: string): Promise<void> | void;
+	get<T = unknown>(key: string): Promise<T | null | undefined> | T | null | undefined;
+	set<T = unknown>(key: string, value: T): Promise<unknown> | unknown;
+	delete(key: string): Promise<unknown> | unknown;
 	has(key: string): Promise<boolean> | boolean;
 }
 
