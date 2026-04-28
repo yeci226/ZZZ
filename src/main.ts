@@ -7,7 +7,6 @@ import { ApplicationCommandType, Client } from "discord.js";
 import { getAllFiles } from "./utilities/getAllFiles.js";
 import path from "path";
 import { fileURLToPath } from "url";
-import { VerificationServer } from "./utilities/core/VerificationServer.js";
 import OptimizationManager from "./optimizations/index.js";
 import { getConfig } from "./utilities/core/config.js";
 
@@ -194,13 +193,6 @@ if (optimizations.commandUsageTracker) {
       }
     }, 60_000); // 每 60 秒推送一次
   }
-}
-
-// Start Verification Server
-if (client.cluster.id === 0) {
-  new VerificationServer(client.cluster as any).start();
-} else {
-  new VerificationServer(client.cluster as any);
 }
 
 client.login(

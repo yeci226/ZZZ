@@ -25,6 +25,7 @@ import {
 
 // Use client.db directly
 import { getConfig } from "../utilities/core/config.js";
+import { drainPendingLogins } from "../utilities/webhookLogin.js";
 const config = getConfig();
 const webhook = config.CMDWEBHOOK
   ? new WebhookClient({ url: config.CMDWEBHOOK })
@@ -73,6 +74,14 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
           if (x.value) args.push(x.value);
         });
       } else if (option.value) args.push(option.value);
+    }
+
+    try {
+      // Drain any pending web-logins from Supabase before every command.
+      // Fast no-op when Supabase is unconfigured or queue is empty.
+      await drainPendingLogins(interaction.user.id);
+    } catch {
+      // Never block a command on a queue read failure.
     }
 
     try {

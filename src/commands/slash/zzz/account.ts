@@ -17,7 +17,6 @@ import {
 import path from "path";
 import { failedReply, getRandomColor } from "../../../utilities/utilities.js";
 import { getConfig } from "../../../utilities/core/config.js";
-import { drainPendingLogins } from "../../../utilities/webhookLogin.js";
 import { QuickDB } from "quick.db";
 import {
   getAllCharacters,
@@ -128,23 +127,16 @@ export default {
             value: "HowToSetUpAccount",
           },
           {
-            name: "① Quick Login (Recommended)",
+            name: "🌐 Bind Account via Web Login",
             name_localizations: {
-              "zh-TW": "① 快速登入 (推薦)",
-            },
-            value: "QuickLink",
-          },
-          {
-            name: "🌐 Bind via Web Login",
-            name_localizations: {
-              "zh-TW": "🌐 透過網頁登入綁定",
+              "zh-TW": "🌐 綁定帳號 (網頁登入)",
             },
             value: "BindAccountByWebLogin",
           },
           {
-            name: "② Set Account (Cookie)",
+            name: "🔗 Bind Account via Cookie",
             name_localizations: {
-              "zh-TW": "② 設定帳號 (Cookie)",
+              "zh-TW": "🔗 綁定帳號 (Cookie)",
             },
             value: "SetUserCookie",
           },
@@ -185,25 +177,13 @@ export default {
     // ACK early for non-modal paths so drain (≤3s budget) can't expire interaction.
     // QuickLink + SetUserCookie open modals — never defer those.
     const isModalCommand =
-      command === "QuickLink" || command === "SetUserCookie";
+      command === "SetUserCookie";
     if (!isModalCommand && !interaction.deferred && !interaction.replied) {
       try {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       } catch (e: any) {
         console.warn(`[/account] deferReply failed: ${e?.message ?? e}`);
       }
-    }
-
-    // Pull any pending web-logins from Supabase before we read the local DB.
-    // Fast no-op if Supabase is unconfigured or nothing is queued.
-    try {
-      const bound = await drainPendingLogins(userId);
-      if (bound.length > 0) {
-        console.log(`[/account] drain bound ${bound.length} account(s) for ${userId}`);
-      }
-    } catch (e: any) {
-      console.error(`[/account] drainPendingLogins threw: ${e?.message ?? e}`);
-      /* swallow — never block /account on a queue read */
     }
 
     const accountKey = `${userId}.account`;
@@ -221,31 +201,6 @@ export default {
     const accounts: any[] = (await db.get(accountKey)) || [];
 
     switch (command) {
-      case "QuickLink":
-        await interaction.showModal(
-          new ModalBuilder()
-            .setCustomId("account_QuickLinkModal")
-            .setTitle(tr("account_QuickLinkModal"))
-            .addComponents(
-              new ActionRowBuilder<TextInputBuilder>().addComponents(
-                new TextInputBuilder()
-                  .setCustomId("account_LoginAccountModalField")
-                  .setLabel(tr("account_LoginAccountDesc"))
-                  .setPlaceholder("example@gmail.com")
-                  .setStyle(TextInputStyle.Short)
-                  .setRequired(true),
-              ),
-              new ActionRowBuilder<TextInputBuilder>().addComponents(
-                new TextInputBuilder()
-                  .setCustomId("account_LoginAccountModalField2")
-                  .setLabel(tr("account_LoginAccountDesc2"))
-                  .setPlaceholder("mypassword")
-                  .setStyle(TextInputStyle.Short)
-                  .setRequired(true),
-              ),
-            ),
-        );
-        return;
       case "BindAccountByWebLogin": {
         try {
           const cfg = getConfig();
