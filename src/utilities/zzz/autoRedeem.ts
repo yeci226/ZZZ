@@ -4,16 +4,16 @@ import Logger from "../core/logger.js";
 import { createTranslator } from "../core/i18n.js";
 import {
   getUserLang,
-  getRandomColor,
   getRedeemCodes,
   autoRefreshCookie,
 } from "../utilities.js";
-import { ColorResolvable } from "discord.js";
+import { buildZZZRedeemCard } from "../canvas/redeemCard.js";
 
 // Constants
 const CONFIG = {
   API_TIMEOUT: 10000,
   REDEEM_DELAY: 3000,
+  USER_DELAY: 5000,
   COOKIE_REFRESH_RETRY_INTERVAL: 6 * 60 * 60 * 1000,
   DEFAULT_LANGUAGE: "en",
   ERROR_CODES: {
@@ -157,6 +157,7 @@ class AutoRedeemSystem {
 
   formatResults(results: any[], tr: (key: string) => string) {
     const description: string[] = [];
+    const codeResults: Array<{ code: string; rewards?: string[]; status: "success" | "already_claimed" | "invalid" | "failed" }> = [];
     const stats = {
       success: 0,
       alreadyClaimed: 0,
@@ -168,12 +169,14 @@ class AutoRedeemSystem {
       const { code, status } = result;
       if (status.success) {
         description.push(`✅ **${code.code}** - (${tr("redeem_Success")})`);
+        codeResults.push({ code: code.code, rewards: code.rewards, status: "success" });
         stats.success++;
       } else if (status.alreadyClaimed) {
-        description.push(`ℹ️ **${code.code}** - (${tr("redeem_Already")})`);
+        // 已兌換過：靜默記錄，不推播通知（已加入 redeemedCodes，下次不會再嘗試）
         stats.alreadyClaimed++;
       } else if (status.invalid) {
         description.push(`⚠️ **${code.code}** - (${tr("redeem_Invalid")})`);
+        codeResults.push({ code: code.code, rewards: code.rewards, status: "invalid" });
         stats.invalid++;
       } else {
         // 失敗類型（包含 Cookie 待刷新、風控等）不推播到頻道，避免干擾使用者
@@ -183,6 +186,7 @@ class AutoRedeemSystem {
 
     return {
       description: description.join("\n"),
+      codeResults,
       stats,
       hasResults: description.length > 0,
     };
@@ -362,7 +366,7 @@ class AutoRedeemSystem {
 
     await this.db.set(`${account.uid}.redeemedCodes`, [...redeemedCodeSet]);
 
-    const { description, stats, hasResults } = this.formatResults(results, tr);
+    const { description, codeResults, stats, hasResults } = this.formatResults(results, tr);
 
     Object.entries(stats).forEach(([key, value]) => {
       this.stats[key as keyof RedeemStats] += value;
@@ -372,6 +376,7 @@ class AutoRedeemSystem {
       uid: account.uid,
       nickname: displayNickname,
       description,
+      codeResults,
       hasSuccess: stats.success > 0,
       hasResults,
     };
@@ -460,6 +465,10 @@ class AutoRedeemSystem {
         );
         this.stats.failed++;
       }
+
+      if (i < accounts.length - 1) {
+        await this.sleep(CONFIG.REDEEM_DELAY);
+      }
     }
 
     const visibleResults = results.filter(
@@ -468,41 +477,44 @@ class AutoRedeemSystem {
 
     if (visibleResults.length > 0) {
       const hasSuccess = visibleResults.some((r) => r.hasSuccess);
-      const finalDescription = visibleResults
-        .map((r) => `## ${r.nickname || r.uid} (${r.uid})\n${r.description}`)
-        .join("\n\n");
+      const accountsData = visibleResults.map((r) => ({
+        nickname: r.nickname || r.uid,
+        uid: r.uid,
+        codes: r.codeResults || [],
+      }));
       await this.sendRedeemMessage(channelId, {
         tr,
         tag,
-        description: finalDescription,
+        accounts: accountsData,
         hasSuccess,
       });
     }
   }
 
   async sendRedeemMessage(channelId: string, data: any) {
-    const embed = new EmbedBuilder()
-      .setColor(getRandomColor() as ColorResolvable)
-      .setTitle(
-        data.hasSuccess
-          ? data.tr("Auto") + data.tr("redeem_SuccessDesc")
-          : data.tr("Auto") + data.tr("redeem_RedeemStats"),
-      )
-      .setDescription(data.description)
-      .setThumbnail(
-        "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png",
-      )
-      .setTimestamp();
+    // Build canvas card
+    let cardFile: { buffer: string; name: string } | null = null;
+    try {
+      const buf = await buildZZZRedeemCard({ accounts: data.accounts });
+      cardFile = { buffer: buf.toString("base64"), name: "redeem-zzz.png" };
+    } catch (e) {
+      this.logger.error(`Redeem canvas card 生成失敗: ${e}`);
+    }
 
     try {
       await this.client.cluster.broadcastEval(
-        async (c: any, { channelId, content, embed }: any) => {
+        async (c: any, { channelId, content, cardFile }: any) => {
           const channel = c.channels.cache.get(channelId);
-          if (channel) await channel.send({ content, embeds: [embed] });
+          if (!channel) return;
+          const { AttachmentBuilder } = await import("discord.js");
+          if (cardFile) {
+            const file = new AttachmentBuilder(Buffer.from(cardFile.buffer, "base64"), { name: cardFile.name });
+            await channel.send({ content: content || undefined, files: [file] });
+          }
         },
         {
-          context: { channelId, content: data.tag || "", embed },
-          timeout: CONFIG.API_TIMEOUT,
+          context: { channelId, content: data.tag || "", cardFile },
+          timeout: 10000,
         },
       );
     } catch (error) {
@@ -541,21 +553,19 @@ export default async function autoRedeem() {
 
     const userIds = Object.keys(redeemData);
     system.logger.info(`待處理使用者總數: ${userIds.length}`);
-    const BATCH_SIZE = 5;
 
-    for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
-      const batch = userIds.slice(i, i + BATCH_SIZE);
-      await Promise.all(
-        batch.map(async (userId) => {
-          try {
-            await system.processRedemption(userId, redeemData, codesList);
-          } catch (error) {
-            system.logger.error(
-              `處理用戶 ${userId} 時發生錯誤: ${(error as any).message}`,
-            );
-          }
-        }),
-      );
+    for (let i = 0; i < userIds.length; i++) {
+      const userId = userIds[i]!;
+      try {
+        await system.processRedemption(userId, redeemData, codesList);
+      } catch (error) {
+        system.logger.error(
+          `處理用戶 ${userId} 時發生錯誤: ${(error as any).message}`,
+        );
+      }
+      if (i < userIds.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, CONFIG.USER_DELAY));
+      }
     }
 
     await system.updateStatistics();
