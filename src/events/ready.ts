@@ -5,6 +5,7 @@ import autoDailySign from "../utilities/zzz/autoDaily.js";
 import autoRedeem from "../utilities/zzz/autoRedeem.js";
 import { autoRefreshCookie } from "../utilities/utilities.js";
 import schedule from "node-schedule";
+import { refreshWallpapers } from "../utilities/zzz/wallpaperManager.js";
 
 let isRefreshingCookies = false;
 let isAutoRedeemRunning = false;
@@ -34,7 +35,9 @@ client.on(Events.ClientReady, async () => {
   if (client.cluster.id == 0) {
     autoDailySign();
     await runAutoRedeem();
-    // 啟動時先做一次 Cookie 保活
+    // Refresh wallpaper pool on startup
+    refreshWallpapers(client.db).catch(() => {});
+    // 啟動時先做一次 Cookie 刷新
     await refreshAllCookies(client);
   }
 
@@ -44,17 +47,18 @@ client.on(Events.ClientReady, async () => {
     }
   });
 
-  // 每 2 小時保活一次 Cookie，降低過期導致自動兌換失敗
-  schedule.scheduleJob("0 */2 * * *", function () {
+  // 每天 07:50 刷新 Cookie，為自動兌換做準備
+  schedule.scheduleJob("50 7 * * *", function () {
     if (client.cluster.id == 0) {
       refreshAllCookies(client);
     }
   });
 
-  // 每小時檢查並自動兌換一次，確保新碼能持續處理
-  schedule.scheduleJob("20 * * * *", function () {
+  // 每天 08:00 自動兌換 + 刷新壁紙
+  schedule.scheduleJob("0 8 * * *", function () {
     if (client.cluster.id == 0) {
       runAutoRedeem();
+      refreshWallpapers(client.db).catch(() => {});
     }
   });
 
