@@ -198,11 +198,20 @@ class AutoRedeemSystem {
     const displayNickname = accountNickname || String(account.uid);
     const isCookieExpired = await this.db.get(`${account.uid}.cookieExpired`);
     if (isCookieExpired) {
+      // 若之前已確認無法自動刷新（需人工介入），直接跳過
+      const needsManualUpdate = await this.db.get(`${account.uid}.needsCookieUpdate`);
+      if (needsManualUpdate) {
+        return {
+          uid: account.uid,
+          nickname: displayNickname,
+          description: "",
+          hasSuccess: false,
+          hasResults: false,
+        };
+      }
+
       const shouldRetry = await this.shouldRetryCookieRefresh(account.uid);
       if (!shouldRetry) {
-        this.logger.info(
-          `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 刷新冷卻中，跳過本次刷新嘗試`,
-        );
         return {
           uid: account.uid,
           nickname: displayNickname,
@@ -213,9 +222,6 @@ class AutoRedeemSystem {
       }
 
       await this.markCookieRefreshAttempt(account.uid);
-      this.logger.info(
-        `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 被標記為過期，嘗試自動刷新...`,
-      );
 
       // 嘗試自動刷新 Cookie
       const refreshResult = await autoRefreshCookie(
@@ -225,9 +231,6 @@ class AutoRedeemSystem {
       );
 
       if (!refreshResult.success) {
-        this.logger.warn(
-          `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 刷新失敗，跳過本次兌換`,
-        );
         return {
           uid: account.uid,
           nickname: displayNickname,
@@ -410,18 +413,18 @@ class AutoRedeemSystem {
 
       const isCookieExpired = await this.db.get(`${account.uid}.cookieExpired`);
       if (isCookieExpired) {
+        // 若之前已確認無法自動刷新（需人工介入），直接跳過
+        const needsManualUpdate = await this.db.get(`${account.uid}.needsCookieUpdate`);
+        if (needsManualUpdate) {
+          continue;
+        }
+
         const shouldRetry = await this.shouldRetryCookieRefresh(account.uid);
         if (!shouldRetry) {
-          this.logger.info(
-            `[用戶 ${userId}] [帳號 #${i}] Cookie 刷新冷卻中，跳過預檢查刷新`,
-          );
           continue;
         }
 
         await this.markCookieRefreshAttempt(account.uid);
-        this.logger.warn(
-          `[用戶 ${userId}] [帳號 #${i}] 偵測到過期 Cookie，嘗試自動刷新...`,
-        );
         const refreshResult = await autoRefreshCookie(
           userId,
           i,
@@ -430,10 +433,6 @@ class AutoRedeemSystem {
         if (refreshResult.success) {
           this.logger.success(
             `[用戶 ${userId}] [帳號 #${i}] Cookie 已自動刷新成功`,
-          );
-        } else {
-          this.logger.warn(
-            `[用戶 ${userId}] [帳號 #${i}] Cookie 無法刷新，將在兌換時重試`,
           );
         }
       }
