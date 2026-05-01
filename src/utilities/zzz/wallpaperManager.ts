@@ -26,6 +26,7 @@ async function fetchWallpaperPage(page: number): Promise<{ total: number; urls: 
     params: { iPageSize: 20, iPage: page, iChanId: 288, sLangKey: "en-us" },
     timeout: 10000,
   });
+  if (!res.data?.data) throw new Error("Unexpected API response shape");
   const { iTotal, list } = res.data.data;
   const urls: string[] = [];
   for (const item of list) {
@@ -37,7 +38,13 @@ async function fetchWallpaperPage(page: number): Promise<{ total: number; urls: 
 }
 
 export async function refreshWallpapers(db: any): Promise<void> {
-  const firstPage = await fetchWallpaperPage(1);
+  let firstPage: { total: number; urls: string[] };
+  try {
+    firstPage = await fetchWallpaperPage(1);
+  } catch (err) {
+    console.warn("[wallpaperManager] Failed to fetch page 1:", err);
+    return;
+  }
   const maxPage = Math.ceil(firstPage.total / 20);
   const allUrls: string[] = [...firstPage.urls];
 
@@ -71,7 +78,10 @@ export async function getTodayWallpaper(db: any): Promise<string | null> {
   if (effective.length === 0) return null;
 
   const url = effective[Math.floor(Math.random() * effective.length)];
-  await db.set("zzz.usedWallpapers", [...used.filter((u) => pool.includes(u)), url]);
+  const newUsed = remaining.length > 0
+    ? [...used.filter(u => pool.includes(u)), url]
+    : [url]; // reset cycle — start fresh
+  await db.set("zzz.usedWallpapers", newUsed);
   await db.set("zzz.todayWallpaper", { date: today, url });
   return url;
 }
