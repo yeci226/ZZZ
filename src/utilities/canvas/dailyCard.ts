@@ -38,6 +38,8 @@ export interface ZZZDailyCardPayload {
   totalDays: number;
   shortSignDay?: number;
   signCntMissed?: number;
+  tomorrowRewardName?: string;
+  tomorrowRewardIcon?: string;
 }
 
 const imageCache = new Map<string, Buffer>();

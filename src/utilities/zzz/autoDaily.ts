@@ -1,9 +1,5 @@
 import { client } from "../../index.js";
-import {
-  EmbedBuilder,
-  WebhookClient,
-  AttachmentBuilder,
-} from "discord.js";
+import { EmbedBuilder, WebhookClient, AttachmentBuilder } from "discord.js";
 import { ZenlessZoneZero, LanguageEnum } from "@yeci226/hoyoapi";
 import moment from "moment-timezone";
 import Logger from "../core/logger.js";
@@ -48,6 +44,10 @@ interface SignInResult {
   rewardCount?: number;
   rewardIcon?: string;
   totalDays?: number;
+  shortSignDay?: number;
+  signCntMissed?: number;
+  tomorrowRewardName?: string;
+  tomorrowRewardIcon?: string;
   error?: string;
 }
 
@@ -184,9 +184,6 @@ export class AutoDailyService {
       // Skip accounts that have been marked invalid (login/cookie failure).
       // They will be un-marked automatically when a successful API call goes through.
       if (account.invalid === true) {
-        this.logger.info(
-          `[用戶 ${userId}] [帳號 #${i}] UID ${account.uid} 已標記為無效，跳過簽到`,
-        );
         stats.skipped++;
         continue;
       }
@@ -221,6 +218,7 @@ export class AutoDailyService {
           rewards.awards[signResult.info.total_sign_day - 1] ||
           rewards.awards[0];
 
+        const tomorrowReward = rewards.awards[signResult.info.total_sign_day] || null;
         results.push({
           uid: account.uid,
           nickname: account.nickname || "Unknown",
@@ -229,6 +227,10 @@ export class AutoDailyService {
           rewardCount: reward.cnt,
           rewardIcon: reward.icon,
           totalDays: signResult.info.total_sign_day,
+          shortSignDay: signResult.info?.short_sign_day as number | undefined,
+          signCntMissed: signResult.info?.sign_cnt_missed as number | undefined,
+          tomorrowRewardName: tomorrowReward?.name,
+          tomorrowRewardIcon: tomorrowReward?.icon,
         });
 
         if (signResult.status === "success") stats.success++;
@@ -340,8 +342,15 @@ export class AutoDailyService {
           rewardIcon: res.rewardIcon,
           rewardCount: res.rewardCount ?? 1,
           totalDays: res.totalDays ?? 0,
+          shortSignDay: res.shortSignDay,
+          signCntMissed: res.signCntMissed,
+          tomorrowRewardName: res.tomorrowRewardName,
+          tomorrowRewardIcon: res.tomorrowRewardIcon,
         });
-        cardFiles.push({ buffer: buf.toString("base64"), name: `daily-zzz-${i}.png` });
+        cardFiles.push({
+          buffer: buf.toString("base64"),
+          name: `daily-zzz-${i}.png`,
+        });
       } catch (e) {
         this.logger.error(`Canvas card 生成失敗 (${res.uid}): ${e}`);
       }
@@ -368,12 +377,15 @@ export class AutoDailyService {
       if (notifyMethod === "dm") {
         await this.client.cluster.broadcastEval(
           async (c: any, context: any) => {
-            const { userId, channelId, content, cardFiles, errorEmbeds } = context;
+            const { userId, channelId, content, cardFiles, errorEmbeds } =
+              context;
             try {
               const { AttachmentBuilder } = await import("discord.js");
               const files = cardFiles.map(
                 (f: any) =>
-                  new AttachmentBuilder(Buffer.from(f.buffer, "base64"), { name: f.name }),
+                  new AttachmentBuilder(Buffer.from(f.buffer, "base64"), {
+                    name: f.name,
+                  }),
               );
               const user = await c.users.fetch(userId).catch(() => null);
               if (user) {
@@ -391,7 +403,13 @@ export class AutoDailyService {
           },
           {
             cluster: 0,
-            context: { userId, channelId: config.channelId, content: tag, cardFiles, errorEmbeds },
+            context: {
+              userId,
+              channelId: config.channelId,
+              content: tag,
+              cardFiles,
+              errorEmbeds,
+            },
           },
         );
       } else {
@@ -404,7 +422,9 @@ export class AutoDailyService {
               const { AttachmentBuilder } = await import("discord.js");
               const files = cardFiles.map(
                 (f: any) =>
-                  new AttachmentBuilder(Buffer.from(f.buffer, "base64"), { name: f.name }),
+                  new AttachmentBuilder(Buffer.from(f.buffer, "base64"), {
+                    name: f.name,
+                  }),
               );
               if (files.length) {
                 await channel.send({ content: content || undefined, files });
@@ -415,7 +435,12 @@ export class AutoDailyService {
             } catch (e) {}
           },
           {
-            context: { channelId: config.channelId, content: tag, cardFiles, errorEmbeds },
+            context: {
+              channelId: config.channelId,
+              content: tag,
+              cardFiles,
+              errorEmbeds,
+            },
           },
         );
       }
