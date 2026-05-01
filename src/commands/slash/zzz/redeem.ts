@@ -12,6 +12,7 @@ import {
   getRandomColor,
   getUserZZZData,
   getUserUid,
+  getUserCookie,
   updateCookie,
 } from "../../../utilities/utilities.js";
 import Logger from "../../../utilities/core/logger.js";
@@ -435,7 +436,8 @@ export default {
 
           // 成功兌換時更新Cookie
           try {
-            await updateCookie(targetUser.id, accountIndex, zzz.cookie as any);
+            const cookieStr = await getUserCookie(targetUser.id, accountIndex) ?? "";
+            await updateCookie(targetUser.id, accountIndex, cookieStr);
             new Logger("Redeem").info(
               `使用者 ${targetUser.id} 的帳號 #${accountIndex} 成功兌換禮包碼 ${code} 並更新 Cookie`,
             );

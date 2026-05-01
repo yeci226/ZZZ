@@ -1,16 +1,16 @@
 import { client } from "../../index.js";
 import {
-  ColorResolvable,
   EmbedBuilder,
   WebhookClient,
-  MessageFlags,
+  AttachmentBuilder,
 } from "discord.js";
 import { ZenlessZoneZero, LanguageEnum } from "@yeci226/hoyoapi";
 import moment from "moment-timezone";
 import Logger from "../core/logger.js";
 import { createTranslator } from "../core/i18n.js";
-import { getUserCookie, getUserLang, getRandomColor } from "../utilities.js";
+import { getUserCookie, getUserLang } from "../utilities.js";
 import { getConfig, getVerifyBaseUrl } from "../core/config.js";
+import { buildZZZDailyCard } from "../canvas/dailyCard.js";
 
 const CONFIG = {
   TAIPEI_TIMEZONE: "Asia/Taipei",
@@ -315,76 +315,110 @@ export class AutoDailyService {
     results: SignInResult[],
     tr: any,
   ) {
-    const embeds = results.map((res) => {
-      if (res.status === "failed") {
-        const embed = new EmbedBuilder()
-          .setColor("#E76161")
-          .setTitle(`${res.uid} ${tr("daily_Failed")}`);
-        if (res.error?.includes("10035")) {
-          embed
-            .setTitle(`${res.uid} 請先通過 Geetest 來繼續自動簽到！`)
-            .setURL(
-              `${getVerifyBaseUrl()}/verify?session=${Math.random().toString(36).substring(2, 12)}&userid=${userId}`,
-            );
-        } else {
-          embed.setDescription(`Error: ${res.error}`);
-        }
-        return embed;
-      }
-
-      return new EmbedBuilder()
-        .setColor(getRandomColor() as ColorResolvable)
-        .setTitle(
-          `${res.nickname} (${res.uid}) ${tr("Auto")}${tr("daily_SignSuccess")}`,
-        )
-        .setThumbnail(res.rewardIcon || null)
-        .setDescription(
-          tr("daily_Description", {
-            a: `\`${res.rewardName}x${res.rewardCount || 1}\``,
-          }) +
-            `\n\n### ${tr("daily_SignedDay", { z: `\`${res.totalDays}\`` })}`,
-        );
-    });
-
     const tag =
       config.tag === "true" || config.tag === true ? `<@${userId}>` : "";
 
-    // Improved notify method logic
     let notifyMethod = config.notifyType || "dm";
     if (!config.notifyType && config.channelId) {
-      notifyMethod = "channel"; // Default to channel if ID exists but type is unset
+      notifyMethod = "channel";
     }
 
+    // Separate failed results (embed only) from sign results (canvas card)
+    const failedResults = results.filter((r) => r.status === "failed");
+    const signedResults = results.filter((r) => r.status !== "failed");
+
+    // Build canvas card files for signed results
+    const cardFiles: { buffer: string; name: string }[] = [];
+    for (let i = 0; i < signedResults.length; i++) {
+      const res = signedResults[i];
+      try {
+        const buf = await buildZZZDailyCard({
+          nickname: res.nickname || "Unknown",
+          uid: res.uid,
+          status: res.status as "success" | "already_signed",
+          rewardName: res.rewardName || "",
+          rewardIcon: res.rewardIcon,
+          rewardCount: res.rewardCount ?? 1,
+          totalDays: res.totalDays ?? 0,
+        });
+        cardFiles.push({ buffer: buf.toString("base64"), name: `daily-zzz-${i}.png` });
+      } catch (e) {
+        this.logger.error(`Canvas card 生成失敗 (${res.uid}): ${e}`);
+      }
+    }
+
+    // Build error embeds for failed results
+    const errorEmbeds = failedResults.map((res) => {
+      const embed = new EmbedBuilder()
+        .setColor("#E76161")
+        .setTitle(`${res.uid} ${tr("daily_Failed")}`);
+      if (res.error?.includes("10035")) {
+        embed
+          .setTitle(`${res.uid} 請先通過 Geetest 來繼續自動簽到！`)
+          .setURL(
+            `${getVerifyBaseUrl()}/verify?session=${Math.random().toString(36).substring(2, 12)}&userid=${userId}`,
+          );
+      } else {
+        embed.setDescription(`Error: ${res.error}`);
+      }
+      return embed.toJSON();
+    });
+
     try {
-      await this.client.cluster.broadcastEval(
-        async (c: any, context: any) => {
-          const { userId, channelId, notifyMethod, content, embeds } = context;
-          try {
-            if (notifyMethod === "dm") {
+      if (notifyMethod === "dm") {
+        await this.client.cluster.broadcastEval(
+          async (c: any, context: any) => {
+            const { userId, channelId, content, cardFiles, errorEmbeds } = context;
+            try {
+              const { AttachmentBuilder } = await import("discord.js");
+              const files = cardFiles.map(
+                (f: any) =>
+                  new AttachmentBuilder(Buffer.from(f.buffer, "base64"), { name: f.name }),
+              );
               const user = await c.users.fetch(userId).catch(() => null);
               if (user) {
-                await user.send({ content, embeds }).catch(async () => {
-                  // Fallback to channel if DM fails
+                const dmPayload: any = {};
+                if (content) dmPayload.content = content;
+                if (files.length) dmPayload.files = files;
+                if (errorEmbeds.length) dmPayload.embeds = errorEmbeds;
+
+                await user.send(dmPayload).catch(async () => {
                   const channel = c.channels.cache.get(channelId);
-                  if (channel) await channel.send({ content, embeds });
+                  if (channel) await channel.send(dmPayload);
                 });
-                return;
               }
-            }
-            const channel = c.channels.cache.get(channelId);
-            if (channel) await channel.send({ content, embeds });
-          } catch (e) {}
-        },
-        {
-          context: {
-            userId,
-            channelId: config.channelId,
-            notifyMethod,
-            content: tag,
-            embeds: embeds.map((e) => e.toJSON()),
+            } catch (e) {}
           },
-        },
-      );
+          {
+            cluster: 0,
+            context: { userId, channelId: config.channelId, content: tag, cardFiles, errorEmbeds },
+          },
+        );
+      } else {
+        await this.client.cluster.broadcastEval(
+          async (c: any, context: any) => {
+            const { channelId, content, cardFiles, errorEmbeds } = context;
+            try {
+              const channel = c.channels.cache.get(channelId);
+              if (!channel) return;
+              const { AttachmentBuilder } = await import("discord.js");
+              const files = cardFiles.map(
+                (f: any) =>
+                  new AttachmentBuilder(Buffer.from(f.buffer, "base64"), { name: f.name }),
+              );
+              if (files.length) {
+                await channel.send({ content: content || undefined, files });
+              }
+              if (errorEmbeds.length) {
+                await channel.send({ embeds: errorEmbeds });
+              }
+            } catch (e) {}
+          },
+          {
+            context: { channelId: config.channelId, content: tag, cardFiles, errorEmbeds },
+          },
+        );
+      }
     } catch (error) {
       this.logger.error(`發送通知失敗 (User: ${userId}): ${error}`);
     }
