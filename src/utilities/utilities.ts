@@ -819,13 +819,52 @@ export async function autoRefreshCookie(
     const uid = account.uid;
     const creds = account.credentials;
 
-    // Strategy 1: silent refresh via stoken (no captcha needed)
+    // Strategy 1a: stoken from Hoyolab store (web-login accounts, per-ltuid_v2)
+    // This is the primary path for accounts bound via web-login.
+    const cookieLtuid = extractLtuidFromCookie(account.cookie ?? "");
+    if (cookieLtuid) {
+      const { getHoyolabByLtuid } = await import("./accountStore.js");
+      const hoyo = await getHoyolabByLtuid(client.db as any, userId, cookieLtuid);
+      if (hoyo?.stoken && hoyo?.ltmid_v2) {
+        const stoken = decryptCredential(hoyo.stoken);
+        const ltuid_v2 = cookieLtuid;
+        const ltmid_v2 = hoyo.ltmid_v2;
+        logger.info(`[用戶 ${userId}] [帳號 #${accountIndex}] 使用 Hoyolab stoken 靜默刷新 (ltuid=${ltuid_v2})...`);
+        const { exchangeStokenForCookies } = await import("./zzz/login.js");
+        const newTokens = await exchangeStokenForCookies(stoken, ltuid_v2, ltmid_v2);
+        const baseCookie = [
+          `stoken=${stoken}`,
+          `ltuid_v2=${ltuid_v2}`,
+          `ltmid_v2=${ltmid_v2}`,
+          `account_id_v2=${ltuid_v2}`,
+          `account_mid_v2=${ltmid_v2}`,
+          `ltoken_v2=${newTokens.ltoken_v2}`,
+          `cookie_token_v2=${newTokens.cookie_token_v2}`,
+        ].join("; ");
+        // Update cookie in both stores.
+        const { upsertHoyolab } = await import("./accountStore.js");
+        await upsertHoyolab(client.db as any, userId, {
+          ltuid_v2,
+          cookie: baseCookie,
+          stoken: hoyo.stoken, // keep same encrypted stoken
+          ltmid_v2,
+        });
+        if (uid) {
+          await client.db.delete(`${uid}.cookieExpired`);
+          await client.db.delete(`${uid}.needsCookieUpdate`);
+        }
+        logger.success(`[用戶 ${userId}] [帳號 #${accountIndex}] Hoyolab stoken 靜默刷新成功`);
+        return { success: true, message: "Cookie 已靜默刷新", newCookie: baseCookie };
+      }
+    }
+
+    // Strategy 1b: stoken from legacy credentials blob (app-login accounts)
     const stoken = creds?.stoken ? decryptCredential(creds.stoken) : null;
     const ltuid_v2 = creds?.ltuid_v2;
     const ltmid_v2 = creds?.ltmid_v2;
 
     if (stoken && ltuid_v2 && ltmid_v2) {
-      logger.info(`[用戶 ${userId}] [帳號 #${accountIndex}] 使用 stoken 靜默刷新...`);
+      logger.info(`[用戶 ${userId}] [帳號 #${accountIndex}] 使用 credentials stoken 靜默刷新...`);
       const { exchangeStokenForCookies } = await import("./zzz/login.js");
       const newTokens = await exchangeStokenForCookies(stoken, ltuid_v2, ltmid_v2);
 
@@ -847,7 +886,7 @@ export async function autoRefreshCookie(
         await client.db.delete(`${uid}.cookieExpired`);
         await client.db.delete(`${uid}.needsCookieUpdate`);
       }
-      logger.success(`[用戶 ${userId}] [帳號 #${accountIndex}] stoken 靜默刷新成功`);
+      logger.success(`[用戶 ${userId}] [帳號 #${accountIndex}] credentials stoken 靜默刷新成功`);
       return { success: true, message: "Cookie 已靜默刷新", newCookie: baseCookie };
     }
 

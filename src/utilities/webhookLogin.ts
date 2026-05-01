@@ -17,7 +17,7 @@
  */
 import { client } from "../index.js";
 import Logger from "./core/logger.js";
-import { getAllGameRoles, updateAccountInfo } from "./utilities.js";
+import { getAllGameRoles, updateAccountInfo, encryptCredential } from "./utilities.js";
 import { upsertHoyolab, upsertCharacter, type Character } from "./accountStore.js";
 import { getConfig } from "./core/config.js";
 import {
@@ -26,10 +26,36 @@ import {
   decryptString,
   type EnrichedGameCard,
 } from "./core/supabase.js";
+import { exchangeStokenForCookies } from "./zzz/login.js";
 
 const logger = new Logger("WebLogin");
 
 const ZZZ_GAME_ID = 8;
+
+/** Parse a cookie string into a key→value map. */
+function parseCookieMap(cookieStr: string): Record<string, string> {
+  return Object.fromEntries(
+    cookieStr.split(";").map((p) => {
+      const [k, ...v] = p.trim().split("=");
+      return [k!.trim(), v.join("=").trim()];
+    }),
+  );
+}
+
+/** Extract encrypted stoken + ltmid_v2 from a raw cookie string, for storage. */
+function extractStokenFields(
+  cookieStr: string,
+): { stoken: string; ltmid_v2: string } | null {
+  try {
+    const m = parseCookieMap(cookieStr);
+    const stoken = m["stoken"];
+    const ltmid_v2 = m["ltmid_v2"] ?? m["account_mid_v2"] ?? m["mid"];
+    if (!stoken || !ltmid_v2) return null;
+    return { stoken: encryptCredential(stoken), ltmid_v2 };
+  } catch {
+    return null;
+  }
+}
 
 export interface BindResult {
   ok: boolean;
@@ -46,22 +72,10 @@ async function isDevUser(discordUserId: string): Promise<boolean> {
 }
 
 async function notifyBound(
-  discordUserId: string,
-  bound: Array<{ uid: string; nickname: string }>,
+  _discordUserId: string,
+  _bound: Array<{ uid: string; nickname: string }>,
 ): Promise<void> {
-  if (bound.length === 0) return;
-  try {
-    const user = await client.users.fetch(discordUserId);
-    const lines = bound.map((b) => `• ${b.nickname} (${b.uid})`).join("\n");
-    await user.send(
-      `✅ 你的《絕區零》帳號已透過網頁登入綁定成功：\n${lines}`,
-    );
-    logger.info(`[bind] DM sent to ${discordUserId}`);
-  } catch (err: any) {
-    logger.warn(
-      `[bind] DM failed user=${discordUserId}: ${err?.message ?? err}`,
-    );
-  }
+  // No DM — account is available immediately on next command / autocomplete.
 }
 
 export async function bindCookieToUser(
@@ -74,9 +88,40 @@ export async function bindCookieToUser(
     return { ok: false, message: "missing discordUserId or cookie" };
   }
 
+  // Exchange stoken → ltoken_v2 so that getAllGameRoles (hoyoapi) has a valid cookie.
+  let apiCookie = cookieStr;
+  try {
+    const cookieMap = Object.fromEntries(
+      cookieStr.split(";").map((p) => {
+        const [k, ...v] = p.trim().split("=");
+        return [k.trim(), v.join("=").trim()];
+      }),
+    );
+    const stoken = cookieMap["stoken"];
+    const ltuid_v2 = cookieMap["ltuid_v2"] ?? cookieMap["account_id_v2"];
+    const ltmid_v2 = cookieMap["ltmid_v2"] ?? cookieMap["account_mid_v2"] ?? cookieMap["mid"];
+    if (stoken && ltuid_v2 && ltmid_v2) {
+      logger.info(`[bind] exchanging stoken for ltoken_v2…`);
+      const newTokens = await exchangeStokenForCookies(stoken, ltuid_v2, ltmid_v2);
+      apiCookie = [
+        `stoken=${stoken}`,
+        `ltuid_v2=${ltuid_v2}`,
+        `ltoken_v2=${newTokens.ltoken_v2}`,
+        `cookie_token_v2=${newTokens.cookie_token_v2}`,
+        `ltmid_v2=${ltmid_v2}`,
+        `account_id_v2=${ltuid_v2}`,
+        `account_mid_v2=${ltmid_v2}`,
+        `mid=${ltmid_v2}`,
+      ].join("; ");
+      logger.info(`[bind] stoken exchange OK`);
+    }
+  } catch (err: any) {
+    logger.warn(`[bind] stoken exchange failed, falling back to raw cookie: ${err?.message ?? err}`);
+  }
+
   let roles: any[];
   try {
-    roles = await getAllGameRoles(cookieStr);
+    roles = await getAllGameRoles(apiCookie);
     logger.info(`[bind] getAllGameRoles OK count=${roles?.length ?? 0}`);
   } catch (err: any) {
     logger.error(
@@ -119,7 +164,7 @@ export async function bindCookieToUser(
     try {
       await updateAccountInfo(discordUserId, {
         uid: role.uid,
-        cookie: cookieStr,
+        cookie: apiCookie,
         nickname: role.nickname,
       });
       logger.info(`[bind] updateAccountInfo OK uid=${uidStr} (${isUpdate ? "update" : "new"})`);
@@ -132,6 +177,22 @@ export async function bindCookieToUser(
 
   if (bound.length === 0) {
     return { ok: false, message: "account cap reached, no accounts bound" };
+  }
+
+  // Patch stoken/ltmid_v2 onto the Hoyolab record so autoRefreshCookie can use it.
+  const stokenPatch = extractStokenFields(apiCookie);
+  const ltuid_v2 = parseCookieMap(apiCookie)["ltuid_v2"] ?? parseCookieMap(apiCookie)["account_id_v2"];
+  if (stokenPatch && ltuid_v2) {
+    try {
+      await upsertHoyolab(client.db as any, discordUserId, {
+        ltuid_v2,
+        cookie: apiCookie,
+        ...stokenPatch,
+      });
+      logger.info(`[bind] stoken stored for ltuid=${ltuid_v2}`);
+    } catch (e: any) {
+      logger.warn(`[bind] stoken patch failed: ${e?.message ?? e}`);
+    }
   }
 
   logger.success(`[bind] DONE user=${discordUserId} bound=${bound.length}`);
@@ -184,6 +245,7 @@ export async function bindFromEnriched(
     ltuid_v2,
     cookie: cookieStr,
     hoyolabName: null,
+    ...extractStokenFields(cookieStr),
   });
   await upsertCharacter(client.db as any, discordUserId, ltuid_v2, character);
   logger.info(`[bindFromEnriched] OK uid=${uidStr} new=${isNew}`);
@@ -206,6 +268,7 @@ export async function bindHoyolabOnly(
     ltuid_v2,
     cookie: cookieStr,
     hoyolabName: null,
+    ...extractStokenFields(cookieStr),
   });
   // No character row, no DM, no slot consumed.
 }

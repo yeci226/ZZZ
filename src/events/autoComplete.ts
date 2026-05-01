@@ -1,5 +1,6 @@
 import { client } from "../index.js";
 import { Events, AutocompleteInteraction } from "discord.js";
+import { drainPendingLogins } from "../utilities/webhookLogin.js";
 // Use client.db directly
 
 client.on(Events.InteractionCreate, async (interaction: any) => {
@@ -9,6 +10,9 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
   const { name: optionName } = focusedOption;
 
   if (optionName == "account") {
+    // Drain any pending web-logins so newly bound accounts appear immediately.
+    try { await drainPendingLogins(interaction.user.id); } catch {}
+
     const userAccounts: any[] =
       (await client.db.get(`${interaction.user.id}.account`)) || [];
     if (!userAccounts) return;
