@@ -81,6 +81,7 @@ async function notifyBound(
 export async function bindCookieToUser(
   discordUserId: string,
   cookieStr: string,
+  hoyolabIcon?: string,
 ): Promise<BindResult> {
   logger.info(`[bind] start user=${discordUserId} cookieLen=${cookieStr?.length ?? 0}`);
   if (!discordUserId || !cookieStr) {
@@ -188,6 +189,7 @@ export async function bindCookieToUser(
         ltuid_v2,
         cookie: apiCookie,
         ...stokenPatch,
+        ...(hoyolabIcon !== undefined ? { hoyolabIcon } : {}),
       });
       logger.info(`[bind] stoken stored for ltuid=${ltuid_v2}`);
     } catch (e: any) {
@@ -210,6 +212,7 @@ export async function bindFromEnriched(
   cookieStr: string,
   card: EnrichedGameCard,
   fetchedAt: string,
+  hoyolabIcon?: string,
 ): Promise<BindResult> {
   logger.info(
     `[bindFromEnriched] start user=${discordUserId} uid=${card.game_role_id} ltuid=${ltuid_v2}`,
@@ -246,6 +249,7 @@ export async function bindFromEnriched(
     cookie: cookieStr,
     hoyolabName: null,
     ...extractStokenFields(cookieStr),
+    ...(hoyolabIcon !== undefined ? { hoyolabIcon } : {}),
   });
   await upsertCharacter(client.db as any, discordUserId, ltuid_v2, character);
   logger.info(`[bindFromEnriched] OK uid=${uidStr} new=${isNew}`);
@@ -301,6 +305,10 @@ export async function drainPendingLogins(
 
     const enriched = row.enriched;
     const card = enriched?.cards.find((c) => c.game_id === ZZZ_GAME_ID) ?? null;
+    const hoyolabIcon =
+      typeof (row.hoyo_account as any)?.avatar_url === "string"
+        ? (row.hoyo_account as any).avatar_url
+        : undefined;
 
     let bindOk = false;
     try {
@@ -312,6 +320,7 @@ export async function drainPendingLogins(
           cookieStr,
           card,
           enriched.fetched_at,
+          hoyolabIcon,
         );
         if (res.ok && res.bound) allBound.push(...res.bound);
         bindOk = res.ok;
@@ -321,7 +330,7 @@ export async function drainPendingLogins(
         bindOk = true;
       } else {
         logger.info(`[drain] route=legacy row=${row.id} (no enriched payload)`);
-        const res = await bindCookieToUser(discordUserId, cookieStr);
+        const res = await bindCookieToUser(discordUserId, cookieStr, hoyolabIcon);
         if (res.ok && res.bound) allBound.push(...res.bound);
         bindOk = res.ok;
       }
