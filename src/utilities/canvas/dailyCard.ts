@@ -5,6 +5,9 @@ import { dirname } from "path";
 import fs from "fs";
 import axios from "axios";
 import moment from "moment-timezone";
+import { getTodayWallpaper } from "../zzz/wallpaperManager.js";
+import { client } from "../../index.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -61,179 +64,165 @@ async function loadImageBuffer(url: string): Promise<Buffer | null> {
   }
 }
 
-function roundedRect(
-  ctx: any,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + w - radius, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-  ctx.lineTo(x + w, y + h - radius);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-  ctx.lineTo(x + radius, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
+function applyTextShadow(ctx: any, color = "rgba(0,0,0,0.9)", blur = 8) {
+  ctx.shadowColor = color;
+  ctx.shadowBlur = blur;
 }
 
-export async function buildZZZDailyCard(
-  payload: ZZZDailyCardPayload,
-): Promise<Buffer> {
-  const W = 900;
-  const H = 340;
-  const canvas = createCanvas(W, H);
-  const ctx = canvas.getContext("2d");
+function clearShadow(ctx: any) {
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+}
 
-  const font = '"ZZZFont", "ZZZFontEn", sans-serif';
-
-  // Background gradient — ZZZ dark gold/yellow theme
+function drawFallbackBg(ctx: any, W: number, H: number) {
   const bg = ctx.createLinearGradient(0, 0, W, H);
   bg.addColorStop(0, "#1a1209");
   bg.addColorStop(0.5, "#1f1a0e");
   bg.addColorStop(1, "#2a1f10");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
+}
 
-  // Outer panel
-  const px = 28, py = 24, pw = W - 56, ph = H - 48;
-  roundedRect(ctx, px, py, pw, ph, 20);
-  ctx.fillStyle = "rgba(10, 8, 4, 0.62)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255, 195, 50, 0.28)";
-  ctx.lineWidth = 1.8;
-  ctx.stroke();
+export async function buildZZZDailyCard(
+  payload: ZZZDailyCardPayload,
+): Promise<Buffer> {
+  const W = 1280;
+  const H = 720;
+  const canvas = createCanvas(W, H);
+  const ctx = canvas.getContext("2d");
+  const font = '"ZZZFont", "ZZZFontEn", sans-serif';
 
-  // Accent bar left
-  ctx.fillStyle = "#FFB830";
-  roundedRect(ctx, px, py + 20, 4, ph - 40, 2);
-  ctx.fill();
+  // ── BACKGROUND: wallpaper or fallback gradient ──
+  const wallpaperUrl = await getTodayWallpaper(client.db).catch(() => null);
+  const wallpaperBuf = wallpaperUrl ? await loadImageBuffer(wallpaperUrl) : null;
 
-  // ── LEFT: Nickname + UID ──
+  if (wallpaperBuf) {
+    try {
+      const wpImg = await loadImage(wallpaperBuf);
+      // Cover-fit: scale so image fills 1280×720, crop center
+      const scale = Math.max(W / wpImg.width, H / wpImg.height);
+      const dw = wpImg.width * scale;
+      const dh = wpImg.height * scale;
+      const dx = (W - dw) / 2;
+      const dy = (H - dh) / 2;
+      ctx.drawImage(wpImg, dx, dy, dw, dh);
+    } catch {
+      drawFallbackBg(ctx, W, H);
+    }
+  } else {
+    drawFallbackBg(ctx, W, H);
+  }
+
+  // Bottom gradient for text legibility
+  const grad = ctx.createLinearGradient(0, H * 0.45, 0, H);
+  grad.addColorStop(0, "rgba(0,0,0,0)");
+  grad.addColorStop(1, "rgba(0,0,0,0.62)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── TOP-LEFT: Nickname + UID ──
+  applyTextShadow(ctx, "rgba(0,0,0,0.95)", 12);
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = `bold 36px ${font}`;
-  ctx.fillText(payload.nickname, px + 24, py + 56);
+  ctx.font = `bold 48px ${font}`;
+  ctx.fillText(payload.nickname, 48, 80);
 
   ctx.fillStyle = "#c4a96a";
+  ctx.font = `26px ${font}`;
+  ctx.fillText(`UID ${payload.uid}`, 48, 116);
+  clearShadow(ctx);
+
+  // ── CENTER: Today's reward ──
+  const iconSize = 160;
+  const centerX = Math.floor(W / 2);
+  const iconY = H - 260;
+  const iconX = centerX - iconSize / 2;
+
+  applyTextShadow(ctx, "rgba(0,0,0,0.8)", 10);
+  ctx.fillStyle = "#d4b870";
   ctx.font = `22px ${font}`;
-  ctx.fillText(`UID ${payload.uid}`, px + 24, py + 88);
+  const todayLabel = "今日獎勵";
+  ctx.fillText(todayLabel, centerX - ctx.measureText(todayLabel).width / 2, iconY - 16);
+  clearShadow(ctx);
 
-  // Status badge
-  const signed = payload.status === "success";
-  const badgeText = signed ? "✔ 簽到成功" : "✔ 已簽到";
-  const badgeColor = signed ? "#FFB830" : "#a0b8d0";
-  roundedRect(ctx, px + 24, py + 104, 150, 36, 10);
-  ctx.fillStyle = signed
-    ? "rgba(255, 184, 48, 0.18)"
-    : "rgba(160, 184, 208, 0.15)";
-  ctx.fill();
-  ctx.strokeStyle = signed
-    ? "rgba(255, 184, 48, 0.55)"
-    : "rgba(160, 184, 208, 0.38)";
-  ctx.lineWidth = 1.2;
-  ctx.stroke();
-  ctx.fillStyle = badgeColor;
-  ctx.font = `bold 20px ${font}`;
-  ctx.fillText(badgeText, px + 36, py + 128);
-
-  // ── CENTER: Reward icon ──
-  const iconSize = 128;
-  const iconX = Math.floor(W / 2) - 64;
-  const iconY = py + 40;
-
-  roundedRect(ctx, iconX - 8, iconY - 8, iconSize + 16, iconSize + 16, 16);
-  ctx.fillStyle = "rgba(255, 184, 48, 0.10)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255, 184, 48, 0.30)";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  const iconBuffer = payload.rewardIcon
-    ? await loadImageBuffer(payload.rewardIcon)
-    : null;
-  if (iconBuffer) {
+  const iconBuf = payload.rewardIcon ? await loadImageBuffer(payload.rewardIcon) : null;
+  if (iconBuf) {
     try {
-      const img = await loadImage(iconBuffer);
+      const img = await loadImage(iconBuf);
       const ratio = Math.min(iconSize / img.width, iconSize / img.height);
       const dw = img.width * ratio;
       const dh = img.height * ratio;
-      ctx.drawImage(
-        img,
-        iconX + (iconSize - dw) / 2,
-        iconY + (iconSize - dh) / 2,
-        dw,
-        dh,
-      );
-    } catch {
-      // fallback: draw reward name initials
-      ctx.fillStyle = "rgba(255, 195, 80, 0.3)";
-      ctx.font = `bold 28px ${font}`;
-      const initials = (payload.rewardName || "?").slice(0, 2);
-      const tw = ctx.measureText(initials).width;
-      ctx.fillText(initials, iconX + (iconSize - tw) / 2, iconY + iconSize / 2 + 10);
-    }
-  } else {
-    ctx.fillStyle = "rgba(255, 195, 80, 0.3)";
-    ctx.font = `bold 28px ${font}`;
-    const initials = (payload.rewardName || "?").slice(0, 2);
-    const tw = ctx.measureText(initials).width;
-    ctx.fillText(initials, iconX + (iconSize - tw) / 2, iconY + iconSize / 2 + 10);
+      ctx.drawImage(img, iconX + (iconSize - dw) / 2, iconY + (iconSize - dh) / 2, dw, dh);
+    } catch { /* no icon */ }
   }
 
-  // Reward name + count below icon
-  ctx.fillStyle = "#f5e0a0";
-  ctx.font = `bold 22px ${font}`;
+  applyTextShadow(ctx, "rgba(0,0,0,0.9)", 10);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = `bold 28px ${font}`;
   const rewardLabel = `${payload.rewardName} ×${payload.rewardCount}`;
-  const labelW = ctx.measureText(rewardLabel).width;
-  ctx.fillText(rewardLabel, iconX + (iconSize - labelW) / 2 + 8, iconY + iconSize + 30);
+  ctx.fillText(rewardLabel, centerX - ctx.measureText(rewardLabel).width / 2, iconY + iconSize + 38);
+  clearShadow(ctx);
 
-  // "今日獎勵" label above
-  ctx.fillStyle = "#a08050";
-  ctx.font = `18px ${font}`;
-  const topLabel = "今日獎勵";
-  const topLabelW = ctx.measureText(topLabel).width;
-  ctx.fillText(topLabel, iconX + (iconSize - topLabelW) / 2 + 8, iconY - 14);
+  // ── RIGHT: Tomorrow's reward + stats ──
+  const rightX = W - 340;
+  let rightY = H - 280;
 
-  // ── RIGHT: Stats ──
-  const rightX = W - px - 240;
-  const statsStartY = py + 56;
-  const lineH = 52;
+  if (payload.tomorrowRewardName) {
+    applyTextShadow(ctx, "rgba(0,0,0,0.8)", 8);
+    ctx.fillStyle = "#a08858";
+    ctx.font = `20px ${font}`;
+    ctx.fillText("明日獎勵", rightX, rightY);
+    rightY += 28;
+    clearShadow(ctx);
 
-  const stats: [string, string][] = [
-    ["累計簽到", `${payload.totalDays} 天`],
-  ];
-  if (payload.shortSignDay !== undefined) {
-    stats.push(["本月簽到", `${payload.shortSignDay} 天`]);
+    const tmIconSize = 80;
+    const tmIconBuf = payload.tomorrowRewardIcon
+      ? await loadImageBuffer(payload.tomorrowRewardIcon)
+      : null;
+    if (tmIconBuf) {
+      try {
+        const img = await loadImage(tmIconBuf);
+        const ratio = Math.min(tmIconSize / img.width, tmIconSize / img.height);
+        const dw = img.width * ratio;
+        const dh = img.height * ratio;
+        ctx.drawImage(img, rightX + (tmIconSize - dw) / 2, rightY + (tmIconSize - dh) / 2, dw, dh);
+      } catch { /* no icon */ }
+    }
+
+    applyTextShadow(ctx, "rgba(0,0,0,0.8)", 8);
+    ctx.fillStyle = "#e0d0a0";
+    ctx.font = `20px ${font}`;
+    ctx.fillText(payload.tomorrowRewardName, rightX + tmIconSize + 10, rightY + 46);
+    clearShadow(ctx);
+    rightY += tmIconSize + 16;
   }
-  if (payload.signCntMissed !== undefined) {
-    stats.push(["本月漏簽", `${payload.signCntMissed} 天`]);
-  }
 
-  for (let i = 0; i < stats.length; i++) {
-    const [label, value] = stats[i];
-    const sy = statsStartY + i * lineH;
+  // Stats
+  const statLines: [string, string][] = [];
+  if (payload.shortSignDay !== undefined)
+    statLines.push(["本月簽到", `${payload.shortSignDay} 天`]);
+  if (payload.signCntMissed !== undefined)
+    statLines.push(["本月漏簽", `${payload.signCntMissed} 天`]);
 
+  for (const [label, value] of statLines) {
+    applyTextShadow(ctx, "rgba(0,0,0,0.8)", 8);
     ctx.fillStyle = "#8a7a5a";
-    ctx.font = `19px ${font}`;
-    ctx.fillText(label, rightX, sy);
-
+    ctx.font = `20px ${font}`;
+    ctx.fillText(label, rightX, rightY + 18);
     ctx.fillStyle = "#FFD97A";
     ctx.font = `bold 30px ${font}`;
-    ctx.fillText(value, rightX, sy + 30);
+    ctx.fillText(value, rightX, rightY + 48);
+    clearShadow(ctx);
+    rightY += 62;
   }
 
-  // Timestamp bottom right
+  // ── BOTTOM-RIGHT: Timestamp ──
   const ts = moment().tz("Asia/Taipei").format("YYYY/MM/DD HH:mm");
-  ctx.fillStyle = "#5a4a2a";
-  ctx.font = `16px ${font}`;
+  applyTextShadow(ctx, "rgba(0,0,0,0.7)", 6);
+  ctx.fillStyle = "rgba(220,200,160,0.85)";
+  ctx.font = `18px ${font}`;
   const tsW = ctx.measureText(ts).width;
-  ctx.fillText(ts, W - px - tsW - 8, H - py - 8);
+  ctx.fillText(ts, W - 48 - tsW, H - 24);
+  clearShadow(ctx);
 
   return canvas.toBuffer("image/png");
 }
