@@ -13,6 +13,11 @@ import {
   AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ContainerBuilder,
+  SectionBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  ThumbnailBuilder,
 } from "discord.js";
 import path from "path";
 import { failedReply, getRandomColor } from "../../../utilities/utilities.js";
@@ -20,7 +25,9 @@ import { getConfig } from "../../../utilities/core/config.js";
 import { QuickDB } from "quick.db";
 import {
   getAllCharacters,
+  getHoyolabs,
   type Character,
+  type Hoyolab,
 } from "../../../utilities/accountStore.js";
 
 /**
@@ -50,48 +57,67 @@ function formatRelativeFromIso(iso: string | undefined): string {
   return `${Math.floor(diffSec / 86400)}d ago`;
 }
 
-function buildCharacterEmbed(
-  character: Character,
+function buildAccountComponents(
+  characters: Array<Character & { ltuid_v2: string; cookie: string }>,
+  hoyolabs: Hoyolab[],
+  discordUsername: string,
+  discordAvatarUrl: string,
   tr: any,
-): EmbedBuilder {
-  const titleGame = character.game_name ?? "Zenless Zone Zero";
-  const lvLabel = tr("account_View_LvShort");
-  const titleLevel = character.level !== undefined ? `${lvLabel} ${character.level}` : "";
-  const title = titleLevel ? `${titleGame} · ${titleLevel}` : titleGame;
-  const nickname = character.nickname ?? "";
-  const description = `${nickname ? `**${nickname}** · ` : ""}UID \`${character.uid}\``;
+): ContainerBuilder {
+  const container = new ContainerBuilder();
 
-  const embed = new EmbedBuilder()
-    .setColor(getRandomColor() as any)
-    .setTitle(title)
-    .setDescription(description);
+  const firstHoyolab = hoyolabs[0] ?? null;
+  const hoyolabName = firstHoyolab?.hoyolabName ?? null;
+  const hoyolabIcon = firstHoyolab?.hoyolabIcon ?? null;
+  const ltuid = firstHoyolab?.ltuid_v2 ?? "—";
 
-  if (character.logo) embed.setThumbnail(character.logo);
-  if (character.cover) embed.setImage(character.cover);
+  const headerText = [
+    `**${discordUsername}**`,
+    hoyolabName
+      ? `${hoyolabName} · ltuid \`${ltuid}\``
+      : `ltuid \`${ltuid}\``,
+  ].join("\n");
 
-  const regionVal = character.region_name ?? character.region ?? "—";
-  embed.addFields({
-    name: tr("account_View_Region"),
-    value: regionVal,
-    inline: true,
-  });
+  const headerSection = new SectionBuilder().addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(headerText),
+  );
+  headerSection.setThumbnailAccessory(
+    new ThumbnailBuilder().setURL(hoyolabIcon ?? discordAvatarUrl),
+  );
+  container.addSectionComponents(headerSection);
+  container.addSeparatorComponents(new SeparatorBuilder());
 
-  const stats = character.stats ?? [];
-  for (const s of stats.slice(0, 4)) {
-    embed.addFields({
-      name: s.name || "—",
-      value: s.value || "—",
-      inline: true,
-    });
+  for (let i = 0; i < characters.length; i++) {
+    const c = characters[i]!;
+    const gameName = c.game_name ?? "Zenless Zone Zero";
+    const lvLabel = tr("account_View_LvShort");
+    const levelStr = c.level !== undefined ? ` · ${lvLabel} ${c.level}` : "";
+    const regionStr = c.region_name ?? c.region ?? "—";
+    const nicknameStr = c.nickname ? `**${c.nickname}** · ` : "";
+    const syncStr = c.enrichedAt
+      ? ` · ${tr("account_View_LastSync", { time: formatRelativeFromIso(c.enrichedAt) })}`
+      : "";
+
+    const charText = [
+      `${nicknameStr}UID \`${c.uid}\``,
+      `${gameName}${levelStr}`,
+      `${tr("account_View_Region")}: ${regionStr}${syncStr}`,
+    ].join("\n");
+
+    const charSection = new SectionBuilder().addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(charText),
+    );
+    if (c.logo) {
+      charSection.setThumbnailAccessory(new ThumbnailBuilder().setURL(c.logo));
+    }
+    container.addSectionComponents(charSection);
+
+    if (i < characters.length - 1) {
+      container.addSeparatorComponents(new SeparatorBuilder());
+    }
   }
 
-  const linked = tr("account_View_Linked");
-  const lastSync = character.enrichedAt
-    ? ` · ${tr("account_View_LastSync", { time: formatRelativeFromIso(character.enrichedAt) })}`
-    : "";
-  embed.setFooter({ text: `🔗 ${linked}${lastSync}` });
-
-  return embed;
+  return container;
 }
 
 export default {
@@ -313,43 +339,28 @@ export default {
       case "ViewAccount": {
         const characters = await getAllCharacters(db as any, userId);
         if (characters.length === 0) {
-          interaction.editReply({
+          await interaction.editReply({
             embeds: [
               new EmbedBuilder()
                 .setColor(getRandomColor() as any)
-                .setAuthor({
-                  name: tr("account_ListOfAccount", {
-                    Username: interaction.user.username,
-                  }),
-                  iconURL: `${interaction.user.displayAvatarURL({
-                    size: 4096,
-                    forceStatic: false,
-                  })}`,
-                })
                 .setDescription(`❌ \`${tr("account_NoAccount")}\``),
             ],
           });
           return;
         }
 
-        const embeds = characters.slice(0, 10).map((c) => {
-          const { ltuid_v2: _l, cookie: _c, ...charOnly } = c;
-          return buildCharacterEmbed(charOnly as Character, tr);
-        });
-
-        if (embeds.length > 0) {
-          embeds[0]!.setAuthor({
-            name: tr("account_ListOfAccount", {
-              Username: interaction.user.username,
-            }),
-            iconURL: `${interaction.user.displayAvatarURL({
-              size: 4096,
-              forceStatic: false,
-            })}`,
-          });
-        }
-
-        interaction.editReply({ embeds });
+        const hoyolabs = await getHoyolabs(db as any, userId);
+        const container = buildAccountComponents(
+          characters.slice(0, 10),
+          hoyolabs,
+          interaction.user.username,
+          interaction.user.displayAvatarURL({ size: 256, forceStatic: false }),
+          tr,
+        );
+        await interaction.editReply({
+          flags: MessageFlags.IsComponentsV2,
+          components: [container],
+        } as any);
         return;
       }
       case "EditAccount":
