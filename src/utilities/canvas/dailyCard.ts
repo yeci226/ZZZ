@@ -43,6 +43,12 @@ export interface ZZZDailyCardPayload {
   signCntMissed?: number;
   tomorrowRewardName?: string;
   tomorrowRewardIcon?: string;
+  tomorrowRewardCount?: number;
+  // i18n labels (pre-translated by caller)
+  labelTodayReward?: string;
+  labelTomorrowReward?: string;
+  labelMonthSignIn?: string;
+  labelMonthMissed?: string;
 }
 
 const imageCache = new Map<string, Buffer>();
@@ -67,6 +73,23 @@ async function loadImageBuffer(url: string): Promise<Buffer | null> {
 function applyTextShadow(ctx: any, color = "rgba(0,0,0,0.9)", blur = 8) {
   ctx.shadowColor = color;
   ctx.shadowBlur = blur;
+}
+
+function drawTextWithStroke(
+  ctx: any,
+  text: string,
+  x: number,
+  y: number,
+  strokeWidth = 4,
+  strokeColor = "rgba(0,0,0,0.95)",
+  fillColor = "#FFFFFF",
+) {
+  ctx.lineWidth = strokeWidth;
+  ctx.strokeStyle = strokeColor;
+  ctx.lineJoin = "round";
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = fillColor;
+  ctx.fillText(text, x, y);
 }
 
 function clearShadow(ctx: any) {
@@ -121,15 +144,11 @@ export async function buildZZZDailyCard(
   ctx.fillRect(0, 0, W, H);
 
   // ── TOP-LEFT: Nickname + UID ──
-  applyTextShadow(ctx, "rgba(0,0,0,0.95)", 12);
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = `bold 48px ${font}`;
-  ctx.fillText(payload.nickname, 48, 80);
+  ctx.font = `48px ${font}`;
+  drawTextWithStroke(ctx, payload.nickname, 48, 80, 6);
 
-  ctx.fillStyle = "#c4a96a";
   ctx.font = `26px ${font}`;
-  ctx.fillText(`UID ${payload.uid}`, 48, 116);
-  clearShadow(ctx);
+  drawTextWithStroke(ctx, `UID ${payload.uid}`, 48, 116, 4);
 
   // ── CENTER: Today's reward ──
   const iconSize = 160;
@@ -140,7 +159,7 @@ export async function buildZZZDailyCard(
   applyTextShadow(ctx, "rgba(0,0,0,0.8)", 10);
   ctx.fillStyle = "#d4b870";
   ctx.font = `22px ${font}`;
-  const todayLabel = "今日獎勵";
+  const todayLabel = payload.labelTodayReward ?? "今日獎勵";
   ctx.fillText(todayLabel, centerX - ctx.measureText(todayLabel).width / 2, iconY - 16);
   clearShadow(ctx);
 
@@ -156,10 +175,9 @@ export async function buildZZZDailyCard(
   }
 
   applyTextShadow(ctx, "rgba(0,0,0,0.9)", 10);
-  ctx.fillStyle = "#FFFFFF";
   ctx.font = `bold 28px ${font}`;
   const rewardLabel = `${payload.rewardName} ×${payload.rewardCount}`;
-  ctx.fillText(rewardLabel, centerX - ctx.measureText(rewardLabel).width / 2, iconY + iconSize + 38);
+  drawTextWithStroke(ctx, rewardLabel, centerX - ctx.measureText(rewardLabel).width / 2, iconY + iconSize + 38, 5);
   clearShadow(ctx);
 
   // ── RIGHT: Tomorrow's reward + stats ──
@@ -170,7 +188,7 @@ export async function buildZZZDailyCard(
     applyTextShadow(ctx, "rgba(0,0,0,0.8)", 8);
     ctx.fillStyle = "#a08858";
     ctx.font = `20px ${font}`;
-    ctx.fillText("明日獎勵", rightX, rightY);
+    ctx.fillText(payload.labelTomorrowReward ?? "明日獎勵", rightX, rightY);
     rightY += 28;
     clearShadow(ctx);
 
@@ -188,10 +206,11 @@ export async function buildZZZDailyCard(
       } catch { /* no icon */ }
     }
 
-    applyTextShadow(ctx, "rgba(0,0,0,0.8)", 8);
-    ctx.fillStyle = "#e0d0a0";
-    ctx.font = `20px ${font}`;
-    ctx.fillText(payload.tomorrowRewardName, rightX + tmIconSize + 10, rightY + 46);
+    const tmrLabel = payload.tomorrowRewardCount
+      ? `${payload.tomorrowRewardName} ×${payload.tomorrowRewardCount}`
+      : payload.tomorrowRewardName;
+    ctx.font = `bold 28px ${font}`;
+    drawTextWithStroke(ctx, tmrLabel, rightX + tmIconSize + 10, rightY + 50, 5);
     clearShadow(ctx);
     rightY += tmIconSize + 16;
   }
@@ -199,9 +218,9 @@ export async function buildZZZDailyCard(
   // Stats
   const statLines: [string, string][] = [];
   if (payload.shortSignDay !== undefined)
-    statLines.push(["本月簽到", `${payload.shortSignDay} 天`]);
+    statLines.push([payload.labelMonthSignIn ?? "本月簽到", `${payload.shortSignDay} 天`]);
   if (payload.signCntMissed !== undefined)
-    statLines.push(["本月漏簽", `${payload.signCntMissed} 天`]);
+    statLines.push([payload.labelMonthMissed ?? "本月漏簽", `${payload.signCntMissed} 天`]);
 
   for (const [label, value] of statLines) {
     applyTextShadow(ctx, "rgba(0,0,0,0.8)", 8);
@@ -217,12 +236,9 @@ export async function buildZZZDailyCard(
 
   // ── BOTTOM-RIGHT: Timestamp ──
   const ts = moment().tz("Asia/Taipei").format("YYYY/MM/DD HH:mm");
-  applyTextShadow(ctx, "rgba(0,0,0,0.7)", 6);
-  ctx.fillStyle = "rgba(220,200,160,0.85)";
   ctx.font = `18px ${font}`;
   const tsW = ctx.measureText(ts).width;
-  ctx.fillText(ts, W - 48 - tsW, H - 24);
-  clearShadow(ctx);
+  drawTextWithStroke(ctx, ts, W - 48 - tsW, H - 24, 3);
 
   return canvas.toBuffer("image/png");
 }

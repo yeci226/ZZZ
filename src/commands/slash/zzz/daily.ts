@@ -253,12 +253,7 @@ export default {
     const zzz = await getUserZZZData(interaction, tr, user.id);
     if (!zzz) return;
 
-    const info = await zzz.daily.info();
-    const reward = await zzz.daily.reward();
     const rewards = await zzz.daily.rewards();
-    const todaySign =
-      rewards.awards[info.total_sign_day - 1] || rewards.awards[0];
-    const tmrSign = rewards.awards[info.total_sign_day];
     const res = await zzz.daily.claim();
 
     if (
@@ -285,6 +280,11 @@ export default {
         ],
       });
 
+    // Use post-claim info so total_sign_day reflects today's sign-in
+    const signedDay = res.info.total_sign_day;
+    const todaySign = rewards.awards[signedDay - 1] || rewards.awards[0];
+    const tmrSign = rewards.awards[signedDay];
+
     const accounts = await db.get(`${interaction.user.id}.account`);
     const account =
       accounts.find((acc: any) => acc.uid === zzz.uid) || accounts[0];
@@ -298,11 +298,16 @@ export default {
         rewardName: todaySign?.name || "",
         rewardIcon: todaySign?.icon,
         rewardCount: todaySign?.cnt ?? 1,
-        totalDays: info.total_sign_day,
-        shortSignDay: info.short_sign_day as number | undefined,
-        signCntMissed: info.sign_cnt_missed,
+        totalDays: signedDay,
+        shortSignDay: signedDay,
+        signCntMissed: Math.max(0, new Date().getDate() - 1 - signedDay),
         tomorrowRewardName: tmrSign?.name,
         tomorrowRewardIcon: tmrSign?.icon,
+        tomorrowRewardCount: tmrSign?.cnt,
+        labelTodayReward: tr("card_TodayReward"),
+        labelTomorrowReward: tr("card_TomorrowReward"),
+        labelMonthSignIn: tr("card_MonthSignIn"),
+        labelMonthMissed: tr("card_MonthMissed"),
       });
       const { AttachmentBuilder } = await import("discord.js");
       await interaction.editReply({
@@ -317,12 +322,12 @@ export default {
             .setTitle(`${nickname} (${zzz.uid}) ${tr("daily_SignSuccess")}`)
             .setThumbnail(todaySign?.icon)
             .setDescription(
-              `${tr("daily_Description", { a: `\`${todaySign?.name}x${todaySign?.cnt}\`` })}${info.month_last_day ? "" : `\n\n${tr("daily_DescriptionTmr", { b: `\`${tmrSign?.name}x${tmrSign?.cnt}\`` })}`}`,
+              `${tr("daily_Description", { a: `\`${todaySign?.name}x${todaySign?.cnt}\`` })}${res.info.month_last_day ? "" : `\n\n${tr("daily_DescriptionTmr", { b: `\`${tmrSign?.name}x${tmrSign?.cnt}\`` })}`}`,
             )
             .addFields(
-              { name: `${reward.month} ${tr("daily_Month")}`, value: "\u200b", inline: true },
-              { name: tr("daily_SignedDay", { z: "`" + info.total_sign_day + "`" }), value: "\u200b", inline: true },
-              { name: tr("daily_MissedDay", { z: "`" + info.sign_cnt_missed + "`" }), value: "\u200b", inline: true },
+              { name: `${tr("daily_Month")}`, value: "\u200b", inline: true },
+              { name: tr("daily_SignedDay", { z: "`" + signedDay + "`" }), value: "\u200b", inline: true },
+              { name: tr("daily_MissedDay", { z: "`" + Math.max(0, new Date().getDate() - 1 - signedDay) + "`" }), value: "\u200b", inline: true },
             ),
         ],
       });

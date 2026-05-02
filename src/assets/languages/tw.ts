@@ -64,6 +64,14 @@ const langs = {
   autoDaily_NotifyType: "通知管道：<z>",
   autoDaily_NotifyType_DM: "私訊",
   autoDaily_NotifyType_Channel: "頻道",
+  autoDaily_GeetestTitle: "<uid> 請先通過 Geetest 來繼續自動簽到！",
+
+  card_TodayReward: "今日獎勵",
+  card_TomorrowReward: "明日獎勵",
+  card_MonthSignIn: "本月簽到",
+  card_MonthMissed: "本月漏簽",
+
+  redeem_AllRedeemed: "<count> 個禮包碼已全部兌換",
   account_QuickLink: "① 帳密登入 (推薦)",
   account_QuickLinkModal: "帳號登入",
   account_QuickLinkDesc: "使用帳號密碼快速完成登入與綁定",

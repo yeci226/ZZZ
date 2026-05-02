@@ -48,6 +48,7 @@ interface SignInResult {
   signCntMissed?: number;
   tomorrowRewardName?: string;
   tomorrowRewardIcon?: string;
+  tomorrowRewardCount?: number;
   error?: string;
 }
 
@@ -227,10 +228,11 @@ export class AutoDailyService {
           rewardCount: reward.cnt,
           rewardIcon: reward.icon,
           totalDays: signResult.info.total_sign_day,
-          shortSignDay: signResult.info?.short_sign_day as number | undefined,
-          signCntMissed: signResult.info?.sign_cnt_missed as number | undefined,
+          shortSignDay: signResult.info.total_sign_day,
+          signCntMissed: Math.max(0, new Date().getDate() - 1 - signResult.info.total_sign_day),
           tomorrowRewardName: tomorrowReward?.name,
           tomorrowRewardIcon: tomorrowReward?.icon,
+          tomorrowRewardCount: tomorrowReward?.cnt,
         });
 
         if (signResult.status === "success") stats.success++;
@@ -346,6 +348,11 @@ export class AutoDailyService {
           signCntMissed: res.signCntMissed,
           tomorrowRewardName: res.tomorrowRewardName,
           tomorrowRewardIcon: res.tomorrowRewardIcon,
+          tomorrowRewardCount: res.tomorrowRewardCount,
+          labelTodayReward: tr("card_TodayReward"),
+          labelTomorrowReward: tr("card_TomorrowReward"),
+          labelMonthSignIn: tr("card_MonthSignIn"),
+          labelMonthMissed: tr("card_MonthMissed"),
         });
         cardFiles.push({
           buffer: buf.toString("base64"),
@@ -363,7 +370,7 @@ export class AutoDailyService {
         .setTitle(`${res.uid} ${tr("daily_Failed")}`);
       if (res.error?.includes("10035")) {
         embed
-          .setTitle(`${res.uid} 請先通過 Geetest 來繼續自動簽到！`)
+          .setTitle(tr("autoDaily_GeetestTitle").replace("<uid>", res.uid))
           .setURL(
             `${getVerifyBaseUrl()}/verify?session=${Math.random().toString(36).substring(2, 12)}&userid=${userId}`,
           );

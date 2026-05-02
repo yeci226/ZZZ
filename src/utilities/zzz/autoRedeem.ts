@@ -274,7 +274,7 @@ class AutoRedeemSystem {
       return {
         uid: account.uid,
         nickname: displayNickname,
-        description: `ℹ️ ${tr("redeem_Already")}: ${codes.length} 個禮包碼已全部兌換`,
+        description: `ℹ️ ${tr("redeem_Already")}: ${tr("redeem_AllRedeemed").replace("<count>", String(codes.length))}`,
         hasSuccess: false,
       };
     }

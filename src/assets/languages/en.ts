@@ -66,6 +66,14 @@ const langs = {
   autoDaily_NotifyType: "Notification channel: <z>",
   autoDaily_NotifyType_DM: "Private Message",
   autoDaily_NotifyType_Channel: "Channel",
+  autoDaily_GeetestTitle: "<uid> Please complete Geetest to continue auto check-in!",
+
+  card_TodayReward: "Today's Reward",
+  card_TomorrowReward: "Tomorrow's Reward",
+  card_MonthSignIn: "Monthly Sign-ins",
+  card_MonthMissed: "Days Missed",
+
+  redeem_AllRedeemed: "All <count> gift codes have been redeemed",
   account_QuickLink: "① Account Login (Recommended)",
   account_QuickLinkModal: "Quick Account Login",
   account_QuickLinkDesc:
