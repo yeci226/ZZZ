@@ -53,17 +53,22 @@ export interface ZZZDailyCardPayload {
 
 const imageCache = new Map<string, Buffer>();
 
-async function loadImageBuffer(url: string): Promise<Buffer | null> {
-  if (!url) return null;
-  const cached = imageCache.get(url);
+async function loadImageBuffer(urlOrPath: string): Promise<Buffer | null> {
+  if (!urlOrPath) return null;
+  const cached = imageCache.get(urlOrPath);
   if (cached) return cached;
   try {
-    const res = await axios.get<ArrayBuffer>(url, {
-      responseType: "arraybuffer",
-      timeout: 8000,
-    });
-    const buf = Buffer.from(res.data);
-    imageCache.set(url, buf);
+    let buf: Buffer;
+    if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
+      const res = await axios.get<ArrayBuffer>(urlOrPath, {
+        responseType: "arraybuffer",
+        timeout: 8000,
+      });
+      buf = Buffer.from(res.data);
+    } else {
+      buf = fs.readFileSync(urlOrPath);
+    }
+    imageCache.set(urlOrPath, buf);
     return buf;
   } catch {
     return null;
