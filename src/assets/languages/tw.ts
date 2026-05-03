@@ -213,6 +213,18 @@ const langs = {
   DeadlyTip: "總得分為排名依據，排名每半小時更新一次，請稍後刷新",
   BattleRecord: "戰鬥記錄",
   ChallengeTime: "挑戰時間",
+
+  // Settings
+  settings_Title: "使用者設定",
+  settings_Desc: "此處的設定與你的 Discord 帳戶關聯，適用於所有遊戲帳戶。",
+  settings_PaintingLabel: "意象影畫",
+  settings_PaintingDesc: "角色立繪使用意象影畫取代標準立繪。",
+  settings_RankPaintingLabel: "影畫展示",
+  settings_RankPaintingDesc: "依影畫等級自動選擇意象影畫。",
+  settings_LocaleLabel: "語言",
+  settings_LocaleDesc: "機器人將使用此語言回覆你。",
+  settings_On: "開",
+  settings_Off: "關",
 };
 
 export default langs;

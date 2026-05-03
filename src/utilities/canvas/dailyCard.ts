@@ -180,7 +180,7 @@ export async function buildZZZDailyCard(
   }
 
   applyTextShadow(ctx, "rgba(0,0,0,0.9)", 10);
-  ctx.font = `bold 28px ${font}`;
+  ctx.font = `28px ${font}`;
   const rewardLabel = `${payload.rewardName} ×${payload.rewardCount}`;
   drawTextWithStroke(ctx, rewardLabel, centerX - ctx.measureText(rewardLabel).width / 2, iconY + iconSize + 38, 5);
   clearShadow(ctx);
@@ -214,7 +214,7 @@ export async function buildZZZDailyCard(
     const tmrLabel = payload.tomorrowRewardCount
       ? `${payload.tomorrowRewardName} ×${payload.tomorrowRewardCount}`
       : payload.tomorrowRewardName;
-    ctx.font = `bold 28px ${font}`;
+    ctx.font = `28px ${font}`;
     drawTextWithStroke(ctx, tmrLabel, rightX + tmIconSize + 10, rightY + 50, 5);
     clearShadow(ctx);
     rightY += tmIconSize + 16;

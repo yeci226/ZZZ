@@ -211,6 +211,18 @@ const langs = {
     "総合スコアはランキングに使用され、ランキングは30分ごとに更新されます。後ほど更新してください",
   BattleRecord: "戦闘記録",
   ChallengeTime: "挑戦時間",
+
+  // Settings
+  settings_Title: "ユーザー設定",
+  settings_Desc: "これらの設定はDiscordアカウントに紐付けられ、すべてのゲームアカウントに適用されます。",
+  settings_PaintingLabel: "イメージイラスト",
+  settings_PaintingDesc: "標準の立ち絵の代わりにWikiのイメージイラストを使用します。",
+  settings_RankPaintingLabel: "ランク別イラスト",
+  settings_RankPaintingDesc: "マインドスケープのランクに基づいてイラストを自動選択します。",
+  settings_LocaleLabel: "言語",
+  settings_LocaleDesc: "ボットはこの言語で返答します。",
+  settings_On: "オン",
+  settings_Off: "オフ",
 };
 
 export default langs;

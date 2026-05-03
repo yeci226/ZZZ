@@ -385,6 +385,26 @@ export async function searchWikiEntry(keyword: string) {
   const cleanKeyword = keyword.replace(/[「」]/g, "");
   if (wikiSearchCache[cleanKeyword]) return wikiSearchCache[cleanKeyword];
 
+  // 1. Check local index first (built by downloadAllWikiPaintings)
+  try {
+    const { loadWikiIndex } = await import("./zzz/autoDownloadIcons.js");
+    const index = loadWikiIndex();
+    // Exact match
+    if (index[cleanKeyword]) {
+      wikiSearchCache[cleanKeyword] = index[cleanKeyword];
+      return index[cleanKeyword];
+    }
+    // Partial match (keyword contained in name, or name contained in keyword)
+    const match = Object.entries(index).find(
+      ([name]) => name.includes(cleanKeyword) || cleanKeyword.includes(name),
+    );
+    if (match) {
+      wikiSearchCache[cleanKeyword] = match[1];
+      return match[1];
+    }
+  } catch { /* fall through to API */ }
+
+  // 2. Fall back to remote API
   try {
     const response = await axios
       .get(
@@ -424,18 +444,82 @@ export async function searchWikiEntry(keyword: string) {
   return null;
 }
 
-export async function getCharacterData(characterId: string | number) {
+const wikiPaintingsCache: Record<string, string[]> = {};
+
+export async function fetchWikiPaintings(entryPageId: string | number): Promise<string[]> {
+  const id = String(entryPageId);
+  if (wikiPaintingsCache[id]) return wikiPaintingsCache[id];
+
+  // 1. Prefer locally cached files (downloaded by downloadAllWikiPaintings)
+  const { getLocalWikiPaintings } = await import("./zzz/autoDownloadIcons.js");
+  const local = getLocalWikiPaintings(id);
+  if (local.length > 0) {
+    wikiPaintingsCache[id] = local;
+    return local;
+  }
+
+  // 2. Fall back to remote API
+  const headers = {
+    "x-rpc-wiki_app": "zzz",
+    "x-rpc-language": "zh-tw",
+    Referer: "https://wiki.hoyolab.com/",
+    Origin: "https://wiki.hoyolab.com",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  };
+
+  try {
+    const res = await axios.get(
+      `https://sg-wiki-api.hoyolab.com/hoyowiki/zzz/wapi/entry_page?entry_page_id=${id}&lang=zh-tw`,
+      { headers },
+    );
+    if (res.data?.retcode !== 0) return [];
+
+    const modules: any[] = res.data?.data?.page?.modules ?? [];
+    // Module id "4" = 意象影畫
+    const paintingMod = modules.find((m: any) => String(m.id) === "4");
+    if (!paintingMod) return [];
+
+    const compData = paintingMod.components?.[0]?.data;
+    if (!compData) return [];
+
+    const parsed = typeof compData === "string" ? JSON.parse(compData) : compData;
+    const imgs: string[] = (parsed.img_list ?? [])
+      .map((item: any) => item.icon_url)
+      .filter(Boolean);
+
+    wikiPaintingsCache[id] = imgs;
+    return imgs;
+  } catch (e: any) {
+    console.error(`[wiki paintings] fetch failed for entry ${id}:`, e?.response?.status ?? e?.message);
+    return [];
+  }
+}
+
+export async function getCharacterData(
+  characterId: string | number,
+  characterName?: string,
+) {
   const id = String(characterId || "");
   if (!id) throw new Error("Character ID is required");
 
   try {
+    // Fetch wiki paintings if a name is provided
+    let paintings: Array<{ key: string; img: string }> = [];
+    if (characterName) {
+      const entryPageId = await searchWikiEntry(characterName);
+      if (entryPageId) {
+        const imgs = await fetchWikiPaintings(entryPageId);
+        paintings = imgs.map((img, i) => ({ key: String(i), img }));
+      }
+    }
+
     return {
       id: id,
       iconUrl: `https://act-webstatic.hoyoverse.com/game_record/zzz/role_square_avatar/role_square_avatar_${id}.png`,
       portraitUrl: `https://act-webstatic.hoyoverse.com/game_record/zzz/role_vertical_painting/role_vertical_painting_${id}.png`,
       header_img_url: undefined,
       mindscapes: [] as string[],
-      paintings: [] as Array<{ key: string; img: string }>,
+      paintings,
     };
   } catch (error) {
     console.log(error);

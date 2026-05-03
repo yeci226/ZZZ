@@ -68,6 +68,11 @@
       "updatedAt": "2026-02-10T09:05:06.329Z"
     },
     {
+      "name": "/team",
+      "sourceFile": "src/commands/slash/zzz/team.ts",
+      "updatedAt": "2026-05-03T00:00:00.000Z"
+    },
+    {
       "name": "/test",
       "sourceFile": "src/commands/slash/info/test.js",
       "updatedAt": "2025-01-17T04:33:20.776Z"

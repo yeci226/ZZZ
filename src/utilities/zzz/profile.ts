@@ -15,7 +15,8 @@ import {
   getUserLang,
   getCharacterData,
 } from "../utilities.js";
-import { downloadPaintingCache } from "./autoDownloadIcons.js";
+import { downloadPaintingCache, getLocalWikiPaintings, paintingIndexForRank } from "./autoDownloadIcons.js";
+import { searchWikiEntry, fetchWikiPaintings } from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
 import emoji from "../../assets/emoji.js";
 import {
@@ -185,6 +186,8 @@ export async function handleProfileDraw(
   user: any,
   zzz: any,
   accountIndex: number,
+  usePainting = false,
+  rankDependentPainting = false,
 ) {
   const drawTask = async () => {
     try {
@@ -324,7 +327,7 @@ export async function drawMainImage(
       `./src/assets/images/profileBg.png`,
       record.cur_head_icon_url,
       ...(await Promise.all(
-        record.avatar_list.map((agent: any) => {
+        record.avatar_list.map(async (agent: any) => {
           if (agent.skin_list && agent.skin_list.length > 0) {
             const skin = agent.skin_list.find(
               (s: any) => s.unlocked && !s.is_original,
@@ -744,6 +747,8 @@ export async function drawCharacterImage(
   userLocale: string,
   uid: string,
   characterDataInput: any,
+  usePainting = false,
+  rankDependentPainting = false,
 ) {
   try {
     const character = Array.isArray(characterDataInput)
@@ -788,7 +793,8 @@ export async function drawCharacterImage(
       characterData?.iconUrl ??
       `./src/assets/images/agents/${character.id}.webp`;
 
-    if (character.skin_list && character.skin_list.length > 0) {
+    // ── Skin override (only when painting mode is off) ──
+    if (!usePainting && character.skin_list && character.skin_list.length > 0) {
       const skin = character.skin_list.find(
         (skin: any) => skin.unlocked && !skin.is_original,
       );
@@ -801,11 +807,52 @@ export async function drawCharacterImage(
           name: skin.skin_name,
         };
 
-        // 優先使用官方提供的皮膚立繪 URL
         if (skin.skin_vertical_painting_url) {
           characterPath = skin.skin_vertical_painting_url;
         }
       }
+    } else if (character.skin_list && character.skin_list.length > 0) {
+      // Still set usingSkin metadata even in painting mode (for UI display), just don't change the path
+      const skin = character.skin_list.find(
+        (skin: any) => skin.unlocked && !skin.is_original,
+      );
+      if (skin) {
+        character.usingSkin = {
+          characterId: character.id,
+          skinId: skin.skin_id,
+          color: skin.skin_vertical_painting_color,
+          name: skin.skin_name,
+        };
+      }
+    }
+
+    // ── Wiki 意象影畫 override (highest priority) ──
+    if (usePainting) {
+      try {
+        const name: string =
+          character.name_mi18n ?? character.full_name_mi18n ?? character.name ?? "";
+        const entryId = name ? await searchWikiEntry(name) : null;
+        if (entryId) {
+          const rank: number = character.rank ?? 0;
+          const paintingIdx = rankDependentPainting ? paintingIndexForRank(rank) : null;
+          // Prefer local cached file
+          const localPaths = getLocalWikiPaintings(entryId);
+          // null idx = pick first available (base painting); otherwise pick requested idx (no silent fallback to 0)
+          const localPath = paintingIdx !== null
+            ? (localPaths[paintingIdx] ?? null)
+            : (localPaths[0] ?? null);
+          if (localPath) {
+            characterPath = localPath;
+          } else {
+            // Fall back to remote
+            const remoteUrls = await fetchWikiPaintings(entryId);
+            const remoteUrl = paintingIdx !== null
+              ? (remoteUrls[paintingIdx] ?? null)
+              : (remoteUrls[0] ?? null);
+            if (remoteUrl) characterPath = remoteUrl;
+          }
+        }
+      } catch { /* keep original characterPath on any error */ }
     }
 
     // Load images concurrently
@@ -927,14 +974,26 @@ export async function drawCharacterImage(
     // });
 
     // Draw Visuals
-    drawAgentPortrait(
-      ctx,
-      canvas,
-      characterImage,
-      character,
-      offsetCharacter,
-      offsetCharacterSkin,
-    );
+    if (usePainting) {
+      // Cover full canvas without distortion (object-fit: cover)
+      const scaleW = canvas.width / characterImage.width;
+      const scaleH = canvas.height / characterImage.height;
+      const scale = Math.max(scaleW, scaleH);
+      const scaledWidth = characterImage.width * scale;
+      const scaledHeight = characterImage.height * scale;
+      const x = (canvas.width - scaledWidth) / 2;
+      const y = (canvas.height - scaledHeight) / 2;
+      ctx.drawImage(characterImage, x, y, scaledWidth, scaledHeight);
+    } else {
+      drawAgentPortrait(
+        ctx,
+        canvas,
+        characterImage,
+        character,
+        offsetCharacter,
+        offsetCharacterSkin,
+      );
+    }
 
     // Draw UI Boxes
     await drawAgentHeader(

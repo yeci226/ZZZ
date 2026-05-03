@@ -216,6 +216,18 @@ const langs = {
     "Tổng điểm được sử dụng để xếp hạng, xếp hạng được cập nhật 30 phút một lần, vui lòng làm mới sau",
   BattleRecord: "Ghi Chép Chiến Đấu",
   ChallengeTime: "Thời Gian Thử Thách",
+
+  // Settings
+  settings_Title: "Cài Đặt Người Dùng",
+  settings_Desc: "Các cài đặt này được liên kết với tài khoản Discord của bạn và áp dụng cho tất cả tài khoản game.",
+  settings_PaintingLabel: "Tranh Minh Họa",
+  settings_PaintingDesc: "Dùng tranh minh họa wiki thay vì ảnh nhân vật tiêu chuẩn.",
+  settings_RankPaintingLabel: "Tranh Theo Rank",
+  settings_RankPaintingDesc: "Tự động chọn tranh minh họa dựa theo cấp độ Mindscape.",
+  settings_LocaleLabel: "Ngôn Ngữ",
+  settings_LocaleDesc: "Bot sẽ trả lời bạn bằng ngôn ngữ này.",
+  settings_On: "Bật",
+  settings_Off: "Tắt",
 };
 
 export default langs;

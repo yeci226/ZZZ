@@ -76,6 +76,10 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (customId == "profile_CharacterMindScape") {
     handleMindScapeChange(buttonInteraction, tr);
   }
+
+  if (customId === "settings_togglePainting" || customId === "settings_toggleRankPainting") {
+    handleSettingsToggle(buttonInteraction, customId, tr);
+  }
 });
 
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
@@ -95,6 +99,8 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     handleAccountAction(selectInteraction, tr, customId, values[0]);
   if (customId.startsWith("profile_SelectCharacter"))
     handleSelectCharacter(selectInteraction, tr, values[0], userLocale);
+  if (customId === "settings_selectLocale")
+    handleSettingsLocale(selectInteraction, values[0], tr);
 });
 
 async function handleMindScapeChange(interaction: ButtonInteraction, tr: any) {
@@ -113,6 +119,47 @@ async function handleMindScapeChange(interaction: ButtonInteraction, tr: any) {
 
   await interaction.message.edit({ components: [row1, row2] });
   await client.db.set(mindScapeKey, !mindScape);
+}
+
+async function handleSettingsToggle(
+  interaction: ButtonInteraction,
+  customId: string,
+  tr: any,
+) {
+  const userId = interaction.user.id;
+  const dbKey = customId === "settings_togglePainting" ? `${userId}.paintingMode` : `${userId}.rankPainting`;
+  const current: boolean = (await client.db.get(dbKey)) ?? false;
+  await client.db.set(dbKey, !current);
+
+  // Rebuild the settings message with updated values
+  const { buildSettingsComponents } = await import("../commands/slash/settings.js");
+  // tr may reflect old locale; re-derive from DB to be safe
+  const userLocale = (await getUserLang(userId)) || "en";
+  const newTr = createTranslator(userLocale);
+  const { container } = await buildSettingsComponents(userId, newTr);
+
+  await interaction.editReply({
+    flags: MessageFlags.IsComponentsV2 as any,
+    components: [container],
+  });
+}
+
+async function handleSettingsLocale(
+  interaction: StringSelectMenuInteraction,
+  locale: string,
+  _tr: any,
+) {
+  const userId = interaction.user.id;
+  await client.db.set(`${userId}.locale`, locale);
+
+  const newTr = createTranslator(locale);
+  const { buildSettingsComponents } = await import("../commands/slash/settings.js");
+  const { container } = await buildSettingsComponents(userId, newTr);
+
+  await interaction.editReply({
+    flags: MessageFlags.IsComponentsV2 as any,
+    components: [container],
+  });
 }
 
 async function handleSelectCharacter(
@@ -177,6 +224,12 @@ async function handleSelectCharacter(
 
       let imageBuffer;
 
+      // Read painting preferences saved when /profile was invoked
+      const usePainting: boolean =
+        (await client.db.get(`${interaction.user.id}.paintingMode`)) ?? false;
+      const rankPainting: boolean =
+        (await client.db.get(`${interaction.user.id}.rankPainting`)) ?? false;
+
       if (characterId == "main") {
         const record = await zzz.record.records();
         const userData = await getUserHoyolabData(
@@ -194,6 +247,8 @@ async function handleSelectCharacter(
           userLocale,
           String(zzz.uid || ""),
           selectedCharacter,
+          usePainting,
+          rankPainting,
         );
       }
 

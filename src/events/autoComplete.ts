@@ -14,6 +14,14 @@ const langMap: Record<string, string> = {
   "ko": "ko-kr",
 };
 
+const elementLabels: Record<number, string> = {
+  200: "物理", 201: "火", 202: "冰", 203: "電", 205: "以太",
+};
+
+const professionLabels: Record<number, string> = {
+  1: "強攻", 2: "擊破", 3: "異常", 4: "支援", 5: "防禦", 6: "毀滅",
+};
+
 async function resolveZzzClient(
   interaction: AutocompleteInteraction,
   userId: string,
@@ -34,7 +42,7 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
   if (!interaction.isAutocomplete()) return;
   const autocompleteInteraction = interaction as AutocompleteInteraction;
   const focusedOption = autocompleteInteraction.options.getFocused(true);
-  const { name: optionName } = focusedOption;
+  const { name: optionName, value: focusedValue } = focusedOption;
 
   if (optionName == "account") {
     // Drain any pending web-logins so newly bound accounts appear immediately.
@@ -72,12 +80,27 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
         .map((f) => autocompleteInteraction.options.getString(f))
         .filter(Boolean) as string[];
 
+      const query = (focusedValue as string).toLowerCase();
+
       const choices = characters
         .filter((c: any) => !alreadySelected.includes(String(c.id)))
-        .map((c: any) => ({
-          name: `${(c as any).name_mi18n ?? c.name} Lv.${c.level}`,
-          value: String(c.id),
-        }))
+        .filter((c: any) => {
+          if (!query) return true;
+          const name: string = ((c as any).name_mi18n ?? c.name ?? "").toLowerCase();
+          return name.includes(query);
+        })
+        .map((c: any) => {
+          const name: string = (c as any).name_mi18n ?? c.name ?? "";
+          const level: number = c.level ?? 0;
+          const rank: number = c.rank ?? 0;
+          const elem: string = elementLabels[(c as any).element_type as number] ?? "";
+          const prof: string = professionLabels[(c as any).avatar_profession as number] ?? "";
+          // Format: 名字  Lv.60  M6  火  強攻
+          const label = [name, `Lv.${level}`, `M${rank}`, elem, prof]
+            .filter(Boolean)
+            .join("  ");
+          return { name: label.slice(0, 100), value: String(c.id) };
+        })
         .slice(0, 25);
 
       await autocompleteInteraction.respond(choices);
@@ -100,9 +123,14 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
       const record = await zzz.record.records();
 
       const buddyList: any[] = (record as any).buddy_list ?? [];
+      const query = (focusedValue as string).toLowerCase();
       const choices = buddyList
+        .filter((b: any) => {
+          if (!query) return true;
+          return (b.name ?? "").toLowerCase().includes(query);
+        })
         .map((b: any) => ({
-          name: `${b.name} Lv.${b.level ?? "?"}`,
+          name: `${b.name}  Lv.${b.level ?? "?"}`,
           value: String(b.id),
         }))
         .slice(0, 25);

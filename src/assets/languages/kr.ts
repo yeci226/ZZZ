@@ -209,6 +209,18 @@ const langs = {
     "총 점수는 랭킹에 사용되며, 랭킹은 30분마다 업데이트됩니다. 나중에 새로고침하세요",
   BattleRecord: "전투 기록",
   ChallengeTime: "도전 시간",
+
+  // Settings
+  settings_Title: "사용자 설정",
+  settings_Desc: "이 설정은 Discord 계정에 연결되어 있으며 모든 게임 계정에 적용됩니다.",
+  settings_PaintingLabel: "이미지 일러스트",
+  settings_PaintingDesc: "표준 캐릭터 초상화 대신 위키 이미지 일러스트를 사용합니다.",
+  settings_RankPaintingLabel: "랭크별 일러스트",
+  settings_RankPaintingDesc: "마인드스케이프 랭크에 따라 일러스트를 자동으로 선택합니다.",
+  settings_LocaleLabel: "언어",
+  settings_LocaleDesc: "봇이 이 언어로 응답합니다.",
+  settings_On: "켜기",
+  settings_Off: "끄기",
 };
 
 export default langs;

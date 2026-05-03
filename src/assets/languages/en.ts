@@ -222,6 +222,18 @@ const langs = {
     "Total score is used for ranking, rankings are updated every half hour, please refresh later",
   BattleRecord: "Battle Record",
   ChallengeTime: "Challenge Time",
+
+  // Settings
+  settings_Title: "User Settings",
+  settings_Desc: "These settings are linked to your Discord account and apply across all game accounts.",
+  settings_PaintingLabel: "Imagining Painting",
+  settings_PaintingDesc: "Use wiki Imagining Painting art instead of the standard character portrait.",
+  settings_RankPaintingLabel: "Painting by Rank",
+  settings_RankPaintingDesc: "Automatically select Imagining Painting based on Mindscape rank.",
+  settings_LocaleLabel: "Language",
+  settings_LocaleDesc: "The bot will reply to you in this language.",
+  settings_On: "On",
+  settings_Off: "Off",
 };
 
 export default langs;

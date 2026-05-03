@@ -43,6 +43,8 @@ export default {
     async execute(_client: Client, interaction: ChatInputCommandInteraction, _args: any[], tr: any, db: QuickDB, emoji: any) {
         const targetUser = interaction.options.getUser("user") || interaction.user;
         const accountIndex = parseInt(interaction.options.getString("account") || "0");
+        const usePainting: boolean = (await db.get(`${interaction.user.id}.paintingMode`)) ?? false;
+        const rankDependentPainting: boolean = (await db.get(`${interaction.user.id}.rankPainting`)) ?? false;
 
         const zzz = await getUserZZZData(
             interaction,
@@ -54,6 +56,6 @@ export default {
         if (!zzz) return;
 
         await interaction.deferReply();
-        handleProfileDraw(interaction, tr, targetUser, zzz, accountIndex);
+        handleProfileDraw(interaction, tr, targetUser, zzz, accountIndex, usePainting, rankDependentPainting);
     },
 };

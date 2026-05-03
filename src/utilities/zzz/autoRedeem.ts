@@ -474,18 +474,15 @@ class AutoRedeemSystem {
       (r) => r.hasResults && Boolean(r.description?.trim()),
     );
 
-    if (visibleResults.length > 0) {
-      const hasSuccess = visibleResults.some((r) => r.hasSuccess);
-      const accountsData = visibleResults.map((r) => ({
-        nickname: r.nickname || r.uid,
-        uid: r.uid,
-        codes: r.codeResults || [],
-      }));
+    // Send one card per account (separate messages to avoid image stacking)
+    for (let i = 0; i < visibleResults.length; i++) {
+      const r = visibleResults[i];
+      const isFirst = i === 0;
       await this.sendRedeemMessage(channelId, {
         tr,
-        tag,
-        accounts: accountsData,
-        hasSuccess,
+        tag: isFirst ? tag : "",
+        accounts: [{ nickname: r.nickname || r.uid, uid: r.uid, codes: r.codeResults || [] }],
+        hasSuccess: r.hasSuccess,
       });
     }
   }

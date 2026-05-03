@@ -216,6 +216,18 @@ const langs = {
     "Le score total est utilisé pour le classement, les classements sont mis à jour toutes les demi-heures, veuillez actualiser plus tard",
   BattleRecord: "Enregistrement de Combat",
   ChallengeTime: "Temps de Défi",
+
+  // Settings
+  settings_Title: "Paramètres Utilisateur",
+  settings_Desc: "Ces paramètres sont liés à votre compte Discord et s'appliquent à tous vos comptes de jeu.",
+  settings_PaintingLabel: "Illustration",
+  settings_PaintingDesc: "Utiliser l'illustration wiki au lieu du portrait standard du personnage.",
+  settings_RankPaintingLabel: "Illustration par Rang",
+  settings_RankPaintingDesc: "Sélectionner automatiquement l'illustration selon le rang Mindscape.",
+  settings_LocaleLabel: "Langue",
+  settings_LocaleDesc: "Le bot vous répondra dans cette langue.",
+  settings_On: "Activé",
+  settings_Off: "Désactivé",
 };
 
 export default langs;
