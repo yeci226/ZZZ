@@ -14,6 +14,22 @@ const langMap: Record<string, string> = {
   "ko": "ko-kr",
 };
 
+async function resolveZzzClient(
+  interaction: AutocompleteInteraction,
+  userId: string,
+): Promise<ZenlessZoneZero | null> {
+  const accountIndexRaw = interaction.options.getString("account");
+  const accountIndex = accountIndexRaw ? parseInt(accountIndexRaw) : 0;
+  const [cookie, uid] = await Promise.all([
+    getUserCookie(userId, accountIndex),
+    getUserUid(userId, accountIndex),
+  ]);
+  if (!cookie || !uid) return null;
+  const userLang = await getUserLang(userId);
+  const lang = langMap[userLang ?? ""] ?? langMap[(interaction as any).locale ?? ""] ?? "en-us";
+  return new ZenlessZoneZero({ cookie, lang, uid } as any);
+}
+
 client.on(Events.InteractionCreate, async (interaction: any) => {
   if (!interaction.isAutocomplete()) return;
   const autocompleteInteraction = interaction as AutocompleteInteraction;
@@ -42,22 +58,12 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
   if (optionName === "agent1" || optionName === "agent2" || optionName === "agent3") {
     try {
       const userId = interaction.user.id;
-      const accountIndexRaw = autocompleteInteraction.options.getString("account");
-      const accountIndex = accountIndexRaw ? parseInt(accountIndexRaw) : 0;
-
-      const [cookie, uid] = await Promise.all([
-        getUserCookie(userId, accountIndex),
-        getUserUid(userId, accountIndex),
-      ]);
-      if (!cookie || !uid) {
+      const zzz = await resolveZzzClient(autocompleteInteraction, userId);
+      if (!zzz) {
         await autocompleteInteraction.respond([]);
         return;
       }
 
-      const userLang = await getUserLang(userId);
-      const lang = langMap[userLang ?? ""] ?? langMap[interaction.locale ?? ""] ?? "en-us";
-
-      const zzz = new ZenlessZoneZero({ cookie, lang, uid } as any);
       const characters = await zzz.record.characters();
 
       // Exclude already-selected agents
@@ -75,7 +81,8 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
         .slice(0, 25);
 
       await autocompleteInteraction.respond(choices);
-    } catch {
+    } catch (err) {
+      console.error(`[autoComplete/${optionName}] Error:`, err);
       await autocompleteInteraction.respond([]);
     }
     return;
@@ -84,25 +91,16 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
   if (optionName === "bangboo") {
     try {
       const userId = interaction.user.id;
-      const accountIndexRaw = autocompleteInteraction.options.getString("account");
-      const accountIndex = accountIndexRaw ? parseInt(accountIndexRaw) : 0;
-
-      const [cookie, uid] = await Promise.all([
-        getUserCookie(userId, accountIndex),
-        getUserUid(userId, accountIndex),
-      ]);
-      if (!cookie || !uid) {
+      const zzz = await resolveZzzClient(autocompleteInteraction, userId);
+      if (!zzz) {
         await autocompleteInteraction.respond([]);
         return;
       }
 
-      const userLang = await getUserLang(userId);
-      const lang = langMap[userLang ?? ""] ?? langMap[interaction.locale ?? ""] ?? "en-us";
-
-      const zzz = new ZenlessZoneZero({ cookie, lang, uid } as any);
       const record = await zzz.record.records();
 
-      const choices = ((record as any).buddy_list as any[])
+      const buddyList: any[] = (record as any).buddy_list ?? [];
+      const choices = buddyList
         .map((b: any) => ({
           name: `${b.name} Lv.${b.level ?? "?"}`,
           value: String(b.id),
@@ -110,7 +108,8 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
         .slice(0, 25);
 
       await autocompleteInteraction.respond(choices);
-    } catch {
+    } catch (err) {
+      console.error(`[autoComplete/${optionName}] Error:`, err);
       await autocompleteInteraction.respond([]);
     }
     return;
