@@ -37,6 +37,9 @@ interface Config {
   /** AES-256-CBC key used to decrypt cookies pulled from Supabase.
    *  Must match SESSION_SECRET in the web-login .env. */
   WEB_LOGIN_SESSION_SECRET?: string;
+  /** Dedicated AES-256 encryption key for user credentials.
+   *  If not set, falls back to TOKEN (not recommended). */
+  ENCRYPTION_KEY?: string;
 }
 
 let config: Config | null = null;
@@ -69,6 +72,7 @@ function readFromEnv(): Partial<Config> {
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
     "WEB_LOGIN_SESSION_SECRET",
+    "ENCRYPTION_KEY",
   ] as const;
 
   for (const key of stringKeys) {
