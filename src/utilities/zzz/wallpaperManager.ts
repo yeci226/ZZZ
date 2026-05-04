@@ -42,6 +42,10 @@ async function fetchNewWallpaperUrls(known: Set<string>): Promise<string[]> {
   const newUrls: string[] = [];
   let page = 1;
   let maxPage = Infinity;
+  const isFirstRun = known.size === 0;
+  // For incremental updates: stop after this many consecutive pages with no new wallpapers
+  const MAX_EMPTY_PAGES = 5;
+  let emptyPageStreak = 0;
 
   while (page <= maxPage) {
     try {
@@ -58,17 +62,20 @@ async function fetchNewWallpaperUrls(known: Set<string>): Promise<string[]> {
         if (!item.sTitle.toLowerCase().includes("wallpaper")) continue;
         const urls = extractImageUrls(item.sContent);
         if (urls.length === 0) continue;
-        let foundNew = false;
         for (const url of urls) {
           if (known.has(url)) continue;
           newUrls.push(url);
-          foundNew = true;
+          foundNewOnPage = true;
         }
-        if (foundNew) foundNewOnPage = true;
       }
 
-      // Once we hit a page with no new wallpapers, we've caught up
-      if (!foundNewOnPage) break;
+      if (foundNewOnPage) {
+        emptyPageStreak = 0;
+      } else if (!isFirstRun) {
+        // Incremental mode: stop after enough consecutive empty pages
+        emptyPageStreak++;
+        if (emptyPageStreak >= MAX_EMPTY_PAGES) break;
+      }
     } catch {
       break;
     }
