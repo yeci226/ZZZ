@@ -288,6 +288,9 @@ export default {
       const accountIndex = parseInt(
         interaction.options.getString("account") || "0",
       );
+      if (isNaN(accountIndex)) {
+        return failedReply(interaction, 'Invalid account index.');
+      }
       const codes = await getRedeemCodes();
       const uid = await getUserUid(interaction.user.id, accountIndex);
       const userRedeemedCodes = (await db.get(`${uid}.redeemedCodes`)) || [];
@@ -313,8 +316,14 @@ export default {
       const accountIndex = parseInt(
         interaction.options.getString("account") || "0",
       );
+      if (isNaN(accountIndex)) {
+        return failedReply(interaction, 'Invalid account index.');
+      }
       const targetUser =
         interaction.options.getUser("user") || interaction.user;
+      if (targetUser && targetUser.id !== interaction.user.id && !interaction.memberPermissions?.has('Administrator')) {
+        return failedReply(interaction, 'You can only perform this action for yourself.');
+      }
       const redeemAllAccounts = await db.get(`${targetUser.id}.account`);
       const redeemAllCookie = redeemAllAccounts?.[accountIndex]?.cookie;
       if (!redeemAllCookie) {
@@ -367,6 +376,19 @@ export default {
         await db.set(
           `${uid}.redeemedCodes`,
           Array.from(new Set(userRedeemedCodes)),
+        );
+      }
+
+      // Update cookie after successful redeemall (mirrors redeem subcommand behavior)
+      try {
+        const cookieStr = await getUserCookie(targetUser.id, accountIndex) ?? "";
+        await updateCookie(targetUser.id, accountIndex, cookieStr);
+        new Logger("Redeem").info(
+          `使用者 ${targetUser.id} 的帳號 #${accountIndex} 成功兌換全部禮包碼並更新 Cookie`,
+        );
+      } catch (e: any) {
+        new Logger("Redeem").error(
+          `使用者 ${targetUser.id} 的帳號 #${accountIndex} 更新 Cookie 失敗: ${e.message}`,
         );
       }
 
@@ -442,9 +464,16 @@ export default {
       const code = interaction.options.getString("code")!;
       const targetUser =
         interaction.options.getUser("user") || interaction.user;
+      if (targetUser && targetUser.id !== interaction.user.id && !interaction.memberPermissions?.has('Administrator')) {
+        return failedReply(interaction, 'You can only perform this action for yourself.');
+      }
+
       const accountIndex = parseInt(
         interaction.options.getString("account") || "0",
       );
+      if (isNaN(accountIndex)) {
+        return failedReply(interaction, 'Invalid account index.');
+      }
 
       const uid = await getUserUid(targetUser.id, accountIndex);
       if (!uid) {
@@ -511,6 +540,9 @@ export default {
       }
     } else if (subcommand == "autoredeem") {
       const userAccount = await db.get(`${interaction.user.id}.account`);
+      if (!userAccount || userAccount.length === 0) {
+        return failedReply(interaction, 'No account found.');
+      }
       if (
         !userAccount[0].cookie.includes("cookie_token_v2") &&
         !userAccount[0].cookie.includes("account_mid_v2")
