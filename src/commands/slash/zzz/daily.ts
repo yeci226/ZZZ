@@ -282,8 +282,8 @@ export default {
 
     // Use post-claim info so total_sign_day reflects today's sign-in
     const signedDay = res.info.total_sign_day;
-    const todaySign = rewards.awards[signedDay - 1] || rewards.awards[0];
-    const tmrSign = rewards.awards[signedDay];
+    const todaySign = rewards.awards[signedDay] || rewards.awards[0];
+    const tmrSign = rewards.awards[signedDay + 1];
 
     const accounts = await db.get(`${interaction.user.id}.account`);
     const account =
