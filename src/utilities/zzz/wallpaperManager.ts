@@ -28,6 +28,7 @@ interface ContentListResponse {
 interface WallpaperArticle {
   urls: string[];
   usedDate: string | null; // "YYYY-MM-DD" when last used, null if never used / expired
+  pickedUrl?: string | null; // the specific image picked for usedDate
 }
 
 function localDateString(date = new Date()): string {
@@ -148,9 +149,14 @@ export async function getTodayWallpaper(db: any): Promise<string | null> {
     await db.set("zzz.wallpaperArticlePool", pool);
   }
 
-  // Pick a random image from today's article
+  // Pick a random image from today's article (lock it for the rest of the day)
   const urls = todayArticle.urls;
-  const pickedUrl = urls[Math.floor(Math.random() * urls.length)];
+  let pickedUrl = todayArticle.pickedUrl ?? null;
+  if (!pickedUrl) {
+    pickedUrl = urls[Math.floor(Math.random() * urls.length)];
+    todayArticle.pickedUrl = pickedUrl;
+    await db.set("zzz.wallpaperArticlePool", pool);
+  }
 
   // Cache file keyed by URL hash
   const urlHash = Buffer.from(pickedUrl).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 16);
