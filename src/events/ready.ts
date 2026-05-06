@@ -64,7 +64,7 @@ client.on(Events.ClientReady, async () => {
     }
   });
 
-  setInterval(updatePresence, 10000);
+  setInterval(updatePresence, 300_000);
 });
 
 async function runAutoRedeem() {

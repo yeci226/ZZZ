@@ -5,6 +5,38 @@ import axios from "axios";
 import Logger from "../core/logger.js";
 
 const WIKI_PAINTINGS_DIR = "src/assets/images/zzz/wiki_paintings";
+const FACE_CACHE_FILE = path.resolve(WIKI_PAINTINGS_DIR, "face_cache.json");
+const DEFAULT_FACE_Y = 0.35;
+const DEFAULT_FACE_X = 0.5;
+
+/** Get the face Y position (0~1 ratio from top) for a wiki entry. Returns default if not cached. */
+export function getFaceY(entryPageId: string | number): number {
+  try {
+    if (!fs.existsSync(FACE_CACHE_FILE)) return DEFAULT_FACE_Y;
+    const cache = JSON.parse(fs.readFileSync(FACE_CACHE_FILE, "utf-8"));
+    const val = cache[String(entryPageId)];
+    if (typeof val === "number") return val; // legacy flat format
+    return typeof val?.faceY === "number" ? val.faceY : DEFAULT_FACE_Y;
+  } catch {
+    return DEFAULT_FACE_Y;
+  }
+}
+
+/** Get face position (faceX, faceY) for a wiki entry. Returns defaults if not cached. */
+export function getFacePos(entryPageId: string | number): { faceX: number; faceY: number } {
+  try {
+    if (!fs.existsSync(FACE_CACHE_FILE)) return { faceX: DEFAULT_FACE_X, faceY: DEFAULT_FACE_Y };
+    const cache = JSON.parse(fs.readFileSync(FACE_CACHE_FILE, "utf-8"));
+    const val = cache[String(entryPageId)];
+    if (typeof val === "number") return { faceX: DEFAULT_FACE_X, faceY: val }; // legacy
+    return {
+      faceX: typeof val?.faceX === "number" ? val.faceX : DEFAULT_FACE_X,
+      faceY: typeof val?.faceY === "number" ? val.faceY : DEFAULT_FACE_Y,
+    };
+  } catch {
+    return { faceX: DEFAULT_FACE_X, faceY: DEFAULT_FACE_Y };
+  }
+}
 
 const WIKI_HEADERS = {
   "x-rpc-wiki_app": "zzz",

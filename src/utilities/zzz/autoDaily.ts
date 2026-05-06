@@ -216,10 +216,10 @@ export class AutoDailyService {
 
         const rewards = await zzz.daily.rewards();
         const reward =
-          rewards.awards[signResult.info.total_sign_day - 1] ||
+          rewards.awards[signResult.info.total_sign_day] ||
           rewards.awards[0];
 
-        const tomorrowReward = rewards.awards[signResult.info.total_sign_day] || null;
+        const tomorrowReward = rewards.awards[signResult.info.total_sign_day + 1] || null;
         results.push({
           uid: account.uid,
           nickname: account.nickname || "Unknown",
@@ -229,7 +229,7 @@ export class AutoDailyService {
           rewardIcon: reward.icon,
           totalDays: signResult.info.total_sign_day,
           shortSignDay: signResult.info.total_sign_day,
-          signCntMissed: Math.max(0, new Date().getDate() - 1 - signResult.info.total_sign_day),
+          signCntMissed: Math.max(0, new Date(Date.now() + 8 * 60 * 60 * 1000).getUTCDate() - 1 - signResult.info.total_sign_day),
           tomorrowRewardName: tomorrowReward?.name,
           tomorrowRewardIcon: tomorrowReward?.icon,
           tomorrowRewardCount: tomorrowReward?.cnt,

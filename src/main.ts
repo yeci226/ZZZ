@@ -67,7 +67,6 @@ async function getSlashCommands(client: Client, slashCommandPaths: string[]) {
         `${path} 處的指令缺少必要的「資料」或「執行」屬性`,
       );
     }
-    client.commands.slash.set(file.name, file);
 
     if (
       [ApplicationCommandType.Message, ApplicationCommandType.User].includes(

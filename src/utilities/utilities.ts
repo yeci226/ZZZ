@@ -82,7 +82,7 @@ export async function getPostFull(lang: string, postId: string) {
 
 export async function parsePostContent(content: string) {
   content = content.replace(/<br\s*\/?>/g, "\n");
-  content = content.replace(/<\p[^>]*>/g, "\n");
+  content = content.replace(/<p[^>]*>/g, "\n");
   content = content.replace(/<\/p>/g, "");
   content = content.replace(/<\/?strong[^>]*>/g, "**");
   content = content.replace(/<\/?em[^>]*>/g, "*");
@@ -114,7 +114,14 @@ export async function parsePostContent(content: string) {
   return content;
 }
 
+let _redeemCodesCache: { data: any[]; timestamp: number } | null = null;
+const REDEEM_CODES_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 export async function getRedeemCodes() {
+  if (_redeemCodesCache && Date.now() - _redeemCodesCache.timestamp < REDEEM_CODES_CACHE_TTL) {
+    return _redeemCodesCache.data;
+  }
+
   const sources = ["https://api.ennead.cc/mihoyo/zenless/codes"];
 
   const allCodes = new Set<string>();
@@ -151,6 +158,7 @@ export async function getRedeemCodes() {
     }
   }
 
+  _redeemCodesCache = { data: results, timestamp: Date.now() };
   return results;
 }
 
@@ -609,7 +617,7 @@ export function checkAccount(
           .setColor("#FFE9D0")
           .setTitle("請先通過 Geetest 來繼續使用指令！")
           .setURL(
-            `${getVerifyBaseUrl()}/verify?session=${Math.random().toString(36).substring(2, 12)}&userid=${userId}`,
+            `${getVerifyBaseUrl()}/verify?session=${crypto.randomBytes(16).toString('hex')}&userid=${userId}`,
           ),
       ],
       flags: MessageFlags.Ephemeral,
@@ -842,9 +850,13 @@ export async function getUserGameUid(cookie: string, game_id = 8) {
   };
 }
 
-// Derive a 32-byte key from bot TOKEN for AES-256 encryption of stored credentials
+// Derive a 32-byte key from dedicated ENCRYPTION_KEY for AES-256 encryption of stored credentials
 function getEncryptionKey(): Buffer {
-  return crypto.createHash("sha256").update((config as any).TOKEN).digest();
+  const encryptionKey = process.env.ENCRYPTION_KEY || (config as any).TOKEN;
+  if (!process.env.ENCRYPTION_KEY) {
+    console.warn('[SECURITY] ENCRYPTION_KEY not set, falling back to DISCORD_TOKEN. Set a dedicated ENCRYPTION_KEY to avoid data loss on token rotation.');
+  }
+  return crypto.createHash("sha256").update(encryptionKey).digest();
 }
 
 export function encryptCredential(text: string): string {

@@ -27,6 +27,7 @@ import {
   getUserHoyolabData,
 } from "../utilities/utilities.js";
 import { drawMainImage, drawCharacterImage } from "../utilities/zzz/profile.js";
+import { handleTeamDraw } from "../utilities/zzz/team.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import Queue from "queue";
 import emoji from "../assets/emoji.js";
@@ -77,6 +78,10 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     handleMindScapeChange(buttonInteraction, tr);
   }
 
+  if (customId.startsWith("profile_MainPage-")) {
+    handleProfileMainPage(buttonInteraction, tr, userLocale);
+  }
+
   if (customId === "settings_togglePainting" || customId === "settings_toggleRankPainting") {
     handleSettingsToggle(buttonInteraction, customId, tr);
   }
@@ -98,7 +103,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (customId.startsWith("account"))
     handleAccountAction(selectInteraction, tr, customId, values[0]);
   if (customId.startsWith("profile_SelectCharacter"))
-    handleSelectCharacter(selectInteraction, tr, values[0], userLocale);
+    handleSelectCharacter(selectInteraction, tr, values, userLocale);
   if (customId === "settings_selectLocale")
     handleSettingsLocale(selectInteraction, values[0], tr);
 });
@@ -162,10 +167,97 @@ async function handleSettingsLocale(
   });
 }
 
+function buildProfileCharacterSelectRows(
+  tr: any,
+  characters: any[],
+  userId: string,
+  accountIndex: string | number,
+) {
+  const allCharacterOptions = characters.map((character: any) => ({
+    emoji: (emoji as any)[elementId[character.element_type]],
+    label: `${character.name_mi18n}`,
+    description: `${tr("profile_CharactersFormat", {
+      level: character.level,
+      rank: character.rank,
+    })}`,
+    value: `${userId}-${accountIndex}-${character.id}`,
+  }));
+
+  const optionChunks = Array.from(
+    { length: Math.ceil(allCharacterOptions.length / 25) },
+    (_, index) => allCharacterOptions.slice(index * 25, (index + 1) * 25),
+  );
+
+  return optionChunks.slice(0, 4).map((optionsChunk, index) =>
+    new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setPlaceholder(`${tr("profile_SelectCharacter")} (${index + 1})`)
+        .setCustomId(`profile_SelectCharacter-${index}`)
+        .setMinValues(1)
+        .setMaxValues(Math.min(3, optionsChunk.length))
+        .addOptions(optionsChunk),
+    ),
+  ) as any[];
+}
+
+async function handleProfileMainPage(
+  interaction: ButtonInteraction,
+  tr: any,
+  userLocale: string,
+) {
+  try {
+    const [, , userId, accountIndexRaw] = interaction.customId.split("-");
+    const accountIndex = parseInt(accountIndexRaw || "0");
+    const zzz = await getUserZZZData(
+      interaction as any,
+      tr,
+      userId,
+      userLocale,
+      accountIndex,
+    );
+    if (!zzz) return;
+
+    const [record, characters, userData] = await Promise.all([
+      zzz.record.records(),
+      zzz.record.characters(),
+      getUserHoyolabData(interaction as any, tr, userId),
+    ]);
+
+    const imageBuffer = await drawMainImage(tr, userLocale, userData, record);
+    if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
+
+    const image = new AttachmentBuilder(imageBuffer as Buffer, {
+      name: `MainImage_${zzz.uid}.png`,
+    });
+    const rowSelects = buildProfileCharacterSelectRows(
+      tr,
+      characters,
+      userId,
+      accountIndex,
+    );
+
+    await interaction.editReply({
+      embeds: [],
+      components: rowSelects,
+      files: [image],
+    });
+  } catch (error) {
+    console.log(error);
+    await interaction.editReply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor("#E76161")
+          .setTitle(tr("DrawError"))
+          .setDescription(`\`${(error as Error).message}\``),
+      ],
+    });
+  }
+}
+
 async function handleSelectCharacter(
   interaction: StringSelectMenuInteraction,
   tr: any,
-  value: string,
+  values: string[],
   userLocale: string,
 ) {
   const drawTask = async () => {
@@ -185,9 +277,12 @@ async function handleSelectCharacter(
       });
 
       const requestStartTime = Date.now();
-      const [userId, accountIndex, characterId] = value
+
+      // Multi-select: use first value to get userId/accountIndex
+      const [userId, accountIndex, firstCharacterId] = values[0]
         .split("-")
         .map((v) => v.trim());
+
       const zzz = await getUserZZZData(
         interaction as any,
         tr,
@@ -200,6 +295,45 @@ async function handleSelectCharacter(
       const characters = await zzz.record.characters();
       const requestEndTime = Date.now();
       const drawStartTime = Date.now();
+
+      // Read painting preferences saved when /profile was invoked
+      const usePainting: boolean =
+        (await client.db.get(`${interaction.user.id}.paintingMode`)) ?? false;
+      const rankPainting: boolean =
+        (await client.db.get(`${interaction.user.id}.rankPainting`)) ?? false;
+
+      // ── Multi-select (2–3 agents) → Team view ──
+      const agentValues = values.filter((v) => !v.endsWith("-main"));
+      if (agentValues.length >= 2) {
+        const agentIds = agentValues.map((v) => v.split("-")[2]);
+        const rowSelects = buildProfileCharacterSelectRows(
+          tr,
+          characters,
+          userId,
+          accountIndex,
+        );
+        const rowButtons = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`profile_MainPage-${userId}-${accountIndex}`)
+            .setLabel(tr("MainPage"))
+            .setStyle(ButtonStyle.Secondary),
+        ) as any;
+        handleTeamDraw(
+          interaction as any,
+          tr,
+          zzz,
+          agentIds,
+          null,
+          usePainting,
+          rankPainting,
+          [...rowSelects, rowButtons],
+        );
+        return;
+      }
+
+      // ── Single select → Profile view ──
+      const value = values[0];
+      const characterId = firstCharacterId;
       let selectedCharacter = null;
 
       if (characterId !== "main") {
@@ -223,12 +357,6 @@ async function handleSelectCharacter(
       }
 
       let imageBuffer;
-
-      // Read painting preferences saved when /profile was invoked
-      const usePainting: boolean =
-        (await client.db.get(`${interaction.user.id}.paintingMode`)) ?? false;
-      const rankPainting: boolean =
-        (await client.db.get(`${interaction.user.id}.rankPainting`)) ?? false;
 
       if (characterId == "main") {
         const record = await zzz.record.records();
@@ -259,66 +387,37 @@ async function handleSelectCharacter(
         name: `CharacterPage_${zzz.uid}.png`,
       });
 
+      // ── Build character options (no "main" entry — main is a button) ──
+      const rowSelects = buildProfileCharacterSelectRows(
+        tr,
+        characters,
+        userId,
+        accountIndex,
+      );
+
       const userMindScape =
         (await client.db.get(`${interaction.user.id}.mindscape`)) ?? true;
 
-      function chunkArray(array: any[], size: number) {
-        return Array.from(
-          { length: Math.ceil(array.length / size) },
-          (_, index) => array.slice(index * size, (index + 1) * size),
-        );
-      }
-
-      const characterOptions =
-        characterId === "main"
-          ? characters.map((character: any) => ({
-              emoji: (emoji as any)[elementId[character.element_type]],
-              label: `${character.name_mi18n}`,
-              value: `${userId}-${accountIndex}-${character.id}`,
-            }))
-          : [
-              {
-                emoji: emoji.avatarIcon,
-                label: tr("MainPage"),
-                value: `${userId}-${accountIndex}-main`,
-              },
-              ...characters.map((character: any) => ({
-                emoji: (emoji as any)[elementId[character.element_type]],
-                label: `${character.name_mi18n}`,
-                description: `${tr("profile_CharactersFormat", {
-                  level: character.level,
-                  rank: character.rank,
-                })}`,
-                value: `${userId}-${accountIndex}-${character.id}`,
-              })),
-            ];
-
-      const optionChunks = chunkArray(characterOptions, 25);
-
-      const rowSelects = optionChunks.map(
-        (optionsChunk: any, index: number) =>
-          new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-              .setPlaceholder(`${tr("profile_SelectCharacter")} (${index + 1})`)
-              .setCustomId(`profile_SelectCharacter-${index}`)
-              .setMinValues(1)
-              .setMaxValues(1)
-              .addOptions(optionsChunk),
-          ) as any,
-      );
-
-      const rowMindScape = new ActionRowBuilder().addComponents(
+      // ── Button row: MindScape + MainPage (only when not on main) ──
+      const buttons: any[] = [
         new ButtonBuilder()
           .setCustomId("profile_CharacterMindScape")
           .setLabel(tr("MindScape"))
-          .setStyle(
-            userMindScape ? ButtonStyle.Success : ButtonStyle.Secondary,
-          ),
-      );
+          .setStyle(userMindScape ? ButtonStyle.Success : ButtonStyle.Secondary),
+      ];
+      if (characterId !== "main") {
+        buttons.push(
+          new ButtonBuilder()
+            .setCustomId(`profile_MainPage-${userId}-${accountIndex}`)
+            .setLabel(tr("MainPage"))
+            .setStyle(ButtonStyle.Secondary),
+        );
+      }
+      const rowButtons = new ActionRowBuilder().addComponents(...buttons) as any;
 
       interaction.editReply({
         embeds: [],
-        components: [...rowSelects, rowMindScape] as any[],
+        components: [...rowSelects, rowButtons] as any[],
         files: [image],
       });
     } catch (error) {

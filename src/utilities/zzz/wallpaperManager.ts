@@ -6,7 +6,7 @@ import path from "path";
 const WALLPAPER_API =
   "https://sg-public-api-static.hoyoverse.com/content_v2_user/app/3e9196a4b9274bd7/getContentList";
 
-// After this many days, a used wallpaper becomes available again
+// After this many days, a used article becomes available again
 const REUSE_AFTER_DAYS = 30;
 
 // Local cache directory for today's wallpaper image
@@ -24,9 +24,11 @@ interface ContentListResponse {
   };
 }
 
-interface WallpaperEntry {
-  url: string;
+/** One article = one pool entry; stores all image URLs from that article */
+interface WallpaperArticle {
+  urls: string[];
   usedDate: string | null; // "YYYY-MM-DD" when last used, null if never used / expired
+  pickedUrl?: string | null; // the specific image picked for usedDate
 }
 
 function localDateString(date = new Date()): string {
@@ -38,8 +40,13 @@ function extractImageUrls(sContent: string): string[] {
   return matches.map((m) => m[1]);
 }
 
-async function fetchNewWallpaperUrls(known: Set<string>): Promise<string[]> {
-  const newUrls: string[] = [];
+/** Returns true if the title looks like a Calendar wallpaper (skip these) */
+function isCalendar(title: string): boolean {
+  return /calendar/i.test(title);
+}
+
+async function fetchAllWallpaperArticles(): Promise<{ title: string; urls: string[] }[]> {
+  const articles: { title: string; urls: string[] }[] = [];
   let page = 1;
   let maxPage = Infinity;
 
@@ -53,29 +60,20 @@ async function fetchNewWallpaperUrls(known: Set<string>): Promise<string[]> {
       const { iTotal, list } = res.data.data;
       maxPage = Math.ceil(iTotal / 20);
 
-      let foundNewOnPage = false;
       for (const item of list) {
         if (!item.sTitle.toLowerCase().includes("wallpaper")) continue;
+        if (isCalendar(item.sTitle)) continue;
         const urls = extractImageUrls(item.sContent);
         if (urls.length === 0) continue;
-        let foundNew = false;
-        for (const url of urls) {
-          if (known.has(url)) continue;
-          newUrls.push(url);
-          foundNew = true;
-        }
-        if (foundNew) foundNewOnPage = true;
+        articles.push({ title: item.sTitle.trim(), urls });
       }
-
-      // Once we hit a page with no new wallpapers, we've caught up
-      if (!foundNewOnPage) break;
     } catch {
       break;
     }
     page++;
   }
 
-  return newUrls;
+  return articles;
 }
 
 /** Download a wallpaper URL to local cache, return the local file path. */
@@ -90,79 +88,98 @@ async function downloadToCache(url: string, filename: string): Promise<string> {
   return filePath;
 }
 
-/** Delete all cached wallpaper files except the one for today. */
-function purgeStaleCacheFiles(todayFilename: string): void {
+/** Delete all cached wallpaper files. */
+function purgeAllCacheFiles(): void {
   if (!fs.existsSync(CACHE_DIR)) return;
   for (const file of fs.readdirSync(CACHE_DIR)) {
-    if (file !== todayFilename) {
-      try { fs.unlinkSync(path.join(CACHE_DIR, file)); } catch { /* ignore */ }
-    }
+    try { fs.unlinkSync(path.join(CACHE_DIR, file)); } catch { /* ignore */ }
   }
 }
 
 export async function refreshWallpapers(db: any): Promise<void> {
-  const today = localDateString();
-  let pool: WallpaperEntry[] = (await db.get("zzz.wallpaperPool")) || [];
-
-  // Reset usedDate for entries older than REUSE_AFTER_DAYS
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - REUSE_AFTER_DAYS);
-  const cutoffStr = localDateString(cutoff);
-  for (const entry of pool) {
-    if (entry.usedDate && entry.usedDate < cutoffStr) {
-      entry.usedDate = null;
-    }
-  }
-
-  // Fetch only new wallpapers not already in the pool
-  const existingUrls = new Set(pool.map((e) => e.url));
-  let fetchedUrls: string[];
+  // Fetch all wallpaper articles (excluding calendar)
+  let articles: { title: string; urls: string[] }[];
   try {
-    fetchedUrls = await fetchNewWallpaperUrls(existingUrls);
+    articles = await fetchAllWallpaperArticles();
   } catch (err) {
     console.warn("[wallpaperManager] Failed to fetch wallpapers:", err);
-    await db.set("zzz.wallpaperPool", pool);
     return;
   }
 
-  for (const url of fetchedUrls) {
-    pool.push({ url, usedDate: null });
-  }
+  // Build pool: one entry per article
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - REUSE_AFTER_DAYS);
+  const cutoffStr = localDateString(cutoff);
 
-  await db.set("zzz.wallpaperPool", pool);
+  // Load existing pool to preserve usedDate info
+  const existing: WallpaperArticle[] = (await db.get("zzz.wallpaperArticlePool")) || [];
+  const existingMap = new Map(existing.map((e) => [JSON.stringify(e.urls.slice().sort()), e]));
 
-  // Purge stale cache files (keep today's if already downloaded)
-  const todayEntry = pool.find((e) => e.usedDate === today);
-  const todayFilename = todayEntry ? `today_${today}${path.extname(new URL(todayEntry.url).pathname) || ".jpg"}` : "";
-  purgeStaleCacheFiles(todayFilename);
+  const pool: WallpaperArticle[] = articles.map((a) => {
+    const key = JSON.stringify(a.urls.slice().sort());
+    const prev = existingMap.get(key);
+    let usedDate = prev?.usedDate ?? null;
+    // Reset if expired
+    if (usedDate && usedDate < cutoffStr) usedDate = null;
+    return { urls: a.urls, usedDate };
+  });
+
+  await db.set("zzz.wallpaperArticlePool", pool);
 }
 
 export async function getTodayWallpaper(db: any): Promise<string | null> {
   const today = localDateString();
-  const pool: WallpaperEntry[] = (await db.get("zzz.wallpaperPool")) || [];
+  const pool: WallpaperArticle[] = (await db.get("zzz.wallpaperArticlePool")) || [];
 
-  // Find or select today's wallpaper entry
-  let todayEntry = pool.find((e) => e.usedDate === today);
-  if (!todayEntry) {
-    const unused = pool.filter((e) => e.usedDate === null);
-    if (unused.length === 0) return null;
-    todayEntry = unused[Math.floor(Math.random() * unused.length)];
-    todayEntry.usedDate = today;
-    await db.set("zzz.wallpaperPool", pool);
+  // Find if today's article is already selected
+  let todayArticle = pool.find((e) => e.usedDate === today);
+  if (!todayArticle) {
+    // Pick a random unused article
+    let candidates = pool.filter((e) => e.usedDate === null);
+    if (candidates.length === 0) {
+      // All used — reset all and start over
+      for (const entry of pool) entry.usedDate = null;
+      await db.set("zzz.wallpaperArticlePool", pool);
+      candidates = pool;
+    }
+    if (candidates.length === 0) return null;
+
+    todayArticle = candidates[Math.floor(Math.random() * candidates.length)];
+    todayArticle.usedDate = today;
+    await db.set("zzz.wallpaperArticlePool", pool);
   }
 
-  // Return local cached file if it exists
-  const ext = path.extname(new URL(todayEntry.url).pathname) || ".jpg";
-  const filename = `today_${today}${ext}`;
+  // Pick a random image from today's article (lock it for the rest of the day)
+  const urls = todayArticle.urls;
+  let pickedUrl = todayArticle.pickedUrl ?? null;
+  if (!pickedUrl) {
+    pickedUrl = urls[Math.floor(Math.random() * urls.length)];
+    todayArticle.pickedUrl = pickedUrl;
+    await db.set("zzz.wallpaperArticlePool", pool);
+  }
+
+  // Cache file keyed by URL hash
+  const urlHash = Buffer.from(pickedUrl).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 16);
+  const ext = path.extname(new URL(pickedUrl).pathname) || ".jpg";
+  const filename = `wp_${today}_${urlHash}${ext}`;
   const localPath = path.join(CACHE_DIR, filename);
+
+  // Purge old cache files (keep today's)
+  if (fs.existsSync(CACHE_DIR)) {
+    for (const file of fs.readdirSync(CACHE_DIR)) {
+      if (file !== filename) {
+        try { fs.unlinkSync(path.join(CACHE_DIR, file)); } catch { /* ignore */ }
+      }
+    }
+  }
 
   if (fs.existsSync(localPath)) return localPath;
 
   // Download and cache
   try {
-    return await downloadToCache(todayEntry.url, filename);
+    return await downloadToCache(pickedUrl, filename);
   } catch (err) {
     console.warn("[wallpaperManager] Failed to download wallpaper, returning URL:", err);
-    return todayEntry.url; // fallback to URL if download fails
+    return pickedUrl;
   }
 }

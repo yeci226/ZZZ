@@ -15,7 +15,7 @@ import {
   getUserLang,
   getCharacterData,
 } from "../utilities.js";
-import { downloadPaintingCache, getLocalWikiPaintings, paintingIndexForRank } from "./autoDownloadIcons.js";
+import { downloadPaintingCache, getLocalWikiPaintings, paintingIndexForRank, getFacePos } from "./autoDownloadIcons.js";
 import { searchWikiEntry, fetchWikiPaintings } from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
 import emoji from "../../assets/emoji.js";
@@ -258,7 +258,7 @@ export async function handleProfileDraw(
             .setPlaceholder(`${tr("profile_SelectCharacter")} (${index + 1})`)
             .setCustomId(`profile_SelectCharacter-${index}`)
             .setMinValues(1)
-            .setMaxValues(1)
+            .setMaxValues(Math.min(3, optionsChunk.length))
             .addOptions(optionsChunk),
         ),
       );
@@ -827,16 +827,22 @@ export async function drawCharacterImage(
     }
 
     // ── Wiki 意象影畫 override (highest priority) ──
+    let paintingEntryId: string | null = null;
+    let paintingRank: number = 0;
+    let allPaintingPaths: string[] = [];
     if (usePainting) {
       try {
         const name: string =
           character.name_mi18n ?? character.full_name_mi18n ?? character.name ?? "";
         const entryId = name ? await searchWikiEntry(name) : null;
         if (entryId) {
-          const rank: number = character.rank ?? 0;
+          paintingEntryId = String(entryId);
+          paintingRank = character.rank ?? 0;
+          const rank: number = paintingRank;
           const paintingIdx = rankDependentPainting ? paintingIndexForRank(rank) : null;
           // Prefer local cached file
           const localPaths = getLocalWikiPaintings(entryId);
+          allPaintingPaths = localPaths;
           // null idx = pick first available (base painting); otherwise pick requested idx (no silent fallback to 0)
           const localPath = paintingIdx !== null
             ? (localPaths[paintingIdx] ?? null)
@@ -846,6 +852,7 @@ export async function drawCharacterImage(
           } else {
             // Fall back to remote
             const remoteUrls = await fetchWikiPaintings(entryId);
+            allPaintingPaths = remoteUrls;
             const remoteUrl = paintingIdx !== null
               ? (remoteUrls[paintingIdx] ?? null)
               : (remoteUrls[0] ?? null);
@@ -975,15 +982,190 @@ export async function drawCharacterImage(
 
     // Draw Visuals
     if (usePainting) {
-      // Cover full canvas without distortion (object-fit: cover)
-      const scaleW = canvas.width / characterImage.width;
-      const scaleH = canvas.height / characterImage.height;
-      const scale = Math.max(scaleW, scaleH);
-      const scaledWidth = characterImage.width * scale;
-      const scaledHeight = characterImage.height * scale;
-      const x = (canvas.width - scaledWidth) / 2;
-      const y = (canvas.height - scaledHeight) / 2;
-      ctx.drawImage(characterImage, x, y, scaledWidth, scaledHeight);
+      const drawCover = (img: Image) => {
+        const scaleW = canvas.width / img.width;
+        const scaleH = canvas.height / img.height;
+        const scale = Math.max(scaleW, scaleH);
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        const x = (canvas.width - scaledWidth) / 2;
+        const y = (canvas.height - scaledHeight) / 2;
+        ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+      };
+
+      if (
+        paintingEntryId !== null &&
+        allPaintingPaths.length >= 2 &&
+        (rankDependentPainting || paintingRank > 0)
+      ) {
+        const rank = paintingRank;
+        const img0 = allPaintingPaths[0] ? await loadImageAsync(allPaintingPaths[0]) : null;
+        const img1 = allPaintingPaths[1] ? await loadImageAsync(allPaintingPaths[1]) : null;
+        const img2 = allPaintingPaths[2] ? await loadImageAsync(allPaintingPaths[2]) : null;
+        const base0 = img0 ?? characterImage;
+        const base1 = img1 ?? base0;
+        const base2 = img2 ?? base1;
+        const W = canvas.width;
+        const H = canvas.height;
+
+        const refImg = base0;
+        const refScale = Math.max(W / refImg.width, H / refImg.height);
+        const refW = refImg.width * refScale;
+        const refH = refImg.height * refScale;
+        const refX = (W - refW) / 2;
+        const refY = (H - refH) / 2;
+        const { faceX, faceY } = getFacePos(paintingEntryId);
+        const faceCanvasX = refX + faceX * refW;
+        const faceCanvasY = refY + faceY * refH;
+
+        const rotate = (x: number, y: number, angle: number) => ({
+          x: x * Math.cos(angle) - y * Math.sin(angle),
+          y: x * Math.sin(angle) + y * Math.cos(angle),
+        });
+
+        const edgePointFromFace = (dx: number, dy: number) => {
+          const candidates: number[] = [];
+          if (dx > 0) candidates.push((W - faceCanvasX) / dx);
+          if (dx < 0) candidates.push((0 - faceCanvasX) / dx);
+          if (dy > 0) candidates.push((H - faceCanvasY) / dy);
+          if (dy < 0) candidates.push((0 - faceCanvasY) / dy);
+          const t = Math.min(...candidates.filter((v) => v > 0));
+          return {
+            x: faceCanvasX + dx * t,
+            y: faceCanvasY + dy * t,
+          };
+        };
+
+        const getFanGeometry = (halfAngleDeg: number, mouthWidth: number) => {
+          let awayX = W / 2 - faceCanvasX;
+          let awayY = H / 2 - faceCanvasY;
+          let awayLen = Math.sqrt(awayX * awayX + awayY * awayY);
+          if (awayLen < 1) {
+            awayX = 1;
+            awayY = 0;
+            awayLen = 1;
+          }
+
+          const edgeCenter = edgePointFromFace(awayX / awayLen, awayY / awayLen);
+          const axisX = faceCanvasX - edgeCenter.x;
+          const axisY = faceCanvasY - edgeCenter.y;
+          const axisLen = Math.sqrt(axisX * axisX + axisY * axisY) || 1;
+          const dirX = axisX / axisLen;
+          const dirY = axisY / axisLen;
+          const dist = Math.sqrt(W * W + H * H) * 2;
+          const halfAngle = (halfAngleDeg * Math.PI) / 180;
+          const normalX = -dirY;
+          const normalY = dirX;
+          const edgeDirA = rotate(dirX, dirY, halfAngle);
+          const edgeDirB = rotate(dirX, dirY, -halfAngle);
+          const halfMouth = mouthWidth / 2;
+          const mouthCenter = {
+            x: edgeCenter.x - dirX * Math.max(180, mouthWidth * 2),
+            y: edgeCenter.y - dirY * Math.max(180, mouthWidth * 2),
+          };
+          const edgeA = {
+            start: {
+              x: mouthCenter.x + normalX * halfMouth,
+              y: mouthCenter.y + normalY * halfMouth,
+            },
+            end: {
+              x: edgeCenter.x + edgeDirA.x * dist,
+              y: edgeCenter.y + edgeDirA.y * dist,
+            },
+          };
+          const edgeB = {
+            start: {
+              x: mouthCenter.x - normalX * halfMouth,
+              y: mouthCenter.y - normalY * halfMouth,
+            },
+            end: {
+              x: edgeCenter.x + edgeDirB.x * dist,
+              y: edgeCenter.y + edgeDirB.y * dist,
+            },
+          };
+          const upperEdge =
+            (edgeA.start.y + edgeA.end.y) / 2 <=
+            (edgeB.start.y + edgeB.end.y) / 2
+              ? edgeA
+              : edgeB;
+          const lowerEdge = upperEdge === edgeA ? edgeB : edgeA;
+          return { edgeA, edgeB, upperEdge, lowerEdge };
+        };
+
+        const clipFaceFan = () => {
+          const { edgeA, edgeB } = getFanGeometry(12, 96);
+          ctx.beginPath();
+          ctx.moveTo(edgeA.start.x, edgeA.start.y);
+          ctx.lineTo(edgeA.end.x, edgeA.end.y);
+          ctx.lineTo(edgeB.end.x, edgeB.end.y);
+          ctx.lineTo(edgeB.start.x, edgeB.start.y);
+          ctx.closePath();
+          ctx.clip();
+        };
+
+        const clipStageTwoSide = () => {
+          const { upperEdge, lowerEdge } = getFanGeometry(12, 96);
+          const side = faceCanvasY < H / 2 ? "bottom" : "top";
+          const boundary = side === "bottom" ? upperEdge : lowerEdge;
+          const edgeX = boundary.end.x - boundary.start.x;
+          const edgeY = boundary.end.y - boundary.start.y;
+          const edgeLen = Math.sqrt(edgeX * edgeX + edgeY * edgeY) || 1;
+          const normalX = -edgeY / edgeLen;
+          const normalY = edgeX / edgeLen;
+          const midpoint = {
+            x: (boundary.start.x + boundary.end.x) / 2,
+            y: (boundary.start.y + boundary.end.y) / 2,
+          };
+          const targetY = side === "bottom" ? H : 0;
+          const sign =
+            ((W / 2 - midpoint.x) * normalX + (targetY - midpoint.y) * normalY) >= 0
+              ? 1
+              : -1;
+          const offset = Math.sqrt(W * W + H * H) * 2 * sign;
+
+          ctx.beginPath();
+          ctx.moveTo(boundary.start.x, boundary.start.y);
+          ctx.lineTo(boundary.end.x, boundary.end.y);
+          ctx.lineTo(boundary.end.x + normalX * offset, boundary.end.y + normalY * offset);
+          ctx.lineTo(boundary.start.x + normalX * offset, boundary.start.y + normalY * offset);
+          ctx.closePath();
+          ctx.clip();
+        };
+
+        if (rank === 0) {
+          drawCover(base0);
+        } else if (rank === 1) {
+          drawCover(base0);
+          ctx.save();
+          clipFaceFan();
+          drawCover(base1);
+          ctx.restore();
+        } else if (rank === 2) {
+          drawCover(base0);
+          ctx.save();
+          clipStageTwoSide();
+          drawCover(base1);
+          ctx.restore();
+        } else if (rank === 3) {
+          drawCover(base1);
+        } else if (rank === 4) {
+          drawCover(base1);
+          ctx.save();
+          clipFaceFan();
+          drawCover(base2);
+          ctx.restore();
+        } else if (rank === 5) {
+          drawCover(base1);
+          ctx.save();
+          clipStageTwoSide();
+          drawCover(base2);
+          ctx.restore();
+        } else {
+          drawCover(base2);
+        }
+      } else {
+        drawCover(characterImage);
+      }
     } else {
       drawAgentPortrait(
         ctx,

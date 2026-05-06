@@ -10,13 +10,49 @@ import {
   failedReply,
   getRedeemCodes,
   getRandomColor,
-  getUserZZZData,
   getUserUid,
   getUserCookie,
   updateCookie,
 } from "../../../utilities/utilities.js";
 import Logger from "../../../utilities/core/logger.js";
 import { QuickDB } from "quick.db";
+
+async function redeemCodeDirect(
+  uid: string,
+  cookie: string,
+  code: string
+): Promise<{ retcode: number; message: string }> {
+  let region = "prod_gf_sg";
+  if (uid.startsWith("5")) region = "prod_gf_us";
+  else if (uid.startsWith("6")) region = "prod_gf_eu";
+  else if (uid.startsWith("7")) region = "prod_gf_sg";
+  else if (uid.startsWith("8")) region = "prod_gf_sg";
+  else if (uid.startsWith("13")) region = "prod_gf_jp";
+
+  const url =
+    "https://public-operation-nap.hoyoverse.com/common/apicdkey/api/webExchangeCdkeyRisk";
+  const params = new URLSearchParams({
+    uid: String(uid),
+    region,
+    lang: "zh-tw",
+    cdkey: code,
+    game_biz: "nap_global",
+    t: String(Date.now()),
+  });
+
+  const response = await fetch(`${url}?${params.toString()}`, {
+    method: "POST",
+    headers: {
+      cookie: cookie,
+      "x-rpc-signgame": "nap",
+      "x-rpc-app_id": "c9oqaq3s3gu8",
+      "x-rpc-client_type": "4",
+    },
+  });
+
+  const result = (await response.json()) as any;
+  return { retcode: result.retcode ?? -1, message: result.message ?? "" };
+}
 
 export default {
   data: new SlashCommandBuilder()
@@ -252,6 +288,9 @@ export default {
       const accountIndex = parseInt(
         interaction.options.getString("account") || "0",
       );
+      if (isNaN(accountIndex)) {
+        return failedReply(interaction, 'Invalid account index.');
+      }
       const codes = await getRedeemCodes();
       const uid = await getUserUid(interaction.user.id, accountIndex);
       const userRedeemedCodes = (await db.get(`${uid}.redeemedCodes`)) || [];
@@ -277,17 +316,19 @@ export default {
       const accountIndex = parseInt(
         interaction.options.getString("account") || "0",
       );
+      if (isNaN(accountIndex)) {
+        return failedReply(interaction, 'Invalid account index.');
+      }
       const targetUser =
         interaction.options.getUser("user") || interaction.user;
-      const zzz = await getUserZZZData(
-        interaction,
-        tr,
-        targetUser.id,
-        undefined,
-        accountIndex,
-      );
-      if (!zzz) return;
-
+      if (targetUser && targetUser.id !== interaction.user.id && !interaction.memberPermissions?.has('Administrator')) {
+        return failedReply(interaction, 'You can only perform this action for yourself.');
+      }
+      const redeemAllAccounts = await db.get(`${targetUser.id}.account`);
+      const redeemAllCookie = redeemAllAccounts?.[accountIndex]?.cookie;
+      if (!redeemAllCookie) {
+        return failedReply(interaction, tr("error_NoAccount"));
+      }
       const uid = await getUserUid(targetUser.id, accountIndex);
       const codes = await getRedeemCodes();
       let userRedeemedCodes: string[] =
@@ -313,7 +354,7 @@ export default {
             embeds: [createProgressEmbed(noRedeemedCodes, i, tr)],
           });
 
-          const res = await zzz.redeem.claim(code.code);
+          const res = await redeemCodeDirect(uid || "", redeemAllCookie, code.code);
           const result = await handleRedeemResult(
             code.code,
             res,
@@ -335,6 +376,19 @@ export default {
         await db.set(
           `${uid}.redeemedCodes`,
           Array.from(new Set(userRedeemedCodes)),
+        );
+      }
+
+      // Update cookie after successful redeemall (mirrors redeem subcommand behavior)
+      try {
+        const cookieStr = await getUserCookie(targetUser.id, accountIndex) ?? "";
+        await updateCookie(targetUser.id, accountIndex, cookieStr);
+        new Logger("Redeem").info(
+          `使用者 ${targetUser.id} 的帳號 #${accountIndex} 成功兌換全部禮包碼並更新 Cookie`,
+        );
+      } catch (e: any) {
+        new Logger("Redeem").error(
+          `使用者 ${targetUser.id} 的帳號 #${accountIndex} 更新 Cookie 失敗: ${e.message}`,
         );
       }
 
@@ -410,25 +464,31 @@ export default {
       const code = interaction.options.getString("code")!;
       const targetUser =
         interaction.options.getUser("user") || interaction.user;
+      if (targetUser && targetUser.id !== interaction.user.id && !interaction.memberPermissions?.has('Administrator')) {
+        return failedReply(interaction, 'You can only perform this action for yourself.');
+      }
+
       const accountIndex = parseInt(
         interaction.options.getString("account") || "0",
       );
-
-      const zzz = await getUserZZZData(
-        interaction,
-        tr,
-        targetUser.id,
-        undefined,
-        accountIndex,
-      );
-      if (!zzz) return;
+      if (isNaN(accountIndex)) {
+        return failedReply(interaction, 'Invalid account index.');
+      }
 
       const uid = await getUserUid(targetUser.id, accountIndex);
+      if (!uid) {
+        return failedReply(interaction, tr("error_NoAccount"));
+      }
+      const redeemAccounts = await db.get(`${targetUser.id}.account`);
+      const redeemCookie = redeemAccounts?.[accountIndex]?.cookie;
+      if (!redeemCookie) {
+        return failedReply(interaction, tr("error_NoAccount"));
+      }
       let userRedeemedCodes: string[] =
         (await db.get(`${uid}.redeemedCodes`)) || [];
 
       try {
-        const res = await zzz.redeem.claim(code);
+        const res = await redeemCodeDirect(uid, redeemCookie, code);
         if (res.retcode == 0 || res.message == "OK") {
           if (!userRedeemedCodes.includes(code)) userRedeemedCodes.push(code);
           userRedeemedCodes = Array.from(new Set(userRedeemedCodes));
@@ -479,9 +539,10 @@ export default {
         failedReply(interaction, e.message);
       }
     } else if (subcommand == "autoredeem") {
-      const zzz = await getUserZZZData(interaction, tr, interaction.user.id);
-      if (!zzz) return;
       const userAccount = await db.get(`${interaction.user.id}.account`);
+      if (!userAccount || userAccount.length === 0) {
+        return failedReply(interaction, 'No account found.');
+      }
       if (
         !userAccount[0].cookie.includes("cookie_token_v2") &&
         !userAccount[0].cookie.includes("account_mid_v2")
