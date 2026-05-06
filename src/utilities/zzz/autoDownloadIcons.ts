@@ -5,6 +5,38 @@ import axios from "axios";
 import Logger from "../core/logger.js";
 
 const WIKI_PAINTINGS_DIR = "src/assets/images/zzz/wiki_paintings";
+const FACE_CACHE_FILE = path.resolve(WIKI_PAINTINGS_DIR, "face_cache.json");
+const DEFAULT_FACE_Y = 0.35;
+const DEFAULT_FACE_X = 0.5;
+
+/** Get the face Y position (0~1 ratio from top) for a wiki entry. Returns default if not cached. */
+export function getFaceY(entryPageId: string | number): number {
+  try {
+    if (!fs.existsSync(FACE_CACHE_FILE)) return DEFAULT_FACE_Y;
+    const cache = JSON.parse(fs.readFileSync(FACE_CACHE_FILE, "utf-8"));
+    const val = cache[String(entryPageId)];
+    if (typeof val === "number") return val; // legacy flat format
+    return typeof val?.faceY === "number" ? val.faceY : DEFAULT_FACE_Y;
+  } catch {
+    return DEFAULT_FACE_Y;
+  }
+}
+
+/** Get face position (faceX, faceY) for a wiki entry. Returns defaults if not cached. */
+export function getFacePos(entryPageId: string | number): { faceX: number; faceY: number } {
+  try {
+    if (!fs.existsSync(FACE_CACHE_FILE)) return { faceX: DEFAULT_FACE_X, faceY: DEFAULT_FACE_Y };
+    const cache = JSON.parse(fs.readFileSync(FACE_CACHE_FILE, "utf-8"));
+    const val = cache[String(entryPageId)];
+    if (typeof val === "number") return { faceX: DEFAULT_FACE_X, faceY: val }; // legacy
+    return {
+      faceX: typeof val?.faceX === "number" ? val.faceX : DEFAULT_FACE_X,
+      faceY: typeof val?.faceY === "number" ? val.faceY : DEFAULT_FACE_Y,
+    };
+  } catch {
+    return { faceX: DEFAULT_FACE_X, faceY: DEFAULT_FACE_Y };
+  }
+}
 
 const WIKI_HEADERS = {
   "x-rpc-wiki_app": "zzz",
@@ -133,6 +165,114 @@ export function loadWikiIndex(): Record<string, string> {
     }
   } catch { /* ignore */ }
   return {};
+}
+
+const DISC_ICONS_DIR = "src/assets/images/icons/diskdrives";
+const NANOKA_BASE_URL = "https://static.nanoka.cc/assets/zzz";
+const HB_DATA_EQUIPMENT_URL =
+  "https://git.mero.moe/dimbreath/ZenlessData/raw/branch/master/FileCfg/EquipmentTemplateTb.json";
+const HB_DATA_ITEM_URL =
+  "https://git.mero.moe/dimbreath/ZenlessData/raw/branch/master/FileCfg/ItemTemplateTb.json";
+
+/** Deobfuscate ZenlessData by finding the key whose first-row value matches the anchor. */
+function findKeyByValue(data: any[], anchor: any): string | null {
+  const row = data[0];
+  for (const [k, v] of Object.entries(row)) {
+    if (JSON.stringify(v) === JSON.stringify(anchor)) return k;
+  }
+  return null;
+}
+
+/** Fetch disc icon map: { "338_S": "https://static.nanoka.cc/assets/zzz/ItemSuitXxx_S.webp", ... } */
+async function fetchDiscIconMap(): Promise<Record<string, string>> {
+  const [equipRes, itemRes] = await Promise.all([
+    axios.get(HB_DATA_EQUIPMENT_URL),
+    axios.get(HB_DATA_ITEM_URL),
+  ]);
+
+  const equipRaw: any[] = Object.values(equipRes.data)[0] as any[];
+  const itemRaw: any[] = Object.values(itemRes.data)[0] as any[];
+
+  // Deobfuscate keys
+  const kItemIDEquip = findKeyByValue(equipRaw, 31021)!;
+  const kSuitID = findKeyByValue(equipRaw, 31000)!;
+  const kItemIDItem = findKeyByValue(itemRaw, 31021)!;
+  const kItemIcon = findKeyByValue(itemRaw,
+    "Assets/NapResources/UI/Sprite/A1DynamicLoad/Hollow/ItemIcon/UnPacker/IconFund.png"
+  )!;
+
+  // Build ItemID → icon path map from ItemTemplateTb
+  const iconByItemID: Record<number, string> = {};
+  for (const row of itemRaw) {
+    const itemId = row[kItemIDItem];
+    const icon: string = row[kItemIcon] ?? "";
+    if (icon) iconByItemID[itemId] = icon;
+  }
+
+  const result: Record<string, string> = {};
+  for (const row of equipRaw) {
+    const itemId: number = row[kItemIDEquip];
+    const suitId: number = row[kSuitID];
+    const iconPath: string = iconByItemID[itemId] ?? "";
+    if (!iconPath) continue;
+
+    const iconFile = iconPath.split("/").pop()?.split(".")[0];
+    if (!iconFile) continue;
+
+    const prefix = String(suitId).slice(0, 3);
+    let rarity: string;
+    if (iconFile.endsWith("_S")) rarity = "S";
+    else if (iconFile.endsWith("_A")) rarity = "A";
+    else if (iconFile.endsWith("_B")) rarity = "B";
+    else continue;
+
+    const key = `${prefix}_${rarity}`;
+    if (!result[key]) {
+      result[key] = `${NANOKA_BASE_URL}/${iconFile}.webp`;
+    }
+  }
+
+  return result;
+}
+
+/** Download missing drive disc icons from nanoka CDN. Skips already-present files. */
+export async function downloadAllDiscIcons(): Promise<void> {
+  const logger = new Logger("DiscIcons");
+  const dir = path.resolve(DISC_ICONS_DIR);
+  fs.mkdirSync(dir, { recursive: true });
+
+  let iconMap: Record<string, string>;
+  try {
+    iconMap = await fetchDiscIconMap();
+  } catch (e: any) {
+    logger.error(`Failed to fetch disc icon map: ${e?.message ?? e}`);
+    return;
+  }
+
+  logger.info(`Found ${Object.keys(iconMap).length} disc icons in data, checking for missing...`);
+  let downloaded = 0;
+  let skipped = 0;
+
+  for (const [key, url] of Object.entries(iconMap)) {
+    const dest = path.resolve(dir, `${key}.webp`);
+    if (fs.existsSync(dest)) {
+      skipped++;
+      continue;
+    }
+    try {
+      const ok = await downloadImage(url, dest);
+      if (ok) {
+        downloaded++;
+        logger.info(`Downloaded ${key}.webp`);
+      } else {
+        logger.warn(`Failed to download ${key}.webp from ${url}`);
+      }
+    } catch (e: any) {
+      logger.error(`Error downloading ${key}.webp: ${e?.message ?? e}`);
+    }
+  }
+
+  logger.success(`驅動盤圖示更新完成：新增 ${downloaded} 個，略過 ${skipped} 個已存在`);
 }
 
 /** Download all wiki 意象影畫 for every agent to local disk. Skips already-downloaded entries. */

@@ -6,7 +6,7 @@ import autoRedeem from "../utilities/zzz/autoRedeem.js";
 import { autoRefreshCookie } from "../utilities/utilities.js";
 import schedule from "node-schedule";
 import { refreshWallpapers } from "../utilities/zzz/wallpaperManager.js";
-import { downloadAllWikiPaintings } from "../utilities/zzz/autoDownloadIcons.js";
+import { downloadAllWikiPaintings, downloadAllDiscIcons } from "../utilities/zzz/autoDownloadIcons.js";
 
 let isRefreshingCookies = false;
 let isAutoRedeemRunning = false;
@@ -38,6 +38,7 @@ client.on(Events.ClientReady, async () => {
     // Fire background tasks immediately — don't wait for redeem/cookie flows
     refreshWallpapers(client.db).catch(() => {});
     downloadAllWikiPaintings().catch(() => {});
+    downloadAllDiscIcons().catch(() => {});
     await runAutoRedeem();
     // 啟動時先做一次 Cookie 刷新
     await refreshAllCookies(client);
