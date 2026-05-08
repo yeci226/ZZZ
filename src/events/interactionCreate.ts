@@ -144,7 +144,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
         );
       }
     } catch (e: any) {
-      new Logger("指令").error(`錯誤訊息：${e.message}`);
+      new Logger("指令").error(`錯誤訊息：${e?.stack ?? e}`);
       await replyOrFollowUp(interaction, {
         content: "哦喲，好像出了一點小問題，請重試",
         flags: MessageFlags.Ephemeral,
@@ -159,7 +159,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
         interaction as ContextMenuCommandInteraction,
       );
     } catch (e: any) {
-      new Logger("指令").error(`錯誤訊息：${e.message}`);
+      new Logger("指令").error(`錯誤訊息：${e?.stack ?? e}`);
       await replyOrFollowUp(interaction, {
         content: "哦喲，好像出了一點小問題，請重試",
         flags: MessageFlags.Ephemeral,

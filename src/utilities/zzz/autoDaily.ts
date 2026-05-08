@@ -381,6 +381,8 @@ export class AutoDailyService {
       return embed.toJSON();
     });
 
+    this.logger.info(`發送通知 (User: ${userId}) method=${notifyMethod} cards=${cardFiles.length} errors=${errorEmbeds.length} channelId=${config.channelId || "none"}`);
+
     try {
       if (notifyMethod === "dm") {
         // Send via REST DM (bypasses IPC, safe during shard reconnects)
@@ -393,14 +395,14 @@ export class AutoDailyService {
             userId,
             { ...(content && { content }) },
             { buffer: fileBuffer, name: cardFile.name },
-          ).then(() => true).catch(() => false);
+          ).then(() => true).catch((e) => { this.logger.error(`DM 發送失敗 (User: ${userId}): ${e}`); return false; });
           // Fallback to channel if DM failed
           if (!sent && config.channelId) {
             await sendRestMessage(
               config.channelId,
               { ...(content && { content }) },
               { buffer: fileBuffer, name: cardFile.name },
-            ).catch(() => {});
+            ).catch((e) => this.logger.error(`channel fallback 失敗 (User: ${userId}): ${e}`));
           }
         }
         // Send error embeds (if any) via REST
@@ -423,13 +425,13 @@ export class AutoDailyService {
             channelId,
             { ...(content && { content }) },
             { buffer: fileBuffer, name: cardFile.name },
-          ).then(() => true).catch(() => false);
+          ).then(() => true).catch((e) => { this.logger.error(`channel 發送失敗 (User: ${userId}): ${e}`); return false; });
           if (!sent) {
             await sendRestDm(
               userId,
               { ...(content && { content }) },
               { buffer: fileBuffer, name: cardFile.name },
-            ).catch(() => {});
+            ).catch((e) => this.logger.error(`DM fallback 失敗 (User: ${userId}): ${e}`));
           }
         }
         if (errorEmbeds.length > 0) {
