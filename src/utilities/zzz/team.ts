@@ -1183,13 +1183,13 @@ async function drawAgentCard(
     if (titleIco || titleName) {
       // Draw name text first (leftmost of this group)
       if (titleName) {
-        ctx.font = `11px ${font}`;
-        ctx.fillStyle = C.muted;
+        ctx.font = `${metaIconSize}px ${font}`;
+        ctx.fillStyle = "#ffffff";
         const nameW = ctx.measureText(titleName).width;
         metaRightX -= nameW;
         ctx.textAlign = "left";
-        ctx.fillText(titleName, metaRightX, metaY + metaIconSize / 2 + 4);
-        metaRightX -= 4;
+        ctx.fillText(titleName, metaRightX, metaY + metaIconSize - 4);
+        metaRightX -= 6;
       }
       // Then draw the icon
       if (titleIco) {
