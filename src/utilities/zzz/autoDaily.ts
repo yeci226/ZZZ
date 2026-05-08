@@ -412,20 +412,32 @@ export class AutoDailyService {
           }
         }
       } else {
-        // Channel mode: send via REST directly
+        // Channel mode: send via REST directly, fallback to DM if channel send fails
         const channelId = config.channelId!;
         for (let i = 0; i < cardFiles.length; i++) {
           const cardFile = cardFiles[i];
           const isFirst = i === 0;
           const content = isFirst && tag ? tag : undefined;
-          await sendRestMessage(
+          const fileBuffer = Buffer.from(cardFile.buffer, "base64");
+          const sent = await sendRestMessage(
             channelId,
             { ...(content && { content }) },
-            { buffer: Buffer.from(cardFile.buffer, "base64"), name: cardFile.name },
-          ).catch(() => {});
+            { buffer: fileBuffer, name: cardFile.name },
+          ).then(() => true).catch(() => false);
+          if (!sent) {
+            await sendRestDm(
+              userId,
+              { ...(content && { content }) },
+              { buffer: fileBuffer, name: cardFile.name },
+            ).catch(() => {});
+          }
         }
         if (errorEmbeds.length > 0) {
-          await sendRestMessage(channelId, { embeds: errorEmbeds }).catch(() => {});
+          const sent = await sendRestMessage(channelId, { embeds: errorEmbeds })
+            .then(() => true).catch(() => false);
+          if (!sent) {
+            await sendRestDm(userId, { embeds: errorEmbeds }).catch(() => {});
+          }
         }
       }
     } catch (error) {
