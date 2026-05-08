@@ -1,6 +1,6 @@
 import { client } from "../../index.js";
 import { EmbedBuilder, WebhookClient, AttachmentBuilder } from "discord.js";
-import { sendRestMessage, sendRestDm } from "../core/sendRestMessage.js";
+
 import { ZenlessZoneZero, LanguageEnum } from "@yeci226/hoyoapi";
 import moment from "moment-timezone";
 import Logger from "../core/logger.js";
@@ -397,62 +397,67 @@ export class AutoDailyService {
     // Merge canvas fallback embeds with error embeds so they all go through the same path
     const allEmbeds = [...canvasFallbackEmbeds, ...errorEmbeds];
 
+    const sendToDm = async (msgPayload: any) => {
+      const user = await client.users.fetch(userId);
+      const dmChannel = await user.createDM();
+      await dmChannel.send(msgPayload);
+    };
+
+    const sendToChannel = async (channelId: string, msgPayload: any) => {
+      const channel = await client.channels.fetch(channelId) as any;
+      await channel.send(msgPayload);
+    };
+
     try {
       if (notifyMethod === "dm") {
-        // Send via REST DM (bypasses IPC, safe during shard reconnects)
         for (let i = 0; i < cardFiles.length; i++) {
           const cardFile = cardFiles[i];
           const isFirst = i === 0;
           const content = isFirst && tag ? tag : undefined;
           const fileBuffer = Buffer.from(cardFile.buffer, "base64");
-          const sent = await sendRestDm(
-            userId,
-            { ...(content && { content }) },
-            { buffer: fileBuffer, name: cardFile.name },
-          ).then(() => true).catch((e) => { this.logger.error(`DM 發送失敗 (User: ${userId}): ${e}`); return false; });
-          // Fallback to channel if DM failed
+          const msgPayload = {
+            ...(content && { content }),
+            files: [new AttachmentBuilder(fileBuffer, { name: cardFile.name })],
+          };
+          const sent = await sendToDm(msgPayload)
+            .then(() => true)
+            .catch((e) => { this.logger.error(`DM 發送失敗 (User: ${userId}): ${e}`); return false; });
           if (!sent && config.channelId) {
-            await sendRestMessage(
-              config.channelId,
-              { ...(content && { content }) },
-              { buffer: fileBuffer, name: cardFile.name },
-            ).catch((e) => this.logger.error(`channel fallback 失敗 (User: ${userId}): ${e}`));
+            await sendToChannel(config.channelId, msgPayload)
+              .catch((e) => this.logger.error(`channel fallback 失敗 (User: ${userId}): ${e}`));
           }
         }
-        // Send error embeds (if any) via REST
         if (allEmbeds.length > 0) {
-          const sent = await sendRestDm(userId, { embeds: allEmbeds })
+          const sent = await sendToDm({ embeds: allEmbeds })
             .then(() => true).catch(() => false);
           if (!sent && config.channelId) {
-            await sendRestMessage(config.channelId, { embeds: allEmbeds }).catch(() => {});
+            await sendToChannel(config.channelId, { embeds: allEmbeds }).catch(() => {});
           }
         }
       } else {
-        // Channel mode: send via REST directly, fallback to DM if channel send fails
         const channelId = config.channelId!;
         for (let i = 0; i < cardFiles.length; i++) {
           const cardFile = cardFiles[i];
           const isFirst = i === 0;
           const content = isFirst && tag ? tag : undefined;
           const fileBuffer = Buffer.from(cardFile.buffer, "base64");
-          const sent = await sendRestMessage(
-            channelId,
-            { ...(content && { content }) },
-            { buffer: fileBuffer, name: cardFile.name },
-          ).then(() => true).catch((e) => { this.logger.error(`channel 發送失敗 (User: ${userId}): ${e}`); return false; });
+          const msgPayload = {
+            ...(content && { content }),
+            files: [new AttachmentBuilder(fileBuffer, { name: cardFile.name })],
+          };
+          const sent = await sendToChannel(channelId, msgPayload)
+            .then(() => true)
+            .catch((e) => { this.logger.error(`channel 發送失敗 (User: ${userId}): ${e}`); return false; });
           if (!sent) {
-            await sendRestDm(
-              userId,
-              { ...(content && { content }) },
-              { buffer: fileBuffer, name: cardFile.name },
-            ).catch((e) => this.logger.error(`DM fallback 失敗 (User: ${userId}): ${e}`));
+            await sendToDm(msgPayload)
+              .catch((e) => this.logger.error(`DM fallback 失敗 (User: ${userId}): ${e}`));
           }
         }
         if (allEmbeds.length > 0) {
-          const sent = await sendRestMessage(channelId, { embeds: allEmbeds })
+          const sent = await sendToChannel(channelId, { embeds: allEmbeds })
             .then(() => true).catch(() => false);
           if (!sent) {
-            await sendRestDm(userId, { embeds: allEmbeds }).catch(() => {});
+            await sendToDm({ embeds: allEmbeds }).catch(() => {});
           }
         }
       }
