@@ -333,7 +333,9 @@ export class AutoDailyService {
     const signedResults = results.filter((r) => r.status !== "failed");
 
     // Build canvas card files for signed results
+    // If canvas fails, fallback to a plain embed so the user still gets notified
     const cardFiles: { buffer: string; name: string }[] = [];
+    const canvasFallbackEmbeds: object[] = [];
     for (let i = 0; i < signedResults.length; i++) {
       const res = signedResults[i];
       try {
@@ -361,6 +363,15 @@ export class AutoDailyService {
         });
       } catch (e) {
         this.logger.error(`Canvas card 生成失敗 (${res.uid}): ${e}`);
+        // Fallback: send a plain embed so user is still notified
+        const statusLabel = res.status === "success" ? tr("daily_Success") : tr("daily_AlreadySigned");
+        canvasFallbackEmbeds.push(
+          new EmbedBuilder()
+            .setColor(res.status === "success" ? "#5BB85D" : "#5B9BD5")
+            .setTitle(`${res.uid} ${statusLabel}`)
+            .setDescription(res.rewardName ? `${tr("card_TodayReward")}: ${res.rewardName} ×${res.rewardCount ?? 1}` : null)
+            .toJSON()
+        );
       }
     }
 
@@ -381,7 +392,10 @@ export class AutoDailyService {
       return embed.toJSON();
     });
 
-    this.logger.info(`發送通知 (User: ${userId}) method=${notifyMethod} cards=${cardFiles.length} errors=${errorEmbeds.length} channelId=${config.channelId || "none"}`);
+    this.logger.info(`發送通知 (User: ${userId}) method=${notifyMethod} cards=${cardFiles.length} canvasFallbacks=${canvasFallbackEmbeds.length} errors=${errorEmbeds.length} channelId=${config.channelId || "none"}`);
+
+    // Merge canvas fallback embeds with error embeds so they all go through the same path
+    const allEmbeds = [...canvasFallbackEmbeds, ...errorEmbeds];
 
     try {
       if (notifyMethod === "dm") {
@@ -406,11 +420,11 @@ export class AutoDailyService {
           }
         }
         // Send error embeds (if any) via REST
-        if (errorEmbeds.length > 0) {
-          const sent = await sendRestDm(userId, { embeds: errorEmbeds })
+        if (allEmbeds.length > 0) {
+          const sent = await sendRestDm(userId, { embeds: allEmbeds })
             .then(() => true).catch(() => false);
           if (!sent && config.channelId) {
-            await sendRestMessage(config.channelId, { embeds: errorEmbeds }).catch(() => {});
+            await sendRestMessage(config.channelId, { embeds: allEmbeds }).catch(() => {});
           }
         }
       } else {
@@ -434,11 +448,11 @@ export class AutoDailyService {
             ).catch((e) => this.logger.error(`DM fallback 失敗 (User: ${userId}): ${e}`));
           }
         }
-        if (errorEmbeds.length > 0) {
-          const sent = await sendRestMessage(channelId, { embeds: errorEmbeds })
+        if (allEmbeds.length > 0) {
+          const sent = await sendRestMessage(channelId, { embeds: allEmbeds })
             .then(() => true).catch(() => false);
           if (!sent) {
-            await sendRestDm(userId, { embeds: errorEmbeds }).catch(() => {});
+            await sendRestDm(userId, { embeds: allEmbeds }).catch(() => {});
           }
         }
       }
