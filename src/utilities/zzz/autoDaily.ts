@@ -1,5 +1,6 @@
 import { client } from "../../index.js";
 import { EmbedBuilder, WebhookClient, AttachmentBuilder } from "discord.js";
+import { sendRestMessage, sendRestDm } from "../core/sendRestMessage.js";
 import { ZenlessZoneZero, LanguageEnum } from "@yeci226/hoyoapi";
 import moment from "moment-timezone";
 import Logger from "../core/logger.js";
@@ -382,111 +383,49 @@ export class AutoDailyService {
 
     try {
       if (notifyMethod === "dm") {
-        // Send each card as a separate message to avoid image stacking
+        // Send via REST DM (bypasses IPC, safe during shard reconnects)
         for (let i = 0; i < cardFiles.length; i++) {
           const cardFile = cardFiles[i];
           const isFirst = i === 0;
-          await this.client.cluster.broadcastEval(
-            async (c: any, context: any) => {
-              const { userId, channelId, content, cardFile } = context;
-              try {
-                const { AttachmentBuilder } = await import("discord.js");
-                const file = new AttachmentBuilder(
-                  Buffer.from(cardFile.buffer, "base64"),
-                  { name: cardFile.name },
-                );
-                const user = await c.users.fetch(userId).catch(() => null);
-                if (user) {
-                  const dmPayload: any = { files: [file] };
-                  if (content) dmPayload.content = content;
-                  await user.send(dmPayload).catch(async () => {
-                    const channel = c.channels.cache.get(channelId);
-                    if (channel) await channel.send(dmPayload);
-                  });
-                }
-              } catch (e) {}
-            },
-            {
-              cluster: 0,
-              context: {
-                userId,
-                channelId: config.channelId,
-                content: isFirst && tag ? tag : undefined,
-                cardFile,
-              },
-            },
-          );
+          const content = isFirst && tag ? tag : undefined;
+          const fileBuffer = Buffer.from(cardFile.buffer, "base64");
+          const sent = await sendRestDm(
+            userId,
+            { ...(content && { content }) },
+            { buffer: fileBuffer, name: cardFile.name },
+          ).then(() => true).catch(() => false);
+          // Fallback to channel if DM failed
+          if (!sent && config.channelId) {
+            await sendRestMessage(
+              config.channelId,
+              { ...(content && { content }) },
+              { buffer: fileBuffer, name: cardFile.name },
+            ).catch(() => {});
+          }
         }
-        // Send error embeds (if any) as a separate message
+        // Send error embeds (if any) via REST
         if (errorEmbeds.length > 0) {
-          await this.client.cluster.broadcastEval(
-            async (c: any, context: any) => {
-              const { userId, channelId, errorEmbeds } = context;
-              try {
-                const user = await c.users.fetch(userId).catch(() => null);
-                if (user) {
-                  await user.send({ embeds: errorEmbeds }).catch(async () => {
-                    const channel = c.channels.cache.get(channelId);
-                    if (channel) await channel.send({ embeds: errorEmbeds });
-                  });
-                }
-              } catch (e) {}
-            },
-            {
-              cluster: 0,
-              context: {
-                userId,
-                channelId: config.channelId,
-                errorEmbeds,
-              },
-            },
-          );
+          const sent = await sendRestDm(userId, { embeds: errorEmbeds })
+            .then(() => true).catch(() => false);
+          if (!sent && config.channelId) {
+            await sendRestMessage(config.channelId, { embeds: errorEmbeds }).catch(() => {});
+          }
         }
       } else {
-        // Send each card as a separate message to avoid image stacking
+        // Channel mode: send via REST directly
+        const channelId = config.channelId!;
         for (let i = 0; i < cardFiles.length; i++) {
           const cardFile = cardFiles[i];
           const isFirst = i === 0;
-          await this.client.cluster.broadcastEval(
-            async (c: any, context: any) => {
-              const { channelId, content, cardFile } = context;
-              try {
-                const channel = c.channels.cache.get(channelId);
-                if (!channel) return;
-                const { AttachmentBuilder } = await import("discord.js");
-                const file = new AttachmentBuilder(
-                  Buffer.from(cardFile.buffer, "base64"),
-                  { name: cardFile.name },
-                );
-                await channel.send({ content: content || undefined, files: [file] });
-              } catch (e) {}
-            },
-            {
-              context: {
-                channelId: config.channelId,
-                content: isFirst && tag ? tag : undefined,
-                cardFile,
-              },
-            },
-          );
+          const content = isFirst && tag ? tag : undefined;
+          await sendRestMessage(
+            channelId,
+            { ...(content && { content }) },
+            { buffer: Buffer.from(cardFile.buffer, "base64"), name: cardFile.name },
+          ).catch(() => {});
         }
         if (errorEmbeds.length > 0) {
-          await this.client.cluster.broadcastEval(
-            async (c: any, context: any) => {
-              const { channelId, errorEmbeds } = context;
-              try {
-                const channel = c.channels.cache.get(channelId);
-                if (!channel) return;
-                await channel.send({ embeds: errorEmbeds });
-              } catch (e) {}
-            },
-            {
-              context: {
-                channelId: config.channelId,
-                errorEmbeds,
-              },
-            },
-          );
+          await sendRestMessage(channelId, { embeds: errorEmbeds }).catch(() => {});
         }
       }
     } catch (error) {
