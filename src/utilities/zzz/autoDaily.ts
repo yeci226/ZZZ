@@ -404,8 +404,44 @@ export class AutoDailyService {
     };
 
     const sendToChannel = async (channelId: string, msgPayload: any) => {
-      const channel = await client.channels.fetch(channelId) as any;
-      await channel.send(msgPayload);
+      // Endfield 方式：先找哪個 cluster 有 channel cache，再指定 cluster 發送
+      const channelPresence = await client.cluster.broadcastEval(
+        (c: any, ctx: any) => c.channels.cache.has(ctx.channelId),
+        { context: { channelId } }
+      );
+      const targetCluster = channelPresence.findIndex(Boolean);
+      if (targetCluster < 0) {
+        throw new Error(`No cluster has channel ${channelId} in cache`);
+      }
+
+      // 序列化 files（AttachmentBuilder 無法直接跨 cluster 傳遞）
+      const serializedFiles = msgPayload.files
+        ? await Promise.all(
+            msgPayload.files.map(async (file: any) => {
+              const attachment = file.attachment;
+              let buffer = Buffer.alloc(0);
+              if (Buffer.isBuffer(attachment)) buffer = Buffer.from(attachment);
+              else if (attachment instanceof Uint8Array) buffer = Buffer.from(attachment);
+              return { buffer: buffer.toString("base64"), name: file.name, description: file.description };
+            })
+          )
+        : [];
+
+      const serializedPayload = { content: msgPayload.content, embeds: msgPayload.embeds, files: serializedFiles };
+
+      await client.cluster.broadcastEval(
+        async (c: any, ctx: any) => {
+          const channel = c.channels.cache.get(ctx.channelId);
+          if (!channel) return false;
+          const { AttachmentBuilder } = await import("discord.js");
+          const files = ctx.payload.files.map(
+            (f: any) => new AttachmentBuilder(Buffer.from(f.buffer, "base64"), { name: f.name, description: f.description })
+          );
+          await (channel as any).send({ content: ctx.payload.content, embeds: ctx.payload.embeds, files });
+          return true;
+        },
+        { cluster: targetCluster, context: { channelId, payload: serializedPayload } }
+      );
     };
 
     try {
