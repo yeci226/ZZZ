@@ -73,11 +73,17 @@ const fonts: Record<string, string> = {
   default: "EN",
 };
 
-// Special title icons for certain characters (same as profile.ts)
-const offsetCharacter: Record<number, { title?: string }> = {
-  1091: { title: "VoidHunter" }, // Miyabi
-  1371: { title: "GrandMaster" }, // Yixuan
-  1431: { title: "VoidHunter" }, // YeShunguang
+// Special title icons and element overrides for certain characters (same as profile.ts)
+const offsetCharacter: Record<number, { title?: string; element?: string }> = {
+  1091: { title: "VoidHunter",  element: "frost"     }, // Miyabi
+  1371: { title: "GrandMaster", element: "auricink"  }, // Yixuan
+  1431: { title: "VoidHunter",  element: "honededge" }, // YeShunguang
+};
+
+// Chinese title name for each title key
+const titleNames: Record<string, string> = {
+  VoidHunter:  "虛狩",
+  GrandMaster: "宗師",
 };
 
 const elementColors: Record<number, string> = {
@@ -1058,7 +1064,9 @@ async function drawAgentCard(
     5: "defense",
     6: "rupture",
   };
-  const elemKey = elementIconKey[agent.element_type as number];
+  // Use special element override (frost/auricink/honededge) if available
+  const agentOffsetTop = offsetCharacter[agent.id as number] ?? {};
+  const elemKey = agentOffsetTop.element ?? elementIconKey[agent.element_type as number];
   const profKey =
     professionIconKey[agent.avatar_profession as number] ??
     professionIconKey[agent.profession as number];
@@ -1070,8 +1078,7 @@ async function drawAgentCard(
     : null;
 
   // Title icon (same special characters as profile.ts)
-  const agentOffset = offsetCharacter[agent.id as number] ?? {};
-  const titleKey = agentOffset.title;
+  const titleKey = agentOffsetTop.title;
   const titleIco = titleKey
     ? await loadLocal(
         `./src/assets/images/icons/other/${titleKey === "GrandMaster" ? "Grandmaster" : titleKey}.png`,
@@ -1153,7 +1160,7 @@ async function drawAgentCard(
   }
 
   // ── Meta icons row: rarity + title (right-aligned in portrait) ──
-  const charOffset = offsetCharacter[agent.id as number] ?? {};
+  const charOffset = agentOffsetTop;
   const rarityRaw = String(agent.rarity ?? agent.rank_type ?? "").toUpperCase();
   const rarityGrade =
     rarityRaw === "5" || rarityRaw === "S"
@@ -1172,10 +1179,24 @@ async function drawAgentCard(
       charOffset.title === "GrandMaster" ? "Grandmaster" : charOffset.title
     }.png`;
     const titleIco = await loadLocal(titleIconPath);
-    if (titleIco) {
-      metaRightX -= metaIconSize;
-      ctx.drawImage(titleIco, metaRightX, metaY, metaIconSize, metaIconSize);
-      metaRightX -= 6;
+    const titleName = titleNames[charOffset.title] ?? "";
+    if (titleIco || titleName) {
+      // Draw name text first (leftmost of this group)
+      if (titleName) {
+        ctx.font = `11px ${font}`;
+        ctx.fillStyle = C.muted;
+        const nameW = ctx.measureText(titleName).width;
+        metaRightX -= nameW;
+        ctx.textAlign = "left";
+        ctx.fillText(titleName, metaRightX, metaY + metaIconSize / 2 + 4);
+        metaRightX -= 4;
+      }
+      // Then draw the icon
+      if (titleIco) {
+        metaRightX -= metaIconSize;
+        ctx.drawImage(titleIco, metaRightX, metaY, metaIconSize, metaIconSize);
+        metaRightX -= 6;
+      }
     }
   }
 
