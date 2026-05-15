@@ -212,7 +212,7 @@ const langs = {
   TotalScore: "總得分",
   DeadlyTip: "總得分為排名依據，排名每半小時更新一次，請稍後刷新",
   BattleRecord: "戰鬥記錄",
-  ChallengeTime: "挑戰時間",
+  ChallengeTime: "過關時刻",
 
   // Settings
   settings_Title: "使用者設定",

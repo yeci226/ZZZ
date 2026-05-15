@@ -574,7 +574,10 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
             parseInt(battle.challenge_time.second),
           );
 
-          const timeStr = `${tr("ChallengeTime") || "挑戰時間"} ${challengeDate.toLocaleString()}`;
+          const pad = (n: number) => n.toString().padStart(2, "0");
+          const ct = battle.challenge_time;
+          const formattedTime = `${ct.year}/${pad(parseInt(ct.month))}/${pad(parseInt(ct.day))} ${pad(parseInt(ct.hour))}:${pad(parseInt(ct.minute))}:${pad(parseInt(ct.second))}`;
+          const timeStr = `${tr("ChallengeTime") || "過關時刻"} ${formattedTime}`;
 
           ctx.font = `20px ${selectedFont}`;
           ctx.fillStyle = "#E3E3E3";

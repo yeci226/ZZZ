@@ -10,6 +10,18 @@ import {
 } from "./utils.js";
 import { bangbooRectangleUrl } from "./assets.js";
 
+function formatChallengeTime(ct: {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+}): string {
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${ct.year}/${pad(ct.month)}/${pad(ct.day)} ${pad(ct.hour)}:${pad(ct.minute)}:${pad(ct.second)}`;
+}
+
 interface ShiyuAssets {
   elementImages: any[];
   buffImg: any;
@@ -269,19 +281,18 @@ export async function drawShiyuCanvas(
         ctx.drawImage(rImg, rightX - 160, currentY + 20, 160, 80);
       }
 
-      const globalTime = hadalData.hadal_info_v2.brief?.battle_time || 0;
-      const gMinutes = Math.floor(globalTime / 60)
-        .toString()
-        .padStart(2, "0");
-      const gSeconds = (globalTime % 60).toString().padStart(2, "0");
       ctx.textAlign = "right";
       ctx.fillStyle = "#A0A0A0";
       ctx.font = `22px ${selectedFont}`;
-      ctx.fillText(
-        `${tr("TotalTime") || "總通關用時"}：${gMinutes}:${gSeconds}`,
-        rightX,
-        currentY + 140,
-      );
+      const briefCt = hadalData.hadal_info_v2.brief?.challenge_time;
+      if (briefCt) {
+        const ctStr = formatChallengeTime(briefCt);
+        ctx.fillText(
+          `${tr("ClearTime") || "過關時刻"}：${ctStr}`,
+          rightX,
+          currentY + 140,
+        );
+      }
 
       currentY += 95;
     } else {
@@ -358,16 +369,17 @@ export async function drawShiyuCanvas(
       ctx.font = `26px ${selectedFont}`;
       ctx.fillText(`${floor.zone_name}`, 70, currentY + 50);
 
-      const totalMinutes = Math.floor(floor.totalTime / 60);
-      const totalSeconds = (floor.totalTime % 60).toString().padStart(2, "0");
       ctx.fillStyle = "#A0A0A0";
       const titleWidth = ctx.measureText(`${floor.zone_name}`).width;
       ctx.font = `22px ${selectedFont}`;
-      ctx.fillText(
-        `${tr("SpentTime") || "通關用時"}：${totalMinutes}:${totalSeconds}`,
-        70 + titleWidth + 20,
-        currentY + 47.5,
-      );
+      if (floor.challenge_time) {
+        const ctStr = formatChallengeTime(floor.challenge_time);
+        ctx.fillText(
+          `${tr("ClearTime") || "過關時刻"}：${ctStr}`,
+          70 + titleWidth + 20,
+          currentY + 47.5,
+        );
+      }
       ctx.textAlign = "center";
     }
 
@@ -597,11 +609,21 @@ async function drawNode(
   const bSec = (battleTime % 60).toString().padStart(2, "0");
   ctx.font = `20px ${selectedFont}`;
   ctx.fillStyle = "#A0A0A0";
-  ctx.fillText(
-    `${tr("SpentTime") || "通關用時"}：${bMin}:${bSec}`,
-    x + 15,
-    showScore ? drawY + 120 + 110 : drawY + 120 + 75,
-  );
+  const challengeTime = nodeData.challenge_time;
+  if (challengeTime) {
+    const ctStr = formatChallengeTime(challengeTime);
+    ctx.fillText(
+      `${tr("ClearTime") || "過關時刻"}：${ctStr}`,
+      x + 15,
+      showScore ? drawY + 120 + 110 : drawY + 120 + 75,
+    );
+  } else if (battleTime) {
+    ctx.fillText(
+      `${tr("SpentTime") || "通關用時"}：${bMin}:${bSec}`,
+      x + 15,
+      showScore ? drawY + 120 + 110 : drawY + 120 + 75,
+    );
+  }
 
   if (nodeRating && ratingImages) {
     const rImg = ratingImages[nodeRating as keyof typeof ratingImages];
