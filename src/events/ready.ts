@@ -6,7 +6,8 @@ import autoRedeem from "../utilities/zzz/autoRedeem.js";
 import { autoRefreshCookie } from "../utilities/utilities.js";
 import schedule from "node-schedule";
 import { refreshWallpapers } from "../utilities/zzz/wallpaperManager.js";
-import { downloadAllWikiPaintings, downloadAllDiscIcons } from "../utilities/zzz/autoDownloadIcons.js";
+import { downloadAllWikiPaintings } from "../utilities/zzz/autoDownloadIcons.js";
+import { getLegacyAccounts } from "../utilities/accountStore.js";
 
 let isRefreshingCookies = false;
 let isAutoRedeemRunning = false;
@@ -31,40 +32,33 @@ async function updatePresence() {
   });
 }
 
-client.on(Events.ClientReady, async () => {
+client.once(Events.ClientReady, async () => {
   new Logger("系統").success(`${client.user?.tag} 已經上線！`);
   if (client.cluster.id == 0) {
+    schedule.scheduleJob("0 * * * *", function () {
+      autoDailySign();
+    });
+
+    schedule.scheduleJob("50 7 * * *", function () {
+      refreshAllCookies(client);
+    });
+
+    schedule.scheduleJob("0 8 * * *", function () {
+      runAutoRedeem();
+      refreshWallpapers(client.db).catch(() => {});
+    });
+
     autoDailySign();
     // Fire background tasks immediately — don't wait for redeem/cookie flows
     refreshWallpapers(client.db).catch(() => {});
     downloadAllWikiPaintings().catch(() => {});
-    downloadAllDiscIcons().catch(() => {});
     await runAutoRedeem();
     // 啟動時先做一次 Cookie 刷新
     await refreshAllCookies(client);
   }
 
-  schedule.scheduleJob("0 * * * *", function () {
-    if (client.cluster.id == 0) {
-      autoDailySign();
-    }
-  });
-
   // 每天 07:50 刷新 Cookie，為自動兌換做準備
-  schedule.scheduleJob("50 7 * * *", function () {
-    if (client.cluster.id == 0) {
-      refreshAllCookies(client);
-    }
-  });
-
   // 每天 08:00 自動兌換 + 刷新壁紙
-  schedule.scheduleJob("0 8 * * *", function () {
-    if (client.cluster.id == 0) {
-      runAutoRedeem();
-      refreshWallpapers(client.db).catch(() => {});
-    }
-  });
-
   setInterval(updatePresence, 300_000);
 });
 
@@ -106,7 +100,7 @@ async function refreshAllCookies(client: any) {
       ]),
     );
     for (const userId of userIds) {
-      const accounts = await client.db.get(`${userId}.account`);
+      const accounts = await getLegacyAccounts(client.db as any, userId);
       if (!accounts || accounts.length === 0) continue;
 
       for (let i = 0; i < accounts.length; i++) {

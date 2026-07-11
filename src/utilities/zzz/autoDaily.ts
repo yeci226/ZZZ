@@ -8,6 +8,7 @@ import { createTranslator } from "../core/i18n.js";
 import { getUserCookie, getUserLang } from "../utilities.js";
 import { getConfig, getVerifyBaseUrl } from "../core/config.js";
 import { buildZZZDailyCard } from "../canvas/dailyCard.js";
+import { getLegacyAccounts, updateLegacyAccountAtIndex } from "../accountStore.js";
 
 const CONFIG = {
   TAIPEI_TIMEZONE: "Asia/Taipei",
@@ -120,7 +121,8 @@ export class AutoDailyService {
         const config = dailyData[userId];
         let scheduledHour = Number(config.time ?? 13);
         if (!Number.isFinite(scheduledHour)) scheduledHour = 13;
-        if (scheduledHour < 0 || scheduledHour > 23) scheduledHour = 13;
+        if (scheduledHour === 24) scheduledHour = 0;
+        else if (scheduledHour < 0 || scheduledHour > 23) scheduledHour = 13;
 
         // Catch-up behavior: if the bot missed the exact hour (restart/offline),
         // run once later the same day as long as it has not been processed today.
@@ -155,7 +157,7 @@ export class AutoDailyService {
 
   private async processUser(userId: string, config: AutoDailyConfig) {
     const userLang = (await getUserLang(userId)) || "tw";
-    const accounts = await this.db.get(`${userId}.account`);
+    const accounts = await getLegacyAccounts(this.db as any, userId);
     const tr = createTranslator(userLang);
 
     const stats: ProcessUserStats = {
@@ -182,10 +184,11 @@ export class AutoDailyService {
 
     for (let i = 0; i < accounts.length; i++) {
       const account = accounts[i];
+      const wasInvalid = account.invalid === true;
 
       // Skip accounts that have been marked invalid (login/cookie failure).
       // They will be un-marked automatically when a successful API call goes through.
-      if (account.invalid === true) {
+      if (wasInvalid) {
         stats.skipped++;
         continue;
       }
@@ -193,7 +196,7 @@ export class AutoDailyService {
       stats.total++;
       try {
         const zzz = new ZenlessZoneZero({
-          uid: account.uid,
+          uid: Number(account.uid),
           cookie: account.cookie,
           lang: this.getLanguage(userLang),
         });
@@ -240,7 +243,7 @@ export class AutoDailyService {
         else stats.alreadySigned++;
 
         // Successful API access means this account is usable again.
-        if (account.invalid === true) {
+        if (wasInvalid) {
           recoveredAccountIndices.push(i);
         }
       } catch (error: any) {
@@ -277,7 +280,7 @@ export class AutoDailyService {
             .setColor("#E76161")
             .setTitle(`[自動簽到失敗] 用戶: ${userId}`)
             .addFields(
-              { name: "UID", value: account.uid, inline: true },
+           { name: "UID", value: String(account.uid), inline: true },
               { name: "錯誤訊息", value: errorMessage, inline: true },
             )
             .setTimestamp();
@@ -288,19 +291,20 @@ export class AutoDailyService {
       }
     }
 
-    // Only mark the day as processed when at least one account completed successfully
-    // (or was already signed). This allows retry on later hourly runs after transient errors.
-    stats.shouldMarkProcessed = stats.success + stats.alreadySigned > 0;
+    const notificationDelivered =
+      results.length === 0 || await this.sendNotification(userId, config, results, tr);
 
-    if (results.length > 0) {
-      await this.sendNotification(userId, config, results, tr);
-    }
+    // Retry successful sign-ins on a later hourly run when every notification path failed.
+    stats.shouldMarkProcessed =
+      stats.success + stats.alreadySigned > 0 && notificationDelivered;
 
     if (recoveredAccountIndices.length > 0) {
       for (const idx of recoveredAccountIndices) {
         accounts[idx].invalid = false;
       }
-      await this.db.set(`${userId}.account`, accounts);
+      for (const idx of recoveredAccountIndices) {
+        await updateLegacyAccountAtIndex(this.db as any, userId, idx, { invalid: false });
+      }
     }
 
     // Now mark accounts as invalid AFTER notification has been sent
@@ -308,7 +312,9 @@ export class AutoDailyService {
       for (const idx of invalidAccountIndices) {
         accounts[idx].invalid = true;
       }
-      await this.db.set(`${userId}.account`, accounts);
+      for (const idx of invalidAccountIndices) {
+        await updateLegacyAccountAtIndex(this.db as any, userId, idx, { invalid: true });
+      }
     }
 
     return stats;
@@ -319,7 +325,7 @@ export class AutoDailyService {
     config: AutoDailyConfig,
     results: SignInResult[],
     tr: any,
-  ) {
+  ): Promise<boolean> {
     const tag =
       config.tag === "true" || config.tag === true ? `<@${userId}>` : "";
 
@@ -396,11 +402,13 @@ export class AutoDailyService {
 
     // Merge canvas fallback embeds with error embeds so they all go through the same path
     const allEmbeds = [...canvasFallbackEmbeds, ...errorEmbeds];
+    let delivered = false;
 
     const sendToDm = async (msgPayload: any) => {
       const user = await client.users.fetch(userId);
       const dmChannel = await user.createDM();
       await dmChannel.send(msgPayload);
+      delivered = true;
     };
 
     const sendToChannel = async (channelId: string, msgPayload: any) => {
@@ -429,7 +437,7 @@ export class AutoDailyService {
 
       const serializedPayload = { content: msgPayload.content, embeds: msgPayload.embeds, files: serializedFiles };
 
-      await client.cluster.broadcastEval(
+      const sendResults = await client.cluster.broadcastEval(
         async (c: any, ctx: any) => {
           const channel = c.channels.cache.get(ctx.channelId);
           if (!channel) return false;
@@ -442,6 +450,10 @@ export class AutoDailyService {
         },
         { cluster: targetCluster, context: { channelId, payload: serializedPayload } }
       );
+      if (!sendResults.some(Boolean)) {
+        throw new Error(`No cluster sent message to channel ${channelId}`);
+      }
+      delivered = true;
     };
 
     try {
@@ -500,6 +512,7 @@ export class AutoDailyService {
     } catch (error) {
       this.logger.error(`發送通知失敗 (User: ${userId}): ${error}`);
     }
+    return delivered;
   }
 
   private async updateStatistics(
