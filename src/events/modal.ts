@@ -28,9 +28,9 @@ import loginAccount, {
   generateDeviceId,
 } from "../utilities/zzz/login.js";
 import { storeUserCredentials } from "../utilities/utilities.js";
+import { getLegacyAccounts, updateLegacyAccountAtIndex } from "../utilities/accountStore.js";
 // Use client.db directly
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (!interaction.isModalSubmit()) return;
   const modalInteraction = interaction as ModalSubmitInteraction;
@@ -176,8 +176,7 @@ async function handleAccountEdit(
   // 		]
   // 	});
 
-  const accounts =
-    (await client.db.get(`${interaction.user.id}.account`)) ?? "";
+  const accounts = await getLegacyAccounts(client.db as any, interaction.user.id);
 
   if (accounts.some((account: any) => account.uid == uid))
     return interaction.editReply({
@@ -190,8 +189,6 @@ async function handleAccountEdit(
       ],
     });
 
-  accounts[accountIndex].uid = uid;
-
   interaction.editReply({
     embeds: [
       new EmbedBuilder()
@@ -200,7 +197,7 @@ async function handleAccountEdit(
     ],
   });
 
-  await client.db.set(`${interaction.user.id}.account`, accounts);
+  await updateLegacyAccountAtIndex(client.db as any, interaction.user.id, Number(accountIndex), { uid });
 }
 
 async function handleUidSet(
@@ -230,9 +227,8 @@ async function handleUidSet(
   //     throw e;
   //   }
 
-  if (await client.db.has(`${interaction.user.id}.account`)) {
-    const accounts =
-      (await client.db.get(`${interaction.user.id}.account`)) || [];
+  {
+    const accounts = await getLegacyAccounts(client.db as any, interaction.user.id);
     if (accounts.length >= 5)
       return interaction.editReply({
         embeds: [
@@ -263,11 +259,7 @@ async function handleUidSet(
       ),
     ],
   });
-  await client.db.push(`${interaction.user.id}.account`, {
-    uid: uid,
-    cookie: "",
-    invalid: false,
-  });
+  await updateAccountInfo(interaction.user.id, { uid, cookie: "" });
 }
 
 async function handleCookieSet(
@@ -282,8 +274,6 @@ async function handleCookieSet(
   const account_mid_v2 = fields.getTextInputValue("account_mid_v2") || "";
 
   const cookie = `ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}; cookie_token_v2=${cookie_token_v2}; account_mid_v2=${account_mid_v2}; account_id_v2=${account_mid_v2}; ltmid_v2=${account_mid_v2};`;
-  const account = (await (client as any).db.get(`${interaction.user.id}.account`)) ?? "";
-
   try {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const roles = await getAllGameRoles(cookie);

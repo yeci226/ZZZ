@@ -3,6 +3,7 @@ import { Events, AutocompleteInteraction } from "discord.js";
 import { drainPendingLogins } from "../utilities/webhookLogin.js";
 import { ZenlessZoneZero } from "@yeci226/hoyoapi";
 import { getUserCookie, getUserUid, getUserLang } from "../utilities/utilities.js";
+import { getLegacyAccounts } from "../utilities/accountStore.js";
 // Use client.db directly
 
 const langMap: Record<string, string> = {
@@ -48,9 +49,7 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
     // Drain any pending web-logins so newly bound accounts appear immediately.
     try { await drainPendingLogins(interaction.user.id); } catch {}
 
-    const userAccounts: any[] =
-      (await client.db.get(`${interaction.user.id}.account`)) || [];
-    if (!userAccounts) return;
+    const userAccounts = await getLegacyAccounts(client.db as any, interaction.user.id);
 
     const choices = [];
     for (const account of userAccounts) {

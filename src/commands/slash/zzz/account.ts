@@ -26,6 +26,7 @@ import { QuickDB } from "quick.db";
 import {
   getAllCharacters,
   getHoyolabs,
+  getLegacyAccounts,
   type Character,
   type Hoyolab,
 } from "../../../utilities/accountStore.js";
@@ -212,8 +213,8 @@ export default {
       }
     }
 
-    const accountKey = `${userId}.account`;
-    const hasAccount = await db.has(accountKey);
+    const accounts = await getLegacyAccounts(db as any, userId);
+    const hasAccount = accounts.length > 0;
 
     if (
       command == "ViewAccount" ||
@@ -223,8 +224,6 @@ export default {
       if (!hasAccount) return failedReply(interaction, tr("account_NoAccount"));
       // Already deferred above for non-modal commands.
     }
-
-    const accounts: any[] = (await db.get(accountKey)) || [];
 
     switch (command) {
       case "BindAccountByWebLogin": {

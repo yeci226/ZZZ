@@ -22,6 +22,7 @@ const mockUpdateAccountInfo: jest.Mock<any> = jest.fn();
 
 const mockUpsertHoyolab: jest.Mock<any> = jest.fn();
 const mockUpsertCharacter: jest.Mock<any> = jest.fn();
+const mockGetLegacyAccounts: jest.Mock<any> = jest.fn();
 
 const mockDbGet: jest.Mock<any> = jest.fn();
 const mockUserSend: jest.Mock<any> = jest.fn();
@@ -41,6 +42,7 @@ jest.mock("../src/utilities/utilities.js", () => ({
 jest.mock("../src/utilities/accountStore.js", () => ({
   upsertHoyolab: (...args: any[]) => (mockUpsertHoyolab as any)(...args),
   upsertCharacter: (...args: any[]) => (mockUpsertCharacter as any)(...args),
+  getLegacyAccounts: (...args: any[]) => (mockGetLegacyAccounts as any)(...args),
 }));
 
 jest.mock("../src/utilities/core/config.js", () => ({
@@ -113,6 +115,7 @@ const HSR_CARD = {
 beforeEach(() => {
   jest.clearAllMocks();
   mockDbGet.mockResolvedValue([] as any);
+  mockGetLegacyAccounts.mockResolvedValue([] as any);
 });
 
 // ---- tests -----------------------------------------------------------------

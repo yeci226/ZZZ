@@ -13,6 +13,7 @@ import {
   getUserZZZData,
 } from "../../../utilities/utilities.js";
 import { QuickDB } from "quick.db";
+import { getLegacyAccounts } from "../../../utilities/accountStore.js";
 
 const timeChoices = Array.from({ length: 24 }, (_, i) => ({
   name: i < 10 ? `0${i}` : `${i}`,
@@ -181,8 +182,8 @@ export default {
   ) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const haveAccount = await db.get(`${interaction.user.id}.account`);
-    if (!haveAccount) {
+    const haveAccount = await getLegacyAccounts(db as any, interaction.user.id);
+    if (!haveAccount.length) {
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
@@ -285,7 +286,7 @@ export default {
     const todaySign = rewards.awards[signedDay] || rewards.awards[0];
     const tmrSign = rewards.awards[signedDay + 1];
 
-    const accounts = await db.get(`${interaction.user.id}.account`);
+    const accounts = await getLegacyAccounts(db as any, interaction.user.id);
     const account =
       accounts.find((acc: any) => acc.uid === zzz.uid) || accounts[0];
     const nickname = account?.nickname || "Unknown";

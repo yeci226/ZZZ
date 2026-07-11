@@ -8,6 +8,7 @@ import {
   autoRefreshCookie,
 } from "../utilities.js";
 import { buildZZZRedeemCard } from "../canvas/redeemCard.js";
+import { getLegacyAccounts } from "../accountStore.js";
 
 // Constants
 const CONFIG = {
@@ -60,7 +61,7 @@ class AutoRedeemSystem {
   async getUserPreferences(userId: string) {
     try {
       const userLang = (await getUserLang(userId)) || CONFIG.DEFAULT_LANGUAGE;
-      const accounts = await this.db.get(`${userId}.account`);
+      const accounts = await getLegacyAccounts(this.db as any, userId);
       return { userLang, accounts };
     } catch (error: any) {
       this.logger.error(`獲取使用者偏好設定失敗: ${error.message}`);
@@ -241,7 +242,7 @@ class AutoRedeemSystem {
       }
 
       // 刷新成功，重新從數據庫獲取更新後的 Cookie
-      const refreshedAccounts = await this.db.get(`${userId}.account`);
+      const refreshedAccounts = await getLegacyAccounts(this.db as any, userId);
       if (!refreshedAccounts?.[accountIndex]) {
         return {
           uid: account.uid,

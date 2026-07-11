@@ -18,7 +18,7 @@
 import { client } from "../index.js";
 import Logger from "./core/logger.js";
 import { getAllGameRoles, updateAccountInfo, encryptCredential } from "./utilities.js";
-import { upsertHoyolab, upsertCharacter, type Character } from "./accountStore.js";
+import { upsertHoyolab, upsertCharacter, getLegacyAccounts, type Character } from "./accountStore.js";
 import { getConfig } from "./core/config.js";
 import {
   fetchPendingLogins,
@@ -148,7 +148,7 @@ export async function bindCookieToUser(
   }
 
   const isDev = await isDevUser(discordUserId);
-  const existing: any[] = (await client.db.get(`${discordUserId}.account`)) ?? [];
+  const existing = await getLegacyAccounts(client.db as any, discordUserId);
   const existingUids = new Set(existing.map((a: any) => String(a.uid)));
 
   const bound: Array<{ uid: string; nickname: string }> = [];
@@ -156,7 +156,7 @@ export async function bindCookieToUser(
     const uidStr = String(role.uid);
     const isUpdate = existingUids.has(uidStr);
     if (!isUpdate && !isDev) {
-      const current: any[] = (await client.db.get(`${discordUserId}.account`)) ?? [];
+      const current = await getLegacyAccounts(client.db as any, discordUserId);
       if (current.length >= 5) {
         logger.warn(`[bind] account cap reached, skipping uid=${uidStr}`);
         continue;
@@ -221,7 +221,7 @@ export async function bindFromEnriched(
 
   // Account-limit semantics: only enforce when adding a NEW slot.
   const isDev = await isDevUser(discordUserId);
-  const existing: any[] = (await client.db.get(`${discordUserId}.account`)) ?? [];
+  const existing = await getLegacyAccounts(client.db as any, discordUserId);
   const isNew = !existing.some((a: any) => String(a.uid) === uidStr);
   if (isNew && !isDev && existing.length >= 5) {
     logger.warn(`[bindFromEnriched] account cap reached, skipping uid=${uidStr}`);

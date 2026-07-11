@@ -1,6 +1,7 @@
 import { QuickDB } from "quick.db";
 import Logger from "../utilities/core/logger.js";
 import colors from "colors";
+import { getLegacyAccounts, updateLegacyAccountAtIndex } from "../utilities/accountStore.js";
 
 async function resetCookies() {
   const db = new QuickDB();
@@ -18,8 +19,7 @@ async function resetCookies() {
   let totalUsers = 0;
 
   for (const userId of userIds) {
-    const accountKey = `${userId}.account`;
-    const accounts = await db.get(accountKey);
+    const accounts = await getLegacyAccounts(db as any, userId);
 
     if (!accounts || !Array.isArray(accounts)) continue;
 
@@ -33,7 +33,11 @@ async function resetCookies() {
     }
 
     if (userReset) {
-      await db.set(accountKey, accounts);
+      for (let i = 0; i < accounts.length; i++) {
+        if (accounts[i].invalid === false) {
+          await updateLegacyAccountAtIndex(db as any, userId, i, { invalid: false });
+        }
+      }
       logger.success(`已重置用戶 ${userId} 的失效標記`);
     }
     totalUsers++;

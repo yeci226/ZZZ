@@ -29,6 +29,11 @@ describe("fallbackBucketKey", () => {
 
 import { createFakeDb } from "./helpers/fakeDb";
 import { loadAccounts } from "../src/utilities/accountStore";
+import {
+	getLegacyAccountAtIndex,
+	updateLegacyAccountAtIndex,
+	deleteLegacyAccountAtIndex,
+} from "../src/utilities/accountStore";
 
 const COOKIE_A = "ltuid_v2=11111111; ltoken_v2=AAA";
 const COOKIE_B = "ltuid_v2=22222222; ltoken_v2=BBB";
@@ -92,6 +97,41 @@ describe("loadAccounts (lazy migration)", () => {
 		expect(mirror[0]).toMatchObject({ uid: "800000001", nickname: "Alice" });
 		// new key written
 		expect(await db.has("u1.hoyolabs")).toBe(true);
+	});
+
+	it("preserves legacy fields such as credentials during migration", async () => {
+		const credentials = { email: "enc-email", password: "enc-password", deviceId: "device-1" };
+		const db = createFakeDb({
+			u1: {
+				account: [{ uid: "800000001", cookie: COOKIE_A, credentials, customFlag: true }]
+			}
+		});
+
+		await loadAccounts(db, "u1");
+		const hoyolabs = (await db.get("u1.hoyolabs")) as any[];
+		const mirror = (await db.get("u1.account")) as any[];
+		expect(hoyolabs[0].characters[0].credentials).toEqual(credentials);
+		expect(hoyolabs[0].characters[0].customFlag).toBe(true);
+		expect(mirror[0].credentials).toEqual(credentials);
+	});
+
+	it("recovers missing legacy fields when canonical data already exists", async () => {
+		const db = createFakeDb({
+			u1: {
+				hoyolabs: [{
+					ltuid_v2: "11111111", cookie: COOKIE_A, hoyolabName: null,
+					lastUpdate: "2026-04-27T00:00:00.000Z", invalid: false,
+					characters: [{ uid: "800000001", nickname: "Alice", region: null,
+						lastUpdate: "2026-04-27T00:00:00.000Z", invalid: false }]
+				}],
+				account: [{ uid: "800000001", cookie: COOKIE_A, nickname: "Alice",
+					credentials: { deviceId: "legacy-device" } }]
+			}
+		});
+
+		await loadAccounts(db, "u1");
+		const hoyolabs = (await db.get("u1.hoyolabs")) as any[];
+		expect(hoyolabs[0].characters[0].credentials).toEqual({ deviceId: "legacy-device" });
 	});
 
 	it("groups multiple legacy entries that share a cookie under one hoyolab", async () => {
@@ -338,7 +378,8 @@ describe("write API", () => {
 		await upsertHoyolab(db, "u1", { ltuid_v2: "11111111", cookie: COOKIE_A });
 		await upsertCharacter(db, "u1", "11111111", {
 			uid: "800000001", nickname: "A1", region: "asia",
-			lastUpdate: "2026-04-27T00:00:00.000Z", invalid: false
+			lastUpdate: "2026-04-27T00:00:00.000Z", invalid: false,
+			credentials: { deviceId: "legacy-device" }
 		});
 		await upsertCharacter(db, "u1", "11111111", {
 			uid: "800000001", nickname: "A1-Renamed", region: "asia",
@@ -347,6 +388,7 @@ describe("write API", () => {
 		const h = (await getHoyolabByLtuid(db, "u1", "11111111"))!;
 		expect(h.characters).toHaveLength(1);
 		expect(h.characters[0]!.nickname).toBe("A1-Renamed");
+		expect(h.characters[0]!.credentials).toEqual({ deviceId: "legacy-device" });
 	});
 
 	it("upsertCharacter throws if hoyolab missing", async () => {
@@ -469,5 +511,25 @@ describe("Plan C — extended Character fields", () => {
 		expect(round!.character.level).toBeUndefined();
 		expect(round!.character.cover).toBeUndefined();
 		expect(round!.character.stats).toBeUndefined();
+	});
+});
+
+describe("legacy compatibility helpers", () => {
+	it("updates and deletes by old flat index without dropping extra fields", async () => {
+		const db = createFakeDb();
+		await upsertHoyolab(db, "u1", { ltuid_v2: "11111111", cookie: COOKIE_A });
+		await upsertCharacter(db, "u1", "11111111", {
+			uid: "800000001", nickname: "Alice", region: null,
+			lastUpdate: "2026-04-27T00:00:00.000Z", invalid: false,
+			credentials: { deviceId: "legacy-device" },
+		});
+
+		await updateLegacyAccountAtIndex(db, "u1", 0, { cookie: COOKIE_B, invalid: true });
+		const updated = await getLegacyAccountAtIndex(db, "u1", 0);
+		expect(updated).toMatchObject({ cookie: COOKIE_B, invalid: true });
+		expect(updated?.credentials).toEqual({ deviceId: "legacy-device" });
+
+		await deleteLegacyAccountAtIndex(db, "u1", 0);
+		expect(await getLegacyAccountAtIndex(db, "u1", 0)).toBeNull();
 	});
 });

@@ -1,6 +1,5 @@
 import { client } from "../../index.js";
 import { EmbedBuilder, WebhookClient, AttachmentBuilder } from "discord.js";
-
 import { ZenlessZoneZero, LanguageEnum } from "@yeci226/hoyoapi";
 import moment from "moment-timezone";
 import Logger from "../core/logger.js";
@@ -8,6 +7,7 @@ import { createTranslator } from "../core/i18n.js";
 import { getUserCookie, getUserLang } from "../utilities.js";
 import { getConfig, getVerifyBaseUrl } from "../core/config.js";
 import { buildZZZDailyCard } from "../canvas/dailyCard.js";
+import { getLegacyAccounts, updateLegacyAccountAtIndex } from "../accountStore.js";
 
 const CONFIG = {
   TAIPEI_TIMEZONE: "Asia/Taipei",
@@ -155,7 +155,7 @@ export class AutoDailyService {
 
   private async processUser(userId: string, config: AutoDailyConfig) {
     const userLang = (await getUserLang(userId)) || "tw";
-    const accounts = await this.db.get(`${userId}.account`);
+    const accounts = await getLegacyAccounts(this.db as any, userId);
     const tr = createTranslator(userLang);
 
     const stats: ProcessUserStats = {
@@ -182,10 +182,11 @@ export class AutoDailyService {
 
     for (let i = 0; i < accounts.length; i++) {
       const account = accounts[i];
+      const wasInvalid = account.invalid === true;
 
       // Skip accounts that have been marked invalid (login/cookie failure).
       // They will be un-marked automatically when a successful API call goes through.
-      if (account.invalid === true) {
+      if (wasInvalid) {
         stats.skipped++;
         continue;
       }
@@ -193,7 +194,7 @@ export class AutoDailyService {
       stats.total++;
       try {
         const zzz = new ZenlessZoneZero({
-          uid: account.uid,
+          uid: Number(account.uid),
           cookie: account.cookie,
           lang: this.getLanguage(userLang),
         });
@@ -240,7 +241,7 @@ export class AutoDailyService {
         else stats.alreadySigned++;
 
         // Successful API access means this account is usable again.
-        if (account.invalid === true) {
+        if (wasInvalid) {
           recoveredAccountIndices.push(i);
         }
       } catch (error: any) {
@@ -277,7 +278,7 @@ export class AutoDailyService {
             .setColor("#E76161")
             .setTitle(`[自動簽到失敗] 用戶: ${userId}`)
             .addFields(
-              { name: "UID", value: account.uid, inline: true },
+           { name: "UID", value: String(account.uid), inline: true },
               { name: "錯誤訊息", value: errorMessage, inline: true },
             )
             .setTimestamp();
@@ -300,7 +301,9 @@ export class AutoDailyService {
       for (const idx of recoveredAccountIndices) {
         accounts[idx].invalid = false;
       }
-      await this.db.set(`${userId}.account`, accounts);
+      for (const idx of recoveredAccountIndices) {
+        await updateLegacyAccountAtIndex(this.db as any, userId, idx, { invalid: false });
+      }
     }
 
     // Now mark accounts as invalid AFTER notification has been sent
@@ -308,7 +311,9 @@ export class AutoDailyService {
       for (const idx of invalidAccountIndices) {
         accounts[idx].invalid = true;
       }
-      await this.db.set(`${userId}.account`, accounts);
+      for (const idx of invalidAccountIndices) {
+        await updateLegacyAccountAtIndex(this.db as any, userId, idx, { invalid: true });
+      }
     }
 
     return stats;
@@ -333,9 +338,7 @@ export class AutoDailyService {
     const signedResults = results.filter((r) => r.status !== "failed");
 
     // Build canvas card files for signed results
-    // If canvas fails, fallback to a plain embed so the user still gets notified
     const cardFiles: { buffer: string; name: string }[] = [];
-    const canvasFallbackEmbeds: object[] = [];
     for (let i = 0; i < signedResults.length; i++) {
       const res = signedResults[i];
       try {
@@ -363,15 +366,6 @@ export class AutoDailyService {
         });
       } catch (e) {
         this.logger.error(`Canvas card 生成失敗 (${res.uid}): ${e}`);
-        // Fallback: send a plain embed so user is still notified
-        const statusLabel = res.status === "success" ? tr("daily_Success") : tr("daily_AlreadySigned");
-        canvasFallbackEmbeds.push(
-          new EmbedBuilder()
-            .setColor(res.status === "success" ? "#5BB85D" : "#5B9BD5")
-            .setTitle(`${res.uid} ${statusLabel}`)
-            .setDescription(res.rewardName ? `${tr("card_TodayReward")}: ${res.rewardName} ×${res.rewardCount ?? 1}` : null)
-            .toJSON()
-        );
       }
     }
 
@@ -392,109 +386,113 @@ export class AutoDailyService {
       return embed.toJSON();
     });
 
-    this.logger.info(`發送通知 (User: ${userId}) method=${notifyMethod} cards=${cardFiles.length} canvasFallbacks=${canvasFallbackEmbeds.length} errors=${errorEmbeds.length} channelId=${config.channelId || "none"}`);
-
-    // Merge canvas fallback embeds with error embeds so they all go through the same path
-    const allEmbeds = [...canvasFallbackEmbeds, ...errorEmbeds];
-
-    const sendToDm = async (msgPayload: any) => {
-      const user = await client.users.fetch(userId);
-      const dmChannel = await user.createDM();
-      await dmChannel.send(msgPayload);
-    };
-
-    const sendToChannel = async (channelId: string, msgPayload: any) => {
-      // Endfield 方式：先找哪個 cluster 有 channel cache，再指定 cluster 發送
-      const channelPresence = await client.cluster.broadcastEval(
-        (c: any, ctx: any) => c.channels.cache.has(ctx.channelId),
-        { context: { channelId } }
-      );
-      const targetCluster = channelPresence.findIndex(Boolean);
-      if (targetCluster < 0) {
-        throw new Error(`No cluster has channel ${channelId} in cache`);
-      }
-
-      // 序列化 files（AttachmentBuilder 無法直接跨 cluster 傳遞）
-      const serializedFiles = msgPayload.files
-        ? await Promise.all(
-            msgPayload.files.map(async (file: any) => {
-              const attachment = file.attachment;
-              let buffer = Buffer.alloc(0);
-              if (Buffer.isBuffer(attachment)) buffer = Buffer.from(attachment);
-              else if (attachment instanceof Uint8Array) buffer = Buffer.from(attachment);
-              return { buffer: buffer.toString("base64"), name: file.name, description: file.description };
-            })
-          )
-        : [];
-
-      const serializedPayload = { content: msgPayload.content, embeds: msgPayload.embeds, files: serializedFiles };
-
-      await client.cluster.broadcastEval(
-        async (c: any, ctx: any) => {
-          const channel = c.channels.cache.get(ctx.channelId);
-          if (!channel) return false;
-          const { AttachmentBuilder } = await import("discord.js");
-          const files = ctx.payload.files.map(
-            (f: any) => new AttachmentBuilder(Buffer.from(f.buffer, "base64"), { name: f.name, description: f.description })
-          );
-          await (channel as any).send({ content: ctx.payload.content, embeds: ctx.payload.embeds, files });
-          return true;
-        },
-        { cluster: targetCluster, context: { channelId, payload: serializedPayload } }
-      );
-    };
-
     try {
       if (notifyMethod === "dm") {
+        // Send each card as a separate message to avoid image stacking
         for (let i = 0; i < cardFiles.length; i++) {
           const cardFile = cardFiles[i];
           const isFirst = i === 0;
-          const content = isFirst && tag ? tag : undefined;
-          const fileBuffer = Buffer.from(cardFile.buffer, "base64");
-          const msgPayload = {
-            ...(content && { content }),
-            files: [new AttachmentBuilder(fileBuffer, { name: cardFile.name })],
-          };
-          const sent = await sendToDm(msgPayload)
-            .then(() => true)
-            .catch((e) => { this.logger.error(`DM 發送失敗 (User: ${userId}): ${e}`); return false; });
-          if (!sent && config.channelId) {
-            await sendToChannel(config.channelId, msgPayload)
-              .catch((e) => this.logger.error(`channel fallback 失敗 (User: ${userId}): ${e}`));
-          }
+          await this.client.cluster.broadcastEval(
+            async (c: any, context: any) => {
+              const { userId, channelId, content, cardFile } = context;
+              try {
+                const { AttachmentBuilder } = await import("discord.js");
+                const file = new AttachmentBuilder(
+                  Buffer.from(cardFile.buffer, "base64"),
+                  { name: cardFile.name },
+                );
+                const user = await c.users.fetch(userId).catch(() => null);
+                if (user) {
+                  const dmPayload: any = { files: [file] };
+                  if (content) dmPayload.content = content;
+                  await user.send(dmPayload).catch(async () => {
+                    const channel = c.channels.cache.get(channelId);
+                    if (channel) await channel.send(dmPayload);
+                  });
+                }
+              } catch (e) {}
+            },
+            {
+              cluster: 0,
+              context: {
+                userId,
+                channelId: config.channelId,
+                content: isFirst && tag ? tag : undefined,
+                cardFile,
+              },
+            },
+          );
         }
-        if (allEmbeds.length > 0) {
-          const sent = await sendToDm({ embeds: allEmbeds })
-            .then(() => true).catch(() => false);
-          if (!sent && config.channelId) {
-            await sendToChannel(config.channelId, { embeds: allEmbeds }).catch(() => {});
-          }
+        // Send error embeds (if any) as a separate message
+        if (errorEmbeds.length > 0) {
+          await this.client.cluster.broadcastEval(
+            async (c: any, context: any) => {
+              const { userId, channelId, errorEmbeds } = context;
+              try {
+                const user = await c.users.fetch(userId).catch(() => null);
+                if (user) {
+                  await user.send({ embeds: errorEmbeds }).catch(async () => {
+                    const channel = c.channels.cache.get(channelId);
+                    if (channel) await channel.send({ embeds: errorEmbeds });
+                  });
+                }
+              } catch (e) {}
+            },
+            {
+              cluster: 0,
+              context: {
+                userId,
+                channelId: config.channelId,
+                errorEmbeds,
+              },
+            },
+          );
         }
       } else {
-        const channelId = config.channelId!;
+        // Send each card as a separate message to avoid image stacking
         for (let i = 0; i < cardFiles.length; i++) {
           const cardFile = cardFiles[i];
           const isFirst = i === 0;
-          const content = isFirst && tag ? tag : undefined;
-          const fileBuffer = Buffer.from(cardFile.buffer, "base64");
-          const msgPayload = {
-            ...(content && { content }),
-            files: [new AttachmentBuilder(fileBuffer, { name: cardFile.name })],
-          };
-          const sent = await sendToChannel(channelId, msgPayload)
-            .then(() => true)
-            .catch((e) => { this.logger.error(`channel 發送失敗 (User: ${userId}): ${e}`); return false; });
-          if (!sent) {
-            await sendToDm(msgPayload)
-              .catch((e) => this.logger.error(`DM fallback 失敗 (User: ${userId}): ${e}`));
-          }
+          await this.client.cluster.broadcastEval(
+            async (c: any, context: any) => {
+              const { channelId, content, cardFile } = context;
+              try {
+                const channel = c.channels.cache.get(channelId);
+                if (!channel) return;
+                const { AttachmentBuilder } = await import("discord.js");
+                const file = new AttachmentBuilder(
+                  Buffer.from(cardFile.buffer, "base64"),
+                  { name: cardFile.name },
+                );
+                await channel.send({ content: content || undefined, files: [file] });
+              } catch (e) {}
+            },
+            {
+              context: {
+                channelId: config.channelId,
+                content: isFirst && tag ? tag : undefined,
+                cardFile,
+              },
+            },
+          );
         }
-        if (allEmbeds.length > 0) {
-          const sent = await sendToChannel(channelId, { embeds: allEmbeds })
-            .then(() => true).catch(() => false);
-          if (!sent) {
-            await sendToDm({ embeds: allEmbeds }).catch(() => {});
-          }
+        if (errorEmbeds.length > 0) {
+          await this.client.cluster.broadcastEval(
+            async (c: any, context: any) => {
+              const { channelId, errorEmbeds } = context;
+              try {
+                const channel = c.channels.cache.get(channelId);
+                if (!channel) return;
+                await channel.send({ embeds: errorEmbeds });
+              } catch (e) {}
+            },
+            {
+              context: {
+                channelId: config.channelId,
+                errorEmbeds,
+              },
+            },
+          );
         }
       }
     } catch (error) {

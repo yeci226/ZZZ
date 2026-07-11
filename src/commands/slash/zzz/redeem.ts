@@ -16,6 +16,7 @@ import {
 } from "../../../utilities/utilities.js";
 import Logger from "../../../utilities/core/logger.js";
 import { QuickDB } from "quick.db";
+import { getLegacyAccountAtIndex, getLegacyAccounts } from "../../../utilities/accountStore.js";
 
 async function redeemCodeDirect(
   uid: string,
@@ -324,8 +325,8 @@ export default {
       if (targetUser && targetUser.id !== interaction.user.id && !interaction.memberPermissions?.has('Administrator')) {
         return failedReply(interaction, 'You can only perform this action for yourself.');
       }
-      const redeemAllAccounts = await db.get(`${targetUser.id}.account`);
-      const redeemAllCookie = redeemAllAccounts?.[accountIndex]?.cookie;
+      const redeemAllAccount = await getLegacyAccountAtIndex(db as any, targetUser.id, accountIndex);
+      const redeemAllCookie = redeemAllAccount?.cookie;
       if (!redeemAllCookie) {
         return failedReply(interaction, tr("error_NoAccount"));
       }
@@ -479,8 +480,8 @@ export default {
       if (!uid) {
         return failedReply(interaction, tr("error_NoAccount"));
       }
-      const redeemAccounts = await db.get(`${targetUser.id}.account`);
-      const redeemCookie = redeemAccounts?.[accountIndex]?.cookie;
+      const redeemAccount = await getLegacyAccountAtIndex(db as any, targetUser.id, accountIndex);
+      const redeemCookie = redeemAccount?.cookie;
       if (!redeemCookie) {
         return failedReply(interaction, tr("error_NoAccount"));
       }
@@ -523,9 +524,11 @@ export default {
           await db.set(`${uid}.redeemedCodes`, userRedeemedCodes);
           failedReply(interaction, res.message);
         } else {
-          const userCookie = (await db.get(`${targetUser.id}.account`))[
-            accountIndex
-          ];
+          const userCookie = await getLegacyAccountAtIndex(db as any, targetUser.id, accountIndex);
+          if (!userCookie) {
+            await failedReply(interaction, tr("error_NoAccount"));
+            return;
+          }
           if (
             userCookie.cookie.includes("cookie_token_v2") ||
             userCookie.cookie.includes("account_mid_v2")
@@ -539,7 +542,7 @@ export default {
         failedReply(interaction, e.message);
       }
     } else if (subcommand == "autoredeem") {
-      const userAccount = await db.get(`${interaction.user.id}.account`);
+       const userAccount = await getLegacyAccounts(db as any, interaction.user.id);
       if (!userAccount || userAccount.length === 0) {
         return failedReply(interaction, 'No account found.');
       }

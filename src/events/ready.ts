@@ -6,7 +6,8 @@ import autoRedeem from "../utilities/zzz/autoRedeem.js";
 import { autoRefreshCookie } from "../utilities/utilities.js";
 import schedule from "node-schedule";
 import { refreshWallpapers } from "../utilities/zzz/wallpaperManager.js";
-import { downloadAllWikiPaintings, downloadAllDiscIcons } from "../utilities/zzz/autoDownloadIcons.js";
+import { downloadAllWikiPaintings } from "../utilities/zzz/autoDownloadIcons.js";
+import { getLegacyAccounts } from "../utilities/accountStore.js";
 
 let isRefreshingCookies = false;
 let isAutoRedeemRunning = false;
@@ -38,7 +39,6 @@ client.on(Events.ClientReady, async () => {
     // Fire background tasks immediately — don't wait for redeem/cookie flows
     refreshWallpapers(client.db).catch(() => {});
     downloadAllWikiPaintings().catch(() => {});
-    downloadAllDiscIcons().catch(() => {});
     await runAutoRedeem();
     // 啟動時先做一次 Cookie 刷新
     await refreshAllCookies(client);
@@ -106,7 +106,7 @@ async function refreshAllCookies(client: any) {
       ]),
     );
     for (const userId of userIds) {
-      const accounts = await client.db.get(`${userId}.account`);
+      const accounts = await getLegacyAccounts(client.db as any, userId);
       if (!accounts || accounts.length === 0) continue;
 
       for (let i = 0; i < accounts.length; i++) {

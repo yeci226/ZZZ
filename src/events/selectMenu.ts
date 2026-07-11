@@ -31,6 +31,7 @@ import { handleTeamDraw } from "../utilities/zzz/team.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import Queue from "queue";
 import emoji from "../assets/emoji.js";
+import { deleteLegacyAccountAtIndex, getLegacyAccounts } from "../utilities/accountStore.js";
 // Use client.db directly
 const drawQueue = new Queue({ autostart: true });
 const elementId: Record<string, string> = {
@@ -453,7 +454,7 @@ async function handleAccountAction(
   customId: string,
   value: string,
 ) {
-  const account: any = await client.db.get(`${interaction.user.id}.account`);
+  const account = await getLegacyAccounts(client.db as any, interaction.user.id);
   if (!account)
     return interaction.reply({
       embeds: [
@@ -492,7 +493,7 @@ async function handleAccountAction(
     return;
   } else if (customId == "account_EditAccountSelectType") {
     const [type, accountIndex] = value.split("-");
-    const accountData = account[accountIndex];
+    const accountData = account[Number(accountIndex)];
 
     if (type == "uid") {
       await interaction.showModal(
@@ -568,16 +569,13 @@ async function handleAccountAction(
   } else if (interaction.customId == "account_DeleteAccountSelect") {
     await interaction.deferUpdate().catch(() => {});
     const accountIndex = value;
-    const accounts =
-      (await client.db.get(`${interaction.user.id}.account`)) ?? [];
-    const uid = accounts[parseInt(accountIndex)].uid;
-
-    if (accounts.length <= 1)
-      await client.db.delete(`${interaction.user.id}.account`);
-    else {
-      accounts.splice(parseInt(accountIndex), 1);
-      await client.db.set(`${interaction.user.id}.account`, accounts);
-    }
+    const removed = await deleteLegacyAccountAtIndex(
+      client.db as any,
+      interaction.user.id,
+      parseInt(accountIndex),
+    );
+    if (!removed) return;
+    const uid = removed.uid;
 
     interaction.editReply({
       embeds: [
@@ -591,7 +589,7 @@ async function handleAccountAction(
     return;
   } else if (interaction.customId == "account_SetUserCookieSelect") {
     const accountIndex = value;
-    const userAccountCookie = account[accountIndex].cookie || "";
+    const userAccountCookie = account[Number(accountIndex)].cookie || "";
     const parseCookie = (cookie: string, key: string) => {
         const match = cookie.match(new RegExp(`${key}=([^;]+)`));
         return match?.[1]?.trim() ?? "";

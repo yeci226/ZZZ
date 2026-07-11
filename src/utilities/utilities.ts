@@ -20,6 +20,8 @@ import {
   upsertCharacter,
   extractLtuidFromCookie,
   fallbackBucketKey,
+  getLegacyAccountAtIndex,
+  updateLegacyAccountAtIndex,
 } from "./accountStore.js";
 // Use client.db directly in functions to avoid static capture issues
 const BASE_URL = "https://bbs-api-os.hoyolab.com/community/post/wapi/";
@@ -180,17 +182,13 @@ export function secondsToHms(d: number | string, tr: (key: string) => string) {
 }
 
 export async function getUserUid(userId: string, accountIndex: number) {
-  const accountKey = `${userId}.account`;
-
-  const account = await client.db.get(accountKey);
-  return account?.[accountIndex]?.uid || null;
+  const account = await getLegacyAccountAtIndex(client.db as any, userId, accountIndex);
+  return account?.uid || null;
 }
 
 export async function getUserCookie(userId: string, accountIndex: number) {
-  const accountKey = `${userId}.account`;
-
-  const account = await client.db.get(accountKey);
-  return account?.[accountIndex]?.cookie || null;
+  const account = await getLegacyAccountAtIndex(client.db as any, userId, accountIndex);
+  return account?.cookie || null;
 }
 
 export async function getUserLang(userId: string) {
@@ -573,7 +571,7 @@ export async function getUserZZZData(
     : getLanguage(interaction.locale);
 
   try {
-    const zzz = new ZenlessZoneZero({ cookie, lang, uid });
+    const zzz = new ZenlessZoneZero({ cookie, lang, uid: Number(uid) });
     await zzz.daily.info();
 
     return zzz;
@@ -703,9 +701,7 @@ export async function updateCookie(
   accountIndex: number,
   cookieObj: string,
 ) {
-  const accountKey = `${userId}.account`;
-  const accounts = await client.db.get(accountKey);
-  if (!accounts || !accounts[accountIndex]) {
+  if (!(await getLegacyAccountAtIndex(client.db as any, userId, accountIndex))) {
     throw new Error("Account not found");
   }
 
@@ -723,8 +719,7 @@ export async function updateCookie(
     cookieForRefresh.includes("account_id_v2=");
 
   if (!hasToken || !hasID) {
-    accounts[accountIndex].invalid = true;
-    await client.db.set(accountKey, accounts);
+    await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, { invalid: true });
     return {
       error: true,
       message: "Cookie 資訊不完整（缺少 token 或 ID），已自動標記為跳過更新",
@@ -784,17 +779,15 @@ export async function updateCookie(
       blacklist: [], // 這裡主要用來確保格式統一
     });
 
-    accounts[accountIndex].cookie = finalCleanCookie;
-    accounts[accountIndex].invalid = false; // 成功更新，確保無效標記被清除
-    accounts[accountIndex].lastUpdate = new Date().toISOString();
-
-    await client.db.set(accountKey, accounts);
-
+    await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, {
+      cookie: finalCleanCookie,
+      invalid: false,
+      lastUpdate: new Date().toISOString(),
+    });
     return { success: true, cookie: finalCleanCookie };
   } catch (error: any) {
     // 這裡若是 403 / 401 或特定的 status 錯誤，代表 Cookie 可能真的掛了
-    accounts[accountIndex].invalid = true;
-    await client.db.set(accountKey, accounts);
+    await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, { invalid: true });
 
     new Logger("Utilities").error(
       `[用戶 ${userId}] Cookie 刷新失敗並已標記為無效: ${error.message}`,
@@ -886,17 +879,14 @@ export async function storeUserCredentials(
   ltuid_v2?: string,
   ltmid_v2?: string,
 ) {
-  const accountKey = `${userId}.account`;
-  const accounts = await client.db.get(accountKey);
-  if (!accounts?.[accountIndex]) return;
+  if (!(await getLegacyAccountAtIndex(client.db as any, userId, accountIndex))) return;
 
-  accounts[accountIndex].credentials = {
+  await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, { credentials: {
     email: encryptCredential(email),
     password: encryptCredential(password),
     deviceId,
     ...(stoken && { stoken: encryptCredential(stoken), ltuid_v2, ltmid_v2 }),
-  };
-  await client.db.set(accountKey, accounts);
+  } });
 }
 
 export async function autoRefreshCookie(
@@ -905,15 +895,13 @@ export async function autoRefreshCookie(
   _cookie: string,
 ) {
   const logger = new Logger("AutoRefreshCookie");
-  const accountKey = `${userId}.account`;
 
   try {
-    const accounts = await client.db.get(accountKey);
-    const account = accounts?.[accountIndex];
+    const account = await getLegacyAccountAtIndex(client.db as any, userId, accountIndex);
     if (!account) return { success: false, message: "找不到帳號" };
 
     const uid = account.uid;
-    const creds = account.credentials;
+    const creds = account.credentials as any;
 
     // Strategy 1a: stoken from Hoyolab store (web-login accounts, per-ltuid_v2)
     // This is the primary path for accounts bound via web-login.
@@ -974,10 +962,11 @@ export async function autoRefreshCookie(
         `cookie_token_v2=${newTokens.cookie_token_v2}`,
       ].join("; ");
 
-      accounts[accountIndex].cookie = baseCookie;
-      accounts[accountIndex].invalid = false;
-      accounts[accountIndex].lastUpdate = new Date().toISOString();
-      await client.db.set(accountKey, accounts);
+      await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, {
+        cookie: baseCookie,
+        invalid: false,
+        lastUpdate: new Date().toISOString(),
+      });
       if (uid) {
         await client.db.delete(`${uid}.cookieExpired`);
         await client.db.delete(`${uid}.needsCookieUpdate`);
@@ -1013,13 +1002,16 @@ export async function autoRefreshCookie(
       creds.stoken = encryptCredential(loginRes.stoken);
       creds.ltuid_v2 = loginRes.ltuid_v2;
       creds.ltmid_v2 = loginRes.ltmid_v2;
-      accounts[accountIndex].credentials = creds;
+      await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, {
+        credentials: creds,
+      });
     }
 
-    accounts[accountIndex].cookie = loginRes.cookie;
-    accounts[accountIndex].invalid = false;
-    accounts[accountIndex].lastUpdate = new Date().toISOString();
-    await client.db.set(accountKey, accounts);
+    await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, {
+      cookie: loginRes.cookie,
+      invalid: false,
+      lastUpdate: new Date().toISOString(),
+    });
 
     if (uid) {
       await client.db.delete(`${uid}.cookieExpired`);
@@ -1030,8 +1022,8 @@ export async function autoRefreshCookie(
     return { success: true, message: "Cookie 已自動刷新", newCookie: loginRes.cookie };
   } catch (error: any) {
     logger.error(`[用戶 ${userId}] [帳號 #${accountIndex}] 自動刷新失敗: ${error.message}`);
-    const accounts = await client.db.get(accountKey);
-    const uid = accounts?.[accountIndex]?.uid;
+    const account = await getLegacyAccountAtIndex(client.db as any, userId, accountIndex);
+    const uid = account?.uid;
     if (uid) await client.db.set(`${uid}.needsCookieUpdate`, true);
     return { success: false, message: error.message };
   }
