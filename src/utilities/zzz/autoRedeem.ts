@@ -9,6 +9,7 @@ import {
 } from "../utilities.js";
 import { buildZZZRedeemCard } from "../canvas/redeemCard.js";
 import { getLegacyAccounts } from "../accountStore.js";
+import { hasUnredeemedCodes } from "../core/redeemSchedule.js";
 
 // Constants
 const CONFIG = {
@@ -386,7 +387,11 @@ class AutoRedeemSystem {
     };
   }
 
-  async processRedemption(userId: string, redeemData: any, codesList: any[]) {
+  async processRedemption(
+    userId: string,
+    redeemData: any,
+    codesList: any[],
+  ): Promise<boolean> {
     const { userLang, accounts } = await this.getUserPreferences(userId);
     // this.logger.info(
     //   `[除錯] 用戶 ${userId} 語言: ${userLang}, 帳號數量: ${accounts?.length || 0}`,
@@ -394,7 +399,7 @@ class AutoRedeemSystem {
     if (!accounts?.length) {
       await this.db.delete(`autoRedeem.${userId}`);
       this.logger.warn(`用戶 ${userId} 無帳號資料，已自動移除 autoRedeem 設定`);
-      return;
+      return false;
     }
 
     const userRedeemConfig = redeemData[userId];
@@ -403,12 +408,25 @@ class AutoRedeemSystem {
       this.logger.warn(
         `用戶 ${userId} 缺少頻道設定，已自動移除 autoRedeem 設定`,
       );
-      return;
+      return false;
     }
+
+    const candidateAccountIndexes: number[] = [];
+    for (let i = 0; i < accounts.length; i++) {
+      const account = accounts[i];
+      if (!account?.uid || !account.cookie) continue;
+      const redeemedCodes: string[] =
+        (await this.db.get(`${account.uid}.redeemedCodes`)) || [];
+      if (hasUnredeemedCodes(redeemedCodes, codesList)) {
+        candidateAccountIndexes.push(i);
+      }
+    }
+
+    if (candidateAccountIndexes.length === 0) return false;
 
     // 預檢查：嘗試刷新所有標記為過期的 Cookie
     this.logger.info(`[用戶 ${userId}] 開始 Cookie 預檢查...`);
-    for (let i = 0; i < accounts.length; i++) {
+    for (const i of candidateAccountIndexes) {
       const account = accounts[i];
       if (!account || !account.uid || !account.cookie) continue;
 
@@ -444,7 +462,7 @@ class AutoRedeemSystem {
     const tr = createTranslator(userLang);
 
     const results = [];
-    for (let i = 0; i < accounts.length; i++) {
+    for (const i of candidateAccountIndexes) {
       const account = accounts[i];
       if (!account || !account.uid || !account.cookie) continue;
 
@@ -466,7 +484,7 @@ class AutoRedeemSystem {
         this.stats.failed++;
       }
 
-      if (i < accounts.length - 1) {
+      if (i !== candidateAccountIndexes[candidateAccountIndexes.length - 1]) {
         await this.sleep(CONFIG.REDEEM_DELAY);
       }
     }
@@ -486,6 +504,8 @@ class AutoRedeemSystem {
         hasSuccess: r.hasSuccess,
       });
     }
+
+    return true;
   }
 
   async sendRedeemMessage(channelId: string, data: any) {
@@ -540,7 +560,7 @@ export default async function autoRedeem() {
     return;
   }
 
-  system.logger.info("========== 開始自動兌換 (每日排程) ==========");
+  system.logger.info("========== 開始自動兌換 (定期排程) ==========");
 
   try {
     const codesList = await getRedeemCodes();
@@ -554,14 +574,18 @@ export default async function autoRedeem() {
     for (let i = 0; i < userIds.length; i++) {
       const userId = userIds[i]!;
       try {
-        await system.processRedemption(userId, redeemData, codesList);
+        const attemptedRedemption = await system.processRedemption(
+          userId,
+          redeemData,
+          codesList,
+        );
+        if (attemptedRedemption && i < userIds.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, CONFIG.USER_DELAY));
+        }
       } catch (error) {
         system.logger.error(
           `處理用戶 ${userId} 時發生錯誤: ${(error as any).message}`,
         );
-      }
-      if (i < userIds.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, CONFIG.USER_DELAY));
       }
     }
 

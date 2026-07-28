@@ -8,6 +8,7 @@ import schedule from "node-schedule";
 import { refreshWallpapers } from "../utilities/zzz/wallpaperManager.js";
 import { downloadAllWikiPaintings } from "../utilities/zzz/autoDownloadIcons.js";
 import { getLegacyAccounts } from "../utilities/accountStore.js";
+import { AUTO_REDEEM_CRON } from "../utilities/core/redeemSchedule.js";
 
 let isRefreshingCookies = false;
 let isAutoRedeemRunning = false;
@@ -57,10 +58,16 @@ client.on(Events.ClientReady, async () => {
     }
   });
 
-  // 每天 08:00 自動兌換 + 刷新壁紙
-  schedule.scheduleJob("0 8 * * *", function () {
+  // 每小時 20 分檢查新兌換碼
+  schedule.scheduleJob(AUTO_REDEEM_CRON, function () {
     if (client.cluster.id == 0) {
       runAutoRedeem();
+    }
+  });
+
+  // 每天 08:00 刷新壁紙
+  schedule.scheduleJob("0 8 * * *", function () {
+    if (client.cluster.id == 0) {
       refreshWallpapers(client.db).catch(() => {});
     }
   });
