@@ -124,7 +124,10 @@ export async function getRedeemCodes() {
     return _redeemCodesCache.data;
   }
 
-  const sources = ["https://api.ennead.cc/mihoyo/zenless/codes"];
+  const sources = [
+    "https://api.ennead.cc/mihoyo/zenless/codes",
+    "https://hoyo-codes.seria.moe/codes?game=nap",
+  ];
 
   const allCodes = new Set<string>();
   const results: any[] = [];
