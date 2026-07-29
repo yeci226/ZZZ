@@ -14,6 +14,12 @@ import {
   paintingIndexForRank,
 } from "./autoDownloadIcons.js";
 import { getElementIconPath } from "./elements.js";
+import {
+  collectEffectiveSystemIds,
+  countEffectiveRolls,
+  isEffectiveProperty,
+  totalEffectiveRolls,
+} from "./profileRolls.js";
 
 const W = 1000;
 const H = 625;
@@ -711,14 +717,19 @@ async function drawIdentityAndStats(
     ctx.stroke();
     const icon = await loadAny(propIconPath(prop.property_id));
     if (icon) {
-      ctx.save();
-      ctx.globalAlpha = 0.72;
-      ctx.drawImage(icon, cellX, cellY + 5, 14, 14);
-      ctx.restore();
+      ctx.fillStyle = INK;
+      ctx.beginPath();
+      (ctx as any).roundRect(cellX, cellY + 2, 22, 22, 4);
+      ctx.fill();
+      ctx.drawImage(icon, cellX + 3, cellY + 5, 16, 16);
     }
-    ctx.font = `bold 9px ${font}`;
+    ctx.font = `bold 10px ${font}`;
     ctx.fillStyle = "#505356";
-    ctx.fillText(prop.property_name ?? "", cellX + 18, cellY + 16);
+    ctx.fillText(
+      truncate(ctx, String(prop.property_name ?? ""), colWidth - 29),
+      cellX + 27,
+      cellY + 17,
+    );
     ctx.font = `900 italic 15px ${NUM_FONT}`;
     ctx.fillStyle = highlightIds.has(Number(prop.property_id)) ? accent : INK;
     ctx.fillText(
@@ -928,14 +939,6 @@ async function drawWeapon(
   });
 }
 
-function validRolls(disc: any): number {
-  return (disc?.properties ?? []).reduce(
-    (total: number, prop: any) =>
-      total + (prop.valid ? 1 + Number(prop.add ?? 0) : 0),
-    0,
-  );
-}
-
 async function drawDisc(
   ctx: SKRSContext2D,
   disc: any,
@@ -947,6 +950,7 @@ async function drawDisc(
   accent: string,
   accentLight: string,
   font: string,
+  effectiveSystemIds: ReadonlySet<number>,
   T: CharacterText,
 ) {
   ctx.fillStyle = DISC_BG;
@@ -965,34 +969,44 @@ async function drawDisc(
   const discImage = await loadAny(
     `./src/assets/images/icons/diskdrives/${String(disc.id).slice(0, 3)}_${disc.rarity}.webp`,
   );
-  if (discImage) ctx.drawImage(discImage, x + 7, y + 5, 36, 36);
-  ctx.font = `bold 9px ${font}`;
+  if (discImage) ctx.drawImage(discImage, x + 6, y + 4, 40, 40);
+  ctx.font = `bold 10px ${font}`;
   ctx.textAlign = "right";
   ctx.fillStyle = "#b9bdbd";
   ctx.fillText(`⓪①②③④⑤⑥`[slot] ?? String(slot), x + width - 7, y + 15);
-  ctx.font = `900 italic 9px ${NUM_FONT}`;
-  ctx.fillText(`+${disc.level ?? 0}`, x + width - 7, y + 25);
-  ctx.font = `bold 7px ${font}`;
+  ctx.font = `900 italic 13px ${NUM_FONT}`;
+  ctx.fillText(`+${disc.level ?? 0}`, x + width - 7, y + 27);
+  ctx.font = `bold 9px ${font}`;
   ctx.fillStyle = accentLight;
-  ctx.fillText(T.validRolls(validRolls(disc)), x + width - 7, y + 36);
+  ctx.fillText(
+    T.validRolls(countEffectiveRolls(disc, effectiveSystemIds)),
+    x + width - 7,
+    y + 40,
+  );
 
   const main = disc.main_properties?.[0];
   if (main) {
     const icon = await loadAny(propIconPath(main.property_id));
-    if (icon) ctx.drawImage(icon, x + 48, y + 12, 14, 14);
-    ctx.font = `bold 13px ${font}`;
+    if (icon) {
+      ctx.fillStyle = "#050606";
+      ctx.beginPath();
+      (ctx as any).roundRect(x + 48, y + 9, 20, 20, 4);
+      ctx.fill();
+      ctx.drawImage(icon, x + 50, y + 11, 16, 16);
+    }
+    ctx.font = `bold 15px ${font}`;
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "left";
     const mainText = `${main.property_name ?? ""} ${main.base ?? ""}`;
-    ctx.fillText(truncate(ctx, mainText, width - 107), x + 65, y + 25);
+    ctx.fillText(truncate(ctx, mainText, width - 112), x + 72, y + 27);
   }
 
   const subProps = (disc.properties ?? []).slice(0, 4);
-  const subY = y + 52;
+  const subY = y + 48;
   const subGapX = 5;
   const subGapY = 4;
   const subWidth = (width - 14 - subGapX) / 2;
-  const subHeight = 20;
+  const subHeight = 22;
   for (let index = 0; index < 4; index += 1) {
     const prop = subProps[index];
     if (!prop) continue;
@@ -1000,32 +1014,33 @@ async function drawDisc(
     const row = Math.floor(index / 2);
     const sx = x + 7 + col * (subWidth + subGapX);
     const sy = subY + row * (subHeight + subGapY);
+    const effective = isEffectiveProperty(prop, effectiveSystemIds);
     ctx.fillStyle = DISC_SUB;
     ctx.fillRect(sx, sy, subWidth, subHeight);
-    if (prop.valid) {
+    if (effective) {
       ctx.fillStyle = accent;
-      ctx.fillRect(sx, sy, 2, subHeight);
+      ctx.fillRect(sx, sy, 3, subHeight);
     }
     const icon = await loadAny(propIconPath(prop.property_id));
-    if (icon) ctx.drawImage(icon, sx + 3, sy + 4, 11, 11);
+    if (icon) ctx.drawImage(icon, sx + 4, sy + 4, 14, 14);
     const add = Number(prop.add ?? 0);
     const addText = add > 0 ? `+${add}` : "";
-    ctx.font = `bold 7.5px ${font}`;
-    const addWidth = addText ? ctx.measureText(addText).width + 5 : 0;
-    ctx.fillStyle = prop.valid ? accentLight : MUTED;
+    ctx.font = `bold 9px ${font}`;
+    const addWidth = addText ? ctx.measureText(addText).width + 6 : 0;
+    ctx.fillStyle = effective ? accentLight : MUTED;
     ctx.textAlign = "left";
     const text = `${prop.property_name ?? ""} ${prop.base ?? ""}`;
     ctx.fillText(
-      truncate(ctx, text, subWidth - 20 - addWidth),
-      sx + 16,
-      sy + 13,
+      truncate(ctx, text, subWidth - 25 - addWidth),
+      sx + 21,
+      sy + 15,
     );
     if (addText) {
       ctx.fillStyle = "#3b2b20";
-      ctx.fillRect(sx + subWidth - addWidth, sy + 3, addWidth, 14);
-      ctx.font = `900 italic 7px ${NUM_FONT}`;
+      ctx.fillRect(sx + subWidth - addWidth, sy + 3, addWidth, 16);
+      ctx.font = `900 italic 8px ${NUM_FONT}`;
       ctx.fillStyle = ORANGE;
-      ctx.fillText(addText, sx + subWidth - addWidth + 2, sy + 13);
+      ctx.fillText(addText, sx + subWidth - addWidth + 2, sy + 15);
     }
   }
 }
@@ -1073,26 +1088,26 @@ async function drawSetCard(
   ctx.fillRect(x, y, 4, height);
   const icon = await loadAny(set.iconSource);
   ctx.fillStyle = INK;
-  ctx.fillRect(x + 10, y + 12, 44, 44);
-  if (icon) ctx.drawImage(icon, x + 11, y + 13, 42, 42);
-  ctx.font = `bold 12px ${font}`;
+  ctx.fillRect(x + 10, y + 11, 50, 50);
+  if (icon) ctx.drawImage(icon, x + 11, y + 12, 48, 48);
+  ctx.font = `bold 13.5px ${font}`;
   ctx.fillStyle = INK;
   ctx.textAlign = "left";
-  ctx.fillText(truncate(ctx, set.name, width - 72), x + 62, y + 24);
-  ctx.font = `bold 7.5px ${font}`;
-  const descX = x + 62;
-  const maxWidth = width - 72;
+  ctx.fillText(truncate(ctx, set.name, width - 78), x + 68, y + 25);
+  ctx.font = `bold 10.5px ${font}`;
+  const descX = x + 68;
+  const maxWidth = width - 78;
   const line1 = `${T.twoPiece}: ${cleanRichText(set.desc1)}`;
-  const lines1 = wrapCharacters(ctx, line1, maxWidth, set.count >= 4 ? 1 : 3);
+  const lines1 = wrapCharacters(ctx, line1, maxWidth, set.count >= 4 ? 1 : 4);
   ctx.fillStyle = "#3e4142";
   lines1.forEach((line, index) =>
-    ctx.fillText(line, descX, y + 38 + index * 9),
+    ctx.fillText(line, descX, y + 43 + index * 12),
   );
   if (set.count >= 4) {
     const line2 = `${T.fourPiece}: ${cleanRichText(set.desc2)}`;
     const lines2 = wrapCharacters(ctx, line2, maxWidth, 3);
     lines2.forEach((line, index) =>
-      ctx.fillText(line, descX, y + 48 + index * 9),
+      ctx.fillText(line, descX, y + 56 + index * 12),
     );
   }
 }
@@ -1127,20 +1142,21 @@ async function drawDiscs(
   const slots = Array.from({ length: 6 }, (_, index) =>
     discs.find((disc: any) => Number(disc.equipment_type) === index + 1),
   );
-  const total = slots.reduce((sum, disc) => sum + validRolls(disc), 0);
-  ctx.font = `bold 8px ${font}`;
+  const effectiveSystemIds = collectEffectiveSystemIds(slots);
+  const total = totalEffectiveRolls(slots);
+  ctx.font = `bold 10px ${font}`;
   ctx.fillStyle = "#b9bdbd";
   ctx.textAlign = "right";
-  ctx.fillText(T.totalValidRolls, x + width - 42, y + 29);
-  ctx.font = `900 italic 21px ${NUM_FONT}`;
+  ctx.fillText(T.totalValidRolls, x + width - 46, y + 29);
+  ctx.font = `900 italic 25px ${NUM_FONT}`;
   ctx.fillStyle = accentLight;
-  ctx.fillText(String(total), x + width - 12, y + 31);
+  ctx.fillText(String(total), x + width - 12, y + 32);
 
   const gridX = x + 12;
   const gridY = y + 42;
   const gap = 6;
   const cellWidth = (width - 24 - gap * 2) / 3;
-  const cellHeight = 104;
+  const cellHeight = 98;
   for (let index = 0; index < 6; index += 1) {
     const col = index % 3;
     const row = Math.floor(index / 3);
@@ -1155,6 +1171,7 @@ async function drawDiscs(
       accent,
       accentLight,
       font,
+      effectiveSystemIds,
       T,
     );
   }
