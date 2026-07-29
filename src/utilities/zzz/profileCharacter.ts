@@ -21,6 +21,7 @@ import {
   isEffectiveProperty,
   totalEffectiveRolls,
 } from "./profileRolls.js";
+import { getFlatSuitIcon } from "./profileSuitIcons.js";
 
 const W = 1000;
 const H = 625;
@@ -59,7 +60,7 @@ type CharacterText = {
   wEngine: string;
   noWEngine: string;
   slotUnequipped: (slot: number) => string;
-  validRolls: (count: number) => string;
+  validRolls: string;
   twoPiece: string;
   fourPiece: string;
   driveDiscs: string;
@@ -84,7 +85,7 @@ function getCharacterText(locale: string): CharacterText {
       wEngine: "W-Engine",
       noWEngine: "No W-Engine Equipped",
       slotUnequipped: (slot) => `Slot ${slot} · Not Equipped`,
-      validRolls: (count) => `Valid Rolls ${count}`,
+      validRolls: "Valid Rolls",
       twoPiece: "2-Pc",
       fourPiece: "4-Pc",
       driveDiscs: "Drive Discs",
@@ -100,7 +101,7 @@ function getCharacterText(locale: string): CharacterText {
     wEngine: "音擎",
     noWEngine: "未裝備音擎",
     slotUnequipped: (slot) => `槽位 ${slot}・未裝備`,
-    validRolls: (count) => `有效詞條 ${count}`,
+    validRolls: "有效詞條",
     twoPiece: "二件套",
     fourPiece: "四件套",
     driveDiscs: "驅動盤",
@@ -1003,12 +1004,12 @@ async function drawWeapon(
   const detailH = 45;
   ctx.fillStyle = INK;
   ctx.fillRect(infoX + 62, detailY, 2, detailH);
-  ctx.font = `bold 7px ${font}`;
+  ctx.font = `bold 10px ${font}`;
   ctx.fillStyle = "#606365";
-  ctx.fillText(T.level, infoX, detailY + 10);
-  ctx.font = `900 italic 25px ${NUM_FONT}`;
+  ctx.fillText(T.level, infoX, detailY + 11);
+  ctx.font = `900 italic 27px ${NUM_FONT}`;
   ctx.fillStyle = INK;
-  ctx.fillText(String(weapon.level ?? "?"), infoX, detailY + 35);
+  ctx.fillText(String(weapon.level ?? "?"), infoX, detailY + 37);
 
   const weaponProps = [
     ...(weapon.main_properties ?? []),
@@ -1026,20 +1027,22 @@ async function drawWeapon(
     }
     const propImage = await loadAny(propIconPath(prop.property_id));
     if (propImage) {
-      ctx.fillStyle = INK;
-      ctx.fillRect(px + 6, detailY + 4, 18, 18);
-      ctx.drawImage(propImage, px + 8, detailY + 6, 14, 14);
+      ctx.save();
+      ctx.globalAlpha = 0.72;
+      ctx.filter = "brightness(0)";
+      ctx.drawImage(propImage, px + 5, detailY + 5, 14, 14);
+      ctx.restore();
     }
-    ctx.font = `bold 7px ${font}`;
-    ctx.fillStyle = "#606365";
+    ctx.font = `bold 10px ${font}`;
+    ctx.fillStyle = "#505356";
     ctx.fillText(
-      truncate(ctx, prop.property_name ?? "", propWidth - 34),
-      px + 28,
+      truncate(ctx, prop.property_name ?? "", propWidth - 29),
+      px + 23,
       detailY + 16,
     );
-    ctx.font = `900 italic 12px ${NUM_FONT}`;
+    ctx.font = `900 italic 15px ${NUM_FONT}`;
     ctx.fillStyle = INK;
-    ctx.fillText(String(prop.base ?? prop.final ?? ""), px + 28, detailY + 34);
+    ctx.fillText(String(prop.base ?? prop.final ?? ""), px + 23, detailY + 36);
   }
 
   const effectX = x + 350;
@@ -1125,22 +1128,37 @@ async function drawDisc(
     return;
   }
 
-  const discImage = await loadAny(
-    `./src/assets/images/icons/diskdrives/${String(disc.id).slice(0, 3)}_${disc.rarity}.webp`,
-  );
-  if (discImage) ctx.drawImage(discImage, x + 7, y + 5, 36, 36);
+  const flatSuitSource = await getFlatSuitIcon(disc.equip_suit?.suit_id);
+  const discImage = flatSuitSource ? await loadAny(flatSuitSource) : null;
+  if (discImage) {
+    ctx.drawImage(discImage, x + 7, y + 5, 36, 36);
+  } else {
+    ctx.save();
+    ctx.strokeStyle = accentLight;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x + 25, y + 23, 17, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x + 25, y + 23, 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
   ctx.font = `bold 9px ${font}`;
   ctx.textAlign = "right";
   ctx.fillStyle = "#b9bdbd";
   const slotLabel = `⓪①②③④⑤⑥`[slot] ?? String(slot);
   ctx.fillText(`${slotLabel} · +${disc.level ?? 0}`, x + width - 7, y + 15);
-  ctx.font = `bold 11px ${font}`;
+
+  const validCount = String(countEffectiveRolls(disc, effectiveSystemIds));
+  ctx.font = `900 italic 21px ${NUM_FONT}`;
+  const validCountWidth = ctx.measureText(validCount).width;
+  ctx.font = `bold 9px ${font}`;
+  ctx.fillStyle = "#b9bdbd";
+  ctx.fillText(T.validRolls, x + width - 12 - validCountWidth, y + 38);
+  ctx.font = `900 italic 21px ${NUM_FONT}`;
   ctx.fillStyle = accentLight;
-  ctx.fillText(
-    T.validRolls(countEffectiveRolls(disc, effectiveSystemIds)),
-    x + width - 7,
-    y + 30,
-  );
+  ctx.fillText(validCount, x + width - 7, y + 40);
 
   const main = disc.main_properties?.[0];
   if (main) {
@@ -1202,20 +1220,21 @@ type DiscSet = {
   name: string;
   desc1: string;
   desc2: string;
-  iconSource: string;
+  suitId: string;
 };
 
 function collectSets(discs: any[]): DiscSet[] {
   const sets = new Map<string, DiscSet>();
   for (const disc of discs) {
     if (!disc?.id) continue;
-    const key = String(disc.equip_suit?.suit_id ?? String(disc.id).slice(0, 3));
+    const key = String(disc.equip_suit?.suit_id ?? "");
+    if (!key) continue;
     const current = sets.get(key) ?? {
       count: 0,
       name: String(disc.equip_suit?.name ?? disc.name ?? ""),
       desc1: String(disc.equip_suit?.desc1 ?? ""),
       desc2: String(disc.equip_suit?.desc2 ?? ""),
-      iconSource: `./src/assets/images/icons/diskdrives/${String(disc.id).slice(0, 3)}_${disc.rarity}.webp`,
+      suitId: key,
     };
     current.count += 1;
     sets.set(key, current);
@@ -1238,10 +1257,19 @@ async function drawSetCard(
   ctx.fillRect(x, y, width, height);
   ctx.fillStyle = accent;
   ctx.fillRect(x, y, 4, height);
-  const icon = await loadAny(set.iconSource);
+  const iconSource = await getFlatSuitIcon(set.suitId);
+  const icon = iconSource ? await loadAny(iconSource) : null;
   ctx.fillStyle = INK;
   ctx.fillRect(x + 10, y + 12, 44, 44);
-  if (icon) ctx.drawImage(icon, x + 11, y + 13, 42, 42);
+  if (icon) {
+    ctx.drawImage(icon, x + 11, y + 13, 42, 42);
+  } else {
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x + 32, y + 34, 17, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.font = `bold 12px ${font}`;
   ctx.fillStyle = INK;
   ctx.textAlign = "left";
@@ -1249,18 +1277,30 @@ async function drawSetCard(
   ctx.font = `bold 8px ${font}`;
   const descX = x + 62;
   const maxWidth = width - 72;
-  const line1 = `${T.twoPiece}: ${cleanRichText(set.desc1)}`;
-  const lines1 = wrapCharacters(ctx, line1, maxWidth, set.count >= 4 ? 1 : 3);
-  ctx.fillStyle = "#3e4142";
-  lines1.forEach((line, index) =>
-    ctx.fillText(line, descX, y + 38 + index * 9.5),
-  );
-  if (set.count >= 4) {
-    const line2 = `${T.fourPiece}: ${cleanRichText(set.desc2)}`;
-    const lines2 = wrapCharacters(ctx, line2, maxWidth, 3);
-    lines2.forEach((line, index) =>
-      ctx.fillText(line, descX, y + 48 + index * 9.5),
+  const drawSetEffect = (
+    label: string,
+    description: string,
+    baselineY: number,
+    maxLines: number,
+  ) => {
+    const labelText = `${label}${label.includes("件套") ? "：" : ": "}`;
+    const labelWidth = ctx.measureText(labelText).width;
+    ctx.fillStyle = accent;
+    ctx.fillText(labelText, descX, baselineY);
+    const lines = wrapCharacters(
+      ctx,
+      cleanRichText(description),
+      Math.max(20, maxWidth - labelWidth),
+      maxLines,
     );
+    ctx.fillStyle = "#3e4142";
+    lines.forEach((line, index) =>
+      ctx.fillText(line, descX + labelWidth, baselineY + index * 9.5),
+    );
+  };
+  drawSetEffect(T.twoPiece, set.desc1, y + 38, set.count >= 4 ? 1 : 3);
+  if (set.count >= 4) {
+    drawSetEffect(T.fourPiece, set.desc2, y + 48, 3);
   }
 }
 
