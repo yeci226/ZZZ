@@ -1468,14 +1468,11 @@ function drawPropertiesBox(
     const propertyName = prop.property_name;
     const propertyFinalValue = prop.final;
 
-    const image =
-      index === character.properties.length - 1
-        ? elementImage
-        : propertyImages[index];
+    const image = propertyImages[index];
     ctx.drawImage(
       image,
       iconX,
-      (index === character.properties.length - 1 ? -2 : 0) + 180 + offset_y,
+      180 + offset_y,
       48,
       48,
     );
