@@ -14,6 +14,7 @@ import {
   paintingIndexForRank,
 } from "./autoDownloadIcons.js";
 import { getElementIconPath } from "./elements.js";
+import { resolveProfileFont } from "./profileLocale.js";
 import {
   collectEffectiveSystemIds,
   countEffectiveRolls,
@@ -47,15 +48,6 @@ for (const [file, family] of fontPaths) {
   GlobalFonts.registerFromPath(join(".", "src", "assets", file), family);
 }
 
-const fonts: Record<string, string> = {
-  tw: "TW",
-  cn: "CN",
-  vi: "VI",
-  jp: "JP",
-  kr: "KR",
-  fr: "FR",
-  default: "EN",
-};
 const NUM_FONT = "Nunito";
 
 type CharacterText = {
@@ -296,6 +288,119 @@ function cleanRichText(value: unknown): string {
     .replace(/<br\s*\/?>/giu, "\n")
     .replace(/\\n/gu, "\n")
     .trim();
+}
+
+type RichGlyph = { char: string; color: string };
+
+function parseRichGlyphs(
+  value: unknown,
+  defaultColor: string,
+  resolveColor: (color: string) => string,
+): RichGlyph[] {
+  const source = String(value ?? "")
+    .replace(/<br\s*\/?>/giu, "\n")
+    .replace(/\\n/gu, "\n");
+  const colors = [defaultColor];
+  const glyphs: RichGlyph[] = [];
+  const tokens = source.match(
+    /<color=(#[0-9a-f]{6})>|<span\s+style=["'][^"']*color:\s*(#[0-9a-f]{3,6})[^"']*["']>|<\/color>|<\/span>|<[^>]*>|[^<]+/giu,
+  );
+  for (const token of tokens ?? []) {
+    const colorOpen = token.match(/^<color=(#[0-9a-f]{6})>$/iu);
+    const spanOpen = token.match(
+      /^<span\s+style=["'][^"']*color:\s*(#[0-9a-f]{3,6})[^"']*["']>$/iu,
+    );
+    const rawColor = colorOpen?.[1] ?? spanOpen?.[1];
+    if (rawColor) {
+      colors.push(resolveColor(rawColor));
+      continue;
+    }
+    if (/^<\/(?:color|span)>$/iu.test(token)) {
+      if (colors.length > 1) colors.pop();
+      continue;
+    }
+    if (/^<[^>]*>$/u.test(token)) continue;
+    for (const char of token) {
+      glyphs.push({ char, color: colors.at(-1) ?? defaultColor });
+    }
+  }
+  return glyphs;
+}
+
+function drawRichTextBlock(
+  ctx: SKRSContext2D,
+  value: unknown,
+  x: number,
+  y: number,
+  maxWidth: number,
+  maxLines: number,
+  lineHeight: number,
+  defaultColor: string,
+  resolveColor: (color: string) => string,
+) {
+  const glyphs = parseRichGlyphs(value, defaultColor, resolveColor);
+  const lines: RichGlyph[][] = [[]];
+  const widths = [0];
+  let truncated = false;
+  for (let index = 0; index < glyphs.length; index += 1) {
+    const glyph = glyphs[index]!;
+    if (glyph.char === "\n") {
+      if (lines.length >= maxLines) {
+        truncated = index < glyphs.length - 1;
+        break;
+      }
+      lines.push([]);
+      widths.push(0);
+      continue;
+    }
+    const charWidth = ctx.measureText(glyph.char).width;
+    const lineIndex = lines.length - 1;
+    if (
+      (widths[lineIndex] ?? 0) + charWidth > maxWidth &&
+      lines[lineIndex]!.length
+    ) {
+      if (lines.length >= maxLines) {
+        truncated = true;
+        break;
+      }
+      lines.push([]);
+      widths.push(0);
+    }
+    const target = lines.length - 1;
+    lines[target]!.push(glyph);
+    widths[target] = (widths[target] ?? 0) + charWidth;
+  }
+  if (truncated) {
+    const last = lines.at(-1)!;
+    const lastIndex = lines.length - 1;
+    const ellipsisWidth = ctx.measureText("…").width;
+    while (last.length && (widths[lastIndex] ?? 0) + ellipsisWidth > maxWidth) {
+      const removed = last.pop()!;
+      widths[lastIndex] =
+        (widths[lastIndex] ?? 0) - ctx.measureText(removed.char).width;
+    }
+    last.push({ char: "…", color: defaultColor });
+  }
+  lines.forEach((line, lineIndex) => {
+    let cursorX = x;
+    let run = "";
+    let runColor = line[0]?.color ?? defaultColor;
+    const flush = () => {
+      if (!run) return;
+      ctx.fillStyle = runColor;
+      ctx.fillText(run, cursorX, y + lineIndex * lineHeight);
+      cursorX += ctx.measureText(run).width;
+      run = "";
+    };
+    for (const glyph of line) {
+      if (glyph.color !== runColor) {
+        flush();
+        runColor = glyph.color;
+      }
+      run += glyph.char;
+    }
+    flush();
+  });
 }
 
 function formatStatValue(value: unknown): string {
@@ -719,6 +824,7 @@ async function drawIdentityAndStats(
     if (icon) {
       ctx.save();
       ctx.globalAlpha = 0.72;
+      ctx.filter = "brightness(0)";
       ctx.drawImage(icon, cellX, cellY + 5, 14, 14);
       ctx.restore();
     }
@@ -942,17 +1048,25 @@ async function drawWeapon(
   ctx.font = `bold 14px ${font}`;
   ctx.fillStyle = accent;
   ctx.fillText(String(weapon.talent_title ?? ""), effectX + 13, y + 68);
-  ctx.font = `bold 9.5px ${font}`;
-  ctx.fillStyle = "#343638";
-  const lines = wrapCharacters(
+  ctx.font = `bold 10.5px ${font}`;
+  ctx.textAlign = "left";
+  const effectTextColor = "#343638";
+  drawRichTextBlock(
     ctx,
-    cleanRichText(weapon.talent_content),
+    weapon.talent_content,
+    effectX + 13,
+    y + 86,
     width - (effectX - x) - 30,
     4,
+    14.5,
+    effectTextColor,
+    (color) => {
+      const normalized = color.toLowerCase();
+      if (normalized === "#fff" || normalized === "#ffffff") return INK;
+      if (normalized === "#2bad00" || normalized === "#98eff0") return accent;
+      return color;
+    },
   );
-  lines.forEach((line, index) => {
-    ctx.fillText(line, effectX + 13, y + 86 + index * 13);
-  });
 }
 
 async function drawDisc(
@@ -1018,15 +1132,14 @@ async function drawDisc(
   ctx.font = `bold 9px ${font}`;
   ctx.textAlign = "right";
   ctx.fillStyle = "#b9bdbd";
-  ctx.fillText(`⓪①②③④⑤⑥`[slot] ?? String(slot), x + width - 7, y + 15);
-  ctx.font = `900 italic 9px ${NUM_FONT}`;
-  ctx.fillText(`+${disc.level ?? 0}`, x + width - 7, y + 25);
+  const slotLabel = `⓪①②③④⑤⑥`[slot] ?? String(slot);
+  ctx.fillText(`${slotLabel} · +${disc.level ?? 0}`, x + width - 7, y + 15);
   ctx.font = `bold 11px ${font}`;
   ctx.fillStyle = accentLight;
   ctx.fillText(
     T.validRolls(countEffectiveRolls(disc, effectiveSystemIds)),
     x + width - 7,
-    y + 39,
+    y + 30,
   );
 
   const main = disc.main_properties?.[0];
@@ -1064,7 +1177,7 @@ async function drawDisc(
     if (icon) ctx.drawImage(icon, sx + 3, sy + 4, 11, 11);
     const add = Number(prop.add ?? 0);
     const addText = add > 0 ? `+${add}` : "";
-    ctx.font = `bold 7.5px ${font}`;
+    ctx.font = `bold 8.5px ${font}`;
     const addWidth = addText ? ctx.measureText(addText).width + 5 : 0;
     ctx.fillStyle = effective ? accentLight : MUTED;
     ctx.textAlign = "left";
@@ -1077,7 +1190,7 @@ async function drawDisc(
     if (addText) {
       ctx.fillStyle = "#3b2b20";
       ctx.fillRect(sx + subWidth - addWidth, sy + 3, addWidth, 14);
-      ctx.font = `900 italic 7px ${NUM_FONT}`;
+      ctx.font = `900 italic 7.5px ${NUM_FONT}`;
       ctx.fillStyle = ORANGE;
       ctx.fillText(addText, sx + subWidth - addWidth + 2, sy + 13);
     }
@@ -1133,20 +1246,20 @@ async function drawSetCard(
   ctx.fillStyle = INK;
   ctx.textAlign = "left";
   ctx.fillText(truncate(ctx, set.name, width - 72), x + 62, y + 24);
-  ctx.font = `bold 7.5px ${font}`;
+  ctx.font = `bold 8px ${font}`;
   const descX = x + 62;
   const maxWidth = width - 72;
   const line1 = `${T.twoPiece}: ${cleanRichText(set.desc1)}`;
   const lines1 = wrapCharacters(ctx, line1, maxWidth, set.count >= 4 ? 1 : 3);
   ctx.fillStyle = "#3e4142";
   lines1.forEach((line, index) =>
-    ctx.fillText(line, descX, y + 38 + index * 9),
+    ctx.fillText(line, descX, y + 38 + index * 9.5),
   );
   if (set.count >= 4) {
     const line2 = `${T.fourPiece}: ${cleanRichText(set.desc2)}`;
     const lines2 = wrapCharacters(ctx, line2, maxWidth, 3);
     lines2.forEach((line, index) =>
-      ctx.fillText(line, descX, y + 48 + index * 9),
+      ctx.fillText(line, descX, y + 48 + index * 9.5),
     );
   }
 }
@@ -1183,7 +1296,7 @@ async function drawDiscs(
   );
   const effectiveSystemIds = collectEffectiveSystemIds(slots);
   const total = totalEffectiveRolls(slots);
-  ctx.font = `bold 8px ${font}`;
+  ctx.font = `bold 9px ${font}`;
   ctx.fillStyle = "#b9bdbd";
   ctx.textAlign = "right";
   ctx.fillText(T.totalValidRolls, x + width - 42, y + 29);
@@ -1266,7 +1379,7 @@ export async function drawOfficialCharacterProfile(
       ? characterDataInput[0]
       : characterDataInput;
     if (!character) return null;
-    const font = fonts[userLocale] ?? fonts.default;
+    const font = resolveProfileFont(userLocale);
     const T = getCharacterText(userLocale);
     const accent = safeAccent(
       character.vertical_painting_color,
