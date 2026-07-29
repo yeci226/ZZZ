@@ -717,17 +717,16 @@ async function drawIdentityAndStats(
     ctx.stroke();
     const icon = await loadAny(propIconPath(prop.property_id));
     if (icon) {
-      ctx.fillStyle = INK;
-      ctx.beginPath();
-      (ctx as any).roundRect(cellX, cellY + 2, 22, 22, 4);
-      ctx.fill();
-      ctx.drawImage(icon, cellX + 3, cellY + 5, 16, 16);
+      ctx.save();
+      ctx.globalAlpha = 0.72;
+      ctx.drawImage(icon, cellX, cellY + 5, 14, 14);
+      ctx.restore();
     }
-    ctx.font = `bold 10px ${font}`;
+    ctx.font = `bold 11px ${font}`;
     ctx.fillStyle = "#505356";
     ctx.fillText(
-      truncate(ctx, String(prop.property_name ?? ""), colWidth - 29),
-      cellX + 27,
+      truncate(ctx, String(prop.property_name ?? ""), colWidth - 20),
+      cellX + 18,
       cellY + 17,
     );
     ctx.font = `900 italic 15px ${NUM_FONT}`;
@@ -839,11 +838,28 @@ async function drawWeapon(
   drawSectionMark(ctx, x + 16, y + 24, T.wEngine, accent, font, true);
 
   const weapon = character.weapon;
-  if (!weapon) {
-    ctx.font = `bold 24px ${font}`;
-    ctx.fillStyle = "#8a877f";
-    ctx.textAlign = "center";
-    ctx.fillText(T.noWEngine, x + width / 2, y + 86);
+  if (!weapon?.id) {
+    const placeholderX = x + 22;
+    const placeholderY = y + 45;
+    ctx.save();
+    ctx.fillStyle = "#d8d3c7";
+    ctx.fillRect(placeholderX, placeholderY, 64, 64);
+    ctx.strokeStyle = "#77746c";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(placeholderX + 1, placeholderY + 1, 62, 62);
+    ctx.beginPath();
+    ctx.arc(placeholderX + 32, placeholderY + 32, 17, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(placeholderX + 20, placeholderY + 44);
+    ctx.lineTo(placeholderX + 44, placeholderY + 20);
+    ctx.stroke();
+    ctx.restore();
+    ctx.font = `bold 20px ${font}`;
+    ctx.fillStyle = "#66635d";
+    ctx.textAlign = "left";
+    ctx.fillText(T.noWEngine, x + 108, y + 83);
     return;
   }
 
@@ -959,54 +975,77 @@ async function drawDisc(
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
   if (!disc?.id) {
+    ctx.save();
+    ctx.strokeStyle = "#5d6466";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(x + 8, y + 8, width - 16, height - 16);
+    ctx.beginPath();
+    ctx.arc(x + 34, y + height / 2, 17, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + 23, y + height / 2 + 11);
+    ctx.lineTo(x + 45, y + height / 2 - 11);
+    ctx.stroke();
+    ctx.restore();
     ctx.font = `bold 11px ${font}`;
-    ctx.fillStyle = "#777c7e";
-    ctx.textAlign = "center";
-    ctx.fillText(T.slotUnequipped(slot), x + width / 2, y + height / 2 + 4);
+    ctx.fillStyle = "#8b9192";
+    ctx.textAlign = "right";
+    ctx.fillText(`⓪①②③④⑤⑥`[slot] ?? String(slot), x + width - 13, y + 23);
+    const placeholderText = T.slotUnequipped(slot);
+    const placeholderSize = fitText(
+      ctx,
+      placeholderText,
+      width - 82,
+      13,
+      10,
+      font,
+    );
+    ctx.font = `bold ${placeholderSize}px ${font}`;
+    ctx.textAlign = "left";
+    ctx.fillText(
+      truncate(ctx, placeholderText, width - 82),
+      x + 62,
+      y + height / 2 + 5,
+    );
     return;
   }
 
   const discImage = await loadAny(
     `./src/assets/images/icons/diskdrives/${String(disc.id).slice(0, 3)}_${disc.rarity}.webp`,
   );
-  if (discImage) ctx.drawImage(discImage, x + 6, y + 4, 40, 40);
-  ctx.font = `bold 10px ${font}`;
+  if (discImage) ctx.drawImage(discImage, x + 7, y + 5, 36, 36);
+  ctx.font = `bold 9px ${font}`;
   ctx.textAlign = "right";
   ctx.fillStyle = "#b9bdbd";
   ctx.fillText(`⓪①②③④⑤⑥`[slot] ?? String(slot), x + width - 7, y + 15);
-  ctx.font = `900 italic 13px ${NUM_FONT}`;
-  ctx.fillText(`+${disc.level ?? 0}`, x + width - 7, y + 27);
-  ctx.font = `bold 9px ${font}`;
+  ctx.font = `900 italic 9px ${NUM_FONT}`;
+  ctx.fillText(`+${disc.level ?? 0}`, x + width - 7, y + 25);
+  ctx.font = `bold 11px ${font}`;
   ctx.fillStyle = accentLight;
   ctx.fillText(
     T.validRolls(countEffectiveRolls(disc, effectiveSystemIds)),
     x + width - 7,
-    y + 40,
+    y + 39,
   );
 
   const main = disc.main_properties?.[0];
   if (main) {
     const icon = await loadAny(propIconPath(main.property_id));
-    if (icon) {
-      ctx.fillStyle = "#050606";
-      ctx.beginPath();
-      (ctx as any).roundRect(x + 48, y + 9, 20, 20, 4);
-      ctx.fill();
-      ctx.drawImage(icon, x + 50, y + 11, 16, 16);
-    }
-    ctx.font = `bold 15px ${font}`;
+    if (icon) ctx.drawImage(icon, x + 48, y + 12, 14, 14);
+    ctx.font = `bold 13px ${font}`;
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "left";
     const mainText = `${main.property_name ?? ""} ${main.base ?? ""}`;
-    ctx.fillText(truncate(ctx, mainText, width - 112), x + 72, y + 27);
+    ctx.fillText(truncate(ctx, mainText, width - 107), x + 65, y + 25);
   }
 
   const subProps = (disc.properties ?? []).slice(0, 4);
-  const subY = y + 48;
+  const subY = y + 52;
   const subGapX = 5;
   const subGapY = 4;
   const subWidth = (width - 14 - subGapX) / 2;
-  const subHeight = 22;
+  const subHeight = 20;
   for (let index = 0; index < 4; index += 1) {
     const prop = subProps[index];
     if (!prop) continue;
@@ -1019,28 +1058,28 @@ async function drawDisc(
     ctx.fillRect(sx, sy, subWidth, subHeight);
     if (effective) {
       ctx.fillStyle = accent;
-      ctx.fillRect(sx, sy, 3, subHeight);
+      ctx.fillRect(sx, sy, 2, subHeight);
     }
     const icon = await loadAny(propIconPath(prop.property_id));
-    if (icon) ctx.drawImage(icon, sx + 4, sy + 4, 14, 14);
+    if (icon) ctx.drawImage(icon, sx + 3, sy + 4, 11, 11);
     const add = Number(prop.add ?? 0);
     const addText = add > 0 ? `+${add}` : "";
-    ctx.font = `bold 9px ${font}`;
-    const addWidth = addText ? ctx.measureText(addText).width + 6 : 0;
+    ctx.font = `bold 7.5px ${font}`;
+    const addWidth = addText ? ctx.measureText(addText).width + 5 : 0;
     ctx.fillStyle = effective ? accentLight : MUTED;
     ctx.textAlign = "left";
     const text = `${prop.property_name ?? ""} ${prop.base ?? ""}`;
     ctx.fillText(
-      truncate(ctx, text, subWidth - 25 - addWidth),
-      sx + 21,
-      sy + 15,
+      truncate(ctx, text, subWidth - 20 - addWidth),
+      sx + 16,
+      sy + 13,
     );
     if (addText) {
       ctx.fillStyle = "#3b2b20";
-      ctx.fillRect(sx + subWidth - addWidth, sy + 3, addWidth, 16);
-      ctx.font = `900 italic 8px ${NUM_FONT}`;
+      ctx.fillRect(sx + subWidth - addWidth, sy + 3, addWidth, 14);
+      ctx.font = `900 italic 7px ${NUM_FONT}`;
       ctx.fillStyle = ORANGE;
-      ctx.fillText(addText, sx + subWidth - addWidth + 2, sy + 15);
+      ctx.fillText(addText, sx + subWidth - addWidth + 2, sy + 13);
     }
   }
 }
@@ -1088,26 +1127,26 @@ async function drawSetCard(
   ctx.fillRect(x, y, 4, height);
   const icon = await loadAny(set.iconSource);
   ctx.fillStyle = INK;
-  ctx.fillRect(x + 10, y + 11, 50, 50);
-  if (icon) ctx.drawImage(icon, x + 11, y + 12, 48, 48);
-  ctx.font = `bold 13.5px ${font}`;
+  ctx.fillRect(x + 10, y + 12, 44, 44);
+  if (icon) ctx.drawImage(icon, x + 11, y + 13, 42, 42);
+  ctx.font = `bold 12px ${font}`;
   ctx.fillStyle = INK;
   ctx.textAlign = "left";
-  ctx.fillText(truncate(ctx, set.name, width - 78), x + 68, y + 25);
-  ctx.font = `bold 10.5px ${font}`;
-  const descX = x + 68;
-  const maxWidth = width - 78;
+  ctx.fillText(truncate(ctx, set.name, width - 72), x + 62, y + 24);
+  ctx.font = `bold 7.5px ${font}`;
+  const descX = x + 62;
+  const maxWidth = width - 72;
   const line1 = `${T.twoPiece}: ${cleanRichText(set.desc1)}`;
-  const lines1 = wrapCharacters(ctx, line1, maxWidth, set.count >= 4 ? 1 : 4);
+  const lines1 = wrapCharacters(ctx, line1, maxWidth, set.count >= 4 ? 1 : 3);
   ctx.fillStyle = "#3e4142";
   lines1.forEach((line, index) =>
-    ctx.fillText(line, descX, y + 43 + index * 12),
+    ctx.fillText(line, descX, y + 38 + index * 9),
   );
   if (set.count >= 4) {
     const line2 = `${T.fourPiece}: ${cleanRichText(set.desc2)}`;
     const lines2 = wrapCharacters(ctx, line2, maxWidth, 3);
     lines2.forEach((line, index) =>
-      ctx.fillText(line, descX, y + 56 + index * 12),
+      ctx.fillText(line, descX, y + 48 + index * 9),
     );
   }
 }
@@ -1144,19 +1183,19 @@ async function drawDiscs(
   );
   const effectiveSystemIds = collectEffectiveSystemIds(slots);
   const total = totalEffectiveRolls(slots);
-  ctx.font = `bold 10px ${font}`;
+  ctx.font = `bold 8px ${font}`;
   ctx.fillStyle = "#b9bdbd";
   ctx.textAlign = "right";
-  ctx.fillText(T.totalValidRolls, x + width - 46, y + 29);
-  ctx.font = `900 italic 25px ${NUM_FONT}`;
+  ctx.fillText(T.totalValidRolls, x + width - 42, y + 29);
+  ctx.font = `900 italic 21px ${NUM_FONT}`;
   ctx.fillStyle = accentLight;
-  ctx.fillText(String(total), x + width - 12, y + 32);
+  ctx.fillText(String(total), x + width - 12, y + 31);
 
   const gridX = x + 12;
   const gridY = y + 42;
   const gap = 6;
   const cellWidth = (width - 24 - gap * 2) / 3;
-  const cellHeight = 98;
+  const cellHeight = 104;
   for (let index = 0; index < 6; index += 1) {
     const col = index % 3;
     const row = Math.floor(index / 3);
