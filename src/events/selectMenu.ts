@@ -31,16 +31,13 @@ import { handleTeamDraw } from "../utilities/zzz/team.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import Queue from "queue";
 import emoji from "../assets/emoji.js";
-import { deleteLegacyAccountAtIndex, getLegacyAccounts } from "../utilities/accountStore.js";
+import {
+  deleteLegacyAccountAtIndex,
+  getLegacyAccounts,
+} from "../utilities/accountStore.js";
+import { ELEMENT_ICON_BY_TYPE as elementId } from "../utilities/zzz/elements.js";
 // Use client.db directly
 const drawQueue = new Queue({ autostart: true });
-const elementId: Record<string, string> = {
-  "200": "physic",
-  "201": "fire",
-  "202": "ice",
-  "203": "thunder",
-  "205": "ether",
-};
 
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (!interaction.isButton()) return;
@@ -54,7 +51,8 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
 
   // Buttons that show a modal must NOT call deferUpdate first
   if (customId === "account_OpenEmailVerifyModal") {
-    const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = await import("discord.js");
+    const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } =
+      await import("discord.js");
     const modal = new ModalBuilder()
       .setCustomId("account_EmailVerifyModal")
       .setTitle("輸入 Email 驗證碼")
@@ -75,15 +73,14 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
 
   await buttonInteraction.deferUpdate().catch(() => {});
 
-  if (customId == "profile_CharacterMindScape") {
-    handleMindScapeChange(buttonInteraction, tr);
-  }
-
   if (customId.startsWith("profile_MainPage-")) {
     handleProfileMainPage(buttonInteraction, tr, userLocale);
   }
 
-  if (customId === "settings_togglePainting" || customId === "settings_toggleRankPainting") {
+  if (
+    customId === "settings_togglePainting" ||
+    customId === "settings_toggleRankPainting"
+  ) {
     handleSettingsToggle(buttonInteraction, customId, tr);
   }
 });
@@ -109,36 +106,22 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     handleSettingsLocale(selectInteraction, values[0], tr);
 });
 
-async function handleMindScapeChange(interaction: ButtonInteraction, tr: any) {
-  const [row1, row2] = interaction.message.components as any[];
-
-  const mindScapeKey = `${interaction.user.id}.mindscape`;
-  const mindScape = (await client.db.get(mindScapeKey)) ?? true;
-
-  row2.components = row2.components.map((button: any) =>
-    button.customId === interaction.customId
-      ? ButtonBuilder.from(button as any).setStyle(
-          mindScape ? ButtonStyle.Secondary : ButtonStyle.Success,
-        )
-      : button,
-  );
-
-  await interaction.message.edit({ components: [row1, row2] });
-  await client.db.set(mindScapeKey, !mindScape);
-}
-
 async function handleSettingsToggle(
   interaction: ButtonInteraction,
   customId: string,
   tr: any,
 ) {
   const userId = interaction.user.id;
-  const dbKey = customId === "settings_togglePainting" ? `${userId}.paintingMode` : `${userId}.rankPainting`;
+  const dbKey =
+    customId === "settings_togglePainting"
+      ? `${userId}.paintingMode`
+      : `${userId}.rankPainting`;
   const current: boolean = (await client.db.get(dbKey)) ?? false;
   await client.db.set(dbKey, !current);
 
   // Rebuild the settings message with updated values
-  const { buildSettingsComponents } = await import("../commands/slash/settings.js");
+  const { buildSettingsComponents } =
+    await import("../commands/slash/settings.js");
   // tr may reflect old locale; re-derive from DB to be safe
   const userLocale = (await getUserLang(userId)) || "en";
   const newTr = createTranslator(userLocale);
@@ -159,7 +142,8 @@ async function handleSettingsLocale(
   await client.db.set(`${userId}.locale`, locale);
 
   const newTr = createTranslator(locale);
-  const { buildSettingsComponents } = await import("../commands/slash/settings.js");
+  const { buildSettingsComponents } =
+    await import("../commands/slash/settings.js");
   const { container } = await buildSettingsComponents(userId, newTr);
 
   await interaction.editReply({
@@ -224,7 +208,13 @@ async function handleProfileMainPage(
       getUserHoyolabData(interaction as any, tr, userId),
     ]);
 
-    const imageBuffer = await drawMainImage(tr, userLocale, userData, record);
+    const imageBuffer = await drawMainImage(
+      tr,
+      userLocale,
+      userData,
+      record,
+      characters,
+    );
     if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
 
     const image = new AttachmentBuilder(imageBuffer as Buffer, {
@@ -366,7 +356,13 @@ async function handleSelectCharacter(
           tr,
           userId,
         );
-        imageBuffer = await drawMainImage(tr, userLocale, userData, record);
+        imageBuffer = await drawMainImage(
+          tr,
+          userLocale,
+          userData,
+          record,
+          characters,
+        );
       } else {
         if (!selectedCharacter) throw new Error(tr("AccountNotFound"));
 
@@ -396,29 +392,22 @@ async function handleSelectCharacter(
         accountIndex,
       );
 
-      const userMindScape =
-        (await client.db.get(`${interaction.user.id}.mindscape`)) ?? true;
-
-      // ── Button row: MindScape + MainPage (only when not on main) ──
-      const buttons: any[] = [
-        new ButtonBuilder()
-          .setCustomId("profile_CharacterMindScape")
-          .setLabel(tr("MindScape"))
-          .setStyle(userMindScape ? ButtonStyle.Success : ButtonStyle.Secondary),
-      ];
+      // ── Single-character view only needs a Homepage button. ──
+      const components: any[] = [...rowSelects];
       if (characterId !== "main") {
-        buttons.push(
-          new ButtonBuilder()
-            .setCustomId(`profile_MainPage-${userId}-${accountIndex}`)
-            .setLabel(tr("MainPage"))
-            .setStyle(ButtonStyle.Secondary),
+        components.push(
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`profile_MainPage-${userId}-${accountIndex}`)
+              .setLabel(tr("MainPage"))
+              .setStyle(ButtonStyle.Secondary),
+          ) as any,
         );
       }
-      const rowButtons = new ActionRowBuilder().addComponents(...buttons) as any;
 
       interaction.editReply({
         embeds: [],
-        components: [...rowSelects, rowButtons] as any[],
+        components,
         files: [image],
       });
     } catch (error) {
@@ -454,7 +443,10 @@ async function handleAccountAction(
   customId: string,
   value: string,
 ) {
-  const account = await getLegacyAccounts(client.db as any, interaction.user.id);
+  const account = await getLegacyAccounts(
+    client.db as any,
+    interaction.user.id,
+  );
   if (!account)
     return interaction.reply({
       embeds: [
@@ -591,8 +583,8 @@ async function handleAccountAction(
     const accountIndex = value;
     const userAccountCookie = account[Number(accountIndex)].cookie || "";
     const parseCookie = (cookie: string, key: string) => {
-        const match = cookie.match(new RegExp(`${key}=([^;]+)`));
-        return match?.[1]?.trim() ?? "";
+      const match = cookie.match(new RegExp(`${key}=([^;]+)`));
+      return match?.[1]?.trim() ?? "";
     };
 
     const ltokenV2 = parseCookie(userAccountCookie, "ltoken_v2");

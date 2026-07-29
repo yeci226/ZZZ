@@ -15,9 +15,20 @@ import {
   getUserLang,
   getCharacterData,
 } from "../utilities.js";
-import { downloadPaintingCache, getLocalWikiPaintings, paintingIndexForRank, getFacePos } from "./autoDownloadIcons.js";
+import {
+  downloadPaintingCache,
+  getLocalWikiPaintings,
+  paintingIndexForRank,
+  getFacePos,
+} from "./autoDownloadIcons.js";
 import { searchWikiEntry, fetchWikiPaintings } from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
+import { drawOfficialCharacterProfile } from "./profileCharacter.js";
+import { drawKnockKnockMainProfile } from "./profileMain.js";
+import {
+  ELEMENT_ICON_BY_TYPE as elementId,
+  getElementIconPath,
+} from "./elements.js";
 import emoji from "../../assets/emoji.js";
 import {
   createCanvas,
@@ -44,13 +55,6 @@ const offsetCharacter: Record<
 };
 const offsetCharacterSkin = {};
 
-const elementId = {
-  200: "physic",
-  201: "fire",
-  202: "ice",
-  203: "thunder",
-  205: "ether",
-};
 const professionId = {
   1: "attack",
   2: "stun",
@@ -222,7 +226,13 @@ export async function handleProfileDraw(
 
       // Generate
       const drawStartTime = Date.now();
-      const imageBuffer = await drawMainImage(tr, userLocale, userData, record);
+      const imageBuffer = await drawMainImage(
+        tr,
+        userLocale,
+        userData,
+        record,
+        characters,
+      );
       if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
       const drawEndTime = Date.now();
 
@@ -316,7 +326,11 @@ export async function drawMainImage(
   userLocale: string,
   userData: any,
   record: any,
+  characters: any[] = record?.avatar_list ?? [],
 ) {
+  void tr;
+  return drawKnockKnockMainProfile(userLocale, userData, record, characters);
+
   try {
     const selectedFont =
       fonts[userLocale as keyof typeof fonts] || fonts.default;
@@ -750,6 +764,18 @@ export async function drawCharacterImage(
   usePainting = false,
   rankDependentPainting = false,
 ) {
+  void interaction;
+  return drawOfficialCharacterProfile(
+    tr,
+    userLocale,
+    uid,
+    characterDataInput,
+    usePainting,
+    rankDependentPainting,
+  );
+
+  /* Legacy 2080×870 renderer kept below temporarily for safe rollback.
+   * It is intentionally unreachable; all production calls now use v11. */
   try {
     const character = Array.isArray(characterDataInput)
       ? characterDataInput[0]
@@ -779,10 +805,10 @@ export async function drawCharacterImage(
 
     const characterData = await getCharacterData(character.id);
     const mindscapeIndex = 0;
+    const mindscapeImage = characterData?.mindscapes?.[mindscapeIndex];
     const characterSpecificImagePath =
-      characterData?.mindscapes && characterData.mindscapes[mindscapeIndex]
-        ? characterData.mindscapes[mindscapeIndex]
-        : `./src/assets/images/icons/mindscape/default_${mindscapeIndex + 1}.png`;
+      mindscapeImage ??
+      `./src/assets/images/icons/mindscape/default_${mindscapeIndex + 1}.png`;
 
     const finalMindScapeImagePath = `./src/assets/images/icons/mindscape/m${userMindScape ? character.rank : 0}.png`;
 
@@ -833,33 +859,37 @@ export async function drawCharacterImage(
     if (usePainting) {
       try {
         const name: string =
-          character.name_mi18n ?? character.full_name_mi18n ?? character.name ?? "";
+          character.name_mi18n ??
+          character.full_name_mi18n ??
+          character.name ??
+          "";
         const entryId = name ? await searchWikiEntry(name) : null;
         if (entryId) {
-          paintingEntryId = String(entryId);
+          const normalizedEntryId = String(entryId);
+          paintingEntryId = normalizedEntryId;
           paintingRank = character.rank ?? 0;
           const rank: number = paintingRank;
-          const paintingIdx = rankDependentPainting ? paintingIndexForRank(rank) : null;
+          const paintingIdx = rankDependentPainting
+            ? paintingIndexForRank(rank)
+            : null;
           // Prefer local cached file
-          const localPaths = getLocalWikiPaintings(entryId);
+          const localPaths = getLocalWikiPaintings(normalizedEntryId);
           allPaintingPaths = localPaths;
           // null idx = pick first available (base painting); otherwise pick requested idx (no silent fallback to 0)
-          const localPath = paintingIdx !== null
-            ? (localPaths[paintingIdx] ?? null)
-            : (localPaths[0] ?? null);
+          const localPath = localPaths[paintingIdx ?? 0] ?? null;
           if (localPath) {
             characterPath = localPath;
           } else {
             // Fall back to remote
-            const remoteUrls = await fetchWikiPaintings(entryId);
+            const remoteUrls = await fetchWikiPaintings(normalizedEntryId);
             allPaintingPaths = remoteUrls;
-            const remoteUrl = paintingIdx !== null
-              ? (remoteUrls[paintingIdx] ?? null)
-              : (remoteUrls[0] ?? null);
+            const remoteUrl = remoteUrls[paintingIdx ?? 0] ?? null;
             if (remoteUrl) characterPath = remoteUrl;
           }
         }
-      } catch { /* keep original characterPath on any error */ }
+      } catch {
+        /* keep original characterPath on any error */
+      }
     }
 
     // Load images concurrently
@@ -869,7 +899,7 @@ export async function drawCharacterImage(
       characterSpecificImagePath, // characterRankImage (Index 2)
       (offsetCharacter as any)[character.id]?.element
         ? `./src/assets/images/icons/element/${(offsetCharacter as any)[character.id].element}.webp`
-        : `./src/assets/images/icons/element/${elementId[character.element_type as keyof typeof elementId]}.webp`,
+        : getElementIconPath(character.element_type),
       `./src/assets/images/icons/profession/${professionId[character.avatar_profession as keyof typeof professionId]}.webp`,
       `${character.weapon?.icon}`,
       `./src/assets/images/icons/weapon/role-star-${character.weapon?.star}.png`,
@@ -1025,7 +1055,7 @@ export async function drawCharacterImage(
         const refScale = Math.max(W / refImg.width, H / refImg.height);
         const refW = refImg.width * refScale;
         const refH = refImg.height * refScale;
-        const { faceX, faceY } = getFacePos(paintingEntryId);
+        const { faceX, faceY } = getFacePos(paintingEntryId!);
         // Compute the actual draw offset (same logic as drawCover with centerOnFace=true)
         const refXCentered = W / 2 - faceX * refW;
         const refX = Math.min(0, Math.max(W - refW, refXCentered));
