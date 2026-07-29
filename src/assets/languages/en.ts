@@ -175,7 +175,7 @@ const langs = {
 
   profile_SelectCharacter: "Select a character to view",
   profile_NoImageData: "Unable to obtain image data",
-  profile_CharactersFormat: "Level <level> • Imagery <rank>",
+  profile_CharactersFormat: "Level <level> • Cinema <rank>",
 
   RegularPool: "Regular Pool",
   CharacterPool: "Character Pool",
