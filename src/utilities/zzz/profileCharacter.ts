@@ -52,6 +52,64 @@ const fonts: Record<string, string> = {
 };
 const NUM_FONT = "Nunito";
 
+type CharacterText = {
+  level: string;
+  cinema: string;
+  agentStats: string;
+  skills: string;
+  skillLabels: [string, string, string, string, string, string];
+  wEngine: string;
+  noWEngine: string;
+  slotUnequipped: (slot: number) => string;
+  validRolls: (count: number) => string;
+  twoPiece: string;
+  fourPiece: string;
+  driveDiscs: string;
+  totalValidRolls: string;
+};
+
+function getCharacterText(locale: string): CharacterText {
+  if (locale.toLowerCase().startsWith("en")) {
+    return {
+      level: "Level",
+      cinema: "Cinema",
+      agentStats: "Agent Stats",
+      skills: "Skills",
+      skillLabels: [
+        "Basic Attack",
+        "Special Attack",
+        "Dodge",
+        "Chain Attack",
+        "Assist",
+        "Core Skill",
+      ],
+      wEngine: "W-Engine",
+      noWEngine: "No W-Engine Equipped",
+      slotUnequipped: (slot) => `Slot ${slot} · Not Equipped`,
+      validRolls: (count) => `Valid Rolls ${count}`,
+      twoPiece: "2-Pc",
+      fourPiece: "4-Pc",
+      driveDiscs: "Drive Discs",
+      totalValidRolls: "Total Valid Rolls",
+    };
+  }
+  return {
+    level: "等級",
+    cinema: "影畫",
+    agentStats: "角色屬性",
+    skills: "技能",
+    skillLabels: ["普通攻擊", "特殊技", "閃避", "連攜技", "支援技", "核心技"],
+    wEngine: "音擎",
+    noWEngine: "未裝備音擎",
+    slotUnequipped: (slot) => `槽位 ${slot}・未裝備`,
+    validRolls: (count) => `有效詞條 ${count}`,
+    twoPiece: "二件套",
+    fourPiece: "四件套",
+    driveDiscs: "驅動盤",
+    totalValidRolls: "總有效詞條數",
+  };
+}
+
 const specialCharacters: Record<
   string,
   { title?: "VoidHunter" | "GrandMaster"; element?: string }
@@ -456,6 +514,7 @@ async function drawIdentityAndStats(
   accentLight: string,
   font: string,
   tr: (key: string, args?: any) => string,
+  T: CharacterText,
 ) {
   const x = 14;
   const y = 14;
@@ -505,7 +564,7 @@ async function drawIdentityAndStats(
   }
   ctx.restore();
 
-  const name =
+  const rawName =
     character.full_name_mi18n ??
     character.name_mi18n ??
     character.name ??
@@ -513,8 +572,9 @@ async function drawIdentityAndStats(
   const rarity = rarityGrade(character.rarity);
   const special = specialCharacters[String(character.id)];
   const specialLabel = special?.title ? tr(special.title) : "";
-  const nameSize = fitText(ctx, name, 118, 21, 15, font);
+  const nameSize = fitText(ctx, rawName, 118, 21, 13, font);
   ctx.font = `bold ${nameSize}px ${font}`;
+  const name = truncate(ctx, rawName, 118);
   const nameWidth = ctx.measureText(name).width;
   const raritySize = 24;
   const gap = 7;
@@ -595,8 +655,8 @@ async function drawIdentityAndStats(
   const rankX = x + width - 12 - numberWidth;
   const levelX = rankX - numberGap - numberWidth;
   for (const [label, value, bx] of [
-    ["等級", character.level ?? "?", levelX],
-    ["影畫", character.rank ?? 0, rankX],
+    [T.level, character.level ?? "?", levelX],
+    [T.cinema, character.rank ?? 0, rankX],
   ] as Array<[string, unknown, number]>) {
     ctx.fillStyle = accentLight;
     ctx.fillRect(bx, numberY - 6, 2, 28);
@@ -610,7 +670,15 @@ async function drawIdentityAndStats(
 
   const statsX = x + 10;
   const statsY = y + artHeight + 24;
-  drawSectionMark(ctx, statsX + 4, statsY + 1, "角色屬性", accent, font, true);
+  drawSectionMark(
+    ctx,
+    statsX + 4,
+    statsY + 1,
+    T.agentStats,
+    accent,
+    font,
+    true,
+  );
   const preferredPropertyOrder = [1, 2, 3, 4, 5, 6, 8, 7, 9, 10];
   const allProps = [...(character.properties ?? [])];
   const props = [
@@ -667,6 +735,7 @@ async function drawSkills(
   accent: string,
   accentLight: string,
   font: string,
+  T: CharacterText,
 ) {
   const x = 304;
   const y = 14;
@@ -686,10 +755,10 @@ async function drawSkills(
   ctx.fillRect(x + 12, y + 7, 4, 15);
   ctx.font = `bold 13px ${font}`;
   ctx.fillStyle = PAPER;
-  ctx.fillText("技能", x + 22, y + 20);
+  ctx.fillText(T.skills, x + 22, y + 20);
 
   const order = [0, 2, 5, 1, 3, 4];
-  const labels = ["普通攻擊", "特殊技", "閃避", "連攜技", "支援技", "核心技"];
+  const labels = T.skillLabels;
   const coreMap: Record<number, string> = {
     1: "X",
     2: "A",
@@ -740,6 +809,7 @@ async function drawWeapon(
   character: any,
   accent: string,
   font: string,
+  T: CharacterText,
 ) {
   const x = 304;
   const y = 100;
@@ -755,14 +825,14 @@ async function drawWeapon(
   ] as Array<[number, number]>;
   polygon(ctx, shape, PAPER);
   strokePolygon(ctx, shape, INK, 2);
-  drawSectionMark(ctx, x + 16, y + 24, "音擎", accent, font, true);
+  drawSectionMark(ctx, x + 16, y + 24, T.wEngine, accent, font, true);
 
   const weapon = character.weapon;
   if (!weapon) {
     ctx.font = `bold 24px ${font}`;
     ctx.fillStyle = "#8a877f";
     ctx.textAlign = "center";
-    ctx.fillText("未裝備音擎", x + width / 2, y + 86);
+    ctx.fillText(T.noWEngine, x + width / 2, y + 86);
     return;
   }
 
@@ -783,9 +853,10 @@ async function drawWeapon(
 
   const infoX = x + 100;
   const infoWidth = 238;
-  const name = String(weapon.name ?? "");
-  const nameSize = fitText(ctx, name, infoWidth - 34, 17, 12, font);
+  const rawName = String(weapon.name ?? "");
+  const nameSize = fitText(ctx, rawName, infoWidth - 34, 17, 12, font);
   ctx.font = `bold ${nameSize}px ${font}`;
+  const name = truncate(ctx, rawName, infoWidth - 34);
   ctx.fillStyle = INK;
   ctx.textAlign = "left";
   ctx.fillText(name, infoX, y + 62);
@@ -801,7 +872,7 @@ async function drawWeapon(
   ctx.fillRect(infoX + 62, detailY, 2, detailH);
   ctx.font = `bold 7px ${font}`;
   ctx.fillStyle = "#606365";
-  ctx.fillText("等級", infoX, detailY + 10);
+  ctx.fillText(T.level, infoX, detailY + 10);
   ctx.font = `900 italic 25px ${NUM_FONT}`;
   ctx.fillStyle = INK;
   ctx.fillText(String(weapon.level ?? "?"), infoX, detailY + 35);
@@ -876,6 +947,7 @@ async function drawDisc(
   accent: string,
   accentLight: string,
   font: string,
+  T: CharacterText,
 ) {
   ctx.fillStyle = DISC_BG;
   ctx.fillRect(x, y, width, height);
@@ -886,7 +958,7 @@ async function drawDisc(
     ctx.font = `bold 11px ${font}`;
     ctx.fillStyle = "#777c7e";
     ctx.textAlign = "center";
-    ctx.fillText(`槽位 ${slot}・未裝備`, x + width / 2, y + height / 2 + 4);
+    ctx.fillText(T.slotUnequipped(slot), x + width / 2, y + height / 2 + 4);
     return;
   }
 
@@ -902,7 +974,7 @@ async function drawDisc(
   ctx.fillText(`+${disc.level ?? 0}`, x + width - 7, y + 25);
   ctx.font = `bold 7px ${font}`;
   ctx.fillStyle = accentLight;
-  ctx.fillText(`有效詞條 ${validRolls(disc)}`, x + width - 7, y + 36);
+  ctx.fillText(T.validRolls(validRolls(disc)), x + width - 7, y + 36);
 
   const main = disc.main_properties?.[0];
   if (main) {
@@ -993,6 +1065,7 @@ async function drawSetCard(
   height: number,
   accent: string,
   font: string,
+  T: CharacterText,
 ) {
   ctx.fillStyle = PAPER;
   ctx.fillRect(x, y, width, height);
@@ -1009,14 +1082,14 @@ async function drawSetCard(
   ctx.font = `bold 7.5px ${font}`;
   const descX = x + 62;
   const maxWidth = width - 72;
-  const line1 = `二件套：${cleanRichText(set.desc1)}`;
+  const line1 = `${T.twoPiece}: ${cleanRichText(set.desc1)}`;
   const lines1 = wrapCharacters(ctx, line1, maxWidth, set.count >= 4 ? 1 : 3);
   ctx.fillStyle = "#3e4142";
   lines1.forEach((line, index) =>
     ctx.fillText(line, descX, y + 38 + index * 9),
   );
   if (set.count >= 4) {
-    const line2 = `四件套：${cleanRichText(set.desc2)}`;
+    const line2 = `${T.fourPiece}: ${cleanRichText(set.desc2)}`;
     const lines2 = wrapCharacters(ctx, line2, maxWidth, 3);
     lines2.forEach((line, index) =>
       ctx.fillText(line, descX, y + 48 + index * 9),
@@ -1030,6 +1103,7 @@ async function drawDiscs(
   accent: string,
   accentLight: string,
   font: string,
+  T: CharacterText,
 ) {
   const x = 304;
   const y = 248;
@@ -1045,7 +1119,7 @@ async function drawDiscs(
   ] as Array<[number, number]>;
   polygon(ctx, shape, INK_2);
   strokePolygon(ctx, shape, PAPER, 2);
-  drawSectionMark(ctx, x + 16, y + 30, "驅動盤", accent, font);
+  drawSectionMark(ctx, x + 16, y + 30, T.driveDiscs, accent, font);
 
   const discs = [...(character.equip ?? [])].sort(
     (a: any, b: any) => Number(a.equipment_type) - Number(b.equipment_type),
@@ -1057,7 +1131,7 @@ async function drawDiscs(
   ctx.font = `bold 8px ${font}`;
   ctx.fillStyle = "#b9bdbd";
   ctx.textAlign = "right";
-  ctx.fillText("總有效詞條數", x + width - 42, y + 29);
+  ctx.fillText(T.totalValidRolls, x + width - 42, y + 29);
   ctx.font = `900 italic 21px ${NUM_FONT}`;
   ctx.fillStyle = accentLight;
   ctx.fillText(String(total), x + width - 12, y + 31);
@@ -1081,6 +1155,7 @@ async function drawDiscs(
       accent,
       accentLight,
       font,
+      T,
     );
   }
 
@@ -1092,7 +1167,7 @@ async function drawDiscs(
     const four = sets.find((set) => set.count >= 4)!;
     const two = sets.find((set) => set !== four)!;
     const wide = (width - 24 - gap) * (2 / 3);
-    await drawSetCard(ctx, four, gridX, setY, wide, setHeight, accent, font);
+    await drawSetCard(ctx, four, gridX, setY, wide, setHeight, accent, font, T);
     await drawSetCard(
       ctx,
       two,
@@ -1102,6 +1177,7 @@ async function drawDiscs(
       setHeight,
       accent,
       font,
+      T,
     );
     return;
   }
@@ -1116,6 +1192,7 @@ async function drawDiscs(
       setHeight,
       accent,
       font,
+      T,
     );
   }
 }
@@ -1134,6 +1211,7 @@ export async function drawOfficialCharacterProfile(
       : characterDataInput;
     if (!character) return null;
     const font = fonts[userLocale] ?? fonts.default;
+    const T = getCharacterText(userLocale);
     const accent = safeAccent(
       character.vertical_painting_color,
       Number(character.element_type),
@@ -1165,6 +1243,7 @@ export async function drawOfficialCharacterProfile(
       accentLight,
       font,
       tr,
+      T,
     );
 
     ctx.save();
@@ -1178,9 +1257,9 @@ export async function drawOfficialCharacterProfile(
     }
     ctx.restore();
 
-    await drawSkills(ctx, character, accent, accentLight, font);
-    await drawWeapon(ctx, character, accent, font);
-    await drawDiscs(ctx, character, accent, accentLight, font);
+    await drawSkills(ctx, character, accent, accentLight, font, T);
+    await drawWeapon(ctx, character, accent, font, T);
+    await drawDiscs(ctx, character, accent, accentLight, font, T);
 
     ctx.font = `900 italic 8px ${NUM_FONT}`;
     ctx.fillStyle = "rgba(255,255,255,0.32)";

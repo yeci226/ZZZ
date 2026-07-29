@@ -45,6 +45,48 @@ const fonts: Record<string, string> = {
   default: "EN",
 };
 
+type MainText = {
+  contacts: string;
+  online: string;
+  offline: string;
+  noTitle: string;
+  stats: string;
+  activeDays: string;
+  agents: string;
+  bangboo: string;
+  achievements: string;
+  badges: string;
+};
+
+function getMainText(locale: string): MainText {
+  if (locale.toLowerCase().startsWith("en")) {
+    return {
+      contacts: "Contacts",
+      online: "Online",
+      offline: "Offline",
+      noTitle: "No Title Set",
+      stats: "Proxy Statistics",
+      activeDays: "Active Days",
+      agents: "Agents",
+      bangboo: "Bangboo",
+      achievements: "Achievements",
+      badges: "Public Badges",
+    };
+  }
+  return {
+    contacts: "通訊錄",
+    online: "線上",
+    offline: "離線",
+    noTitle: "尚未設定稱號",
+    stats: "繩匠統計",
+    activeDays: "活躍天數",
+    agents: "角色數量",
+    bangboo: "邦布數量",
+    achievements: "成就總數",
+    badges: "公開徽章",
+  };
+}
+
 function roundedPath(
   ctx: SKRSContext2D,
   x: number,
@@ -275,6 +317,7 @@ async function drawContactRail(
   ctx: SKRSContext2D,
   characters: any[],
   font: string,
+  T: MainText,
 ) {
   const x = 30;
   const y = 86;
@@ -294,7 +337,7 @@ async function drawContactRail(
   ctx.font = `bold 10px ${font}`;
   ctx.fillStyle = "#8e9597";
   ctx.textAlign = "left";
-  ctx.fillText("通訊錄", x + 15, y + 70);
+  ctx.fillText(T.contacts, x + 15, y + 70);
   ctx.fillStyle = "#394043";
   ctx.fillRect(x + 62, y + 65, width - 78, 1);
 
@@ -368,7 +411,7 @@ async function drawContactRail(
     );
     ctx.font = `bold 8px ${font}`;
     ctx.fillStyle = selected ? "#596020" : "#899092";
-    ctx.fillText(online ? "線上" : "離線", x + 57, rowY + 33);
+    ctx.fillText(online ? T.online : T.offline, x + 57, rowY + 33);
 
     const rank = Number(character?.rank ?? 0);
     if (rank > 0) {
@@ -396,6 +439,7 @@ async function drawAccountCard(
   font: string,
   userData: any,
   record: any,
+  T: MainText,
 ) {
   const show = record?.game_data_show ?? {};
   const x = 360;
@@ -497,7 +541,7 @@ async function drawAccountCard(
   ctx.font = `bold 13px ${font}`;
   ctx.fillStyle = titleGradient;
   ctx.textAlign = "left";
-  ctx.fillText(title || "尚未設定稱號", nameX + 12, y + 83);
+  ctx.fillText(title || T.noTitle, nameX + 12, y + 83);
 
   const uid = userData?.game_role_id;
   const region = userData?.region_name;
@@ -518,6 +562,7 @@ async function drawProfileBody(
   font: string,
   userData: any,
   record: any,
+  T: MainText,
 ) {
   const panelX = 342;
   const panelY = 86;
@@ -525,17 +570,17 @@ async function drawProfileBody(
   const panelH = 504;
   ctx.fillStyle = "#202426";
   ctx.fillRect(panelX, panelY, panelW, panelH);
-  await drawAccountCard(ctx, font, userData, record);
+  await drawAccountCard(ctx, font, userData, record, T);
 
   const contentX = 360;
   const contentW = 592;
   const stats = record?.stats ?? {};
-  drawSectionHeader(ctx, contentX, 242, contentW, "繩匠統計", font);
+  drawSectionHeader(ctx, contentX, 242, contentW, T.stats, font);
   const statItems: Array<[string, unknown]> = [
-    ["活躍天數", stats.active_days],
-    ["角色數量", stats.avatar_num],
-    ["邦布數量", stats.buddy_num],
-    ["成就總數", stats.achievement_count],
+    [T.activeDays, stats.active_days],
+    [T.agents, stats.avatar_num],
+    [T.bangboo, stats.buddy_num],
+    [T.achievements, stats.achievement_count],
   ];
   const statY = 276;
   const statH = 72;
@@ -556,7 +601,7 @@ async function drawProfileBody(
     ctx.fillText(compactNumber(value), x + statW / 2, statY + 52);
   }
 
-  drawSectionHeader(ctx, contentX, 356, contentW, "公開徽章", font);
+  drawSectionHeader(ctx, contentX, 356, contentW, T.badges, font);
   const show = record?.game_data_show ?? {};
   const medals = (show.all_medal_list ?? show.medal_item_list ?? []).slice(
     0,
@@ -600,6 +645,7 @@ export async function drawKnockKnockMainProfile(
 ): Promise<Buffer | null> {
   try {
     const font = fonts[userLocale] ?? fonts.default;
+    const T = getMainText(userLocale);
     const canvas = createCanvas(W, H);
     const ctx = canvas.getContext("2d");
 
@@ -652,8 +698,8 @@ export async function drawKnockKnockMainProfile(
     ctx.lineTo(937, 59);
     ctx.stroke();
 
-    await drawContactRail(ctx, characters, font);
-    await drawProfileBody(ctx, font, userData, record);
+    await drawContactRail(ctx, characters, font, T);
+    await drawProfileBody(ctx, font, userData, record, T);
     return canvas.toBuffer("image/png");
   } catch (error) {
     console.error("Error generating Knock Knock main profile:", error);
