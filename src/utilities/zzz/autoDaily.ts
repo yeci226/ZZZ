@@ -121,7 +121,8 @@ export class AutoDailyService {
         const config = dailyData[userId];
         let scheduledHour = Number(config.time ?? 13);
         if (!Number.isFinite(scheduledHour)) scheduledHour = 13;
-        if (scheduledHour < 0 || scheduledHour > 23) scheduledHour = 13;
+        if (scheduledHour === 24) scheduledHour = 0;
+        else if (scheduledHour < 0 || scheduledHour > 23) scheduledHour = 13;
 
         // Catch-up behavior: if the bot missed the exact hour (restart/offline),
         // run once later the same day as long as it has not been processed today.
@@ -291,13 +292,14 @@ export class AutoDailyService {
       }
     }
 
-    // Only mark the day as processed when at least one account completed successfully
-    // (or was already signed). This allows retry on later hourly runs after transient errors.
-    stats.shouldMarkProcessed = stats.success + stats.alreadySigned > 0;
+    const notificationDelivered =
+      results.length === 0 ||
+      (await this.sendNotification(userId, config, results, tr));
 
-    if (results.length > 0) {
-      await this.sendNotification(userId, config, results, tr);
-    }
+    // If every delivery path failed, leave the day unprocessed so the next
+    // hourly run retries the notification instead of silently losing it.
+    stats.shouldMarkProcessed =
+      stats.success + stats.alreadySigned > 0 && notificationDelivered;
 
     if (recoveredAccountIndices.length > 0) {
       for (const idx of recoveredAccountIndices) {
@@ -326,7 +328,8 @@ export class AutoDailyService {
     config: AutoDailyConfig,
     results: SignInResult[],
     tr: any,
-  ) {
+  ): Promise<boolean> {
+    let delivered = false;
     const tag =
       config.tag === "true" || config.tag === true ? `<@${userId}>` : "";
 
@@ -390,11 +393,11 @@ export class AutoDailyService {
 
     try {
       if (notifyMethod === "dm") {
-        // Send each card as a separate message to avoid image stacking
+        // Send each card separately so Discord does not stack multiple cards.
         for (let i = 0; i < cardFiles.length; i++) {
           const cardFile = cardFiles[i];
           const isFirst = i === 0;
-          await this.client.cluster.broadcastEval(
+          const sendResults = await this.client.cluster.broadcastEval(
             async (c: any, context: any) => {
               const { userId, channelId, content, cardFile } = context;
               try {
@@ -403,16 +406,24 @@ export class AutoDailyService {
                   Buffer.from(cardFile.buffer, "base64"),
                   { name: cardFile.name },
                 );
+                const payload: any = { files: [file] };
+                if (content) payload.content = content;
+
                 const user = await c.users.fetch(userId).catch(() => null);
                 if (user) {
-                  const dmPayload: any = { files: [file] };
-                  if (content) dmPayload.content = content;
-                  await user.send(dmPayload).catch(async () => {
-                    const channel = c.channels.cache.get(channelId);
-                    if (channel) await channel.send(dmPayload);
-                  });
+                  try {
+                    await user.send(payload);
+                    return true;
+                  } catch {}
                 }
-              } catch (e) {}
+
+                const channel = c.channels.cache.get(channelId);
+                if (!channel) return false;
+                await channel.send(payload);
+                return true;
+              } catch {
+                return false;
+              }
             },
             {
               cluster: 0,
@@ -424,21 +435,30 @@ export class AutoDailyService {
               },
             },
           );
+          if (sendResults.some(Boolean)) delivered = true;
         }
-        // Send error embeds (if any) as a separate message
+
         if (errorEmbeds.length > 0) {
-          await this.client.cluster.broadcastEval(
+          const sendResults = await this.client.cluster.broadcastEval(
             async (c: any, context: any) => {
               const { userId, channelId, errorEmbeds } = context;
+              const payload = { embeds: errorEmbeds };
               try {
                 const user = await c.users.fetch(userId).catch(() => null);
                 if (user) {
-                  await user.send({ embeds: errorEmbeds }).catch(async () => {
-                    const channel = c.channels.cache.get(channelId);
-                    if (channel) await channel.send({ embeds: errorEmbeds });
-                  });
+                  try {
+                    await user.send(payload);
+                    return true;
+                  } catch {}
                 }
-              } catch (e) {}
+
+                const channel = c.channels.cache.get(channelId);
+                if (!channel) return false;
+                await channel.send(payload);
+                return true;
+              } catch {
+                return false;
+              }
             },
             {
               cluster: 0,
@@ -449,25 +469,31 @@ export class AutoDailyService {
               },
             },
           );
+          if (sendResults.some(Boolean)) delivered = true;
         }
       } else {
-        // Send each card as a separate message to avoid image stacking
         for (let i = 0; i < cardFiles.length; i++) {
           const cardFile = cardFiles[i];
           const isFirst = i === 0;
-          await this.client.cluster.broadcastEval(
+          const sendResults = await this.client.cluster.broadcastEval(
             async (c: any, context: any) => {
               const { channelId, content, cardFile } = context;
               try {
                 const channel = c.channels.cache.get(channelId);
-                if (!channel) return;
+                if (!channel) return false;
                 const { AttachmentBuilder } = await import("discord.js");
                 const file = new AttachmentBuilder(
                   Buffer.from(cardFile.buffer, "base64"),
                   { name: cardFile.name },
                 );
-                await channel.send({ content: content || undefined, files: [file] });
-              } catch (e) {}
+                await channel.send({
+                  content: content || undefined,
+                  files: [file],
+                });
+                return true;
+              } catch {
+                return false;
+              }
             },
             {
               context: {
@@ -477,16 +503,21 @@ export class AutoDailyService {
               },
             },
           );
+          if (sendResults.some(Boolean)) delivered = true;
         }
+
         if (errorEmbeds.length > 0) {
-          await this.client.cluster.broadcastEval(
+          const sendResults = await this.client.cluster.broadcastEval(
             async (c: any, context: any) => {
               const { channelId, errorEmbeds } = context;
               try {
                 const channel = c.channels.cache.get(channelId);
-                if (!channel) return;
+                if (!channel) return false;
                 await channel.send({ embeds: errorEmbeds });
-              } catch (e) {}
+                return true;
+              } catch {
+                return false;
+              }
             },
             {
               context: {
@@ -495,11 +526,14 @@ export class AutoDailyService {
               },
             },
           );
+          if (sendResults.some(Boolean)) delivered = true;
         }
       }
     } catch (error) {
       this.logger.error(`發送通知失敗 (User: ${userId}): ${error}`);
     }
+
+    return delivered;
   }
 
   private async updateStatistics(
