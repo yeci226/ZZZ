@@ -8,12 +8,8 @@ import {
   ChatInputCommandInteraction,
 } from "discord.js";
 import Logger from "./core/logger.js";
-import {
-  ZenlessZoneZero,
-  LanguageEnum,
-  HoyoAPIError,
-  Hoyolab,
-} from "@yeci226/hoyoapi";
+import { LanguageEnum, HoyoAPIError, Hoyolab } from "@yeci226/hoyoapi";
+import { createZzzClient } from "./zzz/clientFactory.js";
 import { loadImage } from "@napi-rs/canvas";
 import {
   upsertHoyolab,
@@ -571,10 +567,7 @@ export async function getUserZZZData(
     : getLanguage(interaction.locale);
 
   try {
-    const zzz = new ZenlessZoneZero({ cookie, lang, uid: Number(uid) });
-    await zzz.daily.info();
-
-    return zzz;
+    return createZzzClient({ cookie, lang, uid: Number(uid) });
   } catch (error) {
     const isHoyoAPIError = error instanceof HoyoAPIError;
     const errorCode = isHoyoAPIError ? error.code : error;

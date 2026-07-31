@@ -328,8 +328,13 @@ export async function drawMainImage(
   record: any,
   characters: any[] = record?.avatar_list ?? [],
 ) {
-  void tr;
-  return drawKnockKnockMainProfile(userLocale, userData, record, characters);
+  return drawKnockKnockMainProfile(
+    tr,
+    userLocale,
+    userData,
+    record,
+    characters,
+  );
 
   try {
     const selectedFont =
@@ -1012,27 +1017,14 @@ export async function drawCharacterImage(
 
     // Draw Visuals
     if (usePainting) {
-      const drawCover = (img: Image, centerOnFace = false) => {
+      const drawCover = (img: Image) => {
         const scaleW = canvas.width / img.width;
         const scaleH = canvas.height / img.height;
         const scale = Math.max(scaleW, scaleH);
         const scaledWidth = img.width * scale;
         const scaledHeight = img.height * scale;
-        let x: number;
-        let y: number;
-        if (centerOnFace && paintingEntryId !== null) {
-          const { faceX, faceY } = getFacePos(paintingEntryId);
-          // Center face in the visible area between left and right panels
-          const visibleCenterX = (MIDDLE_PANEL_X + RIGHT_PANEL_X) / 2;
-          x = visibleCenterX - faceX * scaledWidth;
-          y = canvas.height / 2 - faceY * scaledHeight;
-          // Clamp so image always covers canvas (no white edges)
-          x = Math.min(0, Math.max(canvas.width - scaledWidth, x));
-          y = Math.min(0, Math.max(canvas.height - scaledHeight, y));
-        } else {
-          x = (canvas.width - scaledWidth) / 2;
-          y = (canvas.height - scaledHeight) / 2;
-        }
+        const x = (canvas.width - scaledWidth) / 2;
+        const y = (canvas.height - scaledHeight) / 2;
         ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
       };
 
@@ -1042,9 +1034,15 @@ export async function drawCharacterImage(
         (rankDependentPainting || paintingRank > 0)
       ) {
         const rank = paintingRank;
-        const img0 = allPaintingPaths[0] ? await loadImageAsync(allPaintingPaths[0]) : null;
-        const img1 = allPaintingPaths[1] ? await loadImageAsync(allPaintingPaths[1]) : null;
-        const img2 = allPaintingPaths[2] ? await loadImageAsync(allPaintingPaths[2]) : null;
+        const img0 = allPaintingPaths[0]
+          ? await loadImageAsync(allPaintingPaths[0])
+          : null;
+        const img1 = allPaintingPaths[1]
+          ? await loadImageAsync(allPaintingPaths[1])
+          : null;
+        const img2 = allPaintingPaths[2]
+          ? await loadImageAsync(allPaintingPaths[2])
+          : null;
         const base0 = img0 ?? characterImage;
         const base1 = img1 ?? base0;
         const base2 = img2 ?? base1;
@@ -1055,12 +1053,9 @@ export async function drawCharacterImage(
         const refScale = Math.max(W / refImg.width, H / refImg.height);
         const refW = refImg.width * refScale;
         const refH = refImg.height * refScale;
+        const refX = (W - refW) / 2;
+        const refY = (H - refH) / 2;
         const { faceX, faceY } = getFacePos(paintingEntryId!);
-        // Compute the actual draw offset (same logic as drawCover with centerOnFace=true)
-        const refXCentered = W / 2 - faceX * refW;
-        const refX = Math.min(0, Math.max(W - refW, refXCentered));
-        const refYCentered = H / 2 - faceY * refH;
-        const refY = Math.min(0, Math.max(H - refH, refYCentered));
         const faceCanvasX = refX + faceX * refW;
         const faceCanvasY = refY + faceY * refH;
 
@@ -1092,7 +1087,10 @@ export async function drawCharacterImage(
             awayLen = 1;
           }
 
-          const edgeCenter = edgePointFromFace(awayX / awayLen, awayY / awayLen);
+          const edgeCenter = edgePointFromFace(
+            awayX / awayLen,
+            awayY / awayLen,
+          );
           const axisX = faceCanvasX - edgeCenter.x;
           const axisY = faceCanvasY - edgeCenter.y;
           const axisLen = Math.sqrt(axisX * axisX + axisY * axisY) || 1;
@@ -1164,7 +1162,8 @@ export async function drawCharacterImage(
           };
           const targetY = side === "bottom" ? H : 0;
           const sign =
-            ((W / 2 - midpoint.x) * normalX + (targetY - midpoint.y) * normalY) >= 0
+            (W / 2 - midpoint.x) * normalX + (targetY - midpoint.y) * normalY >=
+            0
               ? 1
               : -1;
           const offset = Math.sqrt(W * W + H * H) * 2 * sign;
@@ -1172,45 +1171,51 @@ export async function drawCharacterImage(
           ctx.beginPath();
           ctx.moveTo(boundary.start.x, boundary.start.y);
           ctx.lineTo(boundary.end.x, boundary.end.y);
-          ctx.lineTo(boundary.end.x + normalX * offset, boundary.end.y + normalY * offset);
-          ctx.lineTo(boundary.start.x + normalX * offset, boundary.start.y + normalY * offset);
+          ctx.lineTo(
+            boundary.end.x + normalX * offset,
+            boundary.end.y + normalY * offset,
+          );
+          ctx.lineTo(
+            boundary.start.x + normalX * offset,
+            boundary.start.y + normalY * offset,
+          );
           ctx.closePath();
           ctx.clip();
         };
 
         if (rank === 0) {
-          drawCover(base0, true);
+          drawCover(base0);
         } else if (rank === 1) {
-          drawCover(base0, true);
+          drawCover(base0);
           ctx.save();
           clipFaceFan();
-          drawCover(base1, true);
+          drawCover(base1);
           ctx.restore();
         } else if (rank === 2) {
-          drawCover(base0, true);
+          drawCover(base0);
           ctx.save();
           clipStageTwoSide();
-          drawCover(base1, true);
+          drawCover(base1);
           ctx.restore();
         } else if (rank === 3) {
-          drawCover(base1, true);
+          drawCover(base1);
         } else if (rank === 4) {
-          drawCover(base1, true);
+          drawCover(base1);
           ctx.save();
           clipFaceFan();
-          drawCover(base2, true);
+          drawCover(base2);
           ctx.restore();
         } else if (rank === 5) {
-          drawCover(base1, true);
+          drawCover(base1);
           ctx.save();
           clipStageTwoSide();
-          drawCover(base2, true);
+          drawCover(base2);
           ctx.restore();
         } else {
-          drawCover(base2, true);
+          drawCover(base2);
         }
       } else {
-        drawCover(characterImage, true);
+        drawCover(characterImage);
       }
     } else {
       drawAgentPortrait(
@@ -1499,13 +1504,7 @@ function drawPropertiesBox(
     const propertyFinalValue = prop.final;
 
     const image = propertyImages[index];
-    ctx.drawImage(
-      image,
-      iconX,
-      180 + offset_y,
-      48,
-      48,
-    );
+    ctx.drawImage(image, iconX, 180 + offset_y, 48, 48);
 
     let fontSize = 32;
     ctx.font = `${fontSize}px ${selectedFont}`;

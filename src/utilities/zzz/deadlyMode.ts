@@ -145,6 +145,66 @@ export function getDeadlyModeLabels(locale: string): DeadlyModeLabels {
     };
   }
 
+  if (normalized === "jp" || normalized === "ja" || normalized === "ja-jp") {
+    return {
+      placeholder: "危局強襲戦モードを切り替え",
+      normal: "通常モード",
+      extreme: "極限モード",
+      score: "スコア",
+      stars: "星数",
+      clearTime: "クリア時刻",
+      team: "編成",
+      bangboo: "ボンプ",
+      weakness: "弱点",
+      buff: "ステージ効果",
+    };
+  }
+
+  if (normalized === "kr" || normalized === "ko" || normalized === "ko-kr") {
+    return {
+      placeholder: "위국 강습 모드 전환",
+      normal: "일반 모드",
+      extreme: "극한 모드",
+      score: "점수",
+      stars: "별",
+      clearTime: "클리어 시각",
+      team: "출전 파티",
+      bangboo: "Bangboo",
+      weakness: "약점",
+      buff: "스테이지 효과",
+    };
+  }
+
+  if (normalized === "fr" || normalized === "fr-fr") {
+    return {
+      placeholder: "Changer le mode d’Assaut mortel",
+      normal: "Mode normal",
+      extreme: "Mode extrême",
+      score: "Score",
+      stars: "Étoiles",
+      clearTime: "Heure de réussite",
+      team: "Équipe",
+      bangboo: "Bangbou",
+      weakness: "Faiblesse",
+      buff: "Effet de combat",
+    };
+  }
+
+  if (normalized === "vi" || normalized === "vi-vn") {
+    return {
+      placeholder: "Chuyển chế độ Tấn Công Nguy Hiểm",
+      normal: "Chế độ thường",
+      extreme: "Chế độ cực hạn",
+      score: "Điểm",
+      stars: "Sao",
+      clearTime: "Thời gian hoàn thành",
+      team: "Đội hình",
+      bangboo: "Bangboo",
+      weakness: "Điểm yếu",
+      buff: "Hiệu ứng ải",
+    };
+  }
+
   if (normalized !== "tw" && normalized !== "zh-tw") {
     return {
       placeholder: "Switch Deadly Assault mode",

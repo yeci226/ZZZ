@@ -68,45 +68,33 @@ type CharacterText = {
   totalValidRolls: string;
 };
 
-function getCharacterText(locale: string): CharacterText {
-  if (locale.toLowerCase().startsWith("en")) {
-    return {
-      level: "Level",
-      cinema: "Cinema",
-      agentStats: "Agent Stats",
-      skills: "Skills",
-      skillLabels: [
-        "Basic Attack",
-        "Special Attack",
-        "Dodge",
-        "Chain Attack",
-        "Assist",
-        "Core Skill",
-      ],
-      wEngine: "W-Engine",
-      noWEngine: "No W-Engine Equipped",
-      slotUnequipped: (slot) => `Slot ${slot} · Not Equipped`,
-      validRolls: "Valid Rolls",
-      twoPiece: "2-Pc",
-      fourPiece: "4-Pc",
-      driveDiscs: "Drive Discs",
-      totalValidRolls: "Total Valid Rolls",
-    };
-  }
+function getCharacterText(
+  tr: (key: string, args?: any) => string,
+): CharacterText {
   return {
-    level: "等級",
-    cinema: "影畫",
-    agentStats: "角色屬性",
-    skills: "技能",
-    skillLabels: ["普通攻擊", "特殊技", "閃避", "連攜技", "支援技", "核心技"],
-    wEngine: "音擎",
-    noWEngine: "未裝備音擎",
-    slotUnequipped: (slot) => `槽位 ${slot}・未裝備`,
-    validRolls: "有效詞條",
-    twoPiece: "二件套",
-    fourPiece: "四件套",
-    driveDiscs: "驅動盤",
-    totalValidRolls: "總有效詞條數",
+    level: tr("profileCharacter_Level") || "Level",
+    cinema: tr("profileCharacter_Cinema") || "Cinema",
+    agentStats: tr("profileCharacter_AgentStats") || "Agent Stats",
+    skills: tr("profileCharacter_Skills") || "Skills",
+    skillLabels: [
+      tr("profileCharacter_BasicAttack") || "Basic Attack",
+      tr("profileCharacter_SpecialAttack") || "Special Attack",
+      tr("profileCharacter_Dodge") || "Dodge",
+      tr("profileCharacter_ChainAttack") || "Chain Attack",
+      tr("profileCharacter_Assist") || "Assist",
+      tr("profileCharacter_CoreSkill") || "Core Skill",
+    ],
+    wEngine: tr("profileCharacter_WEngine") || "W-Engine",
+    noWEngine: tr("profileCharacter_NoWEngine") || "No W-Engine Equipped",
+    slotUnequipped: (slot) =>
+      tr("profileCharacter_SlotUnequipped", { slot }) ||
+      `Slot ${slot} · Not Equipped`,
+    validRolls: tr("profileCharacter_ValidRolls") || "Valid Rolls",
+    twoPiece: tr("profileCharacter_TwoPiece") || "2-Pc",
+    fourPiece: tr("profileCharacter_FourPiece") || "4-Pc",
+    driveDiscs: tr("profileCharacter_DriveDiscs") || "Drive Discs",
+    totalValidRolls:
+      tr("profileCharacter_TotalValidRolls") || "Total Valid Rolls",
   };
 }
 
@@ -609,9 +597,10 @@ async function composeRankDependentPainting(
   const ctx = canvas.getContext("2d");
   const composition = getMindscapeComposition(rank);
   const base = images[composition.baseIndex] ?? reference;
-  const overlay = composition.overlayIndex === undefined
-    ? null
-    : images[composition.overlayIndex];
+  const overlay =
+    composition.overlayIndex === undefined
+      ? null
+      : images[composition.overlayIndex];
 
   const drawCoverImage = (image: Image) => {
     const scale = Math.max(width / image.width, height / image.height);
@@ -663,7 +652,10 @@ async function composeRankDependentPainting(
       awayY = 0;
       awayLength = 1;
     }
-    const edgeCenter = edgePointFromFace(awayX / awayLength, awayY / awayLength);
+    const edgeCenter = edgePointFromFace(
+      awayX / awayLength,
+      awayY / awayLength,
+    );
     const axisX = faceCanvasX - edgeCenter.x;
     const axisY = faceCanvasY - edgeCenter.y;
     const axisLength = Math.sqrt(axisX * axisX + axisY * axisY) || 1;
@@ -704,7 +696,12 @@ async function composeRankDependentPainting(
       (edgeA.start.y + edgeA.end.y) / 2 <= (edgeB.start.y + edgeB.end.y) / 2
         ? edgeA
         : edgeB;
-    return { edgeA, edgeB, upperEdge, lowerEdge: upperEdge === edgeA ? edgeB : edgeA };
+    return {
+      edgeA,
+      edgeB,
+      upperEdge,
+      lowerEdge: upperEdge === edgeA ? edgeB : edgeA,
+    };
   };
 
   ctx.save();
@@ -739,8 +736,14 @@ async function composeRankDependentPainting(
     ctx.beginPath();
     ctx.moveTo(boundary.start.x, boundary.start.y);
     ctx.lineTo(boundary.end.x, boundary.end.y);
-    ctx.lineTo(boundary.end.x + normalX * offset, boundary.end.y + normalY * offset);
-    ctx.lineTo(boundary.start.x + normalX * offset, boundary.start.y + normalY * offset);
+    ctx.lineTo(
+      boundary.end.x + normalX * offset,
+      boundary.end.y + normalY * offset,
+    );
+    ctx.lineTo(
+      boundary.start.x + normalX * offset,
+      boundary.start.y + normalY * offset,
+    );
     ctx.closePath();
     ctx.clip();
   }
@@ -1455,7 +1458,7 @@ async function drawSetCard(
     baselineY: number,
     maxLines: number,
   ) => {
-    const labelText = `${label}${label.includes("件套") ? "：" : ": "}`;
+    const labelText = `${label}: `;
     const labelWidth = ctx.measureText(labelText).width;
     ctx.fillStyle = accent;
     ctx.fillText(labelText, descX, baselineY);
@@ -1592,7 +1595,7 @@ export async function drawOfficialCharacterProfile(
       : characterDataInput;
     if (!character) return null;
     const font = resolveProfileFont(userLocale);
-    const T = getCharacterText(userLocale);
+    const T = getCharacterText(tr);
     const accent = safeAccent(
       character.vertical_painting_color,
       Number(character.element_type),

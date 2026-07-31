@@ -26,7 +26,52 @@ import {
   Image,
 } from "@napi-rs/canvas";
 import { join } from "path";
+import { drawDeadlyCombinedImage } from "./deadlyCombined.js";
 const drawQueue = new Queue({ autostart: true });
+const DEADLY_DETAIL_V2_API =
+  "https://sg-public-api.hoyolab.com/event/game_record_zzz/api/zzz/hadal_mem_detail_v2";
+const DEADLY_ABSTRACT_INFO_API =
+  "https://sg-public-api.hoyolab.com/event/game_record_zzz/api/zzz/hadal_mem_abstract_info";
+
+async function getDeadlyDetailV2(zzz: any, schedule: number) {
+  try {
+    const request = zzz?.record?.request;
+    if (!request) return null;
+    request
+      .setQueryParams({
+        region: zzz.region,
+        uid: zzz.uid,
+        schedule_type: schedule,
+        lang: zzz.lang || "zh-tw",
+        need_all: "true",
+      })
+      .setDs();
+    const { response } = await request.send(DEADLY_DETAIL_V2_API);
+    return response?.retcode === 0 ? response.data : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getDeadlyAbstractInfo(zzz: any, schedule: number) {
+  try {
+    const request = zzz?.record?.request;
+    if (!request) return null;
+    request
+      .setQueryParams({
+        region: zzz.region,
+        uid: zzz.uid,
+        schedule_type: schedule,
+        lang: zzz.lang || "zh-tw",
+        need_all: "true",
+      })
+      .setDs();
+    const { response } = await request.send(DEADLY_ABSTRACT_INFO_API);
+    return response?.retcode === 0 ? response.data : null;
+  } catch {
+    return null;
+  }
+}
 
 GlobalFonts.registerFromPath(
   join(".", "src", ".", "assets", "en-us.ttf"),
@@ -119,20 +164,21 @@ export async function handleDeadlyDraw(
         (await getUserLang(interaction.user.id)) ||
         toI18nLang(interaction.locale) ||
         "en";
-      const deadlyData = await zzz.record.deadlyAssault(schedule);
+      const deadlyData =
+        (await getDeadlyDetailV2(zzz, schedule)) ||
+        (await zzz.record.deadlyAssault(schedule));
       if (!deadlyData.has_data)
         return failedReply(interaction, tr("NonData"), tr("NonDataDesc"));
+      const abstractInfo = await getDeadlyAbstractInfo(zzz, schedule);
+      if (abstractInfo) (deadlyData as any).abstract_info = abstractInfo;
       const requestEndTime = Date.now();
 
       // Generate
       const drawStartTime = Date.now();
-      const selection = getDeadlyModeBattle(deadlyData, requestedMode);
-      const mode = selection.mode;
-      const imageBuffer = await drawDeadlyImage(
+      const imageBuffer = await drawDeadlyCombinedImage(
         tr,
         userLocale,
         deadlyData,
-        mode,
       );
       if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
       const drawEndTime = Date.now();
@@ -145,14 +191,7 @@ export async function handleDeadlyDraw(
       interaction.editReply({
         embeds: [],
         files: [image],
-        components: modeContext
-          ? buildDeadlyModeComponents(
-              userLocale,
-              deadlyData,
-              mode,
-              modeContext,
-            )
-          : [],
+        components: [],
       });
     } catch (error: any) {
       if (error?.code == "-501000") {
@@ -220,6 +259,16 @@ export function buildDeadlyModeComponents(
 }
 
 export async function drawDeadlyImage(
+  tr: any,
+  userLocale: string,
+  deadlyData: any,
+  _requestedMode: DeadlyAssaultViewMode = "normal",
+) {
+  return drawDeadlyCombinedImage(tr, userLocale, deadlyData);
+}
+
+// Kept temporarily for safe rollback while the combined layout is being reviewed.
+async function drawDeadlyLegacyImage(
   tr: any,
   userLocale: string,
   deadlyData: any,

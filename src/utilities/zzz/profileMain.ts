@@ -58,32 +58,18 @@ type MainText = {
   badges: string;
 };
 
-function getMainText(locale: string): MainText {
-  if (locale.toLowerCase().startsWith("en")) {
-    return {
-      contacts: "Contacts",
-      online: "Online",
-      offline: "Offline",
-      noTitle: "No Title Set",
-      stats: "Proxy Statistics",
-      activeDays: "Active Days",
-      agents: "Agents",
-      bangboo: "Bangboo",
-      achievements: "Achievements",
-      badges: "Public Badges",
-    };
-  }
+function getMainText(tr: (key: string, args?: any) => string): MainText {
   return {
-    contacts: "通訊錄",
-    online: "線上",
-    offline: "離線",
-    noTitle: "尚未設定稱號",
-    stats: "繩匠統計",
-    activeDays: "活躍天數",
-    agents: "角色數量",
-    bangboo: "邦布數量",
-    achievements: "成就總數",
-    badges: "公開徽章",
+    contacts: tr("profileMain_Contacts") || "Contacts",
+    online: tr("profileMain_Online") || "Online",
+    offline: tr("profileMain_Offline") || "Offline",
+    noTitle: tr("profileMain_NoTitle") || "No Title Set",
+    stats: tr("profileMain_Stats") || "Proxy Statistics",
+    activeDays: tr("profileMain_ActiveDays") || "Active Days",
+    agents: tr("profileMain_Agents") || "Agents",
+    bangboo: tr("profileMain_Bangboo") || "Bangboo",
+    achievements: tr("profileMain_Achievements") || "Achievements",
+    badges: tr("profileMain_Badges") || "Public Badges",
   };
 }
 
@@ -638,6 +624,7 @@ async function drawProfileBody(
 }
 
 export async function drawKnockKnockMainProfile(
+  tr: (key: string, args?: any) => string,
   userLocale: string,
   userData: any,
   record: any,
@@ -645,7 +632,7 @@ export async function drawKnockKnockMainProfile(
 ): Promise<Buffer | null> {
   try {
     const font = fonts[userLocale] ?? fonts.default;
-    const T = getMainText(userLocale);
+    const T = getMainText(tr);
     const canvas = createCanvas(W, H);
     const ctx = canvas.getContext("2d");
 

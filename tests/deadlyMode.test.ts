@@ -14,8 +14,12 @@ const ignoredExtreme = { score: 888, boss: [{ name: "不應顯示" }] };
 
 describe("危局強襲戰模式選擇", () => {
   it("只有 API 明確 has_hard 且 hard_list 非空才提供絕境模式", () => {
-    expect(hasDeadlyExtremeMode({ has_hard: true, hard_list: [extremeOne] })).toBe(true);
-    expect(hasDeadlyExtremeMode({ has_hard: false, hard_list: [extremeOne] })).toBe(false);
+    expect(
+      hasDeadlyExtremeMode({ has_hard: true, hard_list: [extremeOne] }),
+    ).toBe(true);
+    expect(
+      hasDeadlyExtremeMode({ has_hard: false, hard_list: [extremeOne] }),
+    ).toBe(false);
     expect(hasDeadlyExtremeMode({ hard_list: [extremeOne] })).toBe(false);
     expect(hasDeadlyExtremeMode({ has_hard: true, hard_list: [] })).toBe(false);
   });
@@ -48,7 +52,10 @@ describe("危局強襲戰模式選擇", () => {
 
   it("絕境資料失效時安全退回一般模式", () => {
     expect(
-      getDeadlyModeBattle({ list: [normalOne], has_hard: false, hard_list: [] }, "extreme"),
+      getDeadlyModeBattle(
+        { list: [normalOne], has_hard: false, hard_list: [] },
+        "extreme",
+      ),
     ).toEqual({ mode: "normal", battles: [normalOne] });
   });
 
