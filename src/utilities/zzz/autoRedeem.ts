@@ -10,6 +10,7 @@ import {
 import { buildZZZRedeemCard } from "../canvas/redeemCard.js";
 import { getLegacyAccounts } from "../accountStore.js";
 import { hasUnredeemedCodes } from "../core/redeemSchedule.js";
+import { getFirstRedeemRewardIcon } from "./redeemLayout.js";
 
 // Constants
 const CONFIG = {
@@ -159,7 +160,12 @@ class AutoRedeemSystem {
 
   formatResults(results: any[], tr: (key: string) => string) {
     const description: string[] = [];
-    const codeResults: Array<{ code: string; rewards?: string[]; status: "success" | "already_claimed" | "invalid" | "failed" }> = [];
+    const codeResults: Array<{
+      code: string;
+      rewards?: string[] | string;
+      rewardIcons?: string[];
+      status: "success" | "already_claimed" | "invalid" | "failed";
+    }> = [];
     const stats = {
       success: 0,
       alreadyClaimed: 0,
@@ -169,16 +175,28 @@ class AutoRedeemSystem {
 
     results.forEach((result) => {
       const { code, status } = result;
+      const firstRewardIcon = getFirstRedeemRewardIcon(code);
+      const rewardIcons = firstRewardIcon ? [firstRewardIcon] : undefined;
       if (status.success) {
         description.push(`✅ **${code.code}** - (${tr("redeem_Success")})`);
-        codeResults.push({ code: code.code, rewards: code.rewards, status: "success" });
+        codeResults.push({
+          code: code.code,
+          rewards: code.rewards,
+          rewardIcons,
+          status: "success",
+        });
         stats.success++;
       } else if (status.alreadyClaimed) {
         // 已兌換過：靜默記錄，不推播通知（已加入 redeemedCodes，下次不會再嘗試）
         stats.alreadyClaimed++;
       } else if (status.invalid) {
         description.push(`⚠️ **${code.code}** - (${tr("redeem_Invalid")})`);
-        codeResults.push({ code: code.code, rewards: code.rewards, status: "invalid" });
+        codeResults.push({
+          code: code.code,
+          rewards: code.rewards,
+          rewardIcons,
+          status: "invalid",
+        });
         stats.invalid++;
       } else {
         // 失敗類型（包含 Cookie 待刷新、風控等）不推播到頻道，避免干擾使用者

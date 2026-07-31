@@ -1,4 +1,5 @@
 import {
+  formatBattleRecordDate,
   formatBattleRecordTime,
   getClearTimeLabel,
   getDeadlyAssaultModeLabel,
@@ -36,6 +37,11 @@ describe("ZZZ 戰績時間顯示", () => {
   it("通關時間標籤在繁中介面不會退回英文 key", () => {
     expect(getClearTimeLabel("tw")).toBe("過關時刻");
     expect(getClearTimeLabel("en")).toBe("Clear Time");
+  });
+
+  it("繁中介面的活動日期不會退回英文月份", () => {
+    expect(formatBattleRecordDate({ month: 7, day: 31 }, "tw")).toBe("7月31日");
+    expect(formatBattleRecordDate({ month: 7, day: 31 }, "en")).toBe("Jul 31");
   });
 
   it("只有舊 payload 提供正數 battle_time 時才顯示耗時", () => {
@@ -99,18 +105,18 @@ describe("31 日簽到資料", () => {
 });
 
 describe("自動兌換版面", () => {
-  it("多於一列的兌換碼會增加帳號區塊與畫布高度", () => {
-    const oneRow = calculateRedeemCardLayout([2]);
-    const twoRows = calculateRedeemCardLayout([3]);
-    expect(oneRow.tilesPerRow).toBe(2);
-    expect(twoRows.accountHeights[0]).toBeGreaterThan(oneRow.accountHeights[0]);
-    expect(twoRows.canvasHeight).toBeGreaterThan(oneRow.canvasHeight);
+  it("每個兌換碼固定一列，更多兌換碼會增加帳號區塊與畫布高度", () => {
+    const oneCode = calculateRedeemCardLayout([1]);
+    const threeCodes = calculateRedeemCardLayout([3]);
+    expect(oneCode.rowHeight).toBeGreaterThanOrEqual(80);
+    expect(threeCodes.accountHeights[0]).toBeGreaterThan(oneCode.accountHeights[0]);
+    expect(threeCodes.canvasHeight).toBeGreaterThan(oneCode.canvasHeight);
   });
 
-  it("每種結果都有清楚且不同的狀態文字", () => {
-    expect(getRedeemStatusPresentation("success").label).toBe("成功");
+  it("每種結果都有簡短且不同的狀態文字", () => {
+    expect(getRedeemStatusPresentation("success").label).toBe("兌換成功");
     expect(getRedeemStatusPresentation("already_claimed").label).toBe("已兌換");
-    expect(getRedeemStatusPresentation("invalid").label).toBe("無效");
-    expect(getRedeemStatusPresentation("failed").label).toBe("失敗");
+    expect(getRedeemStatusPresentation("invalid").label).toBe("兌換碼無效");
+    expect(getRedeemStatusPresentation("failed").label).toBe("兌換失敗");
   });
 });

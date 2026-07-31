@@ -1,15 +1,14 @@
 import { createCanvas, loadImage, GlobalFonts } from "@napi-rs/canvas";
 import axios from "axios";
 import fs from "fs";
-import moment from "moment-timezone";
 import path from "path";
-import { client } from "../../index.js";
 import {
   calculateRedeemCardLayout,
+  getFirstRedeemRewardIcon,
   getRedeemStatusPresentation,
+  normalizeRedeemRewards,
   type RedeemResultStatus,
 } from "../zzz/redeemLayout.js";
-import { getTodayWallpaper } from "../zzz/wallpaperManager.js";
 
 const assetDir = path.join(process.cwd(), "src/assets");
 for (const { file, family } of [
@@ -29,7 +28,7 @@ for (const { file, family } of [
 
 export interface ZZZRedeemCodeResult {
   code: string;
-  rewards?: string[];
+  rewards?: string[] | string;
   rewardIcons?: string[];
   status: RedeemResultStatus;
 }
@@ -46,17 +45,22 @@ export interface ZZZRedeemCardPayload {
 
 const imageCache = new Map<string, Buffer>();
 
-async function loadImageBuffer(url: string): Promise<Buffer | null> {
-  if (!url) return null;
-  const cached = imageCache.get(url);
+async function loadImageBuffer(source: string): Promise<Buffer | null> {
+  if (!source) return null;
+  const cached = imageCache.get(source);
   if (cached) return cached;
   try {
-    const response = await axios.get<ArrayBuffer>(url, {
-      responseType: "arraybuffer",
-      timeout: 8000,
-    });
-    const buffer = Buffer.from(response.data);
-    imageCache.set(url, buffer);
+    const buffer = /^https?:\/\//i.test(source)
+      ? Buffer.from(
+          (
+            await axios.get<ArrayBuffer>(source, {
+              responseType: "arraybuffer",
+              timeout: 8000,
+            })
+          ).data,
+        )
+      : fs.readFileSync(source);
+    imageCache.set(source, buffer);
     return buffer;
   } catch {
     return null;
@@ -85,128 +89,50 @@ function roundedRect(
   ctx.closePath();
 }
 
-function fitFontSize(
+function fitText(
   ctx: any,
   text: string,
   maxWidth: number,
   font: string,
-  start: number,
-  minimum: number,
-): number {
-  let size = start;
-  ctx.font = `bold ${size}px ${font}`;
-  while (size > minimum && ctx.measureText(text).width > maxWidth) {
-    size -= 1;
-    ctx.font = `bold ${size}px ${font}`;
-  }
-  return size;
-}
-
-function wrapText(
-  ctx: any,
-  text: string,
-  maxWidth: number,
-  maxLines: number,
-): string[] {
-  const lines: string[] = [];
-  let line = "";
-  for (const character of text.trim()) {
-    const candidate = line + character;
-    if (line && ctx.measureText(candidate).width > maxWidth) {
-      lines.push(line);
-      line = character;
-      if (lines.length === maxLines) break;
-    } else {
-      line = candidate;
-    }
-  }
-  if (lines.length < maxLines && line) lines.push(line);
-  if (lines.length === maxLines) {
-    let last = lines[maxLines - 1] || "";
-    while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) {
-      last = last.slice(0, -1);
-    }
-    if (last !== text && !last.endsWith("…")) lines[maxLines - 1] = `${last}…`;
-  }
-  return lines;
-}
-
-async function drawBackground(ctx: any, width: number, height: number): Promise<void> {
-  const wallpaperUrl = await getTodayWallpaper(client.db).catch(() => null);
-  const wallpaperBuffer = wallpaperUrl
-    ? await loadImageBuffer(wallpaperUrl)
-    : null;
-  if (wallpaperBuffer) {
-    try {
-      const image = await loadImage(wallpaperBuffer);
-      const scale = Math.max(width / image.width, height / image.height);
-      const drawWidth = image.width * scale;
-      const drawHeight = image.height * scale;
-      ctx.drawImage(
-        image,
-        (width - drawWidth) / 2,
-        (height - drawHeight) / 2,
-        drawWidth,
-        drawHeight,
-      );
-    } catch {
-      ctx.fillStyle = "#17130D";
-      ctx.fillRect(0, 0, width, height);
-    }
-  } else {
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, "#11130D");
-    gradient.addColorStop(0.55, "#232015");
-    gradient.addColorStop(1, "#11100B");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
-  }
-  ctx.fillStyle = "rgba(8, 8, 5, 0.78)";
-  ctx.fillRect(0, 0, width, height);
-  const shade = ctx.createLinearGradient(0, 0, width, 0);
-  shade.addColorStop(0, "rgba(0,0,0,0.35)");
-  shade.addColorStop(0.5, "rgba(0,0,0,0.06)");
-  shade.addColorStop(1, "rgba(0,0,0,0.32)");
-  ctx.fillStyle = shade;
-  ctx.fillRect(0, 0, width, height);
-}
-
-function drawAccountHeader(
-  ctx: any,
-  account: ZZZRedeemAccountResult,
-  y: number,
-  font: string,
+  startSize: number,
+  minSize: number,
+  weight = "bold",
 ): void {
-  ctx.fillStyle = "#F6F1D5";
-  fitFontSize(ctx, account.nickname || "Unknown", 360, font, 25, 17);
-  ctx.fillText(account.nickname || "Unknown", 52, y + 29);
-  ctx.fillStyle = "rgba(255,255,255,0.50)";
-  ctx.font = `13px ${font}`;
-  ctx.fillText(`UID  ${account.uid}`, 52, y + 53);
-
-  const stats = [
-    { status: "success" as const, label: "成功" },
-    { status: "already_claimed" as const, label: "已兌換" },
-    { status: "invalid" as const, label: "無效" },
-    { status: "failed" as const, label: "失敗" },
-  ];
-  let x = 635;
-  for (const stat of stats) {
-    const presentation = getRedeemStatusPresentation(stat.status);
-    const count = account.codes.filter((code) => code.status === stat.status).length;
-    ctx.fillStyle = presentation.color;
-    ctx.font = `bold 19px ${font}`;
-    ctx.fillText(String(count), x, y + 31);
-    ctx.fillStyle = "rgba(255,255,255,0.48)";
-    ctx.font = `12px ${font}`;
-    ctx.fillText(stat.label, x + 27, y + 29);
-    x += 132;
-  }
-  ctx.fillStyle = "rgba(255,255,255,0.12)";
-  ctx.fillRect(52, y + 68, 1176, 1);
+  let size = startSize;
+  do {
+    ctx.font = `${weight} ${size}px ${font}`;
+    if (ctx.measureText(text).width <= maxWidth || size <= minSize) return;
+    size -= 1;
+  } while (size >= minSize);
 }
 
-function drawCodeItem(
+function ellipsize(ctx: any, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let value = text;
+  while (value.length > 1 && ctx.measureText(`${value}…`).width > maxWidth) {
+    value = value.slice(0, -1);
+  }
+  return `${value}…`;
+}
+
+function drawBackground(ctx: any, width: number, height: number): void {
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, "#15170F");
+  gradient.addColorStop(0.55, "#222217");
+  gradient.addColorStop(1, "#10120D");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "rgba(255, 237, 150, 0.035)";
+  for (let x = -height; x < width; x += 74) {
+    ctx.save();
+    ctx.translate(x, 0);
+    ctx.rotate(-0.18);
+    ctx.fillRect(0, 0, 18, height * 1.2);
+    ctx.restore();
+  }
+}
+
+async function drawCodeRow(
   ctx: any,
   result: ZZZRedeemCodeResult,
   x: number,
@@ -214,53 +140,68 @@ function drawCodeItem(
   width: number,
   height: number,
   font: string,
-): void {
+): Promise<void> {
   const presentation = getRedeemStatusPresentation(result.status);
-  roundedRect(ctx, x, y, width, height, 14);
-  ctx.fillStyle = presentation.background;
+  roundedRect(ctx, x, y, width, height, 12);
+  ctx.fillStyle = "rgba(8, 9, 6, 0.58)";
   ctx.fill();
-  ctx.strokeStyle = presentation.border;
-  ctx.lineWidth = 1.3;
+  ctx.strokeStyle = "rgba(255,255,255,0.10)";
+  ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.fillStyle = "rgba(255,255,255,0.44)";
-  ctx.font = `11px ${font}`;
-  ctx.fillText("兌換碼", x + 18, y + 24);
-
-  ctx.font = `bold 12px ${font}`;
-  const badgeWidth = ctx.measureText(presentation.label).width + 24;
-  roundedRect(ctx, x + width - badgeWidth - 14, y + 12, badgeWidth, 25, 13);
-  ctx.fillStyle = "rgba(0,0,0,0.30)";
-  ctx.fill();
   ctx.fillStyle = presentation.color;
-  ctx.fillText(presentation.label, x + width - badgeWidth - 2, y + 29);
+  ctx.fillRect(x, y + 12, 3, height - 24);
 
+  const iconSource = getFirstRedeemRewardIcon(result);
+  const iconBuffer = iconSource ? await loadImageBuffer(iconSource) : null;
+  let textX = x + 22;
+  if (iconBuffer) {
+    try {
+      const icon = await loadImage(iconBuffer);
+      const iconSize = 58;
+      const iconX = x + 15;
+      const iconY = y + (height - iconSize) / 2;
+      roundedRect(ctx, iconX, iconY, iconSize, iconSize, 10);
+      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      ctx.fill();
+      const scale = Math.min((iconSize - 8) / icon.width, (iconSize - 8) / icon.height);
+      const drawWidth = icon.width * scale;
+      const drawHeight = icon.height * scale;
+      ctx.drawImage(
+        icon,
+        iconX + (iconSize - drawWidth) / 2,
+        iconY + (iconSize - drawHeight) / 2,
+        drawWidth,
+        drawHeight,
+      );
+      textX = iconX + iconSize + 16;
+    } catch {
+      // Keep the compact text-only row when the optional icon cannot be decoded.
+    }
+  }
+
+  const statusWidth = 125;
   ctx.fillStyle = "#FFFFFF";
-  fitFontSize(ctx, result.code, width - 36, font, 21, 14);
-  ctx.fillText(result.code, x + 18, y + 57);
+  fitText(ctx, result.code, width - (textX - x) - statusWidth - 25, font, 22, 16);
+  ctx.fillText(result.code, textX, y + 34);
 
-  ctx.fillStyle = "rgba(255,255,255,0.12)";
-  ctx.fillRect(x + 18, y + 70, width - 36, 1);
-  ctx.fillStyle = "rgba(255,255,255,0.42)";
-  ctx.font = `11px ${font}`;
-  ctx.fillText("兌換內容／獎勵", x + 18, y + 91);
+  ctx.font = `15px ${font}`;
+  ctx.fillStyle = "rgba(255,255,255,0.64)";
+  const rewardText = normalizeRedeemRewards(result.rewards, result.status);
+  ctx.fillText(
+    ellipsize(ctx, rewardText, width - (textX - x) - 25),
+    textX,
+    y + 62,
+  );
 
-  const rewardLabel = result.rewards?.length
-    ? result.rewards.join("、")
-    : result.status === "success"
-      ? "兌換成功，獎勵資訊未提供"
-      : "未取得獎勵";
-  ctx.fillStyle = result.rewards?.length
-    ? "rgba(255,255,255,0.86)"
-    : "rgba(255,255,255,0.48)";
-  ctx.font = `14px ${font}`;
-  const lines = wrapText(ctx, rewardLabel, width - 36, 2);
-  lines.forEach((line, index) => {
-    ctx.fillText(line, x + 18, y + 115 + index * 20);
-  });
+  ctx.textAlign = "right";
+  ctx.font = `bold 14px ${font}`;
+  ctx.fillStyle = presentation.color;
+  ctx.fillText(presentation.label, x + width - 18, y + 33);
+  ctx.textAlign = "left";
 }
 
-export async function buildZZZRedeemCard(
+export async function renderZZZRedeemCard(
   payload: ZZZRedeemCardPayload,
 ): Promise<Buffer> {
   const accounts = payload.accounts || [];
@@ -271,59 +212,55 @@ export async function buildZZZRedeemCard(
   const ctx = canvas.getContext("2d") as any;
   const font = '"ZZZFont", "ZZZFontEn", sans-serif';
 
-  await drawBackground(ctx, layout.width, layout.canvasHeight);
+  drawBackground(ctx, layout.width, layout.canvasHeight);
+  ctx.fillStyle = "#E8FF70";
+  ctx.fillRect(34, 29, 5, 31);
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = `bold 30px ${font}`;
-  ctx.fillText("自動兌換結果", 52, 51);
-  ctx.fillStyle = "rgba(255,255,255,0.48)";
-  ctx.font = `14px ${font}`;
-  ctx.fillText(
-    `兌換明細 · ${accounts.length} 個帳號 · ${accounts.reduce((sum, account) => sum + account.codes.length, 0)} 個兌換碼`,
-    52,
-    76,
-  );
+  ctx.font = `bold 27px ${font}`;
+  ctx.fillText("自動兌換", 53, 54);
 
-  const contentWidth = layout.width - 104;
-  const tileWidth = Math.floor(
-    (contentWidth - layout.tileGap * (layout.tilesPerRow - 1)) /
-      layout.tilesPerRow,
-  );
-  let accountY = 98;
-  accounts.forEach((account, accountIndex) => {
-    drawAccountHeader(ctx, account, accountY, font);
-    const gridY = accountY + layout.accountHeaderHeight;
+  let accountY = 82;
+  for (let accountIndex = 0; accountIndex < accounts.length; accountIndex += 1) {
+    const account = accounts[accountIndex]!;
+    ctx.fillStyle = "#F7F3DD";
+    fitText(ctx, account.nickname || "未命名帳號", 520, font, 23, 17);
+    ctx.fillText(account.nickname || "未命名帳號", 34, accountY + 27);
+    ctx.fillStyle = "rgba(255,255,255,0.48)";
+    ctx.font = `16px ${font}`;
+    ctx.fillText(`UID ${account.uid}`, 34, accountY + 52);
+
+    const rowsY = accountY + layout.accountHeaderHeight;
     if (account.codes.length === 0) {
-      ctx.fillStyle = "rgba(255,255,255,0.48)";
-      ctx.font = `15px ${font}`;
-      ctx.fillText("本次沒有需要顯示的兌換結果", 52, gridY + 45);
-    }
-    account.codes.forEach((result, index) => {
-      const column = index % layout.tilesPerRow;
-      const row = Math.floor(index / layout.tilesPerRow);
-      const x = 52 + column * (tileWidth + layout.tileGap);
-      const y = gridY + row * (layout.tileHeight + layout.tileGap);
-      drawCodeItem(
+      await drawCodeRow(
         ctx,
-        result,
-        x,
-        y,
-        tileWidth,
-        layout.tileHeight,
+        { code: "沒有新的兌換碼", status: "already_claimed" },
+        34,
+        rowsY,
+        layout.width - 68,
+        layout.rowHeight,
         font,
       );
-    });
-    accountY += layout.accountHeights[accountIndex] + layout.accountGap;
-  });
-
-  const timestamp = `${moment().tz("Asia/Taipei").format("YYYY/MM/DD · HH:mm")} CST`;
-  ctx.fillStyle = "rgba(255,255,255,0.30)";
-  ctx.font = `12px ${font}`;
-  const timestampWidth = ctx.measureText(timestamp).width;
-  ctx.fillText(
-    timestamp,
-    layout.width - 52 - timestampWidth,
-    layout.canvasHeight - 26,
-  );
+    } else {
+      for (let index = 0; index < account.codes.length; index += 1) {
+        await drawCodeRow(
+          ctx,
+          account.codes[index]!,
+          34,
+          rowsY + index * (layout.rowHeight + layout.rowGap),
+          layout.width - 68,
+          layout.rowHeight,
+          font,
+        );
+      }
+    }
+    accountY += layout.accountHeights[accountIndex]! + layout.accountGap;
+  }
 
   return canvas.toBuffer("image/png");
+}
+
+export async function buildZZZRedeemCard(
+  payload: ZZZRedeemCardPayload,
+): Promise<Buffer> {
+  return renderZZZRedeemCard(payload);
 }

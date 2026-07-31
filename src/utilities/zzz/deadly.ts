@@ -1,17 +1,23 @@
-import { EmbedBuilder, AttachmentBuilder } from "discord.js";
+import {
+  ActionRowBuilder,
+  AttachmentBuilder,
+  EmbedBuilder,
+  StringSelectMenuBuilder,
+} from "discord.js";
 import Queue from "queue";
-import {
-  getRandomColor,
-  drawInQueueReply,
-  getUserLang,
-  failedReply,
-} from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
+import { ELEMENT_TYPES, getElementIconPath } from "./elements.js";
 import {
+  formatBattleRecordDate,
   formatBattleRecordTime,
-  getDeadlyAssaultModeLabel,
-  isDeadlyAssaultExtremeMode,
 } from "./recordDisplay.js";
+import {
+  buildDeadlyModeSelectData,
+  DeadlyAssaultViewMode,
+  DeadlyModeContext,
+  getDeadlyModeBattle,
+  getDeadlyModeLabels,
+} from "./deadlyMode.js";
 import {
   createCanvas,
   loadImage,
@@ -81,10 +87,18 @@ async function loadImageAsync(url: string, fallbackUrl?: string) {
 export async function handleDeadlyDraw(
   interaction: any,
   tr: any,
-  user: any,
   zzz: any,
   schedule: any,
+  modeContext?: DeadlyModeContext,
+  requestedMode: DeadlyAssaultViewMode = "normal",
 ) {
+  // 延後載入含 client 的互動工具，讓 Canvas renderer 可獨立供測試與預覽使用。
+  const {
+    drawInQueueReply,
+    failedReply,
+    getRandomColor,
+    getUserLang,
+  } = await import("../utilities.js");
   const drawTask = async () => {
     try {
       await interaction.editReply({
@@ -112,7 +126,14 @@ export async function handleDeadlyDraw(
 
       // Generate
       const drawStartTime = Date.now();
-      const imageBuffer = await drawDeadlyImage(tr, userLocale, deadlyData);
+      const selection = getDeadlyModeBattle(deadlyData, requestedMode);
+      const mode = selection.mode;
+      const imageBuffer = await drawDeadlyImage(
+        tr,
+        userLocale,
+        deadlyData,
+        mode,
+      );
       if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
       const drawEndTime = Date.now();
 
@@ -124,6 +145,14 @@ export async function handleDeadlyDraw(
       interaction.editReply({
         embeds: [],
         files: [image],
+        components: modeContext
+          ? buildDeadlyModeComponents(
+              userLocale,
+              deadlyData,
+              mode,
+              modeContext,
+            )
+          : [],
       });
     } catch (error: any) {
       if (error?.code == "-501000") {
@@ -168,23 +197,47 @@ export async function handleDeadlyDraw(
   }
 }
 
-async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
+export function buildDeadlyModeComponents(
+  userLocale: string,
+  deadlyData: any,
+  mode: DeadlyAssaultViewMode,
+  context: DeadlyModeContext,
+) {
+  const selectData = buildDeadlyModeSelectData(
+    userLocale,
+    deadlyData,
+    mode,
+    context,
+  );
+  if (!selectData) return [];
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(selectData.customId)
+    .setPlaceholder(selectData.placeholder)
+    .setMinValues(1)
+    .setMaxValues(1)
+    .addOptions(selectData.options);
+  return [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)];
+}
+
+export async function drawDeadlyImage(
+  tr: any,
+  userLocale: string,
+  deadlyData: any,
+  requestedMode: DeadlyAssaultViewMode = "normal",
+) {
   try {
     const selectedFont =
       fonts[userLocale as keyof typeof fonts] || fonts.default;
-    const hasExtremeMode = isDeadlyAssaultExtremeMode(deadlyData);
-    const battleEntries = [
-      ...(hasExtremeMode
-        ? deadlyData.hard_list.map((battle: any) => ({
-            battle,
-            mode: "extreme" as const,
-          }))
-        : []),
-      ...(deadlyData.list || []).map((battle: any) => ({
-        battle,
-        mode: "normal" as const,
-      })),
-    ];
+    const selection = getDeadlyModeBattle(deadlyData, requestedMode);
+    if (selection.mode === "extreme") {
+      return drawDeadlyExtremeImage(
+        tr,
+        userLocale,
+        deadlyData,
+        selection.battle,
+      );
+    }
+    const battleEntries = selection.battles.map((battle: any) => ({ battle }));
 
     // 计算画布高度 - 动态计算每个战斗记录和BUFF的实际高度
     const baseHeight = 400; // 顶部信息区域高度
@@ -260,13 +313,11 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
     );
 
     // 加载元素图标
-    const elementImages = await Promise.all([
-      loadImageAsync(`./src/assets/images/icons/element/physic.webp`),
-      loadImageAsync(`./src/assets/images/icons/element/fire.webp`),
-      loadImageAsync(`./src/assets/images/icons/element/ice.webp`),
-      loadImageAsync(`./src/assets/images/icons/element/thunder.webp`),
-      loadImageAsync(`./src/assets/images/icons/element/ether.webp`),
-    ]);
+    const elementImages = await Promise.all(
+      ELEMENT_TYPES.map((type) =>
+        loadImageAsync(getElementIconPath(type)),
+      ),
+    );
 
     // 加载角色和助手图像
     const avatarImages: Record<string, Image> = {};
@@ -369,24 +420,9 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
 
     // 绘制挑战期间
     if (deadlyData.start_time && deadlyData.end_time) {
-      const beginDate = new Date(
-        parseInt(deadlyData.start_time.year),
-        parseInt(deadlyData.start_time.month) - 1,
-        parseInt(deadlyData.start_time.day),
-      );
-      const endDate = new Date(
-        parseInt(deadlyData.end_time.year),
-        parseInt(deadlyData.end_time.month) - 1,
-        parseInt(deadlyData.end_time.day),
-      );
-
       ctx.font = `24px ${selectedFont}`;
-      const dateFormat = new Intl.DateTimeFormat(userLocale, {
-        month: "short",
-        day: "numeric",
-      });
       ctx.fillText(
-        `${dateFormat.format(beginDate)} - ${dateFormat.format(endDate)}`,
+        `${formatBattleRecordDate(deadlyData.start_time, userLocale)} - ${formatBattleRecordDate(deadlyData.end_time, userLocale)}`,
         canvas.width / 2,
         120,
       );
@@ -453,7 +489,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
     let currentY = 310;
 
     if (battleEntries.length > 0) {
-      for (const { battle, mode } of battleEntries) {
+      for (const { battle } of battleEntries) {
         // 绘制BUFF（如果有）
         if (battle.buffer && battle.buffer.length > 0) {
           for (const buffer of battle.buffer) {
@@ -574,19 +610,11 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
             }
           }
 
-          // 绘制Boss名称
+          // 一般模式維持原本的多關直列，不混入絕境關卡。
           ctx.font = `24px ${selectedFont}`;
           ctx.fillStyle = "white";
           ctx.textAlign = "left";
-          ctx.fillText(bossName, 210, currentY + 40);
-
-          if (mode === "extreme") {
-            const modeLabel = getDeadlyAssaultModeLabel(userLocale);
-            ctx.font = `bold 15px ${selectedFont}`;
-            ctx.fillStyle = "#FF9B9B";
-            ctx.textAlign = "left";
-            ctx.fillText(modeLabel, 210, currentY + 18);
-          }
+          ctx.fillText(bossName, 210, currentY + 38);
         }
 
         // 绘制挑战时间
@@ -619,9 +647,7 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
 
               // 绘制元素图标
               if (avatar.element_type) {
-                const elementIndex = [200, 201, 202, 203, 205].indexOf(
-                  avatar.element_type,
-                );
+                const elementIndex = ELEMENT_TYPES.indexOf(avatar.element_type);
                 if (elementIndex >= 0) {
                   // 绘制元素背景
                   ctx.beginPath();
@@ -735,6 +761,449 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
     console.error("Error generating deadly assault image:", error);
     throw error;
   }
+}
+
+export async function drawDeadlyExtremeImage(
+  tr: any,
+  userLocale: string,
+  deadlyData: any,
+  battle: any,
+) {
+  const selectedFont =
+    fonts[userLocale as keyof typeof fonts] || fonts.default;
+  const labels = getDeadlyModeLabels(userLocale);
+  const boss = Array.isArray(battle?.boss) ? battle.boss[0] : undefined;
+  const buffs = Array.isArray(battle?.buffer) ? battle.buffer : [];
+  const weaknesses = getExtremeWeaknesses(battle, boss);
+  const buffHeight = buffs.reduce((height: number, buff: any) => {
+    const plainText = stripColorTags(buff?.desc || buff?.text || "");
+    return height + Math.max(110, Math.ceil(plainText.length / 48) * 27 + 58);
+  }, 0);
+  const weaknessHeight = weaknesses.length > 0 ? 105 : 0;
+  const canvasHeight = 640 + weaknessHeight + buffHeight + 260;
+  const canvas = createCanvas(1200, canvasHeight);
+  const ctx = canvas.getContext("2d");
+
+  const background = ctx.createLinearGradient(0, 0, 1200, canvasHeight);
+  background.addColorStop(0, "#120E18");
+  background.addColorStop(0.48, "#1B171F");
+  background.addColorStop(1, "#100D12");
+  ctx.fillStyle = background;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 絕境模式使用獨立的大卡版型，不與一般模式關卡串接。
+  ctx.fillStyle = "#FFFFFF";
+  ctx.textAlign = "center";
+  ctx.font = `bold 48px ${selectedFont}`;
+  const period = Number(deadlyData?.zone_id || 0) % 100;
+  const title =
+    tr("DeadlyAssault_Period", { period }) ||
+    tr("DeadlyAssault") ||
+    "危局強襲戰";
+  ctx.fillText(title, canvas.width / 2, 70);
+  if (deadlyData?.start_time && deadlyData?.end_time) {
+    ctx.fillStyle = "#B8AFBD";
+    ctx.font = `22px ${selectedFont}`;
+    ctx.fillText(
+      `${formatBattleRecordDate(deadlyData.start_time, userLocale)} - ${formatBattleRecordDate(deadlyData.end_time, userLocale)}`,
+      canvas.width / 2,
+      108,
+    );
+  }
+
+  const heroX = 60;
+  const heroY = 145;
+  const heroWidth = 1080;
+  const heroHeight = 430;
+  const heroGradient = ctx.createLinearGradient(heroX, heroY, heroX + heroWidth, heroY);
+  heroGradient.addColorStop(0, "#302232");
+  heroGradient.addColorStop(0.58, "#251C29");
+  heroGradient.addColorStop(1, "#4D1E2C");
+  drawRoundedRect(
+    ctx,
+    heroX,
+    heroY,
+    heroWidth,
+    heroHeight,
+    28,
+    heroGradient as any,
+    2,
+    "#7A4658",
+  );
+
+  const bossBg = boss?.bg_icon
+    ? await loadImageAsync(boss.bg_icon, "./src/assets/images/None.png")
+    : null;
+  const bossImage = boss?.icon
+    ? await loadImageAsync(boss.icon, "./src/assets/images/None.png")
+    : null;
+
+  ctx.save();
+  roundedRectPath(ctx, heroX, heroY, heroWidth, heroHeight, 28);
+  ctx.clip();
+  if (bossBg) drawImageCover(ctx, bossBg, heroX + 510, heroY, 570, heroHeight);
+  const heroFade = ctx.createLinearGradient(heroX + 420, 0, heroX + heroWidth, 0);
+  heroFade.addColorStop(0, "#251C29");
+  heroFade.addColorStop(0.45, "rgba(37, 28, 41, 0.35)");
+  heroFade.addColorStop(1, "rgba(37, 28, 41, 0.05)");
+  ctx.fillStyle = heroFade;
+  ctx.fillRect(heroX + 400, heroY, heroWidth - 400, heroHeight);
+  if (bossImage) drawImageContain(ctx, bossImage, heroX + 690, heroY + 28, 350, 380);
+  ctx.restore();
+
+  drawRoundedRect(
+    ctx,
+    95,
+    180,
+    126,
+    38,
+    19,
+    "rgba(255, 98, 139, 0.2)",
+    1,
+    "#FF628B",
+  );
+  ctx.fillStyle = "#FF91AE";
+  ctx.textAlign = "center";
+  ctx.font = `bold 18px ${selectedFont}`;
+  ctx.fillText(labels.extreme, 158, 206);
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#FFFFFF";
+  drawFittedText(
+    ctx,
+    boss?.name || "絕境首領",
+    95,
+    270,
+    610,
+    38,
+    selectedFont,
+  );
+
+  ctx.fillStyle = "#B8AFBD";
+  ctx.font = `20px ${selectedFont}`;
+  ctx.fillText(labels.score, 98, 325);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = `bold 58px ${selectedFont}`;
+  ctx.fillText(String(battle?.score ?? 0), 95, 382);
+
+  const starImg = await loadImageAsync("./src/assets/images/icons/deadly/star.png");
+  const starDarkImg = await loadImageAsync(
+    "./src/assets/images/icons/deadly/star_dark.png",
+  );
+  ctx.fillStyle = "#B8AFBD";
+  ctx.font = `20px ${selectedFont}`;
+  ctx.fillText(labels.stars, 350, 325);
+  const starCount = Math.max(0, Math.min(3, Number(battle?.star || 0)));
+  for (let index = 0; index < 3; index++) {
+    ctx.drawImage(
+      index < starCount ? starImg : starDarkImg,
+      350 + index * 46,
+      345,
+      38,
+      38,
+    );
+  }
+
+  const clearTime = formatBattleRecordTime(
+    battle?.challenge_time,
+    battle?.battle_time,
+    userLocale,
+  );
+  if (clearTime) {
+    ctx.fillStyle = "#D8D0DB";
+    ctx.font = `21px ${selectedFont}`;
+    ctx.fillText(`${labels.clearTime}：${clearTime}`, 98, 455);
+  }
+
+  let currentY = 605;
+  if (weaknesses.length > 0) {
+    drawRoundedRect(
+      ctx,
+      60,
+      currentY,
+      1080,
+      85,
+      20,
+      "rgba(42, 37, 47, 0.94)",
+    );
+    ctx.fillStyle = "#FFCF70";
+    ctx.font = `bold 23px ${selectedFont}`;
+    ctx.textAlign = "left";
+    ctx.fillText(labels.weakness, 88, currentY + 51);
+    let weaknessX = 190;
+    for (const weakness of weaknesses.slice(0, 6)) {
+      if (weakness.elementType !== null) {
+        const image = await loadImageAsync(
+          getElementIconPath(weakness.elementType),
+        );
+        ctx.drawImage(image, weaknessX, currentY + 20, 46, 46);
+        weaknessX += 58;
+      } else {
+        ctx.fillStyle = "#EFE8F1";
+        ctx.font = `20px ${selectedFont}`;
+        ctx.fillText(weakness.label, weaknessX, currentY + 51);
+        weaknessX += ctx.measureText(weakness.label).width + 28;
+      }
+    }
+    currentY += 105;
+  }
+
+  for (const buff of buffs) {
+    const name = buff?.name || buff?.title || labels.buff;
+    const description = stripColorTags(buff?.desc || buff?.text || "");
+    const boxHeight = Math.max(
+      110,
+      Math.ceil(description.length / 48) * 27 + 58,
+    );
+    drawRoundedRect(
+      ctx,
+      60,
+      currentY,
+      1080,
+      boxHeight - 15,
+      20,
+      "rgba(42, 37, 47, 0.94)",
+    );
+    ctx.fillStyle = "#FFCF70";
+    ctx.font = `bold 22px ${selectedFont}`;
+    ctx.textAlign = "left";
+    ctx.fillText(name, 88, currentY + 35);
+    ctx.fillStyle = "#E8E1EA";
+    ctx.font = `19px ${selectedFont}`;
+    drawWrappedPlainText(ctx, description, 88, currentY + 68, 1010, 27);
+    currentY += boxHeight;
+  }
+
+  drawRoundedRect(
+    ctx,
+    60,
+    currentY,
+    1080,
+    225,
+    24,
+    "rgba(35, 31, 40, 0.98)",
+    1,
+    "#574A5B",
+  );
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = `bold 25px ${selectedFont}`;
+  ctx.textAlign = "left";
+  ctx.fillText(labels.team, 88, currentY + 42);
+
+  let avatarX = 92;
+  const avatars = Array.isArray(battle?.avatar_list) ? battle.avatar_list : [];
+  for (const avatar of avatars.slice(0, 3)) {
+    const avatarImage = await loadImageAsync(
+      avatar?.role_square_url || `./src/assets/images/agents/${avatar?.id}.webp`,
+      `./src/assets/images/agents/${avatar?.id}.webp`,
+    );
+    drawCircleImage(ctx, avatarImage, avatarX, currentY + 65, 105, 1.1);
+    if (
+      avatar?.element_type &&
+      ELEMENT_TYPES.includes(avatar.element_type)
+    ) {
+      const elementImage = await loadImageAsync(
+        getElementIconPath(avatar.element_type),
+      );
+      ctx.drawImage(elementImage, avatarX - 4, currentY + 62, 34, 34);
+    }
+    ctx.fillStyle = "#E9E3EB";
+    ctx.font = `16px ${selectedFont}`;
+    ctx.textAlign = "center";
+    const avatarLabel =
+      avatar?.name_mi18n || avatar?.name || `等級 ${avatar?.level || "-"}`;
+    drawFittedText(
+      ctx,
+      avatarLabel,
+      avatarX + 52,
+      currentY + 193,
+      125,
+      16,
+      selectedFont,
+      "center",
+    );
+    avatarX += 155;
+  }
+
+  if (battle?.buddy) {
+    const buddy = battle.buddy;
+    const buddyImage = await loadImageAsync(
+      buddy?.bangboo_rectangle_url ||
+        `./src/assets/images/bangboos/${buddy?.id}.png`,
+      `./src/assets/images/bangboos/${buddy?.id}.png`,
+    );
+    const buddyX = 660;
+    ctx.fillStyle = "#B8AFBD";
+    ctx.font = `18px ${selectedFont}`;
+    ctx.textAlign = "left";
+    ctx.fillText(labels.bangboo, buddyX, currentY + 42);
+    drawCircleImage(ctx, buddyImage, buddyX, currentY + 68, 100, 1.05);
+    ctx.fillStyle = "#E9E3EB";
+    ctx.font = `16px ${selectedFont}`;
+    ctx.textAlign = "center";
+    drawFittedText(
+      ctx,
+      buddy?.name || `等級 ${buddy?.level || "-"}`,
+      buddyX + 50,
+      currentY + 193,
+      150,
+      16,
+      selectedFont,
+      "center",
+    );
+  }
+
+  return canvas.toBuffer("image/png");
+}
+
+function stripColorTags(text: string): string {
+  return String(text || "")
+    .replace(/\\n/g, "\n")
+    .replace(/<color=#[A-Fa-f0-9]+>|<\/color>/g, "");
+}
+
+function getExtremeWeaknesses(battle: any, boss: any) {
+  const raw =
+    boss?.weakness_list ||
+    boss?.weakness ||
+    battle?.weakness_list ||
+    battle?.weakness ||
+    [];
+  const entries = Array.isArray(raw) ? raw : [raw];
+  return entries
+    .map((entry: any) => {
+      const value = Number(
+        typeof entry === "object"
+          ? entry?.element_type ?? entry?.id ?? entry?.type
+          : entry,
+      );
+      if (ELEMENT_TYPES.includes(value)) {
+        return { elementType: value, label: "" };
+      }
+      const rawLabel =
+        typeof entry === "object"
+          ? entry?.name || entry?.label
+          : String(entry || "");
+      return { elementType: null, label: localizeElementLabel(rawLabel) };
+    })
+    .filter((entry: any) => entry.elementType !== null || entry.label);
+}
+
+function localizeElementLabel(label: string): string {
+  const localized: Record<string, string> = {
+    physical: "物理",
+    physic: "物理",
+    fire: "火屬性",
+    ice: "冰屬性",
+    electric: "電屬性",
+    thunder: "電屬性",
+    ether: "以太屬性",
+    wind: "風屬性",
+  };
+  return localized[label.toLowerCase()] || label;
+}
+
+function roundedRectPath(
+  ctx: SKRSContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + width, y, x + width, y + height, radius);
+  ctx.arcTo(x + width, y + height, x, y + height, radius);
+  ctx.arcTo(x, y + height, x, y, radius);
+  ctx.arcTo(x, y, x + width, y, radius);
+  ctx.closePath();
+}
+
+function drawImageCover(
+  ctx: SKRSContext2D,
+  image: Image,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const scale = Math.max(width / image.width, height / image.height);
+  const sourceWidth = width / scale;
+  const sourceHeight = height / scale;
+  ctx.drawImage(
+    image,
+    (image.width - sourceWidth) / 2,
+    (image.height - sourceHeight) / 2,
+    sourceWidth,
+    sourceHeight,
+    x,
+    y,
+    width,
+    height,
+  );
+}
+
+function drawImageContain(
+  ctx: SKRSContext2D,
+  image: Image,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const scale = Math.min(width / image.width, height / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  ctx.drawImage(
+    image,
+    x + (width - drawWidth) / 2,
+    y + (height - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  );
+}
+
+function drawFittedText(
+  ctx: SKRSContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  fontSize: number,
+  fontFamily: string,
+  align: "left" | "center" = "left",
+) {
+  let size = fontSize;
+  ctx.textAlign = align;
+  ctx.font = `bold ${size}px ${fontFamily}`;
+  while (size > 13 && ctx.measureText(String(text)).width > maxWidth) {
+    size -= 1;
+    ctx.font = `bold ${size}px ${fontFamily}`;
+  }
+  ctx.fillText(String(text), x, y);
+}
+
+function drawWrappedPlainText(
+  ctx: SKRSContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+) {
+  let line = "";
+  let currentY = y;
+  for (const char of Array.from(text)) {
+    if (char === "\n" || ctx.measureText(line + char).width > maxWidth) {
+      if (line) ctx.fillText(line, x, currentY);
+      line = char === "\n" ? "" : char;
+      currentY += lineHeight;
+    } else {
+      line += char;
+    }
+  }
+  if (line) ctx.fillText(line, x, currentY);
 }
 
 // 绘制圆角矩形

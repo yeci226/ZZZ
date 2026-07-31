@@ -26,6 +26,21 @@ function pad(value: number | string | undefined): string {
   return String(Number(value ?? 0)).padStart(2, "0");
 }
 
+export function formatBattleRecordDate(
+  time: Pick<BattleRecordTime, "month" | "day">,
+  locale: string,
+): string {
+  const month = Number(time.month);
+  const day = Number(time.day);
+  if (locale === "tw" || locale === "zh-tw" || locale === "cn" || locale === "zh-cn") {
+    return `${month}月${day}日`;
+  }
+  if (locale === "jp" || locale === "ja-jp") return `${month}月${day}日`;
+  if (locale === "kr" || locale === "ko-kr") return `${month}월 ${day}일`;
+  const monthLabel = ENGLISH_MONTHS[month - 1] ?? String(month);
+  return `${monthLabel} ${day}`;
+}
+
 export function formatBattleRecordTime(
   challengeTime: BattleRecordTime | undefined,
   battleTime: number | undefined,

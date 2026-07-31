@@ -36,6 +36,11 @@ import {
   getLegacyAccounts,
 } from "../utilities/accountStore.js";
 import { ELEMENT_ICON_BY_TYPE as elementId } from "../utilities/zzz/elements.js";
+import { handleDeadlyDraw } from "../utilities/zzz/deadly.js";
+import {
+  DeadlyAssaultViewMode,
+  parseDeadlyModeCustomId,
+} from "../utilities/zzz/deadlyMode.js";
 // Use client.db directly
 const drawQueue = new Queue({ autostart: true });
 
@@ -104,7 +109,55 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     handleSelectCharacter(selectInteraction, tr, values, userLocale);
   if (customId === "settings_selectLocale")
     handleSettingsLocale(selectInteraction, values[0], tr);
+  if (customId.startsWith("deadly-mode:"))
+    handleDeadlyModeSelect(
+      selectInteraction,
+      tr,
+      userLocale,
+      customId,
+      values[0],
+    );
 });
+
+async function handleDeadlyModeSelect(
+  interaction: StringSelectMenuInteraction,
+  tr: any,
+  userLocale: string,
+  customId: string,
+  rawMode: string,
+) {
+  const context = parseDeadlyModeCustomId(customId);
+  if (!context) return;
+
+  if (interaction.user.id !== context.ownerId) {
+    await interaction.followUp({
+      content: "只有發起指令的使用者可以切換模式。",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  const mode: DeadlyAssaultViewMode =
+    rawMode === "extreme" ? "extreme" : "normal";
+  const zzz = await getUserZZZData(
+    interaction as any,
+    tr,
+    context.targetUserId,
+    userLocale,
+    context.accountIndex,
+  );
+  if (!zzz) return;
+
+  // 全域 StringSelect handler 已 deferUpdate；此處直接重抓 API 並更新原訊息。
+  await handleDeadlyDraw(
+    interaction,
+    tr,
+    zzz,
+    context.schedule,
+    context,
+    mode,
+  );
+}
 
 async function handleSettingsToggle(
   interaction: ButtonInteraction,

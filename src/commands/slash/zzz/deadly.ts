@@ -1,4 +1,9 @@
-import { ActionRowBuilder, ChatInputCommandInteraction, Client, LocalizationMap, SlashCommandBuilder } from "discord.js";
+import {
+    ChatInputCommandInteraction,
+    Client,
+    LocalizationMap,
+    SlashCommandBuilder,
+} from "discord.js";
 import { handleDeadlyDraw } from "../../../utilities/zzz/deadly.js";
 import { getUserZZZData, getUserLang } from "../../../utilities/utilities.js";
 import { QuickDB } from "quick.db";
@@ -89,6 +94,18 @@ export default {
         if (zzz == null) return;
 
         await interaction.deferReply();
-        handleDeadlyDraw(interaction, tr, targetUser, zzz, schedule);
+        handleDeadlyDraw(
+            interaction,
+            tr,
+            zzz,
+            schedule,
+            {
+                ownerId: interaction.user.id,
+                targetUserId: targetUser.id,
+                accountIndex,
+                schedule,
+            },
+            "normal",
+        );
     },
 };
