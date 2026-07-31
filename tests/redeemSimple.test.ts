@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import { ZZZ_REDEEM_BACKGROUND } from "../src/utilities/canvas/redeemCard.js";
 import {
   calculateRedeemCardLayout,
   getFirstRedeemRewardIcon,
@@ -6,6 +8,11 @@ import {
 } from "../src/utilities/zzz/redeemLayout.js";
 
 describe("簡潔自動兌換卡", () => {
+  it("使用本地塗鴉背景", () => {
+    expect(ZZZ_REDEEM_BACKGROUND.endsWith("profileBgDark.png")).toBe(true);
+    expect(fs.existsSync(ZZZ_REDEEM_BACKGROUND)).toBe(true);
+  });
+
   it("每個兌換碼固定一列，更多兌換碼會增加高度", () => {
     const oneCode = calculateRedeemCardLayout([1]);
     const threeCodes = calculateRedeemCardLayout([3]);

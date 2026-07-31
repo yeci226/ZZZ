@@ -9,12 +9,13 @@ import { join } from "node:path";
 import fetch from "node-fetch";
 import {
   downloadPaintingCache,
+  getFacePos,
   getLocalWikiPaintings,
   loadWikiIndex,
-  paintingIndexForRank,
 } from "./autoDownloadIcons.js";
 import { getElementIconPath } from "./elements.js";
 import { resolveProfileFont } from "./profileLocale.js";
+import { getMindscapeComposition } from "./mindscapeComposition.js";
 import {
   collectEffectiveSystemIds,
   countEffectiveRolls,
@@ -583,11 +584,176 @@ async function getWikiPaintings(entryId: string): Promise<string[]> {
   }
 }
 
+async function composeRankDependentPainting(
+  entryId: string,
+  paths: string[],
+  rank: number,
+  fallbackSource: string,
+): Promise<any | null> {
+  const [img0, rawImg1, rawImg2, fallback] = await Promise.all([
+    paths[0] ? loadAny(paths[0]) : null,
+    paths[1] ? loadAny(paths[1]) : null,
+    paths[2] ? loadAny(paths[2]) : null,
+    loadAny(fallbackSource),
+  ]);
+  const base0 = img0 ?? fallback;
+  const base1 = rawImg1 ?? base0;
+  const base2 = rawImg2 ?? base1;
+  const images = [base0, base1, base2] as const;
+  const reference = base0 ?? base1 ?? base2;
+  if (!reference) return null;
+
+  const width = reference.width;
+  const height = reference.height;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+  const composition = getMindscapeComposition(rank);
+  const base = images[composition.baseIndex] ?? reference;
+  const overlay = composition.overlayIndex === undefined
+    ? null
+    : images[composition.overlayIndex];
+
+  const drawCoverImage = (image: Image) => {
+    const scale = Math.max(width / image.width, height / image.height);
+    const drawWidth = image.width * scale;
+    const drawHeight = image.height * scale;
+    ctx.drawImage(
+      image,
+      (width - drawWidth) / 2,
+      (height - drawHeight) / 2,
+      drawWidth,
+      drawHeight,
+    );
+  };
+
+  drawCoverImage(base);
+  if (!overlay || !composition.clip) return canvas;
+
+  const scale = Math.max(width / reference.width, height / reference.height);
+  const drawWidth = reference.width * scale;
+  const drawHeight = reference.height * scale;
+  const sourceX = (width - drawWidth) / 2;
+  const sourceY = (height - drawHeight) / 2;
+  const { faceX, faceY } = getFacePos(entryId);
+  const faceCanvasX = sourceX + faceX * drawWidth;
+  const faceCanvasY = sourceY + faceY * drawHeight;
+
+  const rotate = (vx: number, vy: number, angle: number) => ({
+    x: vx * Math.cos(angle) - vy * Math.sin(angle),
+    y: vx * Math.sin(angle) + vy * Math.cos(angle),
+  });
+  const edgePointFromFace = (dx: number, dy: number) => {
+    const candidates: number[] = [];
+    if (dx > 0) candidates.push((width - faceCanvasX) / dx);
+    if (dx < 0) candidates.push((0 - faceCanvasX) / dx);
+    if (dy > 0) candidates.push((height - faceCanvasY) / dy);
+    if (dy < 0) candidates.push((0 - faceCanvasY) / dy);
+    const distance = Math.min(...candidates.filter((value) => value > 0));
+    return {
+      x: faceCanvasX + dx * distance,
+      y: faceCanvasY + dy * distance,
+    };
+  };
+  const getFanGeometry = (halfAngleDeg: number, mouthWidth: number) => {
+    let awayX = width / 2 - faceCanvasX;
+    let awayY = height / 2 - faceCanvasY;
+    let awayLength = Math.sqrt(awayX * awayX + awayY * awayY);
+    if (awayLength < 1) {
+      awayX = 1;
+      awayY = 0;
+      awayLength = 1;
+    }
+    const edgeCenter = edgePointFromFace(awayX / awayLength, awayY / awayLength);
+    const axisX = faceCanvasX - edgeCenter.x;
+    const axisY = faceCanvasY - edgeCenter.y;
+    const axisLength = Math.sqrt(axisX * axisX + axisY * axisY) || 1;
+    const directionX = axisX / axisLength;
+    const directionY = axisY / axisLength;
+    const distance = Math.sqrt(width * width + height * height) * 2;
+    const halfAngle = (halfAngleDeg * Math.PI) / 180;
+    const normalX = -directionY;
+    const normalY = directionX;
+    const edgeDirectionA = rotate(directionX, directionY, halfAngle);
+    const edgeDirectionB = rotate(directionX, directionY, -halfAngle);
+    const halfMouth = mouthWidth / 2;
+    const mouthCenter = {
+      x: edgeCenter.x - directionX * Math.max(60, mouthWidth * 2),
+      y: edgeCenter.y - directionY * Math.max(60, mouthWidth * 2),
+    };
+    const edgeA = {
+      start: {
+        x: mouthCenter.x + normalX * halfMouth,
+        y: mouthCenter.y + normalY * halfMouth,
+      },
+      end: {
+        x: edgeCenter.x + edgeDirectionA.x * distance,
+        y: edgeCenter.y + edgeDirectionA.y * distance,
+      },
+    };
+    const edgeB = {
+      start: {
+        x: mouthCenter.x - normalX * halfMouth,
+        y: mouthCenter.y - normalY * halfMouth,
+      },
+      end: {
+        x: edgeCenter.x + edgeDirectionB.x * distance,
+        y: edgeCenter.y + edgeDirectionB.y * distance,
+      },
+    };
+    const upperEdge =
+      (edgeA.start.y + edgeA.end.y) / 2 <= (edgeB.start.y + edgeB.end.y) / 2
+        ? edgeA
+        : edgeB;
+    return { edgeA, edgeB, upperEdge, lowerEdge: upperEdge === edgeA ? edgeB : edgeA };
+  };
+
+  ctx.save();
+  if (composition.clip === "face-fan") {
+    const { edgeA, edgeB } = getFanGeometry(12, 28);
+    ctx.beginPath();
+    ctx.moveTo(edgeA.start.x, edgeA.start.y);
+    ctx.lineTo(edgeA.end.x, edgeA.end.y);
+    ctx.lineTo(edgeB.end.x, edgeB.end.y);
+    ctx.lineTo(edgeB.start.x, edgeB.start.y);
+    ctx.closePath();
+    ctx.clip();
+  } else {
+    const { upperEdge, lowerEdge } = getFanGeometry(12, 28);
+    const side = faceCanvasY < height / 2 ? "bottom" : "top";
+    const boundary = side === "bottom" ? upperEdge : lowerEdge;
+    const edgeX = boundary.end.x - boundary.start.x;
+    const edgeY = boundary.end.y - boundary.start.y;
+    const edgeLength = Math.sqrt(edgeX * edgeX + edgeY * edgeY) || 1;
+    const normalX = -edgeY / edgeLength;
+    const normalY = edgeX / edgeLength;
+    const midpoint = {
+      x: (boundary.start.x + boundary.end.x) / 2,
+      y: (boundary.start.y + boundary.end.y) / 2,
+    };
+    const targetY = side === "bottom" ? height : 0;
+    const sign =
+      (width / 2 - midpoint.x) * normalX + (targetY - midpoint.y) * normalY >= 0
+        ? 1
+        : -1;
+    const offset = Math.sqrt(width * width + height * height) * 2 * sign;
+    ctx.beginPath();
+    ctx.moveTo(boundary.start.x, boundary.start.y);
+    ctx.lineTo(boundary.end.x, boundary.end.y);
+    ctx.lineTo(boundary.end.x + normalX * offset, boundary.end.y + normalY * offset);
+    ctx.lineTo(boundary.start.x + normalX * offset, boundary.start.y + normalY * offset);
+    ctx.closePath();
+    ctx.clip();
+  }
+  drawCoverImage(overlay);
+  ctx.restore();
+  return canvas;
+}
+
 async function choosePortrait(
   character: any,
   usePainting: boolean,
   rankDependentPainting: boolean,
-): Promise<Image | null> {
+): Promise<any | null> {
   let source =
     character.role_vertical_painting_url ||
     `https://act-webstatic.hoyoverse.com/game_record/zzz/role_vertical_painting/role_vertical_painting_${character.id}.png`;
@@ -605,10 +771,16 @@ async function choosePortrait(
       const entryId = name ? await findWikiEntry(name) : null;
       if (entryId) {
         const paths = await getWikiPaintings(entryId);
-        const index = rankDependentPainting
-          ? paintingIndexForRank(Number(character.rank ?? 0))
-          : 0;
-        source = paths[index ?? 0] ?? paths[0] ?? source;
+        if (rankDependentPainting && paths.length > 0) {
+          const composed = await composeRankDependentPainting(
+            entryId,
+            paths,
+            Number(character.rank ?? 0),
+            source,
+          );
+          if (composed) return composed;
+        }
+        source = paths[0] ?? source;
       }
     } catch {
       // The official portrait remains the fallback.

@@ -43,6 +43,12 @@ export interface ZZZRedeemCardPayload {
   accounts: ZZZRedeemAccountResult[];
 }
 
+export const ZZZ_REDEEM_BACKGROUND = path.join(
+  assetDir,
+  "images",
+  "profileBgDark.png",
+);
+
 const imageCache = new Map<string, Buffer>();
 
 async function loadImageBuffer(source: string): Promise<Buffer | null> {
@@ -115,21 +121,46 @@ function ellipsize(ctx: any, text: string, maxWidth: number): string {
   return `${value}…`;
 }
 
-function drawBackground(ctx: any, width: number, height: number): void {
+function drawCover(
+  ctx: any,
+  image: any,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): void {
+  const scale = Math.max(width / image.width, height / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  ctx.drawImage(
+    image,
+    x + (width - drawWidth) / 2,
+    y + (height - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  );
+}
+
+async function drawBackground(ctx: any, width: number, height: number): Promise<void> {
+  const backgroundBuffer = await loadImageBuffer(ZZZ_REDEEM_BACKGROUND);
+  if (backgroundBuffer) {
+    try {
+      const background = await loadImage(backgroundBuffer);
+      drawCover(ctx, background, 0, 0, width, height);
+      ctx.fillStyle = "rgba(5, 7, 4, 0.34)";
+      ctx.fillRect(0, 0, width, height);
+      return;
+    } catch {
+      // Fall back to the branded dark surface below.
+    }
+  }
+
   const gradient = ctx.createLinearGradient(0, 0, width, height);
   gradient.addColorStop(0, "#15170F");
   gradient.addColorStop(0.55, "#222217");
   gradient.addColorStop(1, "#10120D");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = "rgba(255, 237, 150, 0.035)";
-  for (let x = -height; x < width; x += 74) {
-    ctx.save();
-    ctx.translate(x, 0);
-    ctx.rotate(-0.18);
-    ctx.fillRect(0, 0, 18, height * 1.2);
-    ctx.restore();
-  }
 }
 
 async function drawCodeRow(
@@ -212,7 +243,7 @@ export async function renderZZZRedeemCard(
   const ctx = canvas.getContext("2d") as any;
   const font = '"ZZZFont", "ZZZFontEn", sans-serif';
 
-  drawBackground(ctx, layout.width, layout.canvasHeight);
+  await drawBackground(ctx, layout.width, layout.canvasHeight);
   ctx.fillStyle = "#E8FF70";
   ctx.fillRect(34, 29, 5, 31);
   ctx.fillStyle = "#FFFFFF";
