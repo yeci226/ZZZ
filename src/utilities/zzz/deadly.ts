@@ -8,6 +8,11 @@ import {
 } from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
 import {
+  formatBattleRecordTime,
+  getDeadlyAssaultModeLabel,
+  isDeadlyAssaultExtremeMode,
+} from "./recordDisplay.js";
+import {
   createCanvas,
   loadImage,
   GlobalFonts,
@@ -167,6 +172,19 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
   try {
     const selectedFont =
       fonts[userLocale as keyof typeof fonts] || fonts.default;
+    const hasExtremeMode = isDeadlyAssaultExtremeMode(deadlyData);
+    const battleEntries = [
+      ...(hasExtremeMode
+        ? deadlyData.hard_list.map((battle: any) => ({
+            battle,
+            mode: "extreme" as const,
+          }))
+        : []),
+      ...(deadlyData.list || []).map((battle: any) => ({
+        battle,
+        mode: "normal" as const,
+      })),
+    ];
 
     // 计算画布高度 - 动态计算每个战斗记录和BUFF的实际高度
     const baseHeight = 400; // 顶部信息区域高度
@@ -175,8 +193,8 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
     const tempCanvas = createCanvas(1000, 1);
     const tempCtx = tempCanvas.getContext("2d");
 
-    if (deadlyData.list) {
-      for (const battle of deadlyData.list) {
+    if (battleEntries.length > 0) {
+      for (const { battle } of battleEntries) {
         // 计算BUFF的高度
         if (battle.buffer && battle.buffer.length > 0) {
           for (const buffer of battle.buffer) {
@@ -258,8 +276,8 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
     const raceIcons: Record<string, Image> = {};
 
     // 预加载所有角色、助手和Boss图像
-    if (deadlyData.list) {
-      for (const battle of deadlyData.list) {
+    if (battleEntries.length > 0) {
+      for (const { battle } of battleEntries) {
         if (battle.avatar_list) {
           for (const avatar of battle.avatar_list) {
             if (!avatarImages[avatar.id] && avatar.role_square_url) {
@@ -434,8 +452,8 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
     // 绘制战斗记录
     let currentY = 310;
 
-    if (deadlyData.list) {
-      for (const battle of deadlyData.list) {
+    if (battleEntries.length > 0) {
+      for (const { battle, mode } of battleEntries) {
         // 绘制BUFF（如果有）
         if (battle.buffer && battle.buffer.length > 0) {
           for (const buffer of battle.buffer) {
@@ -561,23 +579,24 @@ async function drawDeadlyImage(tr: any, userLocale: string, deadlyData: any) {
           ctx.fillStyle = "white";
           ctx.textAlign = "left";
           ctx.fillText(bossName, 210, currentY + 40);
+
+          if (mode === "extreme") {
+            const modeLabel = getDeadlyAssaultModeLabel(userLocale);
+            ctx.font = `bold 15px ${selectedFont}`;
+            ctx.fillStyle = "#FF9B9B";
+            ctx.textAlign = "left";
+            ctx.fillText(modeLabel, 210, currentY + 18);
+          }
         }
 
         // 绘制挑战时间
-        if (battle.challenge_time) {
-          const challengeDate = new Date(
-            parseInt(battle.challenge_time.year),
-            parseInt(battle.challenge_time.month) - 1,
-            parseInt(battle.challenge_time.day),
-            parseInt(battle.challenge_time.hour),
-            parseInt(battle.challenge_time.minute),
-            parseInt(battle.challenge_time.second),
-          );
-
-          const pad = (n: number) => n.toString().padStart(2, "0");
-          const ct = battle.challenge_time;
-          const formattedTime = `${ct.year}/${pad(parseInt(ct.month))}/${pad(parseInt(ct.day))} ${pad(parseInt(ct.hour))}:${pad(parseInt(ct.minute))}:${pad(parseInt(ct.second))}`;
-          const timeStr = `${tr("ChallengeTime") || "過關時刻"} ${formattedTime}`;
+        const formattedBattleTime = formatBattleRecordTime(
+          battle.challenge_time,
+          battle.battle_time,
+          userLocale,
+        );
+        if (formattedBattleTime) {
+          const timeStr = `${tr("ChallengeTime") || "過關時刻"} ${formattedBattleTime}`;
 
           ctx.font = `20px ${selectedFont}`;
           ctx.fillStyle = "#E3E3E3";

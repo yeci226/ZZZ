@@ -8,6 +8,7 @@ import { getUserCookie, getUserLang } from "../utilities.js";
 import { getConfig, getVerifyBaseUrl } from "../core/config.js";
 import { buildZZZDailyCard } from "../canvas/dailyCard.js";
 import { getLegacyAccounts, updateLegacyAccountAtIndex } from "../accountStore.js";
+import { buildDailySignInPresentation } from "./dailyPresentation.js";
 
 const CONFIG = {
   TAIPEI_TIMEZONE: "Asia/Taipei",
@@ -217,11 +218,12 @@ export class AutoDailyService {
         }
 
         const rewards = await zzz.daily.rewards();
-        const reward =
-          rewards.awards[signResult.info.total_sign_day] ||
-          rewards.awards[0];
-
-        const tomorrowReward = rewards.awards[signResult.info.total_sign_day + 1] || null;
+        const presentation = buildDailySignInPresentation(
+          signResult.info,
+          rewards.awards,
+        );
+        const reward = presentation.todayReward || rewards.awards[0];
+        const tomorrowReward = presentation.tomorrowReward;
         results.push({
           uid: account.uid,
           nickname: account.nickname || "Unknown",
@@ -229,9 +231,9 @@ export class AutoDailyService {
           rewardName: reward.name,
           rewardCount: reward.cnt,
           rewardIcon: reward.icon,
-          totalDays: signResult.info.total_sign_day,
-          shortSignDay: signResult.info.total_sign_day,
-          signCntMissed: Math.max(0, new Date(Date.now() + 8 * 60 * 60 * 1000).getUTCDate() - 1 - signResult.info.total_sign_day),
+          totalDays: presentation.signedDays,
+          shortSignDay: presentation.signedDays,
+          signCntMissed: presentation.missedDays,
           tomorrowRewardName: tomorrowReward?.name,
           tomorrowRewardIcon: tomorrowReward?.icon,
           tomorrowRewardCount: tomorrowReward?.cnt,

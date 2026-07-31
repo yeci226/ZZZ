@@ -9,18 +9,10 @@ import {
   loadImageAsync,
 } from "./utils.js";
 import { bangbooRectangleUrl } from "./assets.js";
-
-function formatChallengeTime(ct: {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-  second: number;
-}): string {
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${ct.year}/${pad(ct.month)}/${pad(ct.day)} ${pad(ct.hour)}:${pad(ct.minute)}:${pad(ct.second)}`;
-}
+import {
+  formatBattleRecordTime,
+  getClearTimeLabel,
+} from "../recordDisplay.js";
 
 interface ShiyuAssets {
   elementImages: any[];
@@ -284,14 +276,17 @@ export async function drawShiyuCanvas(
       ctx.textAlign = "right";
       ctx.fillStyle = "#A0A0A0";
       ctx.font = `22px ${selectedFont}`;
-      const briefCt = hadalData.hadal_info_v2.brief?.challenge_time;
-      if (briefCt) {
-        const ctStr = formatChallengeTime(briefCt);
-        ctx.fillText(
-          `${tr("ClearTime") || "過關時刻"}：${ctStr}`,
-          rightX,
-          currentY + 140,
-        );
+      const brief = hadalData.hadal_info_v2.brief;
+      const globalTime = formatBattleRecordTime(
+        brief?.challenge_time,
+        brief?.battle_time,
+        userLocale,
+      );
+      if (globalTime) {
+        const label = brief?.challenge_time
+          ? getClearTimeLabel(userLocale)
+          : tr("TotalTime") || "總通關用時";
+        ctx.fillText(`${label}：${globalTime}`, rightX, currentY + 140);
       }
 
       currentY += 95;
@@ -372,10 +367,17 @@ export async function drawShiyuCanvas(
       ctx.fillStyle = "#A0A0A0";
       const titleWidth = ctx.measureText(`${floor.zone_name}`).width;
       ctx.font = `22px ${selectedFont}`;
-      if (floor.challenge_time) {
-        const ctStr = formatChallengeTime(floor.challenge_time);
+      const floorTime = formatBattleRecordTime(
+        floor.challenge_time,
+        floor.totalTime,
+        userLocale,
+      );
+      if (floorTime) {
+        const label = floor.challenge_time
+          ? getClearTimeLabel(userLocale)
+          : tr("SpentTime") || "通關用時";
         ctx.fillText(
-          `${tr("ClearTime") || "過關時刻"}：${ctStr}`,
+          `${label}：${floorTime}`,
           70 + titleWidth + 20,
           currentY + 47.5,
         );
@@ -447,6 +449,7 @@ export async function drawShiyuCanvas(
         node.rating,
         layerRatingImages,
         floor.level === 5,
+        userLocale,
       );
 
       dynamicImageIndex = result.nextImageIndex;
@@ -483,6 +486,7 @@ async function drawNode(
   nodeRating: string = "",
   ratingImages: any = {},
   showScore: boolean = false,
+  userLocale: string = "en",
 ) {
   let drawY = currentY;
 
@@ -602,24 +606,19 @@ async function drawNode(
     32,
   );
 
-  const battleTime = nodeData.battle_time || 0;
-  const bMin = Math.floor(battleTime / 60)
-    .toString()
-    .padStart(2, "0");
-  const bSec = (battleTime % 60).toString().padStart(2, "0");
   ctx.font = `20px ${selectedFont}`;
   ctx.fillStyle = "#A0A0A0";
-  const challengeTime = nodeData.challenge_time;
-  if (challengeTime) {
-    const ctStr = formatChallengeTime(challengeTime);
+  const nodeTime = formatBattleRecordTime(
+    nodeData.challenge_time,
+    nodeData.battle_time,
+    userLocale,
+  );
+  if (nodeTime) {
+    const label = nodeData.challenge_time
+      ? getClearTimeLabel(userLocale)
+      : tr("SpentTime") || "通關用時";
     ctx.fillText(
-      `${tr("ClearTime") || "過關時刻"}：${ctStr}`,
-      x + 15,
-      showScore ? drawY + 120 + 110 : drawY + 120 + 75,
-    );
-  } else if (battleTime) {
-    ctx.fillText(
-      `${tr("SpentTime") || "通關用時"}：${bMin}:${bSec}`,
+      `${label}：${nodeTime}`,
       x + 15,
       showScore ? drawY + 120 + 110 : drawY + 120 + 75,
     );
