@@ -36,6 +36,7 @@ import {
   getLegacyAccounts,
 } from "../utilities/accountStore.js";
 import { ELEMENT_ICON_BY_TYPE as elementId } from "../utilities/zzz/elements.js";
+import { unwrapProfileCharacter } from "../utilities/zzz/profileData.js";
 import { handleDeadlyDraw } from "../utilities/zzz/deadly.js";
 import {
   DeadlyAssaultViewMode,
@@ -381,23 +382,11 @@ async function handleSelectCharacter(
       let selectedCharacter = null;
 
       if (characterId !== "main") {
-        // Manually fetch character details
+        // Use the same record.character() path as the multi-character view so
+        // the full payload (including rank/cinema) reaches the renderer.
         const record = zzz.record as any;
-        const rawRes = await record.request
-          .setQueryParams({
-            server: record.region,
-            role_id: record.uid,
-            lang: record.lang,
-            "id_list[]": characterId,
-          })
-          .send(
-            "https://sg-public-api.hoyolab.com/event/game_record_zzz/api/zzz/avatar/info",
-          );
-
-        if (rawRes.response.retcode === 0 && rawRes.response.data) {
-          const resData = rawRes.response.data as any;
-          selectedCharacter = resData.avatar_list?.[0];
-        }
+        const characterResult = await record.character(Number(characterId));
+        selectedCharacter = unwrapProfileCharacter(characterResult);
       }
 
       let imageBuffer;
