@@ -22,6 +22,7 @@ import {
   TtlCache,
   fireAndForget,
 } from "../utilities/shared/index.js";
+import { getInteractionPreflight } from "../utilities/shared/interactionPreflight.js";
 
 // Use client.db directly
 import { getConfig } from "../utilities/core/config.js";
@@ -35,6 +36,24 @@ const localeCache = new TtlCache<string, string>(120000, 10000);
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (!interaction.channel || interaction.channel.type == ChannelType.DM)
     return;
+
+  // Account's non-modal paths must be acknowledged before locale/database
+  // lookups as well as before the pending-login network query.
+  if (interaction.isChatInputCommand()) {
+    const earlyPreflight = getInteractionPreflight(interaction);
+    if (
+      earlyPreflight.deferBeforeDrain &&
+      !interaction.deferred &&
+      !interaction.replied
+    ) {
+      try {
+        await ensureDeferredReply(interaction, true);
+      } catch (error: any) {
+        new Logger("指令").error(`初始 ACK 失敗：${error?.message ?? error}`);
+        return;
+      }
+    }
+  }
 
   let userLocale: string | undefined = await localeCache.getOrSetAsync(
     interaction.user.id,
@@ -77,16 +96,31 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     }
 
     try {
-      // Drain any pending web-logins from Supabase before every command.
-      // Fast no-op when Supabase is unconfigured or queue is empty.
-      await drainPendingLogins(interaction.user.id);
-    } catch {
-      // Never block a command on a queue read failure.
-    }
-
-    try {
       const chatInteraction = interaction as ChatInputCommandInteraction;
       const ackPlan = getCommandAckPlan(command, { defaultEphemeral: true });
+      const preflight = getInteractionPreflight(chatInteraction);
+
+      // /account must acknowledge before the pending-login Supabase query.
+      // Modal commands cannot be deferred and must not spend their 3-second
+      // response window on an unrelated queue drain.
+      if (
+        preflight.deferBeforeDrain &&
+        !chatInteraction.deferred &&
+        !chatInteraction.replied
+      ) {
+        await ensureDeferredReply(chatInteraction, ackPlan.ephemeral);
+      }
+
+      if (!preflight.skipPendingLoginDrain) {
+        try {
+          // Drain any pending web-logins from Supabase before the command.
+          // This runs only after the affected command has been acknowledged.
+          await drainPendingLogins(interaction.user.id);
+        } catch {
+          // Never block a command on a queue read failure.
+        }
+      }
+
       if (ackPlan.shouldDefer) {
         await ensureDeferredReply(chatInteraction, ackPlan.ephemeral);
       }
