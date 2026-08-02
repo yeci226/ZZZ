@@ -23,6 +23,7 @@ import {
   fireAndForget,
 } from "../utilities/shared/index.js";
 import { getInteractionPreflight } from "../utilities/shared/interactionPreflight.js";
+import { resolveInteractionLocale } from "../utilities/core/interactionLocale.js";
 
 // Use client.db directly
 import { getConfig } from "../utilities/core/config.js";
@@ -39,34 +40,44 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
 
   // Account's non-modal paths must be acknowledged before locale/database
   // lookups as well as before the pending-login network query.
-  if (interaction.isChatInputCommand()) {
-    const earlyPreflight = getInteractionPreflight(interaction);
-    if (
-      earlyPreflight.deferBeforeDrain &&
-      !interaction.deferred &&
-      !interaction.replied
-    ) {
-      try {
-        await ensureDeferredReply(interaction, true);
-      } catch (error: any) {
-        new Logger("指令").error(`初始 ACK 失敗：${error?.message ?? error}`);
-        return;
-      }
+  const chatInputInteraction = interaction.isChatInputCommand()
+    ? interaction
+    : undefined;
+  const earlyPreflight = chatInputInteraction
+    ? getInteractionPreflight(chatInputInteraction)
+    : undefined;
+  if (
+    earlyPreflight?.deferBeforeDrain &&
+    chatInputInteraction &&
+    !chatInputInteraction.deferred &&
+    !chatInputInteraction.replied
+  ) {
+    try {
+      await ensureDeferredReply(interaction, true);
+    } catch (error: any) {
+      new Logger("指令").error(`初始 ACK 失敗：${error?.message ?? error}`);
+      return;
     }
   }
 
-  let userLocale: string | undefined = await localeCache.getOrSetAsync(
-    interaction.user.id,
-    async () => (await getUserLang(interaction.user.id)) || "",
-  );
-  if (!userLocale) {
-    await setupDefaultLang(interaction.user.id, interaction.locale);
-    userLocale =
-      (await getUserLang(interaction.user.id)) ||
-      toI18nLang(interaction.locale) ||
-      "en";
-  }
-  const finalLocale: string = userLocale ?? "en";
+  const fallbackLocale = toI18nLang(interaction.locale) || "en";
+  const finalLocale = earlyPreflight?.skipLocaleLookup
+    ? fallbackLocale
+    : await resolveInteractionLocale({
+        loadCached: async () =>
+          (await localeCache.getOrSetAsync(
+            interaction.user.id,
+            async () => (await getUserLang(interaction.user.id)) || "",
+          )) || undefined,
+        setupDefault: () =>
+          setupDefaultLang(interaction.user.id, interaction.locale),
+        reload: async () => (await getUserLang(interaction.user.id)) || undefined,
+        fallbackLocale,
+        onError: (error) =>
+          new Logger("指令").error(
+            `locale 初始化失敗：${error instanceof Error ? error.message : String(error)}`,
+          ),
+      });
   localeCache.set(interaction.user.id, finalLocale);
   const i18n = createTranslator(finalLocale);
 
@@ -178,7 +189,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
         );
       }
     } catch (e: any) {
-      new Logger("指令").error(`錯誤訊息：${e?.stack ?? e}`);
+      new Logger("指令").error(`錯誤訊息：${e.message}`);
       await replyOrFollowUp(interaction, {
         content: "哦喲，好像出了一點小問題，請重試",
         flags: MessageFlags.Ephemeral,
@@ -193,7 +204,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
         interaction as ContextMenuCommandInteraction,
       );
     } catch (e: any) {
-      new Logger("指令").error(`錯誤訊息：${e?.stack ?? e}`);
+      new Logger("指令").error(`錯誤訊息：${e.message}`);
       await replyOrFollowUp(interaction, {
         content: "哦喲，好像出了一點小問題，請重試",
         flags: MessageFlags.Ephemeral,

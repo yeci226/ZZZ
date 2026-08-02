@@ -30,6 +30,8 @@ import {
   type Character,
   type Hoyolab,
 } from "../../../utilities/accountStore.js";
+import { shouldLoadAccountData } from "../../../utilities/core/accountInteraction.js";
+import { stripEphemeralFlagForEdit } from "../../../utilities/shared/index.js";
 
 /**
  * Reply to an interaction whether or not it has already been deferred.
@@ -41,7 +43,7 @@ async function replyOrEdit(
   payload: any,
 ): Promise<void> {
   if (interaction.deferred || interaction.replied) {
-    await interaction.editReply(payload);
+    await interaction.editReply(stripEphemeralFlagForEdit(payload));
     return;
   }
   await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
@@ -204,13 +206,52 @@ export default {
     // ACK early for non-modal paths so drain (≤3s budget) can't expire interaction.
     // QuickLink + SetUserCookie open modals — never defer those.
     const isModalCommand =
-      command === "SetUserCookie";
+      !shouldLoadAccountData(command);
     if (!isModalCommand && !interaction.deferred && !interaction.replied) {
       try {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       } catch (e: any) {
         console.warn(`[/account] deferReply failed: ${e?.message ?? e}`);
       }
+    }
+
+    if (isModalCommand) {
+      await interaction.showModal(
+        new ModalBuilder()
+          .setCustomId("account_SetUserCookieModal")
+          .setTitle(tr("account_SetUserCookie"))
+          .addComponents(
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId("ltoken_v2")
+                .setLabel("ltoken_v2")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true),
+            ),
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId("ltuid_v2")
+                .setLabel("ltuid_v2")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true),
+            ),
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId("cookie_token_v2")
+                .setLabel("cookie_token_v2")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true),
+            ),
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId("account_mid_v2")
+                .setLabel("account_mid_v2")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true),
+            ),
+          ),
+      );
+      return;
     }
 
     const accounts = await getLegacyAccounts(db as any, userId);
@@ -298,43 +339,7 @@ export default {
           files: [attachment],
         });
         return;
-      case "SetUserCookie":
-        await interaction.showModal(
-          new ModalBuilder()
-            .setCustomId("account_SetUserCookieModal")
-            .setTitle(tr("account_SetUserCookie"))
-            .addComponents(
-              new ActionRowBuilder<TextInputBuilder>().addComponents(
-                new TextInputBuilder()
-                  .setCustomId("ltoken_v2")
-                  .setLabel("ltoken_v2")
-                  .setStyle(TextInputStyle.Short)
-                  .setRequired(true),
-              ),
-              new ActionRowBuilder<TextInputBuilder>().addComponents(
-                new TextInputBuilder()
-                  .setCustomId("ltuid_v2")
-                  .setLabel("ltuid_v2")
-                  .setStyle(TextInputStyle.Short)
-                  .setRequired(true),
-              ),
-              new ActionRowBuilder<TextInputBuilder>().addComponents(
-                new TextInputBuilder()
-                  .setCustomId("cookie_token_v2")
-                  .setLabel("cookie_token_v2")
-                  .setStyle(TextInputStyle.Short)
-                  .setRequired(true),
-              ),
-              new ActionRowBuilder<TextInputBuilder>().addComponents(
-                new TextInputBuilder()
-                  .setCustomId("account_mid_v2")
-                  .setLabel("account_mid_v2")
-                  .setStyle(TextInputStyle.Short)
-                  .setRequired(true),
-              ),
-            ),
-        );
-        return;
+
       case "ViewAccount": {
         const characters = await getAllCharacters(db as any, userId);
         if (characters.length === 0) {
@@ -363,7 +368,7 @@ export default {
         return;
       }
       case "EditAccount":
-        interaction.editReply({
+        await interaction.editReply({
           components: [
             new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
               new StringSelectMenuBuilder()
@@ -382,11 +387,10 @@ export default {
                 ),
             ),
           ],
-          flags: MessageFlags.Ephemeral as any,
         });
         return;
       case "DeleteAccount":
-        interaction.editReply({
+        await interaction.editReply({
           components: [
             new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
               new StringSelectMenuBuilder()
@@ -403,7 +407,6 @@ export default {
                 ),
             ),
           ],
-          flags: MessageFlags.Ephemeral as any,
         });
         return;
     }

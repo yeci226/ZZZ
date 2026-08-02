@@ -31,6 +31,7 @@ describe("interaction preflight", () => {
     ).toEqual({
       deferBeforeDrain: true,
       skipPendingLoginDrain: false,
+      skipLocaleLookup: false,
     });
   });
 
@@ -42,6 +43,7 @@ describe("interaction preflight", () => {
     ).toEqual({
       deferBeforeDrain: false,
       skipPendingLoginDrain: true,
+      skipLocaleLookup: true,
     });
   });
 
@@ -53,6 +55,32 @@ describe("interaction preflight", () => {
     ).toEqual({
       deferBeforeDrain: false,
       skipPendingLoginDrain: true,
+      skipLocaleLookup: true,
+    });
+  });
+
+  it("preserves the resolver context when Discord option methods use this", () => {
+    type ContextualOptions = {
+      values: { options: string };
+      getString(this: ContextualOptions, name: string): string | null;
+      getSubcommand(): string | null;
+    };
+    const options: ContextualOptions = {
+      values: { options: "SetUserCookie" },
+      getString(this: ContextualOptions, name: string) {
+        return this.values[name as "options"] ?? null;
+      },
+      getSubcommand() {
+        return null;
+      },
+    };
+
+    expect(
+      getInteractionPreflight({ commandName: "account", options }),
+    ).toEqual({
+      deferBeforeDrain: false,
+      skipPendingLoginDrain: true,
+      skipLocaleLookup: true,
     });
   });
 
@@ -60,6 +88,7 @@ describe("interaction preflight", () => {
     expect(getInteractionPreflight(fakeInteraction("profile"))).toEqual({
       deferBeforeDrain: false,
       skipPendingLoginDrain: false,
+      skipLocaleLookup: false,
     });
   });
 });

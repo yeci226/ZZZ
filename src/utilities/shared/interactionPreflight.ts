@@ -3,6 +3,8 @@ export interface InteractionPreflight {
   deferBeforeDrain: boolean;
   /** Whether the initial command response is a modal, so no drain is allowed first. */
   skipPendingLoginDrain: boolean;
+  /** Whether the initial command response is a modal, so locale DB work is also skipped. */
+  skipLocaleLookup: boolean;
 }
 
 type CommandInteractionLike = {
@@ -24,20 +26,18 @@ export function getInteractionPreflight(
   interaction: CommandInteractionLike,
 ): InteractionPreflight {
   const commandName = interaction.commandName ?? "";
-  const getString = interaction.options?.getString;
-  const getSubcommand = interaction.options?.getSubcommand;
-
   const isAccountCookieModal =
     commandName === "account" &&
-    getString?.("options") === "SetUserCookie";
+    interaction.options?.getString?.("options") === "SetUserCookie";
   const isSignalLogModal =
     commandName === "signal" &&
-    getSubcommand?.(false) === "log" &&
-    getString?.("options") === "query";
+    interaction.options?.getSubcommand?.(false) === "log" &&
+    interaction.options?.getString?.("options") === "query";
   const skipPendingLoginDrain = isAccountCookieModal || isSignalLogModal;
 
   return {
     deferBeforeDrain: commandName === "account" && !skipPendingLoginDrain,
     skipPendingLoginDrain,
+    skipLocaleLookup: skipPendingLoginDrain,
   };
 }

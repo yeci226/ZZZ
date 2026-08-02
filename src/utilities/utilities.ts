@@ -8,8 +8,12 @@ import {
   ChatInputCommandInteraction,
 } from "discord.js";
 import Logger from "./core/logger.js";
+import { stripEphemeralFlagForEdit } from "./shared/index.js";
 import { LanguageEnum, HoyoAPIError, Hoyolab } from "@yeci226/hoyoapi";
-import { createZzzClient } from "./zzz/clientFactory.js";
+import {
+  createZzzClient,
+  getZzzClientLanguage,
+} from "./zzz/clientFactory.js";
 import { loadImage } from "@napi-rs/canvas";
 import {
   upsertHoyolab,
@@ -232,7 +236,7 @@ export async function drawInQueueReply(
   interaction: ChatInputCommandInteraction,
   title = "",
 ) {
-  interaction.editReply({
+  return interaction.editReply({
     embeds: [
       new EmbedBuilder()
         .setTitle(title)
@@ -253,7 +257,7 @@ export async function failedReply(
 
   if (description) embed.setDescription(description);
 
-  replyOrfollowUp(interaction, {
+  return replyOrfollowUp(interaction, {
     embeds: [embed],
     flags: MessageFlags.Ephemeral,
     fetchReply: true,
@@ -559,12 +563,7 @@ export async function getUserZZZData(
   }
   if (!userLang) userLang = await getUserLang(userId);
 
-  const getLanguage = (locale: string) =>
-    languageMapping[locale as keyof typeof languageMapping] ||
-    languageMapping.default;
-  const lang = userLang
-    ? getLanguage(userLang)
-    : getLanguage(interaction.locale);
+  const lang = getZzzClientLanguage(userLang || interaction.locale);
 
   try {
     return createZzzClient({ cookie, lang, uid: Number(uid) });
@@ -793,8 +792,10 @@ global.replyOrfollowUp = async function (
   interaction: ChatInputCommandInteraction,
   ...args: any[]
 ) {
-  if (interaction.replied) return interaction.editReply(args[0]);
-  if (interaction.deferred) return await interaction.followUp(args[0]);
+  if (interaction.deferred && !interaction.replied) {
+    return await interaction.editReply(stripEphemeralFlagForEdit(args[0]));
+  }
+  if (interaction.replied) return await interaction.followUp(args[0]);
   return await interaction.reply(args[0]);
 };
 

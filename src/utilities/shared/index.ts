@@ -23,6 +23,25 @@ const LEVEL_COLORS: Record<string, string> = {
 const RESET = "\x1b[0m";
 const EPHEMERAL_FLAG = 64;
 
+export function stripEphemeralFlagForEdit(payload: any): any {
+  if (!payload || typeof payload !== "object" || payload.flags === undefined) {
+    return payload;
+  }
+
+  const rawFlags =
+    typeof payload.flags === "number" ? payload.flags : payload.flags?.bitfield;
+  const flags = Number(rawFlags);
+  if (!Number.isFinite(flags) || (flags & EPHEMERAL_FLAG) === 0) {
+    return payload;
+  }
+
+  const editFlags = flags & ~EPHEMERAL_FLAG;
+  const nextPayload = { ...payload };
+  if (editFlags === 0) delete nextPayload.flags;
+  else nextPayload.flags = editFlags;
+  return nextPayload;
+}
+
 interface CacheEntry<V> {
   value: V;
   expiresAt: number;
@@ -180,7 +199,11 @@ export async function replyOrFollowUp(
 ): Promise<any> {
   if (!interaction) return null;
 
-  if (interaction.deferred || interaction.replied) {
+  if (interaction.deferred && !interaction.replied) {
+    return interaction.editReply(stripEphemeralFlagForEdit(payload));
+  }
+
+  if (interaction.replied) {
     return interaction.followUp(payload);
   }
 
