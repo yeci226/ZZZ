@@ -18,7 +18,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@napi-rs/canvas": "^0.1.88",
+    "@napi-rs/canvas": "^1.0.0",
     "@supabase/supabase-js": "^2.104.1",
     "@yeci226/hoyoapi": "1.4.0",
     "axios": "^1.13.2",
