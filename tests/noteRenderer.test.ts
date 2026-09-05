@@ -16,28 +16,33 @@ describe("official note renderer helpers", () => {
     expect(__noteRendererInternals.activityList(null)).toEqual([]);
   });
 
-  it("uses the official neutral palette for progress, complete and actionable states", () => {
+  it("maps each Note module to its official accent while completed values stay muted", () => {
     expect(__noteRendererInternals.NOTE_COLORS).toMatchObject({
       complete: "#7D7F80",
-      progress: "#FFFFFF",
+      energy: "#2CACF1",
+      daily: "#FFDE00",
+      weekly: "#F1AD3D",
+      event: "#FF4483",
       action: "#FFDE00",
       neutral: "#FFFFFF",
       label: "#D9DBDD",
       secondary: "#7D7F80",
       surface: "#161817",
     });
-    expect(__noteRendererInternals.progressTone(240, 240)).toBe("complete");
-    expect(__noteRendererInternals.progressTone(147, 240)).toBe("progress");
+    expect(__noteRendererInternals.progressTone(240, 240, "energy")).toBe("complete");
+    expect(__noteRendererInternals.progressTone(147, 240, "energy")).toBe("energy");
+    expect(__noteRendererInternals.metricTone("vitality", { vitality: { current: 200, max: 400 } })).toBe("daily");
     expect(__noteRendererInternals.metricTone("cardSign", { card_sign: "CardSignDone" })).toBe("complete");
-    expect(__noteRendererInternals.metricTone("cardSign", { card_sign: "CardSignNotDone" })).toBe("action");
-    expect(__noteRendererInternals.metricTone("vhs", { vhs_sale: { sale_state: "SaleStateDoing" } })).toBe("progress");
-    expect(__noteRendererInternals.metricTone("vhs", { vhs_sale: { sale_state: "SaleStateDone" } })).toBe("action");
+    expect(__noteRendererInternals.metricTone("cardSign", { card_sign: "CardSignNotDone" })).toBe("daily");
+    expect(__noteRendererInternals.metricTone("vhs", { vhs_sale: { sale_state: "SaleStateDoing" } })).toBe("daily");
+    expect(__noteRendererInternals.metricTone("bounty", { bounty_commission: { num: 4000, total: 8000 } }))
+      .toBe("weekly");
     expect(__noteRendererInternals.eventTone({ state: "STATE_COMPLETED" })).toBe("complete");
     expect(__noteRendererInternals.eventTone({ state: "STATE_IN_PROGRESS", monochrome_got_cnt: 1, monochrome_cnt: 10 }))
-      .toBe("progress");
+      .toBe("event");
   });
 
-  it("renders exact white, muted gray, action yellow and official dark surface pixels", async () => {
+  it("renders exact module accents while activity names remain neutral", async () => {
     const [page] = await renderOfficialNote({
       uid: "130000002",
       playerName: "配色測試",
@@ -45,13 +50,16 @@ describe("official note renderer helpers", () => {
       now: Date.UTC(2026, 8, 5),
       note: {
         energy: { progress: { current: 120, max: 240 }, restore: 3600 },
-        vitality: { current: 400, max: 400 },
+        vitality: { current: 200, max: 400 },
         card_sign: "CardSignNotDone",
         vhs_sale: { sale_state: "SaleStateDoing" },
-        bounty_commission: { num: 8000, total: 8000 },
+        bounty_commission: { num: 4000, total: 8000 },
         weekly_task: { cur_point: 1150, max_point: 2100 },
       },
-      calendar: { activity_list: [] },
+      calendar: { activity_list: [
+        { activity_id: 1, name: "進行中的活動", monochrome_got_cnt: 0, monochrome_cnt: 1050, state: "STATE_IN_PROGRESS", left_end_ts: 86_400 },
+        { activity_id: 2, name: "已完成的活動", monochrome_got_cnt: 300, monochrome_cnt: 300, state: "STATE_COMPLETED", left_end_ts: 0 },
+      ] },
     });
     const image = await loadImage(page!);
     const canvas = createCanvas(image.width, image.height);
@@ -64,10 +72,26 @@ describe("official note renderer helpers", () => {
       colors.set(key, (colors.get(key) ?? 0) + 1);
     }
 
-    expect(colors.get("255,255,255")).toBeGreaterThan(100);
+    expect(colors.get("44,172,241")).toBeGreaterThan(100);
     expect(colors.get("125,127,128")).toBeGreaterThan(100);
     expect(colors.get("255,222,0")).toBeGreaterThan(100);
+    expect(colors.get("241,173,61")).toBeGreaterThan(100);
+    expect(colors.get("255,68,131")).toBeGreaterThan(100);
+    expect(colors.get("217,219,221")).toBeGreaterThan(100);
     expect(colors.get("22,24,23")).toBeGreaterThan(10_000);
+
+    const activeNamePixels = ctx.getImageData(76, 940, 520, 34).data;
+    const completedNamePixels = ctx.getImageData(76, 1072, 520, 34).data;
+    const countColor = (data: Uint8ClampedArray, red: number, green: number, blue: number) => {
+      let count = 0;
+      for (let offset = 0; offset < data.length; offset += 4) {
+        if (data[offset] === red && data[offset + 1] === green && data[offset + 2] === blue) count++;
+      }
+      return count;
+    };
+    expect(countColor(activeNamePixels, 217, 219, 221)).toBeGreaterThan(20);
+    expect(countColor(activeNamePixels, 255, 68, 131)).toBe(0);
+    expect(countColor(completedNamePixels, 217, 219, 221)).toBeGreaterThan(20);
   });
 
   it("keeps Note, reminder highlights and later activity pages at their existing dimensions", async () => {

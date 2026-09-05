@@ -23,11 +23,14 @@ export interface NoteRenderOptions {
   now?: number;
 }
 
-type NoteTone = "complete" | "progress" | "action" | "neutral";
+type NoteTone = "complete" | "energy" | "daily" | "weekly" | "event" | "action" | "neutral";
 
 const NOTE_COLORS: Record<NoteTone | "label" | "secondary" | "surface", string> = {
   complete: "#7D7F80",
-  progress: "#FFFFFF",
+  energy: "#2CACF1",
+  daily: "#FFDE00",
+  weekly: "#F1AD3D",
+  event: "#FF4483",
   action: "#FFDE00",
   neutral: "#FFFFFF",
   label: "#D9DBDD",
@@ -35,21 +38,18 @@ const NOTE_COLORS: Record<NoteTone | "label" | "secondary" | "surface", string> 
   surface: "#161817",
 };
 
-function progressTone(currentValue: unknown, maxValue: unknown): NoteTone {
+function progressTone(currentValue: unknown, maxValue: unknown, activeTone: NoteTone = "neutral"): NoteTone {
   const current = Number(currentValue) || 0;
   const max = Number(maxValue) || 0;
-  return max > 0 && current >= max ? "complete" : "progress";
+  return max > 0 && current >= max ? "complete" : activeTone;
 }
 
 function metricTone(key: ReminderItemKey, note: any): NoteTone {
-  if (key === "vitality") return progressTone(note?.vitality?.current, note?.vitality?.max);
-  if (key === "cardSign") return String(note?.card_sign) === "CardSignDone" ? "complete" : "action";
-  if (key === "vhs") {
-    const state = String(note?.vhs_sale?.sale_state ?? "");
-    return state === "SaleStateDoing" ? "progress" : "action";
-  }
-  if (key === "bounty") return progressTone(note?.bounty_commission?.num, note?.bounty_commission?.total);
-  if (key === "weekly") return progressTone(note?.weekly_task?.cur_point, note?.weekly_task?.max_point);
+  if (key === "vitality") return progressTone(note?.vitality?.current, note?.vitality?.max, "daily");
+  if (key === "cardSign") return String(note?.card_sign) === "CardSignDone" ? "complete" : "daily";
+  if (key === "vhs") return "daily";
+  if (key === "bounty") return progressTone(note?.bounty_commission?.num, note?.bounty_commission?.total, "weekly");
+  if (key === "weekly") return progressTone(note?.weekly_task?.cur_point, note?.weekly_task?.max_point, "weekly");
   return "neutral";
 }
 
@@ -58,7 +58,7 @@ function eventTone(event: any): NoteTone {
   if (state === "STATE_COMPLETED") return "complete";
   const current = Number(event?.monochrome_got_cnt ?? 0);
   const max = Number(event?.monochrome_cnt ?? 0);
-  return max > 0 && current >= max ? "complete" : "progress";
+  return max > 0 && current >= max ? "complete" : "event";
 }
 
 function roundedRect(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, r: number): void {
@@ -162,12 +162,16 @@ function drawMetricCard(ctx: SKRSContext2D, options: {
   ctx.font = `44px ${getZzzOfficialNumberFont(options.locale)}`;
   ctx.fillText(fitText(ctx, options.value, options.width - 44), options.x + 22, options.y + 94);
   if (options.detail) {
-    ctx.fillStyle = options.highlighted ? NOTE_COLORS.action : NOTE_COLORS[options.tone];
+    ctx.fillStyle = NOTE_COLORS.secondary;
     ctx.font = `20px ${getZzzOfficialFont(options.locale)}`;
     ctx.textAlign = "right";
     ctx.fillText(fitText(ctx, options.detail, options.width - 44), options.x + options.width - 22, options.y + options.height - 18);
     ctx.textAlign = "left";
   }
+  ctx.globalAlpha = (options.dimmed ? 0.43 : 1) * 0.28;
+  ctx.fillStyle = options.highlighted ? NOTE_COLORS.action : NOTE_COLORS[options.tone];
+  roundedRect(ctx, options.x + 22, options.y + options.height - 7, options.width - 44, 2, 1);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -219,7 +223,7 @@ export async function renderOfficialNote(options: NoteRenderOptions): Promise<Bu
       ctx.fillStyle = NOTE_COLORS.label;
       ctx.font = `31px ${getZzzOfficialFont(options.locale)}`;
       ctx.fillText(labels.energy, 226, y + 54);
-      const energyTone = progressTone(current, max);
+      const energyTone = progressTone(current, max, "energy");
       ctx.fillStyle = highlighted ? NOTE_COLORS.action : NOTE_COLORS[energyTone];
       ctx.font = `72px ${getZzzOfficialNumberFont(options.locale)}`;
       ctx.fillText(`${current}`, 226, y + 127);
@@ -229,6 +233,15 @@ export async function renderOfficialNote(options: NoteRenderOptions): Promise<Bu
       ctx.font = `24px ${getZzzOfficialFont(options.locale)}`;
       ctx.fillStyle = highlighted ? NOTE_COLORS.action : NOTE_COLORS[energyTone];
       ctx.fillText(current >= max && max > 0 ? labels.full : energyFullLabel(options.note?.energy, options.now ?? Date.now(), options.locale), 620, y + 105);
+      const energyRatio = max > 0 ? Math.min(1, Math.max(0, current / max)) : 0;
+      roundedRect(ctx, 620, y + 124, 330, 6, 3);
+      ctx.fillStyle = "rgba(255,255,255,.16)";
+      ctx.fill();
+      if (energyRatio > 0) {
+        roundedRect(ctx, 620, y + 124, Math.max(6, 330 * energyRatio), 6, 3);
+        ctx.fillStyle = highlighted ? NOTE_COLORS.action : NOTE_COLORS[energyTone];
+        ctx.fill();
+      }
       ctx.restore();
       y += 214;
 
