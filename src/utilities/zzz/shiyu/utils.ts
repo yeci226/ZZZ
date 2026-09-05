@@ -69,24 +69,25 @@ export function drawCircleImage(
 ) {
   ctx.save();
 
-  const centerX = x + size / 2;
-  const centerY = y + size / 2;
-
+  const radius = Math.max(8, Math.round(size * 0.16));
   ctx.beginPath();
-  ctx.arc(centerX, centerY, size / 2, 0, Math.PI * 2, true);
-  ctx.closePath();
-
+  ctx.roundRect(x, y, size, size, radius);
   ctx.clip();
 
   const scale = Math.min(size / img.width, size / img.height) * scaleFactor;
-
   const scaledWidth = img.width * scale;
   const scaledHeight = img.height * scale;
-
-  const imgX = centerX - scaledWidth / 2;
-  const imgY = centerY - scaledHeight / 2;
-
+  const imgX = x + size / 2 - scaledWidth / 2;
+  const imgY = y + size / 2 - scaledHeight / 2;
   ctx.drawImage(img, imgX, imgY, scaledWidth, scaledHeight);
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.3)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x, y, size, size, radius);
+  ctx.stroke();
   ctx.restore();
 }
 

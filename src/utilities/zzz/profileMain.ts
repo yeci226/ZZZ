@@ -289,14 +289,19 @@ function drawSectionHeader(
   title: string,
   font: string,
 ) {
-  ctx.fillStyle = "#111416";
-  ctx.fillRect(x, y, width, 34);
-  ctx.fillStyle = LIME;
-  ctx.fillRect(x, y, 5, 34);
-  ctx.font = `bold 14px ${font}`;
-  ctx.fillStyle = "#f2f4f4";
+  const titleY = y + 22;
+  ctx.font = `bold 13px ${font}`;
   ctx.textAlign = "left";
-  ctx.fillText(title, x + 15, y + 23);
+  const titleWidth = ctx.measureText(title).width;
+
+  ctx.fillStyle = LIME;
+  ctx.fillRect(x, y + 8, 4, 20);
+
+  ctx.fillStyle = "#f2f4f4";
+  ctx.fillText(title, x + 13, titleY);
+
+  ctx.fillStyle = "#3b4345";
+  ctx.fillRect(x + 23 + titleWidth, y + 19, Math.max(0, width - 23 - titleWidth), 1);
 }
 
 async function drawContactRail(
@@ -348,7 +353,6 @@ async function drawContactRail(
   for (let index = 0; index < visible.length; index += 1) {
     const character = visible[index];
     const rowY = listY + index * (rowHeight + rowGap);
-    const selected = index === 0;
     fillRounded(
       ctx,
       x + 8,
@@ -356,7 +360,7 @@ async function drawContactRail(
       width - 20,
       rowHeight,
       10,
-      selected ? LIME : "#2a2f31",
+      "#2a2f31",
     );
 
     const avatarX = x + 13;
@@ -386,9 +390,8 @@ async function drawContactRail(
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    const textColor = selected ? "#121516" : "#eef1f1";
     ctx.font = `bold 12px ${font}`;
-    ctx.fillStyle = textColor;
+    ctx.fillStyle = "#eef1f1";
     ctx.textAlign = "left";
     ctx.fillText(
       truncate(ctx, character?.name_mi18n ?? character?.name ?? "Unknown", 144),
@@ -396,7 +399,7 @@ async function drawContactRail(
       rowY + 18,
     );
     ctx.font = `bold 8px ${font}`;
-    ctx.fillStyle = selected ? "#596020" : "#899092";
+    ctx.fillStyle = "#899092";
     ctx.fillText(online ? T.online : T.offline, x + 57, rowY + 33);
 
     const rank = Number(character?.rank ?? 0);
@@ -415,6 +418,22 @@ async function drawContactRail(
   ctx.fillStyle = fade;
   ctx.fillRect(x + 8, y + height - 35, width - 16, 35);
   ctx.restore();
+
+  if (characters.length > visible.length) {
+    const arrowX = x + width / 2;
+    const arrowY = y + height - 10;
+    ctx.save();
+    ctx.strokeStyle = "#c6cdcf";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(arrowX - 5, arrowY - 3);
+    ctx.lineTo(arrowX, arrowY + 2);
+    ctx.lineTo(arrowX + 5, arrowY - 3);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   ctx.fillStyle = "#667073";
   ctx.fillRect(x + width - 6, listY + 8, 2, 66);
@@ -509,7 +528,30 @@ async function drawAccountCard(
   ctx.fillText(levelText, nameX + nameWidth + 11 + levelWidth / 2, nameY - 4);
 
   const title = String(show.personal_title ?? "");
-  const titleGradient = ctx.createLinearGradient(nameX, 0, nameX + 180, 0);
+  const titleText = title || T.noTitle;
+  const titleY = y + 64;
+  const titleHeight = 26;
+  const titlePaddingX = 24;
+  const maxTitleWidth = x + width - nameX - 18;
+  ctx.font = `bold 13px ${font}`;
+  const fittedTitle = truncate(
+    ctx,
+    titleText,
+    maxTitleWidth - titlePaddingX,
+  );
+  const titleWidth = Math.max(
+    titleHeight * 2,
+    Math.min(
+      maxTitleWidth,
+      Math.ceil(ctx.measureText(fittedTitle).width + titlePaddingX),
+    ),
+  );
+  const titleGradient = ctx.createLinearGradient(
+    nameX,
+    0,
+    nameX + titleWidth,
+    0,
+  );
   titleGradient.addColorStop(0, sanitizeHex(show.title_main_color, "#f58661"));
   titleGradient.addColorStop(
     1,
@@ -518,16 +560,15 @@ async function drawAccountCard(
   fillRounded(
     ctx,
     nameX,
-    y + 64,
-    Math.max(92, Math.min(230, title.length * 15 + 30)),
-    27,
-    6,
+    titleY,
+    titleWidth,
+    titleHeight,
+    titleHeight / 2,
     "rgba(9,11,12,0.78)",
   );
-  ctx.font = `bold 13px ${font}`;
   ctx.fillStyle = titleGradient;
   ctx.textAlign = "left";
-  ctx.fillText(title || T.noTitle, nameX + 12, y + 83);
+  ctx.fillText(fittedTitle, nameX + titlePaddingX / 2, titleY + 18);
 
   const uid = userData?.game_role_id;
   const region = userData?.region_name;

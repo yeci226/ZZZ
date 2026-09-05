@@ -1,163 +1,74 @@
 import {
-  CommandInteraction,
-  SlashCommandBuilder,
+  AttachmentBuilder,
+  ChatInputCommandInteraction,
+  Client,
   EmbedBuilder,
   LocalizationMap,
-  Client,
-  ChatInputCommandInteraction,
+  SlashCommandBuilder,
 } from "discord.js";
-import moment from "moment-timezone";
-import {
-  getStaminaColor,
-  getUserZZZData,
-} from "../../../utilities/utilities.js";
 import { QuickDB } from "quick.db";
+import { getUserLang, getUserZZZData } from "../../../utilities/utilities.js";
+import { loadOfficialNoteData } from "../../../utilities/zzz/officialRecordApi.js";
+import { renderOfficialNote } from "../../../utilities/zzz/noteRenderer.js";
+import { getLegacyAccountAtIndex } from "../../../utilities/accountStore.js";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("note")
-    .setDescription("View current energy")
-    .setNameLocalizations({
-      "zh-TW": "即時便箋",
-      vi: "ghichúnhanh",
-      fr: "note",
-    } as LocalizationMap)
-    .setDescriptionLocalizations({
-      "zh-TW": "查看當前電量",
-      vi: "Kiểm tra điện lượng hiện tại",
-      fr: "Afficher les charges de batterie actuelles",
-    } as LocalizationMap)
+    .setDescription("View official-style real-time notes and events")
+    .setNameLocalizations({ "zh-TW": "即時便箋", "zh-CN": "实时便笺", ja: "リアルタイムノート", ko: "실시간메모", fr: "notes", vi: "ghichú" } as LocalizationMap)
+    .setDescriptionLocalizations({ "zh-TW": "查看官方樣式的即時便箋與活動日曆", "zh-CN": "查看官方样式的实时便笺与活动日历", ja: "公式スタイルのノートとイベントを表示", ko: "공식 스타일 메모와 이벤트 보기", fr: "Afficher les notes et événements officiels", vi: "Xem ghi chú và sự kiện chính thức" } as LocalizationMap)
     .addSubcommand((subcommand) =>
       subcommand
         .setName("check")
-        .setDescription("...")
-        .setNameLocalizations({
-          "zh-TW": "查看",
-          vi: "kiểmtra",
-          fr: "vérifier",
-        } as LocalizationMap)
+        .setDescription("View real-time notes")
+        .setNameLocalizations({ "zh-TW": "查看", "zh-CN": "查看", ja: "表示", ko: "보기", fr: "voir", vi: "xem" } as LocalizationMap)
+        .setDescriptionLocalizations({ "zh-TW": "查看即時便箋與全部活動", "zh-CN": "查看实时便笺与全部活动", ja: "ノートと全イベントを表示", ko: "메모와 모든 이벤트 보기", fr: "Afficher les notes et tous les événements", vi: "Xem ghi chú và mọi sự kiện" } as LocalizationMap)
         .addStringOption((option) =>
-          option
-            .setName("account")
-            .setDescription("...")
-            .setNameLocalizations({
-              "zh-TW": "帳號",
-              vi: "tàikhoản",
-              fr: "compte",
-            } as LocalizationMap)
-            .setRequired(false)
+          option.setName("account").setDescription("Account")
+            .setNameLocalizations({ "zh-TW": "帳號", "zh-CN": "账号", ja: "アカウント", ko: "계정", fr: "compte", vi: "tàikhoản" } as LocalizationMap)
             .setAutocomplete(true),
         )
         .addUserOption((option) =>
-          option
-            .setName("user")
-            .setDescription("...")
-            .setNameLocalizations({
-              "zh-TW": "使用者",
-              vi: "ngườidùng",
-              fr: "utilisateur",
-            } as LocalizationMap)
-            .setRequired(false),
+          option.setName("user").setDescription("User")
+            .setNameLocalizations({ "zh-TW": "使用者", "zh-CN": "用户", ja: "ユーザー", ko: "사용자", fr: "utilisateur", vi: "ngườidùng" } as LocalizationMap),
         ),
     ),
 
   async execute(
-    client: Client,
+    _client: Client,
     interaction: ChatInputCommandInteraction,
-    args: any[],
+    _args: any[],
     tr: any,
-    db: QuickDB,
-    emoji: any,
+    _db: QuickDB,
   ) {
-    const subCommand = interaction.options.getSubcommand();
-    if (subCommand == "check") {
-      const targetUser =
-        interaction.options.getUser("user") || interaction.user;
-      const accountIndex = parseInt(
-        interaction.options.getString("account") || "0",
-      );
+    const targetUser = interaction.options.getUser("user") || interaction.user;
+    const accountIndex = Number.parseInt(interaction.options.getString("account") || "0", 10);
+    const locale = (await getUserLang(interaction.user.id)) || "tw";
+    const zzz = await getUserZZZData(interaction, tr, targetUser.id, locale, accountIndex);
+    if (!zzz) return;
 
-      const zzz = await getUserZZZData(
-        interaction,
-        tr,
-        targetUser.id,
-        undefined,
-        accountIndex,
-      );
-      if (zzz == null) return;
-
-      try {
-        const res: any = await zzz.record.note();
-        const embed = new EmbedBuilder()
-          .setColor(getStaminaColor(res.energy.progress.current) as any)
-          .setThumbnail(
-            targetUser.displayAvatarURL({
-              size: 4096,
-              forceStatic: false,
-            }),
-          )
-          .setAuthor({
-            name: tr("note_Title") + " - " + zzz.uid,
-          })
-          .addFields(
-            {
-              name: emoji.battery + tr("note_Energy"),
-              value:
-                res.energy.progress.current != res.energy.progress.max
-                  ? res.energy.progress.current +
-                    "/" +
-                    res.energy.progress.max +
-                    ` - <t:${moment(new Date()).unix() + parseInt(res.energy.restore)}:R>`
-                  : tr("note_Energy_Full"),
-              inline: false,
-            },
-            {
-              name: "◉ " + tr("note_Vitality"),
-              value: res.vitality.current + "/" + res.vitality.max,
-              inline: false,
-            },
-            {
-              name: "◉ " + tr("note_Card"),
-              value:
-                res.card_sign == "CardSignDone"
-                  ? tr("note_Card_Done")
-                  : tr("note_Card_NotDone"),
-              inline: false,
-            },
-            {
-              name: "◉ " + tr("note_VHS"),
-              value:
-                res.vhs_sale.sale_state == "SaleStateDoing"
-                  ? tr("note_VHS_Doing")
-                  : tr("note_VHS_NotDoing"),
-              inline: false,
-            },
-          );
-
-        if (
-          res.energy.progress.current + 20 >= res.energy.progress.max &&
-          res.energy.progress.current != res.energy.progress.max
-        )
-          embed.setTitle(tr("note_EnergyFull"));
-
-        interaction.reply({
-          embeds: [embed],
-        });
-      } catch (e: any) {
-        interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle(tr("note_Error"))
-              .setConfig("#E76161", "sob")
-              .setImage(
-                "https://media.discordapp.net/attachments/1149960935654559835/1258313139078955039/image.png",
-              )
-              .setDescription(
-                tr("note_Error_Description") + "\n\n" + `\`${e.message}\``,
-              ),
-          ],
-        });
-      }
+    await interaction.deferReply();
+    try {
+      const { note, calendar } = await loadOfficialNoteData(zzz);
+      const account = await getLegacyAccountAtIndex(_db as any, targetUser.id, accountIndex);
+      const pages = await renderOfficialNote({
+        uid: String(zzz.uid), playerName: account?.nickname, locale, note, calendar,
+      });
+      await interaction.editReply({
+        embeds: [],
+        files: pages.map((buffer, index) => new AttachmentBuilder(buffer, {
+          name: `zzz-note-${zzz.uid}-${index + 1}.png`,
+        })),
+      });
+    } catch (error: any) {
+      await interaction.editReply({
+        files: [],
+        embeds: [new EmbedBuilder()
+          .setTitle(tr("note_Error") || "無法取得即時便箋")
+          .setDescription(`\`${String(error?.message || error)}\``)
+          .setColor("#E76161")],
+      });
     }
   },
 };

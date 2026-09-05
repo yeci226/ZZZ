@@ -50,6 +50,9 @@ const langs = {
   news_SelectPost: "🐣 Vui lòng chọn một bài viết",
 
   daily_Failed: "Điểm danh thất bại",
+  daily_AuthExpiredTitle: "Đăng nhập tài khoản HoYoLAB đã hết hạn",
+  daily_AuthExpiredDesc:
+    "Phiên đăng nhập HoYoLAB của tài khoản này đã hết hạn. Vui lòng liên kết Cookie mới trước khi điểm danh hoặc tra cứu.",
   daily_Signed: "Proxy, hôm nay bạn đã điểm danh rồi nha ~",
   daily_SignSuccess: "Đã điểm danh thành công!",
   daily_Description: "Đã nhận phần thưởng của ngày hôm nay <a>",
@@ -171,6 +174,12 @@ const langs = {
   profile_SelectCharacter: "Chọn nhân vật",
   profile_NoImageData: "Không thể lấy dữ liệu hình ảnh",
   profile_CharactersFormat: "Level <level> • Cung mệnh <rank>",
+  profile_SelectCharacterNextPage: "Trang sau",
+  profile_SelectCharacterPreviousPage: "Trang trước",
+  profile_SelectCharacterNavigationConflict:
+    "Vui lòng chỉ chọn trang trước hoặc trang sau.",
+  profile_SelectCharacterTooMany: "Bạn chỉ có thể chọn tối đa 3 nhân vật.",
+  profile_SelectCharacterRequired: "Vui lòng chọn ít nhất một nhân vật.",
 
   // Profile Canvas
   profileMain_Contacts: "Danh bạ",
@@ -250,6 +259,12 @@ const langs = {
   // Settings
   settings_Title: "Cài Đặt Người Dùng",
   settings_Desc: "Các cài đặt này được liên kết với tài khoản Discord của bạn và áp dụng cho tất cả tài khoản game.",
+  settings_ProfileStyleLabel: "Kiểu thẻ nhân vật",
+  settings_ProfileStyleDesc: "Chọn bố cục thẻ nhân vật. Kiểu 1 là bản chính thức với tranh M6 cố định; kiểu 2 giữ bố cục hiện tại.",
+  settings_ProfileStyleFormal: "Kiểu 1 (Chính thức)",
+  settings_ProfileStyleFormalDesc: "Bố cục chính thức; luôn dùng tranh M6 và bỏ qua cài đặt tranh.",
+  settings_ProfileStyleCurrent: "Kiểu 2 (Hiện tại)",
+  settings_ProfileStyleCurrentDesc: "Giữ bố cục hiện tại và dùng cài đặt tranh bên dưới.",
   settings_PaintingLabel: "Tranh Minh Họa",
   settings_PaintingDesc: "Dùng tranh minh họa wiki thay vì ảnh nhân vật tiêu chuẩn.",
   settings_RankPaintingLabel: "Tranh Theo Rank",

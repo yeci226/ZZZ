@@ -1,4 +1,7 @@
-import { getMindscapeComposition } from "../src/utilities/zzz/mindscapeComposition.js";
+import {
+  getMindscapeComposition,
+  getPaintingSelectionRank,
+} from "../src/utilities/zzz/mindscapeComposition.js";
 
 describe("單角色影畫立繪目線", () => {
   it.each([
@@ -16,5 +19,11 @@ describe("單角色影畫立繪目線", () => {
   it("異常影畫值會安全限制在 0 至 6", () => {
     expect(getMindscapeComposition(-1)).toEqual({ baseIndex: 0 });
     expect(getMindscapeComposition(99)).toEqual({ baseIndex: 2 });
+  });
+
+  it("關閉依影畫展示時應使用完整 6 畫，而不是 0 畫", () => {
+    expect(getPaintingSelectionRank(2, false)).toBe(6);
+    expect(getPaintingSelectionRank(6, false)).toBe(6);
+    expect(getPaintingSelectionRank(2, true)).toBe(2);
   });
 });

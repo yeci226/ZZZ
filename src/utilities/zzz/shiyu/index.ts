@@ -14,37 +14,42 @@ import {
   failedReply,
 } from "../../utilities.js";
 import { toI18nLang } from "../../core/i18n.js";
-import { GlobalFonts } from "@napi-rs/canvas";
-import { join } from "path";
 import { processShiyuData } from "./data.js";
+
 import { loadShiyuAssets, loadDynamicImages } from "./assets.js";
 import { drawShiyuCanvas } from "./drawer.js";
 import { ShiyuContext } from "./types.js";
-
+import { saveShiyuHistory } from "../recordCache.js";
+import { getZzzCanvasFont } from "../canvasFonts.js";
 const drawQueue = new Queue({ autostart: true });
 
-// Register fonts
-GlobalFonts.registerFromPath(join(".", "src", "assets", "en-us.ttf"), "EN");
-GlobalFonts.registerFromPath(join(".", "src", "assets", "zh-tw.ttf"), "TW");
-GlobalFonts.registerFromPath(join(".", "src", "assets", "zh-cn.ttf"), "CN");
-GlobalFonts.registerFromPath(join(".", "src", "assets", "vi-vn.ttf"), "VI");
-GlobalFonts.registerFromPath(join(".", "src", "assets", "ja-jp.ttf"), "JP");
-GlobalFonts.registerFromPath(join(".", "src", "assets", "ko-kr.ttf"), "KR");
-GlobalFonts.registerFromPath(join(".", "src", "assets", "fr-fr.ttf"), "FR");
-GlobalFonts.registerFromPath(
-  join(".", "src", "assets", "Nunito-BlackItalic.ttf"),
-  "Nunito",
-);
-
-const fonts = {
-  tw: "TW",
-  cn: "CN",
-  vi: "VI",
-  jp: "JP",
-  kr: "KR",
-  fr: "FR",
-  default: "EN",
-};
+function buildShiyuCanvasTranslator(
+  tr: (key: string, args?: any) => string,
+  locale: string,
+): (key: string, args?: any) => string {
+  const normalized = locale.toLowerCase();
+  if (normalized === "tw" || normalized === "zh-tw" || normalized === "cn" || normalized === "zh-cn") {
+    return tr;
+  }
+  const english: Record<string, string | ((args?: any) => string)> = {
+    ShiyuDefense_Period: (args) => `Shiyu Defense · Period ${args?.period ?? "?"}`,
+    ShiyuDefense: "Shiyu Defense",
+    FirstFrontier: "First Frontier",
+    SecondFrontier: "Second Frontier",
+    ThirdFrontier: "Third Frontier",
+    FourthFrontier: "Fourth Frontier",
+    FifthFrontier: "Fifth Frontier",
+    TotalTime: "Total Time",
+    SpentTime: "Time",
+    levelFormat: (args) => `Lv.${args?.level ?? "?"}`,
+  };
+  return (key, args) => {
+    const value = english[key];
+    if (typeof value === "function") return value(args);
+    if (typeof value === "string") return value;
+    return tr(key, args);
+  };
+}
 
 export async function handleShiyuDraw(
   interaction: ChatInputCommandInteraction,
@@ -52,6 +57,13 @@ export async function handleShiyuDraw(
   user: User,
   zzz: ZenlessZoneZero,
   schedule: number,
+  options: {
+    db?: any;
+    dataOverride?: any;
+    accountIndex?: number;
+    targetUserId?: string;
+    locale?: string;
+  } = {},
 ) {
   const drawTask = async () => {
     try {
@@ -68,19 +80,33 @@ export async function handleShiyuDraw(
 
       // Request
       const userLocale =
+        options.locale ||
         (await getUserLang(interaction.user.id)) ||
         toI18nLang(interaction.locale) ||
         "en";
-      const hadalData = await zzz.record.hadalInfo(schedule);
-      console.log(hadalData);
-      if (!hadalData.hadal_info_v2.fourth_layer_detail)
+      const hadalData =
+        options.dataOverride ?? (await zzz.record.hadalInfo(schedule));
+      if (!hadalData?.hadal_info_v2?.fourth_layer_detail)
         return failedReply(interaction, tr("NonData"), tr("NonDataDesc"));
+      if (!options.dataOverride && options.db && options.targetUserId) {
+        try {
+          await saveShiyuHistory(
+            options.db,
+            options.targetUserId,
+            options.accountIndex ?? 0,
+            schedule,
+            hadalData,
+          );
+        } catch (cacheError) {
+          console.warn("[shiyu] failed to save history", cacheError);
+        }
+      }
 
       // Generate
       const context: ShiyuContext = {
-        tr,
+        tr: buildShiyuCanvasTranslator(tr, userLocale),
         userLocale,
-        selectedFont: fonts[userLocale as keyof typeof fonts] || fonts.default,
+        selectedFont: getZzzCanvasFont(userLocale),
       };
 
       const floors = processShiyuData(hadalData, context);

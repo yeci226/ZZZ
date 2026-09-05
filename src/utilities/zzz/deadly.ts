@@ -27,6 +27,7 @@ import {
 } from "@napi-rs/canvas";
 import { join } from "path";
 import { drawDeadlyCombinedImage } from "./deadlyCombined.js";
+import { saveDeadlyHistory } from "./recordCache.js";
 const drawQueue = new Queue({ autostart: true });
 const DEADLY_DETAIL_V2_API =
   "https://sg-public-api.hoyolab.com/event/game_record_zzz/api/zzz/hadal_mem_detail_v2";
@@ -161,16 +162,33 @@ export async function handleDeadlyDraw(
       // Request
       const requestStartTime = Date.now();
       const userLocale =
+        modeContext?.locale ||
         (await getUserLang(interaction.user.id)) ||
         toI18nLang(interaction.locale) ||
         "en";
       const deadlyData =
-        (await getDeadlyDetailV2(zzz, schedule)) ||
-        (await zzz.record.deadlyAssault(schedule));
-      if (!deadlyData.has_data)
+        modeContext?.dataOverride ??
+        ((await getDeadlyDetailV2(zzz, schedule)) ||
+          (await zzz.record.deadlyAssault(schedule)));
+      if (!deadlyData || deadlyData.has_data === false)
         return failedReply(interaction, tr("NonData"), tr("NonDataDesc"));
-      const abstractInfo = await getDeadlyAbstractInfo(zzz, schedule);
-      if (abstractInfo) (deadlyData as any).abstract_info = abstractInfo;
+      if (!modeContext?.dataOverride) {
+        const abstractInfo = await getDeadlyAbstractInfo(zzz, schedule);
+        if (abstractInfo) (deadlyData as any).abstract_info = abstractInfo;
+        if (modeContext?.db && modeContext.targetUserId) {
+          try {
+            await saveDeadlyHistory(
+              modeContext.db,
+              modeContext.targetUserId,
+              modeContext.accountIndex,
+              schedule,
+              deadlyData,
+            );
+          } catch (cacheError) {
+            console.warn("[deadly] failed to save history", cacheError);
+          }
+        }
+      }
       const requestEndTime = Date.now();
 
       // Generate

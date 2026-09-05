@@ -1,0 +1,953 @@
+{
+  "abstract": {
+    "collect_total_value": "36.42M",
+    "big_red_num": "34",
+    "millions_evacuations": "15",
+    "refresh_time": 179652,
+    "abyss_duty": {
+      "cur_duty": 8000,
+      "max_duty": 8000
+    },
+    "abyss_unlock": true,
+    "season_unlock": true,
+    "season_data": {
+      "cur_season_id": 1,
+      "season_level": 6,
+      "season_quest": {
+        "cur_quest": 2,
+        "max_quest": 5
+      },
+      "season_coin": {
+        "cur_coin": 11600,
+        "max_coin": 18000
+      },
+      "refresh_time": 359651,
+      "season_stage": 5
+    },
+    "map_list": [
+      {
+        "map_id": 101,
+        "map_name": "城郊幻境",
+        "hell_unlock": true,
+        "leave_percent": 6250,
+        "max_price": "2.77M",
+        "is_challenge": true
+      },
+      {
+        "map_id": 102,
+        "map_name": "雅努斯幻境",
+        "hell_unlock": true,
+        "leave_percent": 10000,
+        "max_price": "2.74M",
+        "is_challenge": true
+      }
+    ],
+    "max_rank": 940,
+    "is_show_percent": true,
+    "collection_data": {
+      "medal_data": {
+        "list": [
+          {
+            "medal_icon": "tests/fixtures/mystery-maze-assets/4656893337922b9e81e4964fde4f5714a11b97e696405f6c417c7df14d99bc49.png",
+            "name": "迷宮財富·豪客",
+            "medal_id": 13004,
+            "unlock": true
+          }
+        ],
+        "cur": 1,
+        "total": 1
+      },
+      "goods_data": {
+        "list": [
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/3837d5ffff2699d60e9cf3ea0611492730a61a0902accc507c1546c433473476.png",
+            "number": 1,
+            "name": "輝瓷戒指",
+            "goods_id": 4360003,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/68a1a599a04edb129d43909c6b36ff8c06ea4eb1324bc49033ed40027c345b7d.png",
+            "number": 3,
+            "name": "《星徽騎士典藏版》",
+            "goods_id": 4360011,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/11ac31867c6b6589e8da201e212c8f8256db176d6f3eebb6f373d32139148c09.png",
+            "number": 1,
+            "name": "《苦情慢歌》",
+            "goods_id": 4360013,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/9c38a499353694b0d607c2c4c7c9c61a99e73e3029ba0a3a28026f3ea9a96752.png",
+            "number": 5,
+            "name": "調頻電視",
+            "goods_id": 4360015,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/43d509e4aabd91322a4f281ec3cdc58087a4f82f0cfcb6659823e1e588b124ac.png",
+            "number": 1,
+            "name": "獵犬遺骸",
+            "goods_id": 4360020,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/782322ecbf59a517ae1ac387e78da6ec095a9cc5ebca78982146856f89fee903.png",
+            "number": 4,
+            "name": "燃油汽水擺飾",
+            "goods_id": 4360031,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/5b5f8c4ae47f2bea6634fabf191fb1a8bb84799e19021be85ed0463dfd7f58ba.png",
+            "number": 3,
+            "name": "脆皮煎餃擺飾",
+            "goods_id": 4360032,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/3187a5ddb92cc988702f063a1808a210e7ef1486b9ae2fb725d732e8b7847883.png",
+            "number": 2,
+            "name": "奶油布丁擺飾",
+            "goods_id": 4360033,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/d8b9dae980d32d3a9823f12a1e245b4cd41b3b728a98c03e72daa46313c70521.png",
+            "number": 5,
+            "name": "嗯呢鐘（白晝橙）",
+            "goods_id": 4360035,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/a3a453e8e578531c778e8ffb582a39339f14fe67be60f4c89a831e475033f41c.png",
+            "number": 1,
+            "name": "邦哥大（檀木黑）",
+            "goods_id": 4360036,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/9da2f8ab6ea252b29e00fdd83636b92dfbb661cdb5df0a2aae523bdc260ef692.png",
+            "number": 2,
+            "name": "邦哥大（象牙白）",
+            "goods_id": 4360037,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/831ffd5989501182c42e2d9be8da13c49c38b29bab756082dd4ee709393ea374.png",
+            "number": 6,
+            "name": "古董電視",
+            "goods_id": 4360045,
+            "unlock": true
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/a2b57e96faf562f8273214cbbfbe414994f0a1713cb1b68b937f60825200928c.png",
+            "number": 0,
+            "name": "觀測資料球",
+            "goods_id": 4360010,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/984eae75f1e5c56ab99437cfe0906209f814062606fc646c84e2006793afb64b.png",
+            "number": 0,
+            "name": "《杜拉罕的微笑》",
+            "goods_id": 4360012,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/0a44a52c059fe743cd87b24bf716202f7b84baf923397df1c5d71f8d51ef2381.png",
+            "number": 0,
+            "name": "掛飾「蟬」",
+            "goods_id": 4360014,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/2c40a73ee0ec8155abfab51db6412befa6519037b6964c0712e4f8d3aabc6989.png",
+            "number": 0,
+            "name": "金卡帶遊戲機",
+            "goods_id": 4360016,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/bc799d41686453f4c17643f0b28d014fc68bf2aed36dfacfc7cc954ae7a412a4.png",
+            "number": 0,
+            "name": "金擺飾·布思考",
+            "goods_id": 4360017,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/449d0ed53311ade0d56956bb3d778b821afd88719101b4ae318032efb07ee142.png",
+            "number": 0,
+            "name": "金擺飾·思考布",
+            "goods_id": 4360018,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/879389eafa8ed113efcea42b31b5afadb9429f814e7ef60c6dd6f2d23edead0b.png",
+            "number": 0,
+            "name": "純金冰淇淋",
+            "goods_id": 4360019,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/440a107aeb0d892f7cab741701311d32adeb754649c83272fb264b3de7a22a2c.png",
+            "number": 0,
+            "name": "金擺飾·王下一桶",
+            "goods_id": 4360021,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/c2924ca09cdca060e37fdd8dc1a11218de9825ec473ecf2621c02df2c55804fc.png",
+            "number": 0,
+            "name": "嗯呢鐘（午夜黑）",
+            "goods_id": 4360034,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/d116d4de0be850187e9fa7fba8d8eab97f511d973e5a259dda96d9653c98e2c2.png",
+            "number": 0,
+            "name": "紅寶石戒指",
+            "goods_id": 4360041,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/b452768384f0192eb21e6e1d52b40d95637dbe624c75e25dfaecb90a8c662179.png",
+            "number": 0,
+            "name": "掛飾「血蟬」",
+            "goods_id": 4360042,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/d41cc7a0adab3b88ef2ae8ed78e0c09d38fb84be5f52af292c009dee9f1763b1.png",
+            "number": 0,
+            "name": "嗯呢鐘（霜曉白）",
+            "goods_id": 4360043,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/54d613ea3f4b6e1ca3ed73c5676b9eb7c7c628b9cf6359325722efdb313ed9fa.png",
+            "number": 0,
+            "name": "邦哥大（琥珀橙）",
+            "goods_id": 4360044,
+            "unlock": false
+          },
+          {
+            "goods_icon": "tests/fixtures/mystery-maze-assets/cfb764ed8560beb4b6b38dc5f14213b10e34bc69443fce2070ae5b50732ad1b6.png",
+            "number": 0,
+            "name": "穩定蘿蔔",
+            "goods_id": 4363502,
+            "unlock": false
+          }
+        ],
+        "cur": 12,
+        "total": 26
+      }
+    }
+  },
+  "detail": {
+    "map_list": [
+      {
+        "map_id": 101,
+        "map_name": "城郊幻境",
+        "hell_unlock": true,
+        "leave_percent": 6250,
+        "max_price": "2.77M",
+        "is_challenge": true
+      },
+      {
+        "map_id": 102,
+        "map_name": "雅努斯幻境",
+        "hell_unlock": true,
+        "leave_percent": 10000,
+        "max_price": "2.74M",
+        "is_challenge": true
+      }
+    ],
+    "record_list": [
+      {
+        "map_id": 102,
+        "map_name": "雅努斯幻境",
+        "difficult": "Hell",
+        "start_time": {
+          "year": 2026,
+          "month": 1,
+          "day": 15,
+          "hour": 12,
+          "minute": 0,
+          "second": 0
+        },
+        "is_success": true,
+        "challenge_time": {
+          "year": 0,
+          "month": 0,
+          "day": 0,
+          "hour": 0,
+          "minute": 22,
+          "second": 35
+        },
+        "avatar_list": [
+          {
+            "id": 1341,
+            "level": 0,
+            "element_type": 202,
+            "avatar_profession": 5,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/5e7e6189022e9978cc1ca539fd143d9cf7a8b7f4c00f0b64c59d8cb61fca69f2.png",
+            "sub_element_type": 0
+          },
+          {
+            "id": 1431,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 1,
+            "rarity": "S",
+            "rank": 3,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/2444223d6654badaf9ca63b699b2360d948a5595ba8dfb0cbe4868e1b4f984c0.png",
+            "sub_element_type": 4
+          },
+          {
+            "id": 1491,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 4,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/c5b74f236a4374819438bfe9272915ee7a924d0e0175de5c228be98433aed48e.png",
+            "sub_element_type": 0
+          }
+        ],
+        "item_list": [
+          {
+            "id": 4360015,
+            "name": "調頻電視",
+            "icon_url": "tests/fixtures/mystery-maze-assets/9c38a499353694b0d607c2c4c7c9c61a99e73e3029ba0a3a28026f3ea9a96752.png",
+            "price": "200K",
+            "is_gt_million": false,
+            "rarity": 5
+          },
+          {
+            "id": 4360020,
+            "name": "獵犬遺骸",
+            "icon_url": "tests/fixtures/mystery-maze-assets/43d509e4aabd91322a4f281ec3cdc58087a4f82f0cfcb6659823e1e588b124ac.png",
+            "price": "200K",
+            "is_gt_million": false,
+            "rarity": 5
+          },
+          {
+            "id": 4360026,
+            "name": "椰布擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/8080e0ac702d2a63fc925fc9c20cee00b17c968228f48a58cb24d7cb5ff96efc.png",
+            "price": "150K",
+            "is_gt_million": false,
+            "rarity": 4
+          },
+          {
+            "id": 4360027,
+            "name": "西瓜布擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/4e9ed8354b19d71c4bddceafa77614d30ebe3b5dec2eef5d63e30263f7bcc2d0.png",
+            "price": "150K",
+            "is_gt_million": false,
+            "rarity": 4
+          }
+        ],
+        "material_total_value": "2743670"
+      },
+      {
+        "map_id": 101,
+        "map_name": "城郊幻境",
+        "difficult": "Hell",
+        "start_time": {
+          "year": 2026,
+          "month": 1,
+          "day": 14,
+          "hour": 12,
+          "minute": 3,
+          "second": 0
+        },
+        "is_success": false,
+        "challenge_time": {
+          "year": 0,
+          "month": 0,
+          "day": 0,
+          "hour": 0,
+          "minute": 21,
+          "second": 29
+        },
+        "avatar_list": [
+          {
+            "id": 1341,
+            "level": 0,
+            "element_type": 202,
+            "avatar_profession": 5,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/5e7e6189022e9978cc1ca539fd143d9cf7a8b7f4c00f0b64c59d8cb61fca69f2.png",
+            "sub_element_type": 0
+          },
+          {
+            "id": 1431,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 1,
+            "rarity": "S",
+            "rank": 3,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/2444223d6654badaf9ca63b699b2360d948a5595ba8dfb0cbe4868e1b4f984c0.png",
+            "sub_element_type": 4
+          },
+          {
+            "id": 1491,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 4,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/c5b74f236a4374819438bfe9272915ee7a924d0e0175de5c228be98433aed48e.png",
+            "sub_element_type": 0
+          }
+        ],
+        "item_list": [
+          {
+            "id": 4360031,
+            "name": "燃油汽水擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/782322ecbf59a517ae1ac387e78da6ec095a9cc5ebca78982146856f89fee903.png",
+            "price": "200K",
+            "is_gt_million": false,
+            "rarity": 5
+          },
+          {
+            "id": 4360045,
+            "name": "古董電視",
+            "icon_url": "tests/fixtures/mystery-maze-assets/831ffd5989501182c42e2d9be8da13c49c38b29bab756082dd4ee709393ea374.png",
+            "price": "200K",
+            "is_gt_million": false,
+            "rarity": 5
+          },
+          {
+            "id": 4360040,
+            "name": "神祕海螺",
+            "icon_url": "tests/fixtures/mystery-maze-assets/78ca9038c1cf76ae08a01b6d57a27b879e0728203b97469e08566dfb7e18e1f2.png",
+            "price": "30K",
+            "is_gt_million": false,
+            "rarity": 3
+          },
+          {
+            "id": 4300453,
+            "name": "感測器套件",
+            "icon_url": "tests/fixtures/mystery-maze-assets/d2e36a368d67653cefe16acab3125859cfe861403222b4aac34d427072f2a950.png",
+            "price": "5000",
+            "is_gt_million": false,
+            "rarity": 4
+          }
+        ],
+        "material_total_value": "665000"
+      },
+      {
+        "map_id": 102,
+        "map_name": "雅努斯幻境",
+        "difficult": "Hard",
+        "start_time": {
+          "year": 2026,
+          "month": 1,
+          "day": 13,
+          "hour": 12,
+          "minute": 6,
+          "second": 0
+        },
+        "is_success": true,
+        "challenge_time": {
+          "year": 0,
+          "month": 0,
+          "day": 0,
+          "hour": 0,
+          "minute": 19,
+          "second": 29
+        },
+        "avatar_list": [
+          {
+            "id": 1431,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 1,
+            "rarity": "S",
+            "rank": 3,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/2444223d6654badaf9ca63b699b2360d948a5595ba8dfb0cbe4868e1b4f984c0.png",
+            "sub_element_type": 4
+          },
+          {
+            "id": 1481,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 2,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/04f5dd9a44d6192d81e2815fe646bad4b58f336a091c612e4b139d881bfaf46f.png",
+            "sub_element_type": 0
+          },
+          {
+            "id": 1491,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 4,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/c5b74f236a4374819438bfe9272915ee7a924d0e0175de5c228be98433aed48e.png",
+            "sub_element_type": 0
+          }
+        ],
+        "item_list": [
+          {
+            "id": 4360036,
+            "name": "邦哥大（檀木黑）",
+            "icon_url": "tests/fixtures/mystery-maze-assets/a3a453e8e578531c778e8ffb582a39339f14fe67be60f4c89a831e475033f41c.png",
+            "price": "300K",
+            "is_gt_million": false,
+            "rarity": 5
+          },
+          {
+            "id": 4360033,
+            "name": "奶油布丁擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/3187a5ddb92cc988702f063a1808a210e7ef1486b9ae2fb725d732e8b7847883.png",
+            "price": "200K",
+            "is_gt_million": false,
+            "rarity": 5
+          },
+          {
+            "id": 4360026,
+            "name": "椰布擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/8080e0ac702d2a63fc925fc9c20cee00b17c968228f48a58cb24d7cb5ff96efc.png",
+            "price": "150K",
+            "is_gt_million": false,
+            "rarity": 4
+          },
+          {
+            "id": 4360029,
+            "name": "番茄布擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/8513f04d667fd28739c7f08d8d663b268645038fc51e0297a57895fbb439d2bf.png",
+            "price": "150K",
+            "is_gt_million": false,
+            "rarity": 4
+          }
+        ],
+        "material_total_value": "2491044"
+      },
+      {
+        "map_id": 101,
+        "map_name": "城郊幻境",
+        "difficult": "Hell",
+        "start_time": {
+          "year": 2026,
+          "month": 1,
+          "day": 12,
+          "hour": 12,
+          "minute": 9,
+          "second": 0
+        },
+        "is_success": false,
+        "challenge_time": {
+          "year": 0,
+          "month": 0,
+          "day": 0,
+          "hour": 0,
+          "minute": 16,
+          "second": 24
+        },
+        "avatar_list": [
+          {
+            "id": 1431,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 1,
+            "rarity": "S",
+            "rank": 3,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/2444223d6654badaf9ca63b699b2360d948a5595ba8dfb0cbe4868e1b4f984c0.png",
+            "sub_element_type": 4
+          },
+          {
+            "id": 1481,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 2,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/04f5dd9a44d6192d81e2815fe646bad4b58f336a091c612e4b139d881bfaf46f.png",
+            "sub_element_type": 0
+          },
+          {
+            "id": 1491,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 4,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/c5b74f236a4374819438bfe9272915ee7a924d0e0175de5c228be98433aed48e.png",
+            "sub_element_type": 0
+          }
+        ],
+        "item_list": [
+          {
+            "id": 4360007,
+            "name": "界限測量儀",
+            "icon_url": "tests/fixtures/mystery-maze-assets/a1e7c9fc284ca2ceb28546898563eb9dfa1f568efbd5bceab98ab3a22238f916.png",
+            "price": "100K",
+            "is_gt_million": false,
+            "rarity": 4
+          },
+          {
+            "id": 4360040,
+            "name": "神祕海螺",
+            "icon_url": "tests/fixtures/mystery-maze-assets/78ca9038c1cf76ae08a01b6d57a27b879e0728203b97469e08566dfb7e18e1f2.png",
+            "price": "30K",
+            "is_gt_million": false,
+            "rarity": 3
+          },
+          {
+            "id": 4300451,
+            "name": "烈性炸藥",
+            "icon_url": "tests/fixtures/mystery-maze-assets/db59d6e6c0dda91bf90d77f4aeea2f8a7738cd7030ca77b518a90c75090c9184.png",
+            "price": "5000",
+            "is_gt_million": false,
+            "rarity": 4
+          },
+          {
+            "id": 4300452,
+            "name": "奈米纖維",
+            "icon_url": "tests/fixtures/mystery-maze-assets/9cc1a63edc872ecd7023aec105e89d1e520ec0c3bba60fe33a1cb7314b736bd4.png",
+            "price": "5000",
+            "is_gt_million": false,
+            "rarity": 4
+          }
+        ],
+        "material_total_value": "350000"
+      },
+      {
+        "map_id": 102,
+        "map_name": "雅努斯幻境",
+        "difficult": "Hell",
+        "start_time": {
+          "year": 2026,
+          "month": 1,
+          "day": 11,
+          "hour": 12,
+          "minute": 12,
+          "second": 0
+        },
+        "is_success": true,
+        "challenge_time": {
+          "year": 0,
+          "month": 0,
+          "day": 0,
+          "hour": 0,
+          "minute": 4,
+          "second": 59
+        },
+        "avatar_list": [
+          {
+            "id": 1431,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 1,
+            "rarity": "S",
+            "rank": 3,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/2444223d6654badaf9ca63b699b2360d948a5595ba8dfb0cbe4868e1b4f984c0.png",
+            "sub_element_type": 4
+          },
+          {
+            "id": 1481,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 2,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/04f5dd9a44d6192d81e2815fe646bad4b58f336a091c612e4b139d881bfaf46f.png",
+            "sub_element_type": 0
+          },
+          {
+            "id": 1491,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 4,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/c5b74f236a4374819438bfe9272915ee7a924d0e0175de5c228be98433aed48e.png",
+            "sub_element_type": 0
+          }
+        ],
+        "item_list": [
+          {
+            "id": 4360029,
+            "name": "番茄布擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/8513f04d667fd28739c7f08d8d663b268645038fc51e0297a57895fbb439d2bf.png",
+            "price": "150K",
+            "is_gt_million": false,
+            "rarity": 4
+          },
+          {
+            "id": 4360030,
+            "name": "玉米布擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/f505859bc3ba0e18747e91673bcc10a1fa35f1c8c70288e31925932059ba2ded.png",
+            "price": "150K",
+            "is_gt_million": false,
+            "rarity": 4
+          },
+          {
+            "id": 4360008,
+            "name": "機密資料",
+            "icon_url": "tests/fixtures/mystery-maze-assets/3bd69ff33ef92bd6e0b8faacc729a68a00bd521e31b176c8337d17389f5683c6.png",
+            "price": "100K",
+            "is_gt_million": false,
+            "rarity": 4
+          },
+          {
+            "id": 4360004,
+            "name": "電路核心",
+            "icon_url": "tests/fixtures/mystery-maze-assets/88370e129cdf01171296d97b24ec174df82faf16fc77fa0f399ec05750eeb6b5.png",
+            "price": "50K",
+            "is_gt_million": false,
+            "rarity": 3
+          }
+        ],
+        "material_total_value": "673850"
+      },
+      {
+        "map_id": 102,
+        "map_name": "雅努斯幻境",
+        "difficult": "Hell",
+        "start_time": {
+          "year": 2026,
+          "month": 1,
+          "day": 10,
+          "hour": 12,
+          "minute": 15,
+          "second": 0
+        },
+        "is_success": true,
+        "challenge_time": {
+          "year": 0,
+          "month": 0,
+          "day": 0,
+          "hour": 0,
+          "minute": 14,
+          "second": 47
+        },
+        "avatar_list": [
+          {
+            "id": 1341,
+            "level": 0,
+            "element_type": 202,
+            "avatar_profession": 5,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/5e7e6189022e9978cc1ca539fd143d9cf7a8b7f4c00f0b64c59d8cb61fca69f2.png",
+            "sub_element_type": 0
+          },
+          {
+            "id": 1431,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 1,
+            "rarity": "S",
+            "rank": 3,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/2444223d6654badaf9ca63b699b2360d948a5595ba8dfb0cbe4868e1b4f984c0.png",
+            "sub_element_type": 4
+          },
+          {
+            "id": 1491,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 4,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/c5b74f236a4374819438bfe9272915ee7a924d0e0175de5c228be98433aed48e.png",
+            "sub_element_type": 0
+          }
+        ],
+        "item_list": [
+          {
+            "id": 4360026,
+            "name": "椰布擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/8080e0ac702d2a63fc925fc9c20cee00b17c968228f48a58cb24d7cb5ff96efc.png",
+            "price": "150K",
+            "is_gt_million": false,
+            "rarity": 4
+          },
+          {
+            "id": 4360028,
+            "name": "青花布擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/86675d44a52c333d3c5e6a27ef4df31e5009b39dfe0cc01a8216b954a5f9b280.png",
+            "price": "150K",
+            "is_gt_million": false,
+            "rarity": 4
+          },
+          {
+            "id": 4360030,
+            "name": "玉米布擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/f505859bc3ba0e18747e91673bcc10a1fa35f1c8c70288e31925932059ba2ded.png",
+            "price": "150K",
+            "is_gt_million": false,
+            "rarity": 4
+          },
+          {
+            "id": 4360007,
+            "name": "界限測量儀",
+            "icon_url": "tests/fixtures/mystery-maze-assets/a1e7c9fc284ca2ceb28546898563eb9dfa1f568efbd5bceab98ab3a22238f916.png",
+            "price": "100K",
+            "is_gt_million": false,
+            "rarity": 4
+          }
+        ],
+        "material_total_value": "1773394"
+      },
+      {
+        "map_id": 101,
+        "map_name": "城郊幻境",
+        "difficult": "Hard",
+        "start_time": {
+          "year": 2026,
+          "month": 1,
+          "day": 9,
+          "hour": 12,
+          "minute": 18,
+          "second": 0
+        },
+        "is_success": true,
+        "challenge_time": {
+          "year": 0,
+          "month": 0,
+          "day": 0,
+          "hour": 0,
+          "minute": 4,
+          "second": 35
+        },
+        "avatar_list": [
+          {
+            "id": 1341,
+            "level": 0,
+            "element_type": 202,
+            "avatar_profession": 5,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/5e7e6189022e9978cc1ca539fd143d9cf7a8b7f4c00f0b64c59d8cb61fca69f2.png",
+            "sub_element_type": 0
+          },
+          {
+            "id": 1431,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 1,
+            "rarity": "S",
+            "rank": 3,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/2444223d6654badaf9ca63b699b2360d948a5595ba8dfb0cbe4868e1b4f984c0.png",
+            "sub_element_type": 4
+          },
+          {
+            "id": 1491,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 4,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/c5b74f236a4374819438bfe9272915ee7a924d0e0175de5c228be98433aed48e.png",
+            "sub_element_type": 0
+          }
+        ],
+        "item_list": [
+          {
+            "id": 4360015,
+            "name": "調頻電視",
+            "icon_url": "tests/fixtures/mystery-maze-assets/9c38a499353694b0d607c2c4c7c9c61a99e73e3029ba0a3a28026f3ea9a96752.png",
+            "price": "200K",
+            "is_gt_million": false,
+            "rarity": 5
+          },
+          {
+            "id": 4360045,
+            "name": "古董電視",
+            "icon_url": "tests/fixtures/mystery-maze-assets/831ffd5989501182c42e2d9be8da13c49c38b29bab756082dd4ee709393ea374.png",
+            "price": "200K",
+            "is_gt_million": false,
+            "rarity": 5
+          },
+          {
+            "id": 4360022,
+            "name": "白菜布擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/bc7fe5677231253df7df6be955d6752399adead3d3b633b3fb13407a89d2ea0c.png",
+            "price": "150K",
+            "is_gt_million": false,
+            "rarity": 4
+          },
+          {
+            "id": 4360023,
+            "name": "茄子布擺飾",
+            "icon_url": "tests/fixtures/mystery-maze-assets/1add915d951870d71972633d03e5aaf9073ee1804bc4e2be72428f473e609720.png",
+            "price": "150K",
+            "is_gt_million": false,
+            "rarity": 4
+          }
+        ],
+        "material_total_value": "800836"
+      },
+      {
+        "map_id": 101,
+        "map_name": "城郊幻境",
+        "difficult": "Hard",
+        "start_time": {
+          "year": 2026,
+          "month": 1,
+          "day": 8,
+          "hour": 12,
+          "minute": 21,
+          "second": 0
+        },
+        "is_success": false,
+        "challenge_time": {
+          "year": 0,
+          "month": 0,
+          "day": 0,
+          "hour": 0,
+          "minute": 0,
+          "second": 0
+        },
+        "avatar_list": [
+          {
+            "id": 1341,
+            "level": 0,
+            "element_type": 202,
+            "avatar_profession": 5,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/5e7e6189022e9978cc1ca539fd143d9cf7a8b7f4c00f0b64c59d8cb61fca69f2.png",
+            "sub_element_type": 0
+          },
+          {
+            "id": 1431,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 1,
+            "rarity": "S",
+            "rank": 3,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/2444223d6654badaf9ca63b699b2360d948a5595ba8dfb0cbe4868e1b4f984c0.png",
+            "sub_element_type": 4
+          },
+          {
+            "id": 1491,
+            "level": 0,
+            "element_type": 200,
+            "avatar_profession": 4,
+            "rarity": "S",
+            "rank": 0,
+            "role_square_url": "tests/fixtures/mystery-maze-assets/c5b74f236a4374819438bfe9272915ee7a924d0e0175de5c228be98433aed48e.png",
+            "sub_element_type": 0
+          }
+        ],
+        "item_list": [],
+        "material_total_value": "0"
+      }
+    ],
+    "max_rank": 940,
+    "is_show_percent": true
+  }
+}

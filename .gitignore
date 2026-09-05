@@ -14,4 +14,11 @@ yarn.lock
 yarn-error.log
 
 .claude
-src/assets/images/zzz
+src/assets/images/zzz/*
+!src/assets/images/zzz/official-record/
+!src/assets/images/zzz/official-record/**
+
+# Runtime structured archives
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal

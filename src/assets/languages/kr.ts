@@ -49,6 +49,9 @@ const langs = {
   news_SelectPost: "🐣 기사를 선택하세요",
 
   daily_Failed: "출석 체크 실패",
+  daily_AuthExpiredTitle: "HoYoLAB 계정 로그인이 만료되었습니다",
+  daily_AuthExpiredDesc:
+    "이 HoYoLAB 계정의 로그인 상태가 만료되었습니다. 출석 체크나 조회를 사용하려면 Cookie를 다시 연결하세요.",
   daily_Signed: "오늘 이미 출석 체크를 했습니다",
   daily_SignSuccess: "출석 체크 성공!",
   daily_Description: "오늘의 보상을 받았습니다 <a>",
@@ -163,6 +166,12 @@ const langs = {
   profile_SelectCharacter: "캐릭터를 선택하여 보기",
   profile_NoImageData: "이미지 데이터를 가져올 수 없습니다",
   profile_CharactersFormat: "레벨 <level> • 이미지 효과 <rank>",
+  profile_SelectCharacterNextPage: "다음 페이지",
+  profile_SelectCharacterPreviousPage: "이전 페이지",
+  profile_SelectCharacterNavigationConflict:
+    "이전 페이지와 다음 페이지 중 하나만 선택해 주세요.",
+  profile_SelectCharacterTooMany: "최대 3명의 캐릭터를 선택할 수 있습니다.",
+  profile_SelectCharacterRequired: "캐릭터를 한 명 이상 선택해 주세요.",
 
   // Profile Canvas
   profileMain_Contacts: "연락처",
@@ -243,6 +252,12 @@ const langs = {
   // Settings
   settings_Title: "사용자 설정",
   settings_Desc: "이 설정은 Discord 계정에 연결되어 있으며 모든 게임 계정에 적용됩니다.",
+  settings_ProfileStyleLabel: "캐릭터 카드 스타일",
+  settings_ProfileStyleDesc: "캐릭터 카드 레이아웃을 선택합니다. 스타일 1은 M6 일러스트를 고정하는 정식 버전이며 스타일 2는 현재 레이아웃입니다.",
+  settings_ProfileStyleFormal: "스타일 1 (정식 버전)",
+  settings_ProfileStyleFormalDesc: "정식 레이아웃입니다. M6 일러스트를 고정하고 일러스트 설정을 무시합니다.",
+  settings_ProfileStyleCurrent: "스타일 2 (현재 버전)",
+  settings_ProfileStyleCurrentDesc: "현재 레이아웃을 유지하고 아래 일러스트 설정을 사용합니다.",
   settings_PaintingLabel: "이미지 일러스트",
   settings_PaintingDesc: "표준 캐릭터 초상화 대신 위키 이미지 일러스트를 사용합니다.",
   settings_RankPaintingLabel: "랭크별 일러스트",

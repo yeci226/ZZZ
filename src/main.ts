@@ -4,7 +4,7 @@ import { ClusterClient } from "discord-hybrid-sharding";
 import { QuickDB } from "quick.db";
 import Logger from "./utilities/core/logger.js";
 import { ApplicationCommandType, Client } from "discord.js";
-import { getAllFiles } from "./utilities/getAllFiles.js";
+import { getAllFiles, shouldLoadCommand } from "./utilities/getAllFiles.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import OptimizationManager from "./optimizations/index.js";
@@ -59,6 +59,8 @@ async function getSlashCommands(client: Client, slashCommandPaths: string[]) {
 
   for (let path of slashCommandPaths) {
     const file = (await import(`file://${path}`))?.default;
+
+    if (!shouldLoadCommand(file)) continue;
 
     if ("data" in file && "execute" in file) {
       client.commands.slash.set(file.data.name, file);

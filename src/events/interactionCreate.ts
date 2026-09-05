@@ -5,7 +5,6 @@ import {
   Events,
   EmbedBuilder,
   WebhookClient,
-  ChannelType,
   MessageFlags,
   BaseInteraction,
   ChatInputCommandInteraction,
@@ -35,10 +34,8 @@ const webhook = config.CMDWEBHOOK
 const localeCache = new TtlCache<string, string>(120000, 10000);
 
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
-  if (!interaction.channel || interaction.channel.type == ChannelType.DM)
-    return;
-
-  // Account's non-modal paths must be acknowledged before locale/database
+  // DM interactions are valid Discord interactions. Commands that truly need
+  // a guild must validate that requirement in their own command handler.
   // lookups as well as before the pending-login network query.
   const chatInputInteraction = interaction.isChatInputCommand()
     ? interaction
@@ -81,7 +78,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   localeCache.set(interaction.user.id, finalLocale);
   const i18n = createTranslator(finalLocale);
 
-  if (interaction.isButton()) {
+  if (interaction.isButton() && !interaction.customId.startsWith("glog-import:")) {
     const buttonInteraction = interaction as ButtonInteraction;
     await buttonInteraction.deferUpdate().catch(() => {});
   }

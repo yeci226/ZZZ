@@ -17,13 +17,11 @@ import { ZenlessZoneZero } from "@yeci226/hoyoapi";
 import {
   getUserHoyolabData,
   getUserLang,
-  getRandomColor,
   getUserGameUid,
   getAllGameRoles,
   updateAccountInfo,
 } from "../utilities/utilities.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
-import { handleSignalLogDraw, getSingalLog } from "../utilities/zzz/gacha.js";
 import loginAccount, {
   generateDeviceId,
 } from "../utilities/zzz/login.js";
@@ -50,6 +48,10 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     handleCookieSet(modalInteraction, tr, customId, fields as any);
   if (customId == "signal_log")
     handleWarplog(modalInteraction, tr, fields as any);
+  if (customId.startsWith("glog-import:")) {
+    const { handleSignalLogImport } = await import("../utilities/zzz/signalLogView.js");
+    await handleSignalLogImport(modalInteraction);
+  }
 });
 
 async function finalizeMultiLogin(
@@ -107,54 +109,13 @@ async function finalizeLogin(interaction: any, loginData: any, tr: any) {
 
 async function handleWarplog(
   interaction: ModalSubmitInteraction,
-  tr: any,
-  fields: any,
+  _tr: any,
+  _fields: any,
 ) {
-  const url = fields.getTextInputValue("signalUrl");
-
-  await interaction.deferReply();
-  interaction.editReply({
-    embeds: [
-      new EmbedBuilder()
-        .setTitle(tr("Searching"))
-        .setColor(getRandomColor() as any)
-        .setImage(
-          "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bb/Bangboo_Net_Loading.gif",
-        ),
-    ],
+  await interaction.reply({
+    content: "這是舊版調頻匯入視窗，請重新執行 `/調頻 紀錄`，切換至「手動匯入」後使用「匯入 URL」。",
+    flags: MessageFlags.Ephemeral,
   });
-
-  const userLocale =
-    (await getUserLang(interaction.user.id)) ||
-    toI18nLang(interaction.locale) ||
-    "en";
-
-  const requestStartTime = Date.now();
-  let signalResults;
-  if (url != "")
-    signalResults = await getSingalLog(interaction as any, tr, userLocale, url);
-
-  if (!signalResults)
-    return interaction.editReply({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(tr("gacha_NoSignal"))
-          .setConfig("#E76161", "sob"),
-      ],
-    });
-
-  const requestEndTime = Date.now();
-  const requestTime = ((requestEndTime - requestStartTime) / 1000).toFixed(2);
-
-  handleSignalLogDraw(
-    interaction,
-    tr,
-    userLocale,
-    requestTime,
-    signalResults,
-    "character",
-  );
-  // handleSignalLogDraw(interaction, tr, userLocale, "character", url);
 }
 
 async function handleAccountEdit(

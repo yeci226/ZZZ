@@ -30,14 +30,21 @@ import { drawMainImage, drawCharacterImage } from "../utilities/zzz/profile.js";
 import { handleTeamDraw } from "../utilities/zzz/team.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
 import Queue from "queue";
-import emoji from "../assets/emoji.js";
 import {
   deleteLegacyAccountAtIndex,
   getLegacyAccounts,
 } from "../utilities/accountStore.js";
-import { ELEMENT_ICON_BY_TYPE as elementId } from "../utilities/zzz/elements.js";
 import { unwrapProfileCharacter } from "../utilities/zzz/profileData.js";
+import { normalizeZzzProfileStyle } from "../utilities/zzz/profileStyle.js";
+import { buildProfileCharacterSelectRows } from "../utilities/zzz/profileCharacterSelectMenu.js";
+import {
+  extractProfileCharacterIdFromOptionValue,
+  paginateProfileCharacters,
+  parseProfileCharacterSelectCustomId,
+  resolveProfileCharacterSelection,
+} from "../utilities/zzz/profileCharacterSelect.js";
 import { handleDeadlyDraw } from "../utilities/zzz/deadly.js";
+import { formatSignalAction, signalActionText } from "../utilities/zzz/signalActionText.js";
 import {
   DeadlyAssaultViewMode,
   parseDeadlyModeCustomId,
@@ -56,6 +63,23 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   const tr = createTranslator(userLocale);
 
   // Buttons that show a modal must NOT call deferUpdate first
+  if (customId.startsWith("glog-import:")) {
+    const { getSignalLogSession } = await import("../utilities/zzz/signalLogView.js");
+    const session = getSignalLogSession(customId);
+    const actionCopy = signalActionText(session?.locale ?? userLocale);
+    if (!session || session.invokerId !== buttonInteraction.user.id || session.ownerId !== buttonInteraction.user.id) {
+      return buttonInteraction.reply({ content: actionCopy.modalDenied, flags: MessageFlags.Ephemeral });
+    }
+    return buttonInteraction.showModal(
+      new ModalBuilder().setCustomId(`glog-import:${session.token}`).setTitle(actionCopy.modalTitle).addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder().setCustomId("signalUrl").setLabel(actionCopy.modalUrlLabel)
+            .setPlaceholder("https://public-operation-nap-sg.hoyoverse.com/...")
+            .setStyle(TextInputStyle.Paragraph).setRequired(true).setMinLength(50).setMaxLength(4000),
+        ),
+      ),
+    );
+  }
   if (customId === "account_OpenEmailVerifyModal") {
     const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } =
       await import("discord.js");
@@ -85,9 +109,26 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
 
   if (
     customId === "settings_togglePainting" ||
-    customId === "settings_toggleRankPainting"
+    customId === "settings_toggleRankPainting" ||
+    customId === "settings_toggleGachaPublic" ||
+    customId === "settings_toggleGachaWeekly"
   ) {
     handleSettingsToggle(buttonInteraction, customId, tr);
+  }
+  if (customId.startsWith("settings_confirmGachaClear:")) {
+    handleGachaClearConfirm(buttonInteraction, customId);
+  }
+  if (customId.startsWith("settings_gachaArchivePage:")) {
+    handleSettingsArchivePage(buttonInteraction, customId);
+  }
+  if (customId.startsWith("maze-page:") || customId.startsWith("maze-map-page:")) {
+    handleMysteryMazeInteraction(buttonInteraction, customId);
+  }
+  if (customId.startsWith("glog-") || customId.startsWith("signal-open:")) {
+    handleSignalLogButton(buttonInteraction, customId);
+  }
+  if (customId === "settings_cancelGachaClear") {
+    await buttonInteraction.editReply({ content: "已取消清除。", embeds: [], components: [] });
   }
 });
 
@@ -110,6 +151,12 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     handleSelectCharacter(selectInteraction, tr, values, userLocale);
   if (customId === "settings_selectLocale")
     handleSettingsLocale(selectInteraction, values[0], tr);
+  if (customId === "settings_selectProfileStyle")
+    handleSettingsProfileStyle(selectInteraction, values[0], tr);
+  if (customId === "settings_selectGachaClear")
+    handleGachaClearSelect(selectInteraction, values[0]);
+  if (customId.startsWith("maze-map:") || customId.startsWith("maze-difficulty:"))
+    handleMysteryMazeInteraction(selectInteraction, customId, values[0]);
   if (customId.startsWith("deadly-mode:"))
     handleDeadlyModeSelect(
       selectInteraction,
@@ -118,7 +165,49 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
       customId,
       values[0],
     );
+  if (customId.startsWith("glog-")) {
+    const { handleSignalLogComponent } = await import("../utilities/zzz/signalLogView.js");
+    await handleSignalLogComponent(selectInteraction);
+  }
 });
+
+async function handleSignalLogButton(interaction: ButtonInteraction, customId: string) {
+  const locale = (await getUserLang(interaction.user.id)) || "tw";
+  const actionCopy = signalActionText(locale);
+  try {
+    if (customId.startsWith("signal-open:")) {
+      const [, invokerId, ownerId, accountIndexRaw, rawSource] = customId.split(":");
+      if (interaction.user.id !== invokerId) {
+        await interaction.followUp({ content: actionCopy.onlyInvoker, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      const source = rawSource === "manual" ? "manual" : "official";
+      if (!(await (await import("../utilities/zzz/gachaPrivacy.js")).canViewPrivateGacha(client.db, interaction.user.id, ownerId!))) {
+        await interaction.followUp({ content: actionCopy.privateDisabled, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      const tr = createTranslator(locale);
+      const accountIndex = Math.max(0, Number(accountIndexRaw) || 0);
+      const zzz = await getUserZZZData(interaction as any, tr, ownerId!, locale, accountIndex);
+      if (!zzz) return;
+      const { createSignalLogSession, buildSignalLogMessage } = await import("../utilities/zzz/signalLogView.js");
+      const session = await createSignalLogSession({
+        interaction: interaction as any, ownerId: ownerId!, accountIndex, source, zzz,
+        uid: String(zzz.uid), playerName: (zzz as any).nickname,
+        linked: true, region: (zzz as any).region,
+      });
+      await interaction.editReply({ ...(await buildSignalLogMessage(session)), attachments: [] });
+      return;
+    }
+    const { handleSignalLogComponent } = await import("../utilities/zzz/signalLogView.js");
+    await handleSignalLogComponent(interaction);
+  } catch (error: any) {
+    await interaction.followUp({
+      content: formatSignalAction(actionCopy.updateFailed, { error: `\`${String(error?.message || error)}\`` }),
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+}
 
 async function handleDeadlyModeSelect(
   interaction: StringSelectMenuInteraction,
@@ -166,12 +255,26 @@ async function handleSettingsToggle(
   tr: any,
 ) {
   const userId = interaction.user.id;
-  const dbKey =
-    customId === "settings_togglePainting"
-      ? `${userId}.paintingMode`
-      : `${userId}.rankPainting`;
-  const current: boolean = (await client.db.get(dbKey)) ?? false;
+  const keyById: Record<string, string> = {
+    settings_togglePainting: "paintingMode",
+    settings_toggleRankPainting: "rankPainting",
+    settings_toggleGachaPublic: "gachaPublic",
+    settings_toggleGachaWeekly: "gachaWeeklyArchive",
+  };
+  const dbKey = `${userId}.${keyById[customId]}`;
+  const defaultValue = customId === "settings_toggleGachaPublic";
+  const current: boolean = (await client.db.get(dbKey)) ?? defaultValue;
   await client.db.set(dbKey, !current);
+  if (customId === "settings_toggleGachaWeekly") {
+    const { getGachaArchiveStore } = await import("../utilities/zzz/gachaArchive.js");
+    const { reconcileWeeklyArchiveAccounts } = await import("../utilities/zzz/gachaArchiveMaintenance.js");
+    reconcileWeeklyArchiveAccounts(
+      userId,
+      !current,
+      await getLegacyAccounts(client.db as any, userId),
+      getGachaArchiveStore(),
+    );
+  }
 
   // Rebuild the settings message with updated values
   const { buildSettingsComponents } =
@@ -185,6 +288,102 @@ async function handleSettingsToggle(
     flags: MessageFlags.IsComponentsV2 as any,
     components: [container],
   });
+}
+
+async function handleGachaClearSelect(
+  interaction: StringSelectMenuInteraction,
+  value: string,
+) {
+  const split = value.lastIndexOf(":");
+  const uid = value.slice(0, split);
+  const source = value.slice(split + 1);
+  if (!uid || !["official", "manual", "all"].includes(source)) return;
+  const label = source === "official" ? "官方封存" : source === "manual" ? "手動匯入" : "全部紀錄";
+  await interaction.followUp({
+    flags: MessageFlags.Ephemeral,
+    embeds: [new EmbedBuilder()
+      .setColor("#E76161")
+      .setTitle("確認永久清除調頻紀錄")
+      .setDescription(`UID \`${uid}\` 的「${label}」會立即刪除，且無法復原。`)],
+    components: [new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`settings_confirmGachaClear:${uid}:${source}`)
+        .setLabel("永久清除").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("settings_cancelGachaClear")
+        .setLabel("取消").setStyle(ButtonStyle.Secondary),
+    )],
+  });
+}
+
+async function handleGachaClearConfirm(
+  interaction: ButtonInteraction,
+  customId: string,
+) {
+  const [, uid, rawSource] = customId.split(":");
+  if (!uid || !["official", "manual", "all"].includes(rawSource)) return;
+  const { getGachaArchiveStore } = await import("../utilities/zzz/gachaArchive.js");
+  const source = rawSource === "all" ? undefined : rawSource as "official" | "manual";
+  const removed = getGachaArchiveStore().clear(interaction.user.id, uid, source);
+  await interaction.editReply({
+    content: removed ? `已永久清除 UID \`${uid}\` 的調頻封存。` : "找不到可清除的封存。",
+    embeds: [],
+    components: [],
+  });
+}
+
+async function handleSettingsArchivePage(
+  interaction: ButtonInteraction,
+  customId: string,
+) {
+  const page = Math.max(0, Number(customId.split(":")[1]) || 0);
+  const locale = (await getUserLang(interaction.user.id)) || "en";
+  const { buildSettingsComponents } = await import("../commands/slash/settings.js");
+  const { container } = await buildSettingsComponents(
+    interaction.user.id,
+    createTranslator(locale),
+    undefined,
+    page,
+  );
+  await interaction.editReply({
+    flags: MessageFlags.IsComponentsV2 as any,
+    components: [container],
+  });
+}
+
+async function handleMysteryMazeInteraction(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+  customId: string,
+  selected?: string,
+) {
+  const { parseMysteryMazeContext, buildMysteryMazeMessage } =
+    await import("../utilities/zzz/mysteryMazeView.js");
+  const context = parseMysteryMazeContext(customId);
+  if (!context) return;
+  if (interaction.user.id !== context.invokerId) {
+    await interaction.followUp({ content: "只有發起指令的使用者可以操作這份迷宮紀錄。", flags: MessageFlags.Ephemeral });
+    return;
+  }
+  if (customId.startsWith("maze-map:")) {
+    context.mapId = selected || "0";
+    context.page = 0;
+  }
+  if (customId.startsWith("maze-difficulty:")) {
+    context.difficulty = Number(selected) || 0;
+    context.page = 0;
+  }
+  if (customId.startsWith("maze-map-page:")) {
+    context.mapPage = Math.max(0, context.mapPage ?? 0);
+  }
+  const locale = (await getUserLang(interaction.user.id)) || "tw";
+  const tr = createTranslator(locale);
+  try {
+    const payload = await buildMysteryMazeMessage(interaction, tr, locale, context);
+    if (payload) await interaction.editReply({ ...payload, attachments: [] });
+  } catch (error: any) {
+    await interaction.followUp({
+      content: `迷宮詭域更新失敗：\`${String(error?.message || error)}\``,
+      flags: MessageFlags.Ephemeral,
+    });
+  }
 }
 
 async function handleSettingsLocale(
@@ -206,37 +405,25 @@ async function handleSettingsLocale(
   });
 }
 
-function buildProfileCharacterSelectRows(
-  tr: any,
-  characters: any[],
-  userId: string,
-  accountIndex: string | number,
+async function handleSettingsProfileStyle(
+  interaction: StringSelectMenuInteraction,
+  rawStyle: string,
+  _tr: any,
 ) {
-  const allCharacterOptions = characters.map((character: any) => ({
-    emoji: (emoji as any)[elementId[character.element_type]],
-    label: `${character.name_mi18n}`,
-    description: `${tr("profile_CharactersFormat", {
-      level: character.level,
-      rank: character.rank,
-    })}`,
-    value: `${userId}-${accountIndex}-${character.id}`,
-  }));
+  const userId = interaction.user.id;
+  const profileStyle = normalizeZzzProfileStyle(rawStyle);
+  await client.db.set(`${userId}.profileStyle`, profileStyle);
 
-  const optionChunks = Array.from(
-    { length: Math.ceil(allCharacterOptions.length / 25) },
-    (_, index) => allCharacterOptions.slice(index * 25, (index + 1) * 25),
-  );
+  const userLocale = (await getUserLang(userId)) || "en";
+  const newTr = createTranslator(userLocale);
+  const { buildSettingsComponents } =
+    await import("../commands/slash/settings.js");
+  const { container } = await buildSettingsComponents(userId, newTr);
 
-  return optionChunks.slice(0, 4).map((optionsChunk, index) =>
-    new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setPlaceholder(`${tr("profile_SelectCharacter")} (${index + 1})`)
-        .setCustomId(`profile_SelectCharacter-${index}`)
-        .setMinValues(1)
-        .setMaxValues(Math.min(3, optionsChunk.length))
-        .addOptions(optionsChunk),
-    ),
-  ) as any[];
+  await interaction.editReply({
+    flags: MessageFlags.IsComponentsV2 as any,
+    components: [container],
+  });
 }
 
 async function handleProfileMainPage(
@@ -305,12 +492,97 @@ async function handleSelectCharacter(
   values: string[],
   userLocale: string,
 ) {
+  const selectContext = parseProfileCharacterSelectCustomId(
+    interaction.customId,
+  );
   const drawTask = async () => {
     try {
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferUpdate().catch(() => {});
       }
-      interaction.editReply({
+      const firstCharacterValue =
+        values.find(
+          (value) =>
+            extractProfileCharacterIdFromOptionValue(value) !== null,
+        ) ?? "";
+      const legacyParts = firstCharacterValue
+        .split("-")
+        .map((value) => value.trim());
+      const userId = selectContext?.targetUserId ?? legacyParts[0] ?? "";
+      const accountIndex =
+        selectContext?.accountIndex ?? Number(legacyParts[1] ?? 0);
+      if (!userId || !Number.isInteger(accountIndex)) {
+        throw new Error(tr("AccountNotFound") || "Account not found");
+      }
+
+      const zzz = await getUserZZZData(
+        interaction as any,
+        tr,
+        userId,
+        userLocale,
+        accountIndex,
+      );
+      if (!zzz) return;
+
+      const characters = await zzz.record.characters();
+      let currentPage = selectContext?.page ?? 0;
+      let selectedCharacterIds: string[];
+
+      if (selectContext) {
+        const pages = paginateProfileCharacters(characters);
+        const resolution = resolveProfileCharacterSelection(
+          pages,
+          selectContext.page,
+          selectContext.selectedCharacterIds,
+          values,
+        );
+
+        if (resolution.kind !== "submit") {
+          await interaction.editReply({
+            components: buildProfileCharacterSelectRows(
+              tr,
+              characters,
+              userId,
+              accountIndex,
+              resolution.page,
+              resolution.selectedCharacterIds,
+            ),
+          });
+
+          if (resolution.kind === "navigation-conflict") {
+            await interaction.followUp({
+              content:
+                tr("profile_SelectCharacterNavigationConflict") ||
+                "請一次只選擇上一頁或下一頁。",
+              flags: MessageFlags.Ephemeral,
+            });
+          } else if (resolution.kind === "too-many") {
+            await interaction.followUp({
+              content:
+                tr("profile_SelectCharacterTooMany") ||
+                "最多只能選擇三位角色。",
+              flags: MessageFlags.Ephemeral,
+            });
+          } else if (resolution.kind === "empty") {
+            await interaction.followUp({
+              content:
+                tr("profile_SelectCharacterRequired") ||
+                "請至少選擇一位角色。",
+              flags: MessageFlags.Ephemeral,
+            });
+          }
+          return;
+        }
+
+        currentPage = resolution.page;
+        selectedCharacterIds = resolution.selectedCharacterIds;
+      } else {
+        selectedCharacterIds = values
+          .map(extractProfileCharacterIdFromOptionValue)
+          .filter((value): value is string => value !== null);
+      }
+
+      await interaction.editReply({
         embeds: [
           new EmbedBuilder()
             .setTitle(tr("Searching"))
@@ -321,41 +593,24 @@ async function handleSelectCharacter(
         components: [],
       });
 
-      const requestStartTime = Date.now();
-
-      // Multi-select: use first value to get userId/accountIndex
-      const [userId, accountIndex, firstCharacterId] = values[0]
-        .split("-")
-        .map((v) => v.trim());
-
-      const zzz = await getUserZZZData(
-        interaction as any,
-        tr,
-        userId,
-        userLocale,
-        parseInt(accountIndex),
-      );
-      if (!zzz) return;
-
-      const characters = await zzz.record.characters();
-      const requestEndTime = Date.now();
-      const drawStartTime = Date.now();
-
       // Read painting preferences saved when /profile was invoked
       const usePainting: boolean =
         (await client.db.get(`${interaction.user.id}.paintingMode`)) ?? false;
       const rankPainting: boolean =
         (await client.db.get(`${interaction.user.id}.rankPainting`)) ?? false;
+      const profileStyle = normalizeZzzProfileStyle(
+        await client.db.get(`${interaction.user.id}.profileStyle`),
+      );
 
       // ── Multi-select (2–3 agents) → Team view ──
-      const agentValues = values.filter((v) => !v.endsWith("-main"));
-      if (agentValues.length >= 2) {
-        const agentIds = agentValues.map((v) => v.split("-")[2]);
+      const agentIds = selectedCharacterIds.filter((id) => id !== "main");
+      if (agentIds.length >= 2) {
         const rowSelects = buildProfileCharacterSelectRows(
           tr,
           characters,
           userId,
           accountIndex,
+          currentPage,
         );
         const rowButtons = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -372,13 +627,14 @@ async function handleSelectCharacter(
           usePainting,
           rankPainting,
           [...rowSelects, rowButtons],
+          profileStyle,
         );
         return;
       }
 
       // ── Single select → Profile view ──
-      const value = values[0];
-      const characterId = firstCharacterId;
+      const characterId = selectedCharacterIds[0];
+      if (!characterId) throw new Error(tr("AccountNotFound"));
       let selectedCharacter = null;
 
       if (characterId !== "main") {
@@ -416,6 +672,7 @@ async function handleSelectCharacter(
           selectedCharacter,
           usePainting,
           rankPainting,
+          profileStyle,
         );
       }
 
@@ -432,6 +689,7 @@ async function handleSelectCharacter(
         characters,
         userId,
         accountIndex,
+        currentPage,
       );
 
       // ── Single-character view only needs a Homepage button. ──
@@ -447,7 +705,7 @@ async function handleSelectCharacter(
         );
       }
 
-      interaction.editReply({
+      await interaction.editReply({
         embeds: [],
         components,
         files: [image],
@@ -455,7 +713,7 @@ async function handleSelectCharacter(
     } catch (error) {
       console.log(error);
       new Logger("系統").warn(`警告訊息：${error}`);
-      interaction.editReply({
+      await interaction.editReply({
         embeds: [
           new EmbedBuilder()
             .setColor("#E76161")

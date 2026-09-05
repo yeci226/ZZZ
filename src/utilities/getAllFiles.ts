@@ -16,3 +16,10 @@ export async function getAllFiles(dir: string, extension: string = ".js") {
 
   return files;
 }
+
+export function shouldLoadCommand(
+  command: { developmentOnly?: boolean },
+  nodeEnv = process.env.NODE_ENV,
+): boolean {
+  return command.developmentOnly !== true || nodeEnv === "dev";
+}

@@ -2,14 +2,20 @@ import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
   EmbedBuilder,
-  ChannelType,
   PermissionsBitField,
   MessageFlags,
   LocalizationMap,
   Client,
-  Channel,
 } from "discord.js";
 import { QuickDB } from "quick.db";
+import {
+  disableNotificationDestination,
+  enableNotificationDestination,
+} from "../../../utilities/core/notificationDestination.js";
+import {
+  validateNotificationChannel,
+  validateNotificationChannelForUser,
+} from "../../../utilities/core/notificationValidation.js";
 
 const createEmbed = (
   title: string,
@@ -37,6 +43,20 @@ const handleRemove = async (
   if (!userid) {
     return interaction.reply({
       embeds: [createEmbed(tr("admin_RemoveFail"), "sob", "#E76161")],
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  if (user?.bot) {
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          tr("admin_RemoveFail"),
+          "sob",
+          "#E76161",
+          "不能選擇機器人帳號。",
+        ),
+      ],
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -90,18 +110,26 @@ const handleRemove = async (
     ],
     flags: MessageFlags.Ephemeral,
   });
-  await db.delete(`${feature}.${userid}`);
+  await disableNotificationDestination(
+    db as any,
+    feature as "autoDaily" | "autoRedeem" | "noteReminder",
+    userid,
+    userData,
+    "missing_target",
+  );
 };
 
 const fetchData = async (db: QuickDB, keywords: string[]) => {
-  const [autoDailyData, autoRedeemData] = await Promise.all([
+  const [autoDailyData, autoRedeemData, noteReminderData] = await Promise.all([
     db.get("autoDaily"),
     db.get("autoRedeem"),
+    db.get("noteReminder"),
   ]);
 
   return {
     autoDaily: autoDailyData || {},
     autoRedeem: autoRedeemData || {},
+    noteReminder: noteReminderData || {},
   };
 };
 
@@ -109,12 +137,12 @@ const findMatchedUsers = (datas: any, channelsCache: any) => {
   const serverChannelIds = channelsCache.map((channel: any) => channel.id);
   const dataKeys = Object.keys(datas);
 
-  return dataKeys.reduce((acc: string[], keyword: string) => {
+  return [...new Set(dataKeys.reduce((acc: string[], keyword: string) => {
     const matchedUsers = Object.keys(datas[keyword] || {}).filter((userId) =>
       serverChannelIds.includes(datas[keyword][userId].channelId),
     );
     return acc.concat(matchedUsers);
-  }, []);
+  }, []))];
 };
 
 const updateUsersChannel = async (
@@ -122,14 +150,19 @@ const updateUsersChannel = async (
   matchUsers: string[],
   keywords: string[],
   channelId: string,
+  guildId: string,
   db: QuickDB,
 ) => {
   for (const userId of matchUsers) {
     for (const keyword of keywords) {
       const userData = datas[keyword as keyof typeof datas]?.[userId];
       if (userData) {
-        userData.channelId = channelId;
-        await db.set(`${keyword}.${userId}`, userData);
+        const next = enableNotificationDestination(userData, {
+          notifyType: "channel",
+          channelId,
+          guildId,
+        });
+        await db.set(`${keyword}.${userId}`, next);
       }
     }
   }
@@ -142,12 +175,8 @@ const handleMove = async (
 ) => {
   const channel = interaction.options.getChannel("channel")!;
   const feature = interaction.options.getString("feature");
-
-  if (
-    !interaction
-      .guild!.members.me!.permissionsIn(channel as any)
-      .has(PermissionsBitField.Flags.SendMessages)
-  ) {
+  const validation = validateNotificationChannel(interaction, channel as any);
+  if (!validation.ok) {
     return interaction.reply({
       embeds: [
         createEmbed(
@@ -163,18 +192,13 @@ const handleMove = async (
     });
   }
 
-  if (
-    [
-      ChannelType.GuildText,
-      ChannelType.PrivateThread,
-      ChannelType.PublicThread,
-      ChannelType.GuildVoice,
-    ].includes(channel.type)
-  ) {
+  {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const keywords =
-      feature === "all" ? ["autoDaily", "autoRedeem"] : [feature!];
+      feature === "all"
+        ? ["autoDaily", "autoRedeem", "noteReminder"]
+        : [feature!];
     const datas = await fetchData(db, keywords);
 
     const matchUsers = findMatchedUsers(
@@ -195,7 +219,53 @@ const handleMove = async (
       });
     }
 
-    await updateUsersChannel(datas, matchUsers, keywords, channel.id, db);
+    const eligible: string[] = [];
+    const inaccessible: string[] = [];
+    let removedMembers = 0;
+    for (const userId of matchUsers) {
+      const member = await interaction.guild!.members.fetch(userId).catch(() => null);
+      if (!member || member.user.bot) {
+        for (const keyword of keywords) {
+          const config = datas[keyword as keyof typeof datas]?.[userId];
+          if (config) {
+            await disableNotificationDestination(
+              db as any,
+              keyword as "autoDaily" | "autoRedeem" | "noteReminder",
+              userId,
+              config,
+              member?.user.bot ? "missing_target" : "unknown_member",
+            );
+          }
+        }
+        removedMembers++;
+        continue;
+      }
+      const targetValidation = validateNotificationChannelForUser(
+        channel as any,
+        member,
+        interaction.guild!.members.me!,
+      );
+      if (targetValidation.ok) eligible.push(userId);
+      else inaccessible.push(userId);
+    }
+
+    if (!eligible.length) {
+      const detail = inaccessible.length
+        ? `目標使用者無法查看或發送訊息至 <#${channel.id}>。`
+        : "沒有可移動的有效通知設定。";
+      return interaction.editReply({
+        embeds: [createEmbed(tr("admin_MoveFail"), "sob", "#E76161", detail)],
+      });
+    }
+
+    await updateUsersChannel(
+      datas,
+      eligible,
+      keywords,
+      channel.id,
+      interaction.guildId!,
+      db,
+    );
 
     interaction.editReply({
       embeds: [
@@ -203,24 +273,14 @@ const handleMove = async (
           tr("admin_MoveSuccess"),
           "wiggle",
           "#F6F1F1",
-          tr("admin_MoveSuccessMessage", {
-            count: matchUsers.length,
+        tr("admin_MoveSuccessMessage", {
+            count: eligible.length,
             channel: `<#${channel.id}>`,
-          }),
+          }) + (inaccessible.length || removedMembers
+            ? `\n未移動 ${inaccessible.length} 位無權限使用者；停用 ${removedMembers} 位已離開或無效的使用者。`
+            : ""),
         ),
       ],
-    });
-  } else {
-    return interaction.reply({
-      embeds: [
-        createEmbed(
-          tr("admin_MoveFail"),
-          "sob",
-          "#E76161",
-          tr("admin_MoveFailMessage", { channel: `<#${channel.id}>` }),
-        ),
-      ],
-      flags: MessageFlags.Ephemeral,
     });
   }
 };
@@ -288,6 +348,11 @@ export default {
                   fr: "Racheté automatique",
                 },
                 value: "autoRedeem",
+              },
+              {
+                name: "note reminder",
+                name_localizations: { "zh-TW": "即時便箋提醒" },
+                value: "noteReminder",
               },
             ),
         )
@@ -380,6 +445,11 @@ export default {
                   fr: "Racheté automatique",
                 },
                 value: "autoRedeem",
+              },
+              {
+                name: "note reminder",
+                name_localizations: { "zh-TW": "即時便箋提醒" },
+                value: "noteReminder",
               },
             ),
         )

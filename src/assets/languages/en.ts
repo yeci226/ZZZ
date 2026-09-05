@@ -50,6 +50,9 @@ const langs = {
   news_SelectPost: "🐣 Please select an article",
 
   daily_Failed: "Sign-in failed",
+  daily_AuthExpiredTitle: "HoYoLAB account login expired",
+  daily_AuthExpiredDesc:
+    "This HoYoLAB account login has expired. Please bind a new Cookie before using check-in or account queries.",
   daily_Signed: "Proxy, you have already signed in today~",
   daily_SignSuccess: "Sign in successfully!",
   daily_Description: "You have received today's reward <a>",
@@ -176,6 +179,12 @@ const langs = {
   profile_SelectCharacter: "Select a character to view",
   profile_NoImageData: "Unable to obtain image data",
   profile_CharactersFormat: "Level <level> • Cinema <rank>",
+  profile_SelectCharacterNextPage: "Next page",
+  profile_SelectCharacterPreviousPage: "Previous page",
+  profile_SelectCharacterNavigationConflict:
+    "Please select only one navigation direction at a time.",
+  profile_SelectCharacterTooMany: "You can select up to three characters.",
+  profile_SelectCharacterRequired: "Please select at least one character.",
 
   // Profile Canvas
   profileMain_Contacts: "Contacts",
@@ -256,6 +265,12 @@ const langs = {
   // Settings
   settings_Title: "User Settings",
   settings_Desc: "These settings are linked to your Discord account and apply across all game accounts.",
+  settings_ProfileStyleLabel: "Profile Card Style",
+  settings_ProfileStyleDesc: "Choose the character-card layout. Style 1 is the formal version with fixed M6 art; Style 2 keeps the current layout.",
+  settings_ProfileStyleFormal: "Style 1 (Formal)",
+  settings_ProfileStyleFormalDesc: "Formal layout; always uses M6 art and ignores painting settings.",
+  settings_ProfileStyleCurrent: "Style 2 (Current)",
+  settings_ProfileStyleCurrentDesc: "Keep the current layout and use the painting settings below.",
   settings_PaintingLabel: "Imagining Painting",
   settings_PaintingDesc: "Use wiki Imagining Painting art instead of the standard character portrait.",
   settings_RankPaintingLabel: "Painting by Rank",

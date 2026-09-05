@@ -12,6 +12,7 @@ import fr from "../src/assets/languages/fr.js";
 import { createTranslator } from "../src/utilities/core/i18n.js";
 import { getDeadlyModeLabels } from "../src/utilities/zzz/deadlyMode.js";
 import { drawKnockKnockMainProfile } from "../src/utilities/zzz/profileMain.js";
+import { normalizeZzzProfileStyle } from "../src/utilities/zzz/profileStyle.js";
 
 const locales = { en, tw, cn, vi, jp, kr, fr } as const;
 const profileKeys = [
@@ -44,12 +45,28 @@ const profileKeys = [
   "profileCharacter_DriveDiscs",
   "profileCharacter_TotalValidRolls",
 ] as const;
+const profileStyleKeys = [
+  "settings_ProfileStyleLabel",
+  "settings_ProfileStyleDesc",
+  "settings_ProfileStyleFormal",
+  "settings_ProfileStyleFormalDesc",
+  "settings_ProfileStyleCurrent",
+  "settings_ProfileStyleCurrentDesc",
+] as const;
 
 describe("個人介面與危局強襲戰多語系", () => {
   it.each(Object.entries(locales))(
     "%s 自身包含全部個人頁翻譯 key",
     (locale, dictionary) => {
       for (const key of profileKeys) {
+        expect(Object.prototype.hasOwnProperty.call(dictionary, key)).toBe(
+          true,
+        );
+        expect(typeof (dictionary as Record<string, unknown>)[key]).toBe(
+          "string",
+        );
+      }
+      for (const key of profileStyleKeys) {
         expect(Object.prototype.hasOwnProperty.call(dictionary, key)).toBe(
           true,
         );
@@ -64,6 +81,13 @@ describe("個人介面與危局強襲戰多語系", () => {
       );
     },
   );
+
+  it("第一樣式是預設值，只有明確選第二樣式才回到目前版", () => {
+    expect(normalizeZzzProfileStyle(undefined)).toBe("formal");
+    expect(normalizeZzzProfileStyle("formal")).toBe("formal");
+    expect(normalizeZzzProfileStyle("current")).toBe("current");
+    expect(normalizeZzzProfileStyle("unexpected")).toBe("formal");
+  });
 
   it.each(Object.keys(locales))(
     "%s 個人首頁可實際輸出 1000×625 PNG",

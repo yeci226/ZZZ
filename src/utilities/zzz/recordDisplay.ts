@@ -35,8 +35,6 @@ export function formatBattleRecordDate(
   if (locale === "tw" || locale === "zh-tw" || locale === "cn" || locale === "zh-cn") {
     return `${month}月${day}日`;
   }
-  if (locale === "jp" || locale === "ja-jp") return `${month}月${day}日`;
-  if (locale === "kr" || locale === "ko-kr") return `${month}월 ${day}일`;
   const monthLabel = ENGLISH_MONTHS[month - 1] ?? String(month);
   return `${monthLabel} ${day}`;
 }
@@ -57,12 +55,6 @@ export function formatBattleRecordTime(
     }
     if (locale === "cn" || locale === "zh-cn") {
       return `${year}年${month}月${day}日 ${clock}`;
-    }
-    if (locale === "jp" || locale === "ja-jp") {
-      return `${year}年${month}月${day}日 ${clock}`;
-    }
-    if (locale === "kr" || locale === "ko-kr") {
-      return `${year}년 ${month}월 ${day}일 ${clock}`;
     }
 
     const monthLabel = ENGLISH_MONTHS[month - 1] ?? String(month);
@@ -94,17 +86,11 @@ export function isDeadlyAssaultExtremeMode(
 export function getDeadlyAssaultModeLabel(locale: string): string {
   if (locale === "tw" || locale === "zh-tw") return "絕境模式";
   if (locale === "cn" || locale === "zh-cn") return "绝境模式";
-  if (locale === "jp" || locale === "ja-jp") return "ハードモード";
-  if (locale === "kr" || locale === "ko-kr") return "극한 모드";
   return "Extreme Mode";
 }
 
 export function getClearTimeLabel(locale: string): string {
   if (locale === "tw" || locale === "zh-tw") return "過關時刻";
   if (locale === "cn" || locale === "zh-cn") return "过关时刻";
-  if (locale === "jp" || locale === "ja-jp") return "クリア時刻";
-  if (locale === "kr" || locale === "ko-kr") return "클리어 시각";
-  if (locale === "fr" || locale === "fr-fr") return "Heure de réussite";
-  if (locale === "vi" || locale === "vi-vn") return "Thời điểm hoàn thành";
   return "Clear Time";
 }

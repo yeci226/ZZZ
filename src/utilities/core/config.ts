@@ -44,6 +44,13 @@ interface Config {
 
 let config: Config | null = null;
 
+export const WEB_LOGIN_CONFIG_KEYS = [
+  "WEB_LOGIN_URL",
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "WEB_LOGIN_SESSION_SECRET",
+] as const;
+
 /**
  * Build config from process.env, treating env as the source of truth.
  * Returns a partial config — only keys that are actually set in env are included.
@@ -135,6 +142,10 @@ export function loadConfig(): Config {
     );
   }
 
+  merged.TEST_TOKEN ||= merged.TOKEN;
+  merged.DEVIDS ||= [];
+  merged.WEBSERVER_PORT ||= 3000;
+
   config = merged;
   return config;
 }
@@ -145,6 +156,12 @@ export function getConfig(): Config {
     throw new Error("配置加载失败");
   }
   return loadedConfig;
+}
+
+/** Return only missing web-login keys; never include secret values. */
+export function getMissingWebLoginConfig(): string[] {
+  const current = getConfig();
+  return WEB_LOGIN_CONFIG_KEYS.filter((key) => !current[key]);
 }
 
 export function getVerifyBaseUrl(): string {

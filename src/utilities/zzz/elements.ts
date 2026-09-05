@@ -10,6 +10,23 @@ export const ELEMENT_ICON_BY_TYPE: Record<number, string> = {
   300: "lumen",
 };
 
+export const SPECIAL_ELEMENT_BY_CHARACTER_ID: Record<string, string> = {
+  "1091": "frost",
+  "1371": "auricink",
+  "1431": "honededge",
+};
+
+export function getElementEmojiKey(
+  elementType: number,
+  characterId?: string | number,
+): string | undefined {
+  return (
+    (characterId !== undefined
+      ? SPECIAL_ELEMENT_BY_CHARACTER_ID[String(characterId)]
+      : undefined) ?? ELEMENT_ICON_BY_TYPE[elementType]
+  );
+}
+
 export const ELEMENT_ICON_FILE_BY_TYPE: Record<number, string> = {
   200: "physic.webp",
   201: "fire.webp",

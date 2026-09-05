@@ -7,6 +7,7 @@ import {
 import { handleDeadlyDraw } from "../../../utilities/zzz/deadly.js";
 import { getUserZZZData, getUserLang } from "../../../utilities/utilities.js";
 import { QuickDB } from "quick.db";
+import { getZzzHistoryEntry, parseHistorySchedule } from "../../../utilities/zzz/recordCache.js";
 
 export default {
     data: new SlashCommandBuilder()
@@ -56,45 +57,69 @@ export default {
                     vi: "thờigian",
                     fr: "temps",
                 } as LocalizationMap)
-                .setDescription("...")
+                .setDescription("Select a period")
+                .setDescriptionLocalizations({
+                    "zh-TW": "選擇危局期數",
+                    "zh-CN": "选择危局期数",
+                    vi: "Chọn kỳ",
+                    fr: "Choisir une période",
+                } as LocalizationMap)
                 .setRequired(false)
-                .addChoices(
-                    {
-                        name: "Live",
-                        name_localizations: {
-                            "zh-TW": "本期",
-                            vi: "kỳhiện tại",
-                            fr: "période actuelle",
-                        } as LocalizationMap,
-                        value: "1",
-                    },
-                    {
-                        name: "End",
-                        name_localizations: {
-                            "zh-TW": "上期",
-                            vi: "kỳtrước",
-                            fr: "période précédente",
-                        } as LocalizationMap,
-                        value: "2",
-                    }
-                )
+                .setAutocomplete(true)
         ),
     async execute(_client: Client, interaction: ChatInputCommandInteraction, _args: any[], tr: any, db: QuickDB, emoji: any) {
         const accountIndex = parseInt(interaction.options.getString("account") || "0");
         const targetUser = interaction.options.getUser("user") || interaction.user;
-        const schedule = parseInt(interaction.options.getString("schedule") || "1");
+        const scheduleValue = interaction.options.getString("schedule") || "1";
+        const userLocale = (await getUserLang(interaction.user.id)) || "en";
 
+        if (parseHistorySchedule(scheduleValue)) {
+            const cached = await getZzzHistoryEntry(
+                db,
+                "deadly",
+                targetUser.id,
+                accountIndex,
+                scheduleValue,
+            );
+            if (!cached) {
+                await interaction.reply({
+                    content: tr("NonData") || "找不到已儲存的危局紀錄。",
+                    ephemeral: true,
+                });
+                return;
+            }
+            await interaction.deferReply();
+            await handleDeadlyDraw(
+                interaction,
+                tr,
+                { uid: `cached-${targetUser.id}`, lang: userLocale },
+                cached.schedule,
+                {
+                    ownerId: interaction.user.id,
+                    targetUserId: targetUser.id,
+                    accountIndex,
+                    schedule: cached.schedule,
+                    dataOverride: cached.data,
+                    db,
+                    locale: userLocale,
+                } as any,
+                "normal",
+            );
+            return;
+        }
+
+        const schedule = Number(scheduleValue) === 2 ? 2 : 1;
         const zzz = await getUserZZZData(
             interaction,
             tr,
             targetUser.id,
-            await getUserLang(interaction.user.id),
-            accountIndex
+            userLocale,
+            accountIndex,
         );
         if (zzz == null) return;
 
         await interaction.deferReply();
-        handleDeadlyDraw(
+        await handleDeadlyDraw(
             interaction,
             tr,
             zzz,
@@ -104,7 +129,9 @@ export default {
                 targetUserId: targetUser.id,
                 accountIndex,
                 schedule,
-            },
+                db,
+                locale: userLocale,
+            } as any,
             "normal",
         );
     },

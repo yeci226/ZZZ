@@ -4,6 +4,7 @@ export interface DailySignInInfoLike {
   sign_cnt_missed?: number;
   today?: string;
   month_last_day?: boolean;
+  is_sign?: boolean;
 }
 
 export interface DailySignInPresentation<T> {
@@ -12,6 +13,31 @@ export interface DailySignInPresentation<T> {
   daysInMonth: number;
   todayReward?: T;
   tomorrowReward?: T;
+}
+
+function toSignedDay(value: unknown): number {
+  return Math.max(0, Math.floor(Number(value) || 0));
+}
+
+/**
+ * The claim endpoint can acknowledge a successful sign-in before its follow-up
+ * info request reflects the increment. Keep the official value when it is
+ * newer, but never render fewer days than the claim just completed.
+ */
+export function normalizeSuccessfulDailyClaimInfo(
+  beforeClaim: DailySignInInfoLike,
+  afterClaim: DailySignInInfoLike,
+): DailySignInInfoLike {
+  const minimumSignedDays = toSignedDay(beforeClaim.total_sign_day) + 1;
+  const reportedSignedDays = toSignedDay(afterClaim.total_sign_day);
+
+  if (reportedSignedDays >= minimumSignedDays) return afterClaim;
+
+  return {
+    ...afterClaim,
+    total_sign_day: minimumSignedDays,
+    is_sign: true,
+  };
 }
 
 function getDaysInMonth(today?: string): number {

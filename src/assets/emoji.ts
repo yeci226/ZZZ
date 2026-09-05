@@ -7,4 +7,9 @@ export default {
   thunder: "<:thunder:1261920589904482316>",
   fire: "<:fire:1261920584930037762>",
   ether: "<:ether:1261920583575404565>",
+  wind: "<:wind:1532995908588015786>",
+  lumen: "<:lumen:1532995910517264465>",
+  frost: "<:special_ice:1532995912119615639>",
+  auricink: "<:special_ether:1532995913566392472>",
+  honededge: "<:special_physic:1532995979324948552>",
 };

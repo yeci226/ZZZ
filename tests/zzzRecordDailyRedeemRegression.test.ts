@@ -5,7 +5,10 @@ import {
   getDeadlyAssaultModeLabel,
   isDeadlyAssaultExtremeMode,
 } from "../src/utilities/zzz/recordDisplay.js";
-import { buildDailySignInPresentation } from "../src/utilities/zzz/dailyPresentation.js";
+import {
+  buildDailySignInPresentation,
+  normalizeSuccessfulDailyClaimInfo,
+} from "../src/utilities/zzz/dailyPresentation.js";
 import {
   calculateRedeemCardLayout,
   getRedeemStatusPresentation,
@@ -76,6 +79,43 @@ describe("危局強襲戰絕境模式", () => {
     expect(getDeadlyAssaultModeLabel("tw")).toBe("絕境模式");
     expect(getDeadlyAssaultModeLabel("cn")).toBe("绝境模式");
     expect(getDeadlyAssaultModeLabel("en")).toBe("Extreme Mode");
+  });
+});
+
+describe("簽到後即時資料正規化", () => {
+  it("成功簽到後 API 暫時回傳舊天數時，至少計入本次簽到", () => {
+    const normalized = normalizeSuccessfulDailyClaimInfo(
+      {
+        total_sign_day: 0,
+        is_sign: false,
+      },
+      {
+        total_sign_day: 0,
+        is_sign: true,
+        sign_cnt_missed: 0,
+      },
+    );
+
+    const result = buildDailySignInPresentation(
+      normalized,
+      [{ name: "第一天" }, { name: "第二天" }],
+    );
+
+    expect(normalized.total_sign_day).toBe(1);
+    expect(normalized.is_sign).toBe(true);
+    expect(result.signedDays).toBe(1);
+    expect(result.todayReward).toEqual({ name: "第一天" });
+    expect(result.tomorrowReward).toEqual({ name: "第二天" });
+  });
+
+  it("API 已回傳較新的天數時不覆寫官方值", () => {
+    const normalized = normalizeSuccessfulDailyClaimInfo(
+      { total_sign_day: 7, is_sign: false },
+      { total_sign_day: 8, is_sign: true },
+    );
+
+    expect(normalized.total_sign_day).toBe(8);
+    expect(normalized.is_sign).toBe(true);
   });
 });
 

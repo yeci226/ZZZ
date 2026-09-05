@@ -1,18 +1,53 @@
 import { client } from "../../index.js";
 import { EmbedBuilder, WebhookClient, AttachmentBuilder } from "discord.js";
+
 import { ZenlessZoneZero, LanguageEnum } from "@yeci226/hoyoapi";
 import moment from "moment-timezone";
 import Logger from "../core/logger.js";
 import { createTranslator } from "../core/i18n.js";
-import { getUserCookie, getUserLang } from "../utilities.js";
+import {
+  getAllGameRoles,
+  getUserCookie,
+  getUserLang,
+} from "../utilities.js";
 import { getConfig, getVerifyBaseUrl } from "../core/config.js";
 import { buildZZZDailyCard } from "../canvas/dailyCard.js";
-import { getLegacyAccounts, updateLegacyAccountAtIndex } from "../accountStore.js";
-import { buildDailySignInPresentation } from "./dailyPresentation.js";
+import {
+  getLegacyAccounts,
+  markGeneralInvalid,
+  restoreGeneralValidity,
+  updateLegacyAccountAtIndex,
+} from "../accountStore.js";
+import { buildDailySignInPresentation, normalizeSuccessfulDailyClaimInfo } from "./dailyPresentation.js";
+import {
+  isExplicitAuthenticationError,
+  shouldRestoreGeneralValidity,
+  shouldSkipAutoDailyAccount,
+} from "./autoDailyAuth.js";
+import {
+  getDailyAuthAccountKey,
+  hasLegacyInvalidProbeCompleted,
+  markLegacyInvalidProbeCompleted,
+} from "../core/dailyAuthState.js";
+import {
+  deliverAutoDailyPayload,
+  normalizeAutoDailyNotifyType,
+  resolveAndPersistAutoDailyGuildId,
+} from "../core/autoDailyNotification.js";
+import {
+  shouldMarkAutoDailyProcessed,
+} from "./autoDailyPolicy.js";
+import {
+  classifyPermanentNotificationError,
+  disableNotificationDestination,
+  isNotificationEnabled,
+  type NotificationDestinationConfig,
+} from "../core/notificationDestination.js";
 
 const CONFIG = {
   TAIPEI_TIMEZONE: "Asia/Taipei",
   API_TIMEOUT: 15000,
+  USER_TIMEOUT: 60000,
   MAX_RETRIES: 3,
   DEFAULT_LANGUAGE: "tw",
   ERROR_CODES: {
@@ -20,6 +55,23 @@ const CONFIG = {
     GEETEST: 10035,
   },
 };
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`Request timed out after ${ms}ms`)),
+          ms,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
 
 const LANGUAGE_MAPPING = {
   tw: LanguageEnum.TRADIIONAL_CHINESE,
@@ -31,11 +83,9 @@ const LANGUAGE_MAPPING = {
   default: LanguageEnum.ENGLISH,
 };
 
-interface AutoDailyConfig {
+interface AutoDailyConfig extends NotificationDestinationConfig {
   time: string | number;
-  channelId?: string;
   tag?: string | boolean;
-  notifyType?: "dm" | "channel";
 }
 
 interface SignInResult {
@@ -52,6 +102,7 @@ interface SignInResult {
   tomorrowRewardIcon?: string;
   tomorrowRewardCount?: number;
   error?: string;
+  errorType?: "account_expired" | "geetest" | "generic";
 }
 
 interface ProcessUserStats {
@@ -60,6 +111,7 @@ interface ProcessUserStats {
   alreadySigned: number;
   failed: number;
   skipped: number;
+  legacyProbeCompleted: boolean;
   shouldMarkProcessed: boolean;
 }
 
@@ -118,35 +170,52 @@ export class AutoDailyService {
       };
 
       for (const userId of userIds) {
-        const config = dailyData[userId];
-        let scheduledHour = Number(config.time ?? 13);
-        if (!Number.isFinite(scheduledHour)) scheduledHour = 13;
-        if (scheduledHour < 0 || scheduledHour > 23) scheduledHour = 13;
+        try {
+          const result = await withTimeout(
+            (async () => {
+              const config = dailyData[userId];
+              let scheduledHour = Number(config.time ?? 13);
+              if (!Number.isFinite(scheduledHour)) scheduledHour = 13;
+              if (scheduledHour === 24) scheduledHour = 0;
+              else if (scheduledHour < 0 || scheduledHour > 23) scheduledHour = 13;
 
-        // Catch-up behavior: if the bot missed the exact hour (restart/offline),
-        // run once later the same day as long as it has not been processed today.
-        if (currentHour < scheduledHour) continue;
+              // Catch-up behavior: if the bot missed the exact hour (restart/offline),
+              // run once later the same day as long as it has not been processed today.
+              if (currentHour < scheduledHour) return null;
 
-        // Skip if already processed today
-        const lastProcessed = await this.db.get(`${userId}.lastAutoDaily`);
-        if (lastProcessed === today) continue;
+              // Skip if already processed today
+              const lastProcessed = await this.db.get(`${userId}.lastAutoDaily`);
+              if (lastProcessed === today) return null;
 
-        const result = await this.processUser(userId, config);
-        if (!result) continue;
+              const processed = await this.processUser(userId, config, {
+                allowLegacyInvalidRecovery: currentHour === scheduledHour,
+              });
+              if (processed?.shouldMarkProcessed) {
+                // Mark as processed only when at least one account was actually handled.
+                await this.db.set(`${userId}.lastAutoDaily`, today);
+              }
+              return processed;
+            })(),
+            CONFIG.USER_TIMEOUT,
+          );
+          if (!result) continue;
 
-        stats.total += result.total;
-        stats.success += result.success;
-        stats.alreadySigned += result.alreadySigned;
-        stats.failed += result.failed;
-        stats.skipped += result.skipped;
-
-        if (result.shouldMarkProcessed) {
-          // Mark as processed only when at least one account was actually handled.
-          await this.db.set(`${userId}.lastAutoDaily`, today);
+          stats.total += result.total;
+          stats.success += result.success;
+          stats.alreadySigned += result.alreadySigned;
+          stats.failed += result.failed;
+          stats.skipped += result.skipped;
+        } catch (error: any) {
+          this.logger.error(
+            `用戶 ${userId} 自動簽到逾時或失敗，已跳過本輪: ${error?.message || error}`,
+          );
         }
       }
 
-      await this.updateStatistics(stats, startTime, currentHour);
+      await withTimeout(
+        this.updateStatistics(stats, startTime, currentHour),
+        CONFIG.USER_TIMEOUT,
+      );
     } catch (error: any) {
       this.logger.error(`自動簽到全局錯誤: ${error.message}`);
     } finally {
@@ -154,7 +223,13 @@ export class AutoDailyService {
     }
   }
 
-  private async processUser(userId: string, config: AutoDailyConfig) {
+  private async processUser(
+    userId: string,
+    config: AutoDailyConfig,
+    options: { allowLegacyInvalidRecovery?: boolean } = {
+      allowLegacyInvalidRecovery: false,
+    },
+  ) {
     const userLang = (await getUserLang(userId)) || "tw";
     const accounts = await getLegacyAccounts(this.db as any, userId);
     const tr = createTranslator(userLang);
@@ -165,6 +240,7 @@ export class AutoDailyService {
       alreadySigned: 0,
       failed: 0,
       skipped: 0,
+      legacyProbeCompleted: false,
       shouldMarkProcessed: false,
     };
 
@@ -178,17 +254,35 @@ export class AutoDailyService {
 
     const results: SignInResult[] = [];
 
-    const recoveredAccountIndices: number[] = [];
-    const invalidAccountIndices: number[] = [];
-
     for (let i = 0; i < accounts.length; i++) {
       const account = accounts[i];
-      const wasInvalid = account.invalid === true;
+      const accountKey = getDailyAuthAccountKey(
+        String(account.cookie),
+        String(account.uid),
+      );
+      const legacyInvalidProbeCompleted =
+        account.invalid === true
+          ? await hasLegacyInvalidProbeCompleted(this.db, userId, accountKey)
+          : false;
+      const legacyProbe =
+        account.invalid === true &&
+        !legacyInvalidProbeCompleted &&
+        options.allowLegacyInvalidRecovery === true;
 
-      // Skip accounts that have been marked invalid (login/cookie failure).
-      // They will be un-marked automatically when a successful API call goes through.
-      if (wasInvalid) {
+      if (
+        shouldSkipAutoDailyAccount(
+          { ...account, legacyInvalidProbeCompleted },
+          options,
+        )
+      ) {
         stats.skipped++;
+        if (account.invalid === true && legacyInvalidProbeCompleted) {
+          this.logger.warn(
+            `用戶 ${userId} 帳號 #${i} 已確認為整體失效，跳過自動簽到`,
+          );
+        } else {
+          this.logger.warn(`用戶 ${userId} 帳號 #${i} 缺少 UID 或 Cookie，已跳過`);
+        }
         continue;
       }
 
@@ -200,24 +294,89 @@ export class AutoDailyService {
           lang: this.getLanguage(userLang),
         });
 
-        const info = await zzz.daily.info();
-        let signResult;
+        const info = await withTimeout(zzz.daily.info(), CONFIG.API_TIMEOUT);
+        let signResult: {
+          status: "success" | "already_signed";
+          info: any;
+        };
 
         if (info.is_sign) {
           signResult = { status: "already_signed", info };
         } else {
-          const claim = await zzz.daily.claim();
+          const claim = await withTimeout(zzz.daily.claim(), CONFIG.API_TIMEOUT);
           if (
-            claim.code === CONFIG.ERROR_CODES.ALREADY_SIGNED ||
-            claim.info?.is_sign
+            claim.code === CONFIG.ERROR_CODES.ALREADY_SIGNED
           ) {
             signResult = { status: "already_signed", info: claim.info || info };
           } else {
-            signResult = { status: "success", info: claim.info || info };
+            signResult = {
+              status: "success",
+              info: normalizeSuccessfulDailyClaimInfo(info, claim.info || info),
+            };
           }
         }
 
-        const rewards = await zzz.daily.rewards();
+        if (shouldRestoreGeneralValidity(signResult.status)) {
+          await restoreGeneralValidity(this.db as any, userId, String(account.uid));
+          if (legacyProbe) {
+            await markLegacyInvalidProbeCompleted(this.db, userId, accountKey);
+            stats.legacyProbeCompleted = true;
+          }
+        }
+
+        // Older account rows may predate nickname storage.  Daily signing can
+        // still succeed with those rows, so opportunistically backfill the
+        // ZZZ nickname only after Daily authentication has already succeeded.
+        //
+        // Nickname lookup failure must never fail the sign-in, invalidate the
+        // account, or change authentication state.
+        let resolvedNickname =
+          typeof account.nickname === "string" ? account.nickname.trim() : "";
+
+        if (!resolvedNickname) {
+          try {
+            const roles = await withTimeout(
+              getAllGameRoles(String(account.cookie)),
+              CONFIG.API_TIMEOUT,
+            );
+
+            const zzzRole = (roles ?? []).find(
+              (role: any) =>
+                Number(role.gameId) === 8 &&
+                String(role.uid) === String(account.uid),
+            );
+
+            const fetchedNickname =
+              typeof zzzRole?.nickname === "string"
+                ? zzzRole.nickname.trim()
+                : "";
+
+            if (fetchedNickname) {
+              resolvedNickname = fetchedNickname;
+
+              // Nickname-only patch: do not touch cookie, invalid state,
+              // lastUpdate or the AutoDaily legacy probe marker.
+              await updateLegacyAccountAtIndex(
+                this.db as any,
+                userId,
+                i,
+                { nickname: fetchedNickname },
+              );
+
+              this.logger.info(
+                `用戶 ${userId} UID ${account.uid} 已自動補回玩家名稱`,
+              );
+            }
+          } catch (nicknameError: any) {
+            this.logger.warn(
+              `用戶 ${userId} UID ${account.uid} 無法補回玩家名稱，不影響本次自動簽到: ${
+                nicknameError?.message ?? nicknameError
+              }`,
+            );
+          }
+        }
+
+        const rewards = await withTimeout(zzz.daily.rewards(), CONFIG.API_TIMEOUT);
         const presentation = buildDailySignInPresentation(
           signResult.info,
           rewards.awards,
@@ -226,7 +385,7 @@ export class AutoDailyService {
         const tomorrowReward = presentation.tomorrowReward;
         results.push({
           uid: account.uid,
-          nickname: account.nickname || "Unknown",
+          nickname: resolvedNickname || "Unknown",
           status: signResult.status as any,
           rewardName: reward.name,
           rewardCount: reward.cnt,
@@ -241,38 +400,44 @@ export class AutoDailyService {
 
         if (signResult.status === "success") stats.success++;
         else stats.alreadySigned++;
-
-        // Successful API access means this account is usable again.
-        if (wasInvalid) {
-          recoveredAccountIndices.push(i);
-        }
       } catch (error: any) {
-        const errorMessage = error.message;
-        const normalizedErrorMessage = String(errorMessage || "").toLowerCase();
-        const errorCode = Number(error?.code);
+        const errorMessage = error?.message || String(error);
+        const authenticationError = isExplicitAuthenticationError(error);
+        const displayError = authenticationError
+          ? tr("daily_AuthExpiredDesc")
+          : errorMessage;
         stats.failed++;
-        results.push({
-          uid: account.uid,
-          nickname: account.nickname || "Unknown",
-          status: "failed",
-          error: errorMessage,
-        });
 
-        // Track indices of accounts to mark as invalid
-        if (
-          normalizedErrorMessage.includes("login") ||
-          normalizedErrorMessage.includes("尚未登入") ||
-          normalizedErrorMessage.includes("尚未登录") ||
-          normalizedErrorMessage.includes("cookie") ||
-          normalizedErrorMessage.includes("token") ||
-          normalizedErrorMessage.includes("expired") ||
-          (normalizedErrorMessage.includes("uid") &&
-            normalizedErrorMessage.includes("invalid")) ||
-          normalizedErrorMessage.includes("given uid") ||
-          errorCode === -100 ||
-          errorCode === -1071
-        ) {
-          invalidAccountIndices.push(i);
+        // Legacy invalid accounts are probed once to classify old shared auth
+        // state. If Daily itself confirms an explicit auth failure, persist the
+        // classification silently so users are not notified again about an old
+        // already-known invalid account.
+        //
+        // Normal accounts still receive their first auth-expired notification.
+        // Transient/non-auth legacy probe failures are also still notified and
+        // remain retryable.
+        if (!(legacyProbe && authenticationError)) {
+          results.push({
+            uid: account.uid,
+            nickname: account.nickname || "Unknown",
+            status: "failed",
+            error: displayError,
+            errorType: authenticationError
+              ? "account_expired"
+              : errorMessage.includes("10035")
+                ? "geetest"
+                : "generic",
+          });
+        }
+
+        // Only a direct authentication failure invalidates the general
+        // account. Redeem-scoped failures never reach this path.
+        if (authenticationError) {
+          await markGeneralInvalid(this.db as any, userId, String(account.uid));
+          await markLegacyInvalidProbeCompleted(this.db, userId, accountKey);
+          if (legacyProbe) {
+            stats.legacyProbeCompleted = true;
+          }
         }
 
         if (this.errorWebhook) {
@@ -280,8 +445,8 @@ export class AutoDailyService {
             .setColor("#E76161")
             .setTitle(`[自動簽到失敗] 用戶: ${userId}`)
             .addFields(
-           { name: "UID", value: String(account.uid), inline: true },
-              { name: "錯誤訊息", value: errorMessage, inline: true },
+              { name: "UID", value: String(account.uid), inline: true },
+              { name: "錯誤訊息", value: displayError, inline: true },
             )
             .setTimestamp();
           await this.errorWebhook
@@ -291,32 +456,24 @@ export class AutoDailyService {
       }
     }
 
-    // Only mark the day as processed when at least one account completed successfully
-    // (or was already signed). This allows retry on later hourly runs after transient errors.
-    stats.shouldMarkProcessed = stats.success + stats.alreadySigned > 0;
-
-    if (results.length > 0) {
-      await this.sendNotification(userId, config, results, tr);
+    let notificationDelivered = results.length === 0;
+    try {
+      if (results.length > 0) {
+        notificationDelivered = await withTimeout(
+          this.sendNotification(userId, config, results, tr),
+          CONFIG.USER_TIMEOUT,
+        );
+      }
+    } catch (error) {
+      this.logger.error(`發送通知失敗 (User: ${userId}): ${error}`);
     }
 
-    if (recoveredAccountIndices.length > 0) {
-      for (const idx of recoveredAccountIndices) {
-        accounts[idx].invalid = false;
-      }
-      for (const idx of recoveredAccountIndices) {
-        await updateLegacyAccountAtIndex(this.db as any, userId, idx, { invalid: false });
-      }
-    }
-
-    // Now mark accounts as invalid AFTER notification has been sent
-    if (invalidAccountIndices.length > 0) {
-      for (const idx of invalidAccountIndices) {
-        accounts[idx].invalid = true;
-      }
-      for (const idx of invalidAccountIndices) {
-        await updateLegacyAccountAtIndex(this.db as any, userId, idx, { invalid: true });
-      }
-    }
+    stats.shouldMarkProcessed = shouldMarkAutoDailyProcessed({
+      success: stats.success,
+      alreadySigned: stats.alreadySigned,
+      legacyProbeCompleted: stats.legacyProbeCompleted,
+      notificationDelivered,
+    });
 
     return stats;
   }
@@ -326,13 +483,48 @@ export class AutoDailyService {
     config: AutoDailyConfig,
     results: SignInResult[],
     tr: any,
-  ) {
+  ): Promise<boolean> {
+    if (!isNotificationEnabled(config)) return true;
+
     const tag =
       config.tag === "true" || config.tag === true ? `<@${userId}>` : "";
 
-    let notifyMethod = config.notifyType || "dm";
-    if (!config.notifyType && config.channelId) {
-      notifyMethod = "channel";
+    const notifyType = normalizeAutoDailyNotifyType(config.notifyType);
+    const channelId = config.channelId;
+    let guildId = config.guildId;
+    if (notifyType === "channel") {
+      if (!channelId) {
+        await disableNotificationDestination(
+          this.db,
+          "autoDaily",
+          userId,
+          config,
+          "missing_target",
+        );
+        this.logger.warn(
+          `用戶 ${userId} 的自動簽到通知缺少目的地；已停用通知，自動簽到維持啟用`,
+        );
+        return true;
+      }
+      guildId = await resolveAndPersistAutoDailyGuildId(
+        this.client,
+        this.db,
+        userId,
+        config,
+      );
+      if (!guildId) {
+        await disableNotificationDestination(
+          this.db,
+          "autoDaily",
+          userId,
+          config,
+          "guild_unavailable",
+        );
+        this.logger.warn(
+          `用戶 ${userId} 的自動簽到通知目的地已失效；已停用通知，自動簽到維持啟用`,
+        );
+        return true;
+      }
     }
 
     // Separate failed results (embed only) from sign results (canvas card)
@@ -340,7 +532,9 @@ export class AutoDailyService {
     const signedResults = results.filter((r) => r.status !== "failed");
 
     // Build canvas card files for signed results
+    // If canvas fails, fallback to a plain embed so the user still gets notified
     const cardFiles: { buffer: string; name: string }[] = [];
+    const canvasFallbackEmbeds: object[] = [];
     for (let i = 0; i < signedResults.length; i++) {
       const res = signedResults[i];
       try {
@@ -368,6 +562,15 @@ export class AutoDailyService {
         });
       } catch (e) {
         this.logger.error(`Canvas card 生成失敗 (${res.uid}): ${e}`);
+        // Fallback: send a plain embed so user is still notified
+        const statusLabel = res.status === "success" ? tr("daily_Success") : tr("daily_AlreadySigned");
+        canvasFallbackEmbeds.push(
+          new EmbedBuilder()
+            .setColor(res.status === "success" ? "#5BB85D" : "#5B9BD5")
+            .setTitle(`${res.uid} ${statusLabel}`)
+            .setDescription(res.rewardName ? `${tr("card_TodayReward")}: ${res.rewardName} ×${res.rewardCount ?? 1}` : null)
+            .toJSON()
+        );
       }
     }
 
@@ -376,7 +579,11 @@ export class AutoDailyService {
       const embed = new EmbedBuilder()
         .setColor("#E76161")
         .setTitle(`${res.uid} ${tr("daily_Failed")}`);
-      if (res.error?.includes("10035")) {
+      if (res.errorType === "account_expired") {
+        embed
+          .setTitle(tr("daily_AuthExpiredTitle"))
+          .setDescription(`- \`${res.uid}\`: ${tr("daily_AuthExpiredDesc")}`);
+      } else if (res.errorType === "geetest" || res.error?.includes("10035")) {
         embed
           .setTitle(tr("autoDaily_GeetestTitle").replace("<uid>", res.uid))
           .setURL(
@@ -388,118 +595,151 @@ export class AutoDailyService {
       return embed.toJSON();
     });
 
-    try {
-      if (notifyMethod === "dm") {
-        // Send each card as a separate message to avoid image stacking
-        for (let i = 0; i < cardFiles.length; i++) {
-          const cardFile = cardFiles[i];
-          const isFirst = i === 0;
-          await this.client.cluster.broadcastEval(
-            async (c: any, context: any) => {
-              const { userId, channelId, content, cardFile } = context;
-              try {
-                const { AttachmentBuilder } = await import("discord.js");
-                const file = new AttachmentBuilder(
-                  Buffer.from(cardFile.buffer, "base64"),
-                  { name: cardFile.name },
-                );
-                const user = await c.users.fetch(userId).catch(() => null);
-                if (user) {
-                  const dmPayload: any = { files: [file] };
-                  if (content) dmPayload.content = content;
-                  await user.send(dmPayload).catch(async () => {
-                    const channel = c.channels.cache.get(channelId);
-                    if (channel) await channel.send(dmPayload);
-                  });
-                }
-              } catch (e) {}
-            },
-            {
-              cluster: 0,
-              context: {
-                userId,
-                channelId: config.channelId,
-                content: isFirst && tag ? tag : undefined,
-                cardFile,
-              },
-            },
-          );
-        }
-        // Send error embeds (if any) as a separate message
-        if (errorEmbeds.length > 0) {
-          await this.client.cluster.broadcastEval(
-            async (c: any, context: any) => {
-              const { userId, channelId, errorEmbeds } = context;
-              try {
-                const user = await c.users.fetch(userId).catch(() => null);
-                if (user) {
-                  await user.send({ embeds: errorEmbeds }).catch(async () => {
-                    const channel = c.channels.cache.get(channelId);
-                    if (channel) await channel.send({ embeds: errorEmbeds });
-                  });
-                }
-              } catch (e) {}
-            },
-            {
-              cluster: 0,
-              context: {
-                userId,
-                channelId: config.channelId,
-                errorEmbeds,
-              },
-            },
-          );
-        }
-      } else {
-        // Send each card as a separate message to avoid image stacking
-        for (let i = 0; i < cardFiles.length; i++) {
-          const cardFile = cardFiles[i];
-          const isFirst = i === 0;
-          await this.client.cluster.broadcastEval(
-            async (c: any, context: any) => {
-              const { channelId, content, cardFile } = context;
-              try {
-                const channel = c.channels.cache.get(channelId);
-                if (!channel) return;
-                const { AttachmentBuilder } = await import("discord.js");
-                const file = new AttachmentBuilder(
-                  Buffer.from(cardFile.buffer, "base64"),
-                  { name: cardFile.name },
-                );
-                await channel.send({ content: content || undefined, files: [file] });
-              } catch (e) {}
-            },
-            {
-              context: {
-                channelId: config.channelId,
-                content: isFirst && tag ? tag : undefined,
-                cardFile,
-              },
-            },
-          );
-        }
-        if (errorEmbeds.length > 0) {
-          await this.client.cluster.broadcastEval(
-            async (c: any, context: any) => {
-              const { channelId, errorEmbeds } = context;
-              try {
-                const channel = c.channels.cache.get(channelId);
-                if (!channel) return;
-                await channel.send({ embeds: errorEmbeds });
-              } catch (e) {}
-            },
-            {
-              context: {
-                channelId: config.channelId,
-                errorEmbeds,
-              },
-            },
-          );
-        }
+    this.logger.info(
+      `發送通知 (User: ${userId}) method=${notifyType} cards=${cardFiles.length} canvasFallbacks=${canvasFallbackEmbeds.length} errors=${errorEmbeds.length}${notifyType === "channel" ? ` channelId=${channelId} guildId=${guildId}` : ""}`,
+    );
+
+    // Merge canvas fallback embeds with error embeds so they all go through the same path
+    const allEmbeds = [...canvasFallbackEmbeds, ...errorEmbeds];
+    let delivered = false;
+
+    const sendToChannel = async (
+      targetChannelId: string,
+      targetGuildId: string,
+      msgPayload: any,
+    ) => {
+      // 先依 channel cache 或 guild cache 找到負責的 cluster；channel 未快取時再 fetch。
+      const channelPresence = await this.client.cluster.broadcastEval(
+        (c: any, ctx: any) =>
+          c.channels.cache.has(ctx.channelId) ||
+          Boolean(c.guilds?.cache?.has(ctx.guildId)),
+        { context: { channelId: targetChannelId, guildId: targetGuildId } },
+      );
+      const targetCluster = channelPresence.findIndex(Boolean);
+      if (targetCluster < 0) {
+        throw new Error(
+          `No cluster owns guild ${targetGuildId} for channel ${targetChannelId}`,
+        );
       }
-    } catch (error) {
-      this.logger.error(`發送通知失敗 (User: ${userId}): ${error}`);
+
+      // 序列化 files（AttachmentBuilder 無法直接跨 cluster 傳遞）
+      const serializedFiles = msgPayload.files
+        ? await Promise.all(
+            msgPayload.files.map(async (file: any) => {
+              const attachment = file.attachment;
+              let buffer = Buffer.alloc(0);
+              if (Buffer.isBuffer(attachment)) buffer = Buffer.from(attachment);
+              else if (attachment instanceof Uint8Array) buffer = Buffer.from(attachment);
+              return {
+                buffer: buffer.toString("base64"),
+                name: file.name,
+                description: file.description,
+              };
+            }),
+          )
+        : [];
+
+      const serializedPayload = {
+        content: msgPayload.content,
+        embeds: msgPayload.embeds,
+        files: serializedFiles,
+      };
+
+      const sendResults = await this.client.cluster.broadcastEval(
+        async (c: any, ctx: any) => {
+          let channel = c.channels.cache.get(ctx.channelId);
+          if (!channel && typeof c.channels.fetch === "function") {
+            channel = await c.channels.fetch(ctx.channelId).catch(() => null);
+          }
+          if (!channel || typeof (channel as any).send !== "function") return false;
+          const { AttachmentBuilder } = await import("discord.js");
+          const files = ctx.payload.files.map(
+            (f: any) =>
+              new AttachmentBuilder(Buffer.from(f.buffer, "base64"), {
+                name: f.name,
+                description: f.description,
+              }),
+          );
+          await (channel as any).send({
+            content: ctx.payload.content,
+            embeds: ctx.payload.embeds,
+            files,
+          });
+          return true;
+        },
+        {
+          cluster: targetCluster,
+          context: { channelId: targetChannelId, payload: serializedPayload },
+        },
+      );
+      if (!sendResults.some(Boolean)) {
+        throw new Error(`No cluster sent message to channel ${targetChannelId}`);
+      }
+    };
+
+    let dmUser: any;
+    const sendPayload = async (msgPayload: any) =>
+      deliverAutoDailyPayload(
+        notifyType,
+        async () => {
+          if (!channelId || !guildId) {
+            throw new Error("Missing channel notification target");
+          }
+          await sendToChannel(channelId, guildId, msgPayload);
+        },
+        async () => {
+          dmUser ??= await this.client.users.fetch(userId);
+          await dmUser.send(msgPayload);
+        },
+      );
+
+    let permanentlyDisabled = false;
+    const attemptDelivery = async (msgPayload: any): Promise<boolean> => {
+      try {
+        await sendPayload(msgPayload);
+        delivered = true;
+        return true;
+      } catch (error) {
+        const permanentReason = classifyPermanentNotificationError(error);
+        if (permanentReason) {
+          permanentlyDisabled = true;
+          await disableNotificationDestination(
+            this.db,
+            "autoDaily",
+            userId,
+            config,
+            permanentReason,
+          );
+          this.logger.warn(
+            `用戶 ${userId} 的自動簽到通知目的地永久失效 (${permanentReason})；已停用通知，自動簽到維持啟用`,
+          );
+          return false;
+        }
+        this.logger.error(
+          `${notifyType} 發送失敗且不切換通知方式 (User: ${userId}): ${error}`,
+        );
+        return false;
+      }
+    };
+
+    for (let i = 0; i < cardFiles.length; i++) {
+      const cardFile = cardFiles[i];
+      const isFirst = i === 0;
+      const content = isFirst && tag ? tag : undefined;
+      const fileBuffer = Buffer.from(cardFile.buffer, "base64");
+      const msgPayload = {
+        ...(content && { content }),
+        files: [new AttachmentBuilder(fileBuffer, { name: cardFile.name })],
+      };
+      await attemptDelivery(msgPayload);
+      if (permanentlyDisabled) break;
     }
+    if (allEmbeds.length > 0 && !permanentlyDisabled) {
+      await attemptDelivery({ embeds: allEmbeds });
+    }
+    // A permanent notification failure must not make a successful game action
+    // incomplete. It is now disabled and will not be retried next hour/day.
+    return delivered || permanentlyDisabled;
   }
 
   private async updateStatistics(

@@ -2,12 +2,20 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { ClusterManager, HeartbeatManager } from "discord-hybrid-sharding";
 import Logger from "./utilities/core/logger.js";
-import { getConfig } from "./utilities/core/config.js";
+import { getConfig, getMissingWebLoginConfig } from "./utilities/core/config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const config = getConfig();
+const missingWebLoginConfig = getMissingWebLoginConfig();
+if (missingWebLoginConfig.length > 0) {
+  new Logger("WebLogin").error(
+    `pending login sync disabled; missing configuration: ${missingWebLoginConfig.join(", ")}`,
+  );
+} else {
+  new Logger("WebLogin").info("pending login sync configuration ready");
+}
 const token = process.env.NODE_ENV === "dev" ? config.TEST_TOKEN : config.TOKEN;
 
 if (!token) {

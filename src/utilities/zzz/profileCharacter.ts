@@ -15,13 +15,17 @@ import {
 } from "./autoDownloadIcons.js";
 import { getElementIconPath } from "./elements.js";
 import { resolveProfileFont } from "./profileLocale.js";
-import { getMindscapeComposition } from "./mindscapeComposition.js";
 import {
-  collectEffectiveSystemIds,
+  getMindscapeComposition,
+  getPaintingSelectionRank,
+} from "./mindscapeComposition.js";
+import {
   countEffectiveRolls,
+  getCharacterEffectiveSystemIds,
+  isCharacterEffectiveProperty,
   isEffectiveProperty,
-  totalEffectiveRolls,
 } from "./profileRolls.js";
+import { getPaperAccent } from "./profileColors.js";
 import { getFlatSuitIcon } from "./profileSuitIcons.js";
 
 const W = 1000;
@@ -271,13 +275,12 @@ function truncate(
   return output ? `${output}…` : "";
 }
 
-function cleanRichText(value: unknown): string {
-  return String(value ?? "")
-    .replace(/<color=#[0-9a-f]{6}>/giu, "")
-    .replace(/<\/color>/giu, "")
-    .replace(/<br\s*\/?>/giu, "\n")
-    .replace(/\\n/gu, "\n")
-    .trim();
+function truncateToCharacters(value: unknown, maxCharacters: number): string {
+  const text = String(value ?? "");
+  const characters = Array.from(text);
+  return characters.length > maxCharacters
+    ? `${characters.slice(0, maxCharacters).join("")}…`
+    : text;
 }
 
 type RichGlyph = { char: string; color: string };
@@ -327,7 +330,7 @@ function drawRichTextBlock(
   lineHeight: number,
   defaultColor: string,
   resolveColor: (color: string) => string,
-) {
+): number {
   const glyphs = parseRichGlyphs(value, defaultColor, resolveColor);
   const lines: RichGlyph[][] = [[]];
   const widths = [0];
@@ -391,6 +394,7 @@ function drawRichTextBlock(
     }
     flush();
   });
+  return lines.length;
 }
 
 function formatStatValue(value: unknown): string {
@@ -506,6 +510,46 @@ function rarityGrade(value: unknown): "S" | "A" | "B" | "C" {
   if (raw === "4" || raw === "A") return "A";
   if (raw === "3" || raw === "B") return "B";
   return "C";
+}
+
+function isPeloyisCharacter(character: any): boolean {
+  const id = Number(character?.id ?? character?.avatar_id ?? character?.agent_id);
+  if (id === 1551) return true;
+  return [
+    character?.name,
+    character?.name_mi18n,
+    character?.name_cn,
+    character?.name_tw,
+    character?.name_en,
+  ]
+    .filter((value) => typeof value === "string")
+    .join(" ")
+    .toLowerCase()
+    .includes("peloyis") || [
+      character?.name,
+      character?.name_mi18n,
+      character?.name_cn,
+      character?.name_tw,
+      character?.name_en,
+    ]
+      .filter((value) => typeof value === "string")
+      .join(" ")
+      .includes("佩洛伊斯");
+}
+
+async function loadCharacterRarityIcon(character: any): Promise<Image | null> {
+  const rarity = rarityGrade(character?.rarity);
+  if (rarity === "S") {
+    return loadAny("./src/assets/images/icons/rank/rarity-s-rank.png");
+  }
+  if (rarity === "A") {
+    return loadAny(
+      isPeloyisCharacter(character)
+        ? "./src/assets/images/icons/rank/rarity-a-peloyis-special.png"
+        : "./src/assets/images/icons/rank/rarity-a-peloyis.png",
+    );
+  }
+  return null;
 }
 
 function propIconPath(propertyId: unknown): string | null {
@@ -774,16 +818,25 @@ async function choosePortrait(
       const entryId = name ? await findWikiEntry(name) : null;
       if (entryId) {
         const paths = await getWikiPaintings(entryId);
-        if (rankDependentPainting && paths.length > 0) {
+        if (paths.length > 0) {
+          const paintingRank = getPaintingSelectionRank(
+            character.rank,
+            rankDependentPainting,
+          );
           const composed = await composeRankDependentPainting(
             entryId,
             paths,
-            Number(character.rank ?? 0),
+            paintingRank,
             source,
           );
           if (composed) return composed;
         }
-        source = paths[0] ?? source;
+        const fallbackRank = getPaintingSelectionRank(
+          character.rank,
+          rankDependentPainting,
+        );
+        const fallbackIndex = getMindscapeComposition(fallbackRank).baseIndex;
+        source = paths[fallbackIndex] ?? paths[0] ?? source;
       }
     } catch {
       // The official portrait remains the fallback.
@@ -798,6 +851,7 @@ async function drawIdentityAndStats(
   character: any,
   portrait: Image | null,
   accent: string,
+  paperAccent: string,
   accentLight: string,
   font: string,
   tr: (key: string, args?: any) => string,
@@ -856,18 +910,17 @@ async function drawIdentityAndStats(
     character.name_mi18n ??
     character.name ??
     "Unknown";
-  const rarity = rarityGrade(character.rarity);
   const special = specialCharacters[String(character.id)];
   const specialLabel = special?.title ? tr(special.title) : "";
-  const nameSize = fitText(ctx, rawName, 118, 21, 13, font);
-  ctx.font = `bold ${nameSize}px ${font}`;
+  const nameSize = fitText(ctx, rawName, 118, 21, 13, font, "500");
+  ctx.font = `500 ${nameSize}px ${font}`;
   const name = truncate(ctx, rawName, 118);
   const nameWidth = ctx.measureText(name).width;
-  const raritySize = 24;
+  const raritySize = 20;
   const gap = 7;
   let rowWidth = nameWidth + gap + raritySize;
   if (specialLabel) {
-    ctx.font = `bold 9px ${font}`;
+    ctx.font = `500 9px ${font}`;
     rowWidth += gap + 20 + 3 + ctx.measureText(specialLabel).width;
   }
   const cover = Math.min(rowWidth + 26, width - 28);
@@ -886,16 +939,14 @@ async function drawIdentityAndStats(
 
   const nameX = x + 12;
   const nameY = y + 241;
-  ctx.font = `bold ${nameSize}px ${font}`;
+  ctx.font = `500 ${nameSize}px ${font}`;
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "left";
   ctx.fillText(name, nameX, nameY);
   let itemX = nameX + nameWidth + gap;
-  const rarityImage = await loadAny(
-    `./src/assets/images/icons/rank/Rarity_${rarity}.png`,
-  );
+  const rarityImage = await loadCharacterRarityIcon(character);
   if (rarityImage)
-    ctx.drawImage(rarityImage, itemX, nameY - 21, raritySize, raritySize);
+    ctx.drawImage(rarityImage, itemX, nameY - raritySize + 1, raritySize, raritySize);
   itemX += raritySize + gap;
 
   if (special?.title) {
@@ -906,12 +957,18 @@ async function drawIdentityAndStats(
     );
     if (titleImage) ctx.drawImage(titleImage, itemX, nameY - 19, 20, 20);
     itemX += 23;
-    ctx.font = `bold 9px ${font}`;
+    ctx.font = `500 9px ${font}`;
     ctx.fillStyle = "#ffffff";
     ctx.fillText(specialLabel, itemX, nameY - 5);
   }
 
-  const metaY = y + 266;
+  const numberY = y + 255;
+  const numberWidth = 38;
+  const numberGap = 4;
+  const rankX = x + width - 12 - numberWidth;
+  const levelX = rankX - numberGap - numberWidth;
+  const metaY = numberY + 14;
+  const iconMetaY = metaY + 6;
   const specialElement = special?.element;
   const elementImage = await loadAny(
     specialElement
@@ -924,30 +981,31 @@ async function drawIdentityAndStats(
   const groupImage = await loadAny(character.group_icon_path);
   let metaX = nameX;
   for (const [image, size] of [
-    [elementImage, 18],
-    [professionImage, 18],
-    [groupImage, 22],
+    [elementImage, 26],
+    [professionImage, 26],
+    [groupImage, 26],
   ] as Array<[Image | null, number]>) {
-    if (image) ctx.drawImage(image, metaX, metaY - size + 2, size, size);
+    if (image) ctx.drawImage(image, metaX, iconMetaY - size + 2, size, size);
     metaX += size + 4;
   }
-  ctx.font = `bold 6.5px ${font}`;
+  ctx.font = `500 12px ${font}`;
   ctx.fillStyle = "#e8e4da";
-  const camp = truncate(ctx, character.camp_name_mi18n ?? "", 66);
-  ctx.fillText(camp, metaX, metaY - 4);
+  const campText = String(character.camp_name_mi18n ?? "");
+  const campWidth = Math.max(42, levelX - metaX - 4);
+  const campSize = fitText(ctx, campText, campWidth, 12, 10, font, "500");
+  ctx.font = `500 ${campSize}px ${font}`;
+  const campLines = wrapCharacters(ctx, campText, campWidth, 2);
+  campLines.forEach((line, index) =>
+    ctx.fillText(line, metaX, metaY - 4 + index * 12),
+  );
 
-  const numberY = y + 255;
-  const numberWidth = 38;
-  const numberGap = 4;
-  const rankX = x + width - 12 - numberWidth;
-  const levelX = rankX - numberGap - numberWidth;
   for (const [label, value, bx] of [
     [T.level, character.level ?? "?", levelX],
     [T.cinema, character.rank ?? 0, rankX],
   ] as Array<[string, unknown, number]>) {
     ctx.fillStyle = accentLight;
     ctx.fillRect(bx, numberY - 6, 2, 28);
-    ctx.font = `bold 7px ${font}`;
+    ctx.font = `500 7px ${font}`;
     ctx.fillStyle = "#bbb7ae";
     ctx.fillText(label, bx + 6, numberY);
     ctx.font = `900 italic 21px ${NUM_FONT}`;
@@ -962,7 +1020,7 @@ async function drawIdentityAndStats(
     statsX + 4,
     statsY + 1,
     T.agentStats,
-    accent,
+    paperAccent,
     font,
     true,
   );
@@ -982,7 +1040,6 @@ async function drawIdentityAndStats(
   const colGap = 10;
   const colWidth = (width - 20 - colGap) / 2;
   const rowHeight = 53;
-  const highlightIds = new Set([2, 5, 6, 9]);
   for (let index = 0; index < 10; index += 1) {
     const prop = props[index];
     if (!prop) continue;
@@ -1004,7 +1061,7 @@ async function drawIdentityAndStats(
       ctx.drawImage(icon, cellX, cellY + 5, 14, 14);
       ctx.restore();
     }
-    ctx.font = `bold 11px ${font}`;
+    ctx.font = `500 12px ${font}`;
     ctx.fillStyle = "#505356";
     ctx.fillText(
       truncate(ctx, String(prop.property_name ?? ""), colWidth - 20),
@@ -1012,7 +1069,9 @@ async function drawIdentityAndStats(
       cellY + 17,
     );
     ctx.font = `900 italic 15px ${NUM_FONT}`;
-    ctx.fillStyle = highlightIds.has(Number(prop.property_id)) ? accent : INK;
+    ctx.fillStyle = isCharacterEffectiveProperty(character, prop)
+      ? paperAccent
+      : INK;
     ctx.fillText(
       formatStatValue(prop.final ?? prop.base ?? ""),
       cellX,
@@ -1045,7 +1104,7 @@ async function drawSkills(
   strokePolygon(ctx, shape, PAPER, 2);
   ctx.fillStyle = accent;
   ctx.fillRect(x + 12, y + 7, 4, 15);
-  ctx.font = `bold 13px ${font}`;
+  ctx.font = `bold 15px ${font}`;
   ctx.fillStyle = PAPER;
   ctx.fillText(T.skills, x + 22, y + 20);
 
@@ -1087,10 +1146,10 @@ async function drawSkills(
     const isMax = isCore
       ? levelText === "F"
       : Number(skill?.level ?? 0) >= maxLevel;
-    ctx.font = `bold 7px ${font}`;
+    ctx.font = `500 10px ${font}`;
     ctx.fillStyle = "#aeb2b2";
     ctx.fillText(labels[index]!, itemX + 39, itemY + 13);
-    ctx.font = `900 italic 15px ${NUM_FONT}`;
+    ctx.font = `900 italic 18px ${NUM_FONT}`;
     ctx.fillStyle = isMax ? accentLight : "#ffffff";
     ctx.fillText(levelText, itemX + 39, itemY + 31);
   }
@@ -1099,7 +1158,7 @@ async function drawSkills(
 async function drawWeapon(
   ctx: SKRSContext2D,
   character: any,
-  accent: string,
+  paperAccent: string,
   font: string,
   T: CharacterText,
 ) {
@@ -1117,7 +1176,7 @@ async function drawWeapon(
   ] as Array<[number, number]>;
   polygon(ctx, shape, PAPER);
   strokePolygon(ctx, shape, INK, 2);
-  drawSectionMark(ctx, x + 16, y + 24, T.wEngine, accent, font, true);
+  drawSectionMark(ctx, x + 16, y + 24, T.wEngine, paperAccent, font, true);
 
   const weapon = character.weapon;
   if (!weapon?.id) {
@@ -1148,7 +1207,7 @@ async function drawWeapon(
   const iconX = x + 18;
   const iconY = y + 45;
   const weaponImage = await loadAny(weapon.icon);
-  ctx.fillStyle = mix(accent, "white", 0.5);
+  ctx.fillStyle = mix(paperAccent, "white", 0.5);
   ctx.fillRect(iconX, iconY, 64, 64);
   ctx.strokeStyle = INK;
   ctx.lineWidth = 1.5;
@@ -1163,23 +1222,23 @@ async function drawWeapon(
   const infoX = x + 100;
   const infoWidth = 238;
   const rawName = String(weapon.name ?? "");
-  const nameSize = fitText(ctx, rawName, infoWidth - 34, 17, 12, font);
+  const nameSize = fitText(ctx, rawName, infoWidth - 40, 17, 12, font);
   ctx.font = `bold ${nameSize}px ${font}`;
-  const name = truncate(ctx, rawName, infoWidth - 34);
+  const name = truncate(ctx, rawName, infoWidth - 40);
   ctx.fillStyle = INK;
   ctx.textAlign = "left";
   ctx.fillText(name, infoX, y + 62);
   const nameWidth = ctx.measureText(name).width;
-  const rarity = await loadAny(
-    `./src/assets/images/icons/rank/Rarity_${rarityGrade(weapon.rarity)}.png`,
-  );
-  if (rarity) ctx.drawImage(rarity, infoX + nameWidth + 7, y + 46, 18, 18);
+  const rarity = await loadCharacterRarityIcon(weapon);
+  if (rarity) ctx.drawImage(rarity, infoX + nameWidth + 7, y + 45, 20, 20);
 
   const detailY = y + 76;
   const detailH = 45;
+  const levelDividerX = infoX + 42;
+  const effectDividerX = x + 340;
   ctx.fillStyle = INK;
-  ctx.fillRect(infoX + 62, detailY, 2, detailH);
-  ctx.font = `bold 10px ${font}`;
+  ctx.fillRect(levelDividerX, detailY, 2, detailH);
+  ctx.font = `500 10px ${font}`;
   ctx.fillStyle = "#606365";
   ctx.fillText(T.level, infoX, detailY + 11);
   ctx.font = `900 italic 27px ${NUM_FONT}`;
@@ -1190,49 +1249,68 @@ async function drawWeapon(
     ...(weapon.main_properties ?? []),
     ...(weapon.properties ?? []),
   ].slice(0, 2);
-  const propStartX = infoX + 73;
-  const propWidth = (infoWidth - 73) / 2;
+  const middleDividerX =
+    levelDividerX + (effectDividerX - levelDividerX) / 2 - 8;
+  const propertyStartX = [levelDividerX, middleDividerX];
+  const propertyEndX = [middleDividerX, effectDividerX];
   for (let index = 0; index < 2; index += 1) {
     const prop = weaponProps[index];
     if (!prop) continue;
-    const px = propStartX + index * propWidth;
+    const px = propertyStartX[index]!;
     if (index > 0) {
       ctx.fillStyle = "#aaa59b";
-      ctx.fillRect(px, detailY + 4, 1, detailH - 8);
+      ctx.fillRect(middleDividerX, detailY + 4, 1, detailH - 8);
     }
+    const propertyDividerX = px;
+    const propertyDividerWidth = index === 0 ? 2 : 1;
+    const propertyContentStartX = propertyDividerX + propertyDividerWidth;
+    const firstEffectShiftX = index === 0 ? 5 : 0;
+    const propertyTextX = propertyContentStartX + 20 + firstEffectShiftX;
+    const propertyIconX = propertyContentStartX + 3 + firstEffectShiftX;
     const propImage = await loadAny(propIconPath(prop.property_id));
     if (propImage) {
       ctx.save();
       ctx.globalAlpha = 0.72;
       ctx.filter = "brightness(0)";
-      ctx.drawImage(propImage, px + 5, detailY + 5, 14, 14);
+      ctx.drawImage(propImage, propertyIconX, detailY + 5, 14, 14);
       ctx.restore();
     }
-    ctx.font = `bold 10px ${font}`;
-    ctx.fillStyle = "#505356";
-    ctx.fillText(
-      truncate(ctx, prop.property_name ?? "", propWidth - 29),
-      px + 23,
-      detailY + 16,
+    const propertyMaxWidth = Math.max(
+      20,
+      propertyEndX[index]! - propertyTextX - 2,
     );
+    const propertyText = String(prop.property_name ?? "");
+    const propertyFontSize = fitText(
+      ctx,
+      propertyText,
+      propertyMaxWidth,
+      11,
+      10,
+      font,
+      "500",
+    );
+    ctx.font = `500 ${propertyFontSize}px ${font}`;
+    ctx.fillStyle = "#505356";
+    ctx.fillText(propertyText, propertyTextX, detailY + 16);
     ctx.font = `900 italic 15px ${NUM_FONT}`;
     ctx.fillStyle = INK;
-    ctx.fillText(String(prop.base ?? prop.final ?? ""), px + 23, detailY + 36);
+    ctx.fillText(String(prop.base ?? prop.final ?? ""), propertyTextX, detailY + 36);
   }
 
-  const effectX = x + 350;
+  const effectX = effectDividerX;
   ctx.fillStyle = INK;
   ctx.fillRect(effectX, y + 44, 2, 88);
+  const effectLeft = effectX + 13;
   ctx.font = `bold 14px ${font}`;
-  ctx.fillStyle = accent;
-  ctx.fillText(String(weapon.talent_title ?? ""), effectX + 13, y + 68);
-  ctx.font = `bold 10.5px ${font}`;
+  ctx.fillStyle = paperAccent;
+  ctx.fillText(String(weapon.talent_title ?? ""), effectLeft, y + 68);
+  ctx.font = `500 10.5px ${font}`;
   ctx.textAlign = "left";
   const effectTextColor = "#343638";
   drawRichTextBlock(
     ctx,
     weapon.talent_content,
-    effectX + 13,
+    effectLeft,
     y + 86,
     width - (effectX - x) - 30,
     4,
@@ -1241,7 +1319,7 @@ async function drawWeapon(
     (color) => {
       const normalized = color.toLowerCase();
       if (normalized === "#fff" || normalized === "#ffffff") return INK;
-      if (normalized === "#2bad00" || normalized === "#98eff0") return accent;
+      if (normalized === "#2bad00" || normalized === "#98eff0") return paperAccent;
       return color;
     },
   );
@@ -1280,7 +1358,7 @@ async function drawDisc(
     ctx.lineTo(x + 45, y + height / 2 - 11);
     ctx.stroke();
     ctx.restore();
-    ctx.font = `bold 11px ${font}`;
+    ctx.font = `500 11px ${font}`;
     ctx.fillStyle = "#8b9192";
     ctx.textAlign = "right";
     ctx.fillText(`⓪①②③④⑤⑥`[slot] ?? String(slot), x + width - 13, y + 23);
@@ -1293,7 +1371,7 @@ async function drawDisc(
       10,
       font,
     );
-    ctx.font = `bold ${placeholderSize}px ${font}`;
+    ctx.font = `500 ${placeholderSize}px ${font}`;
     ctx.textAlign = "left";
     ctx.fillText(
       truncate(ctx, placeholderText, width - 82),
@@ -1319,27 +1397,50 @@ async function drawDisc(
     ctx.stroke();
     ctx.restore();
   }
-  ctx.font = `bold 9px ${font}`;
-  ctx.textAlign = "right";
-  ctx.fillStyle = "#b9bdbd";
   const slotLabel = `⓪①②③④⑤⑥`[slot] ?? String(slot);
-  ctx.fillText(`${slotLabel} · +${disc.level ?? 0}`, x + width - 7, y + 15);
+  const enhancement = Number(disc.level ?? 0);
+  const enhancementText = enhancement > 0 ? `+${enhancement}` : "";
+  ctx.font = `500 13px ${font}`;
+  const slotWidth = ctx.measureText(slotLabel).width;
+  const enhancementWidth = enhancementText
+    ? ctx.measureText(enhancementText).width
+    : 0;
+  const separatorGap = enhancementText ? 8 : 0;
+  const enhancementRight = x + width - 13;
+  const topX =
+    enhancementRight - slotWidth - separatorGap - enhancementWidth;
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#b9bdbd";
+  ctx.fillText(slotLabel, topX, y + 16);
+  if (enhancementText) {
+    const separatorX = topX + slotWidth + 3;
+    ctx.fillStyle = "#8f8174";
+    ctx.fillRect(separatorX, y + 5, 1, 12);
+    ctx.fillStyle = ORANGE;
+    ctx.fillText(enhancementText, separatorX + 5, y + 16);
+  }
 
   const validCount = String(countEffectiveRolls(disc, effectiveSystemIds));
   ctx.font = `900 italic 21px ${NUM_FONT}`;
   const validCountWidth = ctx.measureText(validCount).width;
-  ctx.font = `bold 9px ${font}`;
+  ctx.font = `500 9px ${font}`;
+  const validRight = x + width - 7;
+  ctx.textAlign = "right";
   ctx.fillStyle = "#b9bdbd";
-  ctx.fillText(T.validRolls, x + width - 12 - validCountWidth, y + 38);
+  ctx.fillText(
+    T.validRolls,
+    validRight - validCountWidth - 5,
+    y + 38,
+  );
   ctx.font = `900 italic 21px ${NUM_FONT}`;
   ctx.fillStyle = accentLight;
-  ctx.fillText(validCount, x + width - 7, y + 40);
+  ctx.fillText(validCount, validRight, y + 40);
 
   const main = disc.main_properties?.[0];
   if (main) {
     const icon = await loadAny(propIconPath(main.property_id));
     if (icon) ctx.drawImage(icon, x + 48, y + 12, 14, 14);
-    ctx.font = `bold 13px ${font}`;
+    ctx.font = `500 13px ${font}`;
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "left";
     const mainText = `${main.property_name ?? ""} ${main.base ?? ""}`;
@@ -1347,11 +1448,11 @@ async function drawDisc(
   }
 
   const subProps = (disc.properties ?? []).slice(0, 4);
-  const subY = y + 52;
+  const subY = y + 46;
   const subGapX = 5;
-  const subGapY = 4;
+  const subGapY = 3;
   const subWidth = (width - 14 - subGapX) / 2;
-  const subHeight = 20;
+  const subHeight = 16;
   for (let index = 0; index < 4; index += 1) {
     const prop = subProps[index];
     if (!prop) continue;
@@ -1370,22 +1471,27 @@ async function drawDisc(
     if (icon) ctx.drawImage(icon, sx + 3, sy + 4, 11, 11);
     const add = Number(prop.add ?? 0);
     const addText = add > 0 ? `+${add}` : "";
-    ctx.font = `bold 8.5px ${font}`;
-    const addWidth = addText ? ctx.measureText(addText).width + 5 : 0;
+    ctx.font = `900 italic 10px ${NUM_FONT}`;
+    const addWidth = addText ? ctx.measureText(addText).width + 7 : 0;
+    const text = `${prop.property_name ?? ""} ${prop.base ?? ""}`;
+    const textRight = sx + subWidth - addWidth;
+    const textWidth = Math.max(28, textRight - (sx + 16) - 2);
+    const textSize = fitText(ctx, text, textWidth, 10, 7, font, "500");
+    ctx.font = `500 ${textSize}px ${font}`;
     ctx.fillStyle = effective ? accentLight : MUTED;
     ctx.textAlign = "left";
-    const text = `${prop.property_name ?? ""} ${prop.base ?? ""}`;
-    ctx.fillText(
-      truncate(ctx, text, subWidth - 20 - addWidth),
-      sx + 16,
-      sy + 13,
-    );
+    const displayText =
+      ctx.measureText(text).width <= textWidth
+        ? text
+        : truncate(ctx, text, textWidth);
+    ctx.fillText(displayText, sx + 16, sy + 13);
     if (addText) {
-      ctx.fillStyle = "#3b2b20";
-      ctx.fillRect(sx + subWidth - addWidth, sy + 3, addWidth, 14);
-      ctx.font = `900 italic 7.5px ${NUM_FONT}`;
+      const separatorX = sx + subWidth - addWidth;
+      ctx.fillStyle = "#8f8174";
+      ctx.fillRect(separatorX, sy + 3, 1, 10);
+      ctx.font = `900 italic 10px ${NUM_FONT}`;
       ctx.fillStyle = ORANGE;
-      ctx.fillText(addText, sx + subWidth - addWidth + 2, sy + 13);
+      ctx.fillText(addText, separatorX + 4, sy + 12);
     }
   }
 }
@@ -1424,22 +1530,22 @@ async function drawSetCard(
   y: number,
   width: number,
   height: number,
-  accent: string,
+  paperAccent: string,
   font: string,
   T: CharacterText,
 ) {
   ctx.fillStyle = PAPER;
   ctx.fillRect(x, y, width, height);
-  ctx.fillStyle = accent;
+  ctx.fillStyle = paperAccent;
   ctx.fillRect(x, y, 4, height);
   const iconSource = await getFlatSuitIcon(set.suitId);
   const icon = iconSource ? await loadAny(iconSource) : null;
-  ctx.fillStyle = INK;
-  ctx.fillRect(x + 10, y + 12, 44, 44);
   if (icon) {
-    ctx.drawImage(icon, x + 11, y + 13, 42, 42);
+    // Set-effect icons are transparent assets; keep the paper card visible
+    // instead of painting a black square behind the icon.
+    ctx.drawImage(icon, x + 10, y + 12, 44, 44);
   } else {
-    ctx.strokeStyle = accent;
+    ctx.strokeStyle = paperAccent;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(x + 32, y + 34, 17, 0, Math.PI * 2);
@@ -1449,7 +1555,7 @@ async function drawSetCard(
   ctx.fillStyle = INK;
   ctx.textAlign = "left";
   ctx.fillText(truncate(ctx, set.name, width - 72), x + 62, y + 24);
-  ctx.font = `bold 8px ${font}`;
+  ctx.font = `500 10.5px ${font}`;
   const descX = x + 62;
   const maxWidth = width - 72;
   const drawSetEffect = (
@@ -1459,23 +1565,38 @@ async function drawSetCard(
     maxLines: number,
   ) => {
     const labelText = `${label}: `;
+    ctx.font = `bold 10.5px ${font}`;
     const labelWidth = ctx.measureText(labelText).width;
-    ctx.fillStyle = accent;
+    ctx.fillStyle = paperAccent;
     ctx.fillText(labelText, descX, baselineY);
-    const lines = wrapCharacters(
+    ctx.font = `500 10.5px ${font}`;
+    return drawRichTextBlock(
       ctx,
-      cleanRichText(description),
+      description,
+      descX + labelWidth,
+      baselineY,
       Math.max(20, maxWidth - labelWidth),
       maxLines,
-    );
-    ctx.fillStyle = "#3e4142";
-    lines.forEach((line, index) =>
-      ctx.fillText(line, descX + labelWidth, baselineY + index * 9.5),
+      12.5,
+      "#3e4142",
+      (color) => {
+        const normalized = color.toLowerCase();
+        if (normalized === "#fff" || normalized === "#ffffff") return INK;
+        if (normalized === "#2bad00" || normalized === "#98eff0") return paperAccent;
+        return color;
+      },
     );
   };
-  drawSetEffect(T.twoPiece, set.desc1, y + 38, set.count >= 4 ? 1 : 3);
   if (set.count >= 4) {
-    drawSetEffect(T.fourPiece, set.desc2, y + 48, 3);
+    const firstLines = drawSetEffect(T.twoPiece, set.desc1, y + 42, 2);
+    drawSetEffect(
+      T.fourPiece,
+      set.desc2,
+      y + 42 + firstLines * 12.5 + 4,
+      4,
+    );
+  } else {
+    drawSetEffect(T.twoPiece, set.desc1, y + 42, 6);
   }
 }
 
@@ -1483,6 +1604,7 @@ async function drawDiscs(
   ctx: SKRSContext2D,
   character: any,
   accent: string,
+  paperAccent: string,
   accentLight: string,
   font: string,
   T: CharacterText,
@@ -1509,9 +1631,12 @@ async function drawDiscs(
   const slots = Array.from({ length: 6 }, (_, index) =>
     discs.find((disc: any) => Number(disc.equipment_type) === index + 1),
   );
-  const effectiveSystemIds = collectEffectiveSystemIds(slots);
-  const total = totalEffectiveRolls(slots);
-  ctx.font = `bold 9px ${font}`;
+  const effectiveSystemIds = getCharacterEffectiveSystemIds(character, slots);
+  const total = slots.reduce(
+    (sum, disc) => sum + countEffectiveRolls(disc, effectiveSystemIds),
+    0,
+  );
+  ctx.font = `500 9px ${font}`;
   ctx.fillStyle = "#b9bdbd";
   ctx.textAlign = "right";
   ctx.fillText(T.totalValidRolls, x + width - 42, y + 29);
@@ -1523,7 +1648,7 @@ async function drawDiscs(
   const gridY = y + 42;
   const gap = 6;
   const cellWidth = (width - 24 - gap * 2) / 3;
-  const cellHeight = 104;
+  const cellHeight = 84;
   for (let index = 0; index < 6; index += 1) {
     const col = index % 3;
     const row = Math.floor(index / 3);
@@ -1551,7 +1676,17 @@ async function drawDiscs(
     const four = sets.find((set) => set.count >= 4)!;
     const two = sets.find((set) => set !== four)!;
     const wide = (width - 24 - gap) * (2 / 3);
-    await drawSetCard(ctx, four, gridX, setY, wide, setHeight, accent, font, T);
+    await drawSetCard(
+      ctx,
+      four,
+      gridX,
+      setY,
+      wide,
+      setHeight,
+      paperAccent,
+      font,
+      T,
+    );
     await drawSetCard(
       ctx,
       two,
@@ -1559,7 +1694,7 @@ async function drawDiscs(
       setY,
       width - 24 - gap - wide,
       setHeight,
-      accent,
+      paperAccent,
       font,
       T,
     );
@@ -1574,7 +1709,7 @@ async function drawDiscs(
       setY,
       cardWidth,
       setHeight,
-      accent,
+      paperAccent,
       font,
       T,
     );
@@ -1596,10 +1731,12 @@ export async function drawOfficialCharacterProfile(
     if (!character) return null;
     const font = resolveProfileFont(userLocale);
     const T = getCharacterText(tr);
-    const accent = safeAccent(
+    const rawAccent = safeAccent(
       character.vertical_painting_color,
       Number(character.element_type),
     );
+    const accent = getPaperAccent(rawAccent);
+    const paperAccent = accent;
     const accentLight = mix(accent, "white", 0.52);
     const canvas = createCanvas(W, H);
     const ctx = canvas.getContext("2d");
@@ -1624,6 +1761,7 @@ export async function drawOfficialCharacterProfile(
       character,
       portrait,
       accent,
+      paperAccent,
       accentLight,
       font,
       tr,
@@ -1642,8 +1780,16 @@ export async function drawOfficialCharacterProfile(
     ctx.restore();
 
     await drawSkills(ctx, character, accent, accentLight, font, T);
-    await drawWeapon(ctx, character, accent, font, T);
-    await drawDiscs(ctx, character, accent, accentLight, font, T);
+    await drawWeapon(ctx, character, paperAccent, font, T);
+    await drawDiscs(
+      ctx,
+      character,
+      accent,
+      paperAccent,
+      accentLight,
+      font,
+      T,
+    );
 
     ctx.font = `900 italic 8px ${NUM_FONT}`;
     ctx.fillStyle = "rgba(255,255,255,0.32)";

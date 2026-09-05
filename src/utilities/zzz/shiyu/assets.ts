@@ -1,4 +1,5 @@
 import { loadImageAsync } from "./utils.js";
+import { ELEMENT_TYPES, getElementIconPath } from "../elements.js";
 
 export const zzzStaticUrl =
   "https://act-webstatic.hoyoverse.com/game_record/zzz";
@@ -18,13 +19,11 @@ export async function loadShiyuAssets() {
     `./src/assets/images/icons/shiyu/team-3.png`,
   ];
 
-  const elementImages = await Promise.all([
-    loadImageAsync(`./src/assets/images/icons/element/physic.webp`),
-    loadImageAsync(`./src/assets/images/icons/element/fire.webp`),
-    loadImageAsync(`./src/assets/images/icons/element/ice.webp`),
-    loadImageAsync(`./src/assets/images/icons/element/thunder.webp`),
-    loadImageAsync(`./src/assets/images/icons/element/ether.webp`),
-  ]);
+  const elementImages = await Promise.all(
+    ELEMENT_TYPES.map((type) =>
+      loadImageAsync(getElementIconPath(type)),
+    ),
+  );
 
   const images = await Promise.all(
     imagePaths.map((path) =>

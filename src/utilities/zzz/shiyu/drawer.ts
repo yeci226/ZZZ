@@ -10,9 +10,11 @@ import {
 } from "./utils.js";
 import { bangbooRectangleUrl } from "./assets.js";
 import {
+  formatBattleRecordDate,
   formatBattleRecordTime,
   getClearTimeLabel,
 } from "../recordDisplay.js";
+import { ELEMENT_TYPES } from "../elements.js";
 
 interface ShiyuAssets {
   elementImages: any[];
@@ -162,23 +164,9 @@ export async function drawShiyuCanvas(
   ctx.fillText(title, canvas.width / 2, 80);
 
   // Date
-  const beginDate = new Date(
-    parseInt(hadalData.hadal_info_v2.hadal_begin_time.year),
-    parseInt(hadalData.hadal_info_v2.hadal_begin_time.month) - 1,
-    parseInt(hadalData.hadal_info_v2.hadal_begin_time.day),
-  );
-  const endDate = new Date(
-    parseInt(hadalData.hadal_info_v2.hadal_end_time.year),
-    parseInt(hadalData.hadal_info_v2.hadal_end_time.month) - 1,
-    parseInt(hadalData.hadal_info_v2.hadal_end_time.day),
-  );
-  const dateFormat = new Intl.DateTimeFormat(userLocale, {
-    month: "short",
-    day: "numeric",
-  });
   ctx.font = `24px ${selectedFont}`;
   ctx.fillText(
-    `${dateFormat.format(beginDate)} - ${dateFormat.format(endDate)}`,
+    `${formatBattleRecordDate(hadalData.hadal_info_v2.hadal_begin_time, userLocale)} - ${formatBattleRecordDate(hadalData.hadal_info_v2.hadal_end_time, userLocale)}`,
     canvas.width / 2,
     120,
   );
@@ -653,7 +641,7 @@ async function drawNode(
       drawCircleImage(ctx, avatarImg, avatarX, avatarY, 80);
 
       const elementIndex = avatar.element_type
-        ? [200, 201, 202, 203, 205].indexOf(avatar.element_type)
+        ? ELEMENT_TYPES.indexOf(avatar.element_type)
         : 0;
 
       if (elementIndex >= 0) {

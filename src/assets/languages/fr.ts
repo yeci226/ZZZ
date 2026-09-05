@@ -50,6 +50,9 @@ const langs = {
   news_SelectPost: "🐣 Veuillez sélectionner un article.",
 
   daily_Failed: "Le connexion a échoué.",
+  daily_AuthExpiredTitle: "La connexion du compte HoYoLAB a expiré",
+  daily_AuthExpiredDesc:
+    "La session HoYoLAB de ce compte a expiré. Veuillez relier un nouveau Cookie avant d'utiliser la connexion ou les recherches.",
   daily_Signed: "Vous avez déjà signé.",
   daily_SignSuccess: "Connectez-vous avec succès.",
   daily_Description: "Vous avez reçu la récompense d'aujourd'hui. <a>",
@@ -170,6 +173,12 @@ const langs = {
   profile_SelectCharacter: "Sélectionnez un agent",
   profile_NoImageData: "Impossible d'obtenir des données d'image.",
   profile_CharactersFormat: "Niv. <level> • Vision <rank>",
+  profile_SelectCharacterNextPage: "Page suivante",
+  profile_SelectCharacterPreviousPage: "Page précédente",
+  profile_SelectCharacterNavigationConflict:
+    "Veuillez ne sélectionner qu'une seule direction de navigation.",
+  profile_SelectCharacterTooMany: "Vous pouvez sélectionner jusqu'à trois agents.",
+  profile_SelectCharacterRequired: "Veuillez sélectionner au moins un agent.",
 
   // Profile Canvas
   profileMain_Contacts: "Contacts",
@@ -250,6 +259,12 @@ const langs = {
   // Settings
   settings_Title: "Paramètres Utilisateur",
   settings_Desc: "Ces paramètres sont liés à votre compte Discord et s'appliquent à tous vos comptes de jeu.",
+  settings_ProfileStyleLabel: "Style de carte du personnage",
+  settings_ProfileStyleDesc: "Choisissez la mise en page de la carte. Le style 1 est la version officielle avec l'illustration M6 fixe ; le style 2 conserve la mise en page actuelle.",
+  settings_ProfileStyleFormal: "Style 1 (Officiel)",
+  settings_ProfileStyleFormalDesc: "Mise en page officielle ; utilise toujours l'illustration M6 et ignore les réglages d'illustration.",
+  settings_ProfileStyleCurrent: "Style 2 (Actuel)",
+  settings_ProfileStyleCurrentDesc: "Conserve la mise en page actuelle et utilise les réglages d'illustration ci-dessous.",
   settings_PaintingLabel: "Illustration",
   settings_PaintingDesc: "Utiliser l'illustration wiki au lieu du portrait standard du personnage.",
   settings_RankPaintingLabel: "Illustration par Rang",

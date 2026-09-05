@@ -22,7 +22,16 @@ import {
   fallbackBucketKey,
   getLegacyAccountAtIndex,
   updateLegacyAccountAtIndex,
+  restoreGeneralValidity,
+  type AuthScope,
 } from "./accountStore.js";
+import {
+  clearRedeemCookieState,
+  migrateLegacyRedeemCookieState,
+  setRedeemCookieInvalid,
+  setRedeemNeedsCookieUpdate,
+} from "./core/redeemCookieState.js";
+import { isExplicitAuthenticationError } from "./zzz/autoDailyAuth.js";
 // Use client.db directly in functions to avoid static capture issues
 const BASE_URL = "https://bbs-api-os.hoyolab.com/community/post/wapi/";
 
@@ -359,8 +368,9 @@ export async function getUserHoyolabData(
 
 export async function getBangbooData(bangbooId: string) {
   try {
-    // Fallback to official CDN directly for bangboo as wiki mapping is less common
-    const iconUrl = `https://act-webstatic.hoyoverse.com/game_record/zzz/bangboo_square_avatar/bangboo_square_avatar_${bangbooId}.png`;
+    const { resolveGachaBangbooIcon } = await import("./zzz/gachaBangbooIcons.js");
+    const iconUrl = await resolveGachaBangbooIcon(bangbooId)
+      ?? `https://act-webstatic.hoyoverse.com/game_record/zzz/bangboo_square_avatar/bangboo_square_avatar_${bangbooId}.png`;
     return {
       id: bangbooId,
       iconUrl: iconUrl,
@@ -688,14 +698,41 @@ export function parseCookie(
   return cookie;
 }
 
+async function applyScopedCookieRefreshSuccess(
+  userId: string,
+  uid: string | undefined,
+  scope: AuthScope,
+): Promise<void> {
+  if (!uid) return;
+  await migrateLegacyRedeemCookieState(client.db as any, uid);
+  if (scope === "redeem") {
+    await clearRedeemCookieState(client.db as any, uid);
+    return;
+  }
+  await restoreGeneralValidity(client.db as any, userId, uid);
+}
+
+async function markScopedCookieNeedsManualUpdate(
+  uid: string | undefined,
+  scope: AuthScope,
+): Promise<void> {
+  if (!uid || scope !== "redeem") return;
+  await migrateLegacyRedeemCookieState(client.db as any, uid);
+  await setRedeemCookieInvalid(client.db as any, uid, true);
+  await setRedeemNeedsCookieUpdate(client.db as any, uid, true);
+}
+
 export async function updateCookie(
   userId: string,
   accountIndex: number,
   cookieObj: string,
+  scope: AuthScope = "general",
 ) {
-  if (!(await getLegacyAccountAtIndex(client.db as any, userId, accountIndex))) {
+  const account = await getLegacyAccountAtIndex(client.db as any, userId, accountIndex);
+  if (!account) {
     throw new Error("Account not found");
   }
+  const uid = account.uid;
 
   const webAPI =
     "https://webapi-os.account.hoyoverse.com/Api/fetch_cookie_accountinfo";
@@ -711,7 +748,17 @@ export async function updateCookie(
     cookieForRefresh.includes("account_id_v2=");
 
   if (!hasToken || !hasID) {
-    await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, { invalid: true });
+    if (scope === "redeem") {
+      await markScopedCookieNeedsManualUpdate(uid, scope);
+    } else {
+      await updateLegacyAccountAtIndex(
+        client.db as any,
+        userId,
+        accountIndex,
+        { invalid: true },
+        { scope },
+      );
+    }
     return {
       error: true,
       message: "Cookie 資訊不完整（缺少 token 或 ID），已自動標記為跳過更新",
@@ -771,18 +818,39 @@ export async function updateCookie(
       blacklist: [], // 這裡主要用來確保格式統一
     });
 
-    await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, {
-      cookie: finalCleanCookie,
-      invalid: false,
-      lastUpdate: new Date().toISOString(),
-    });
+    await updateLegacyAccountAtIndex(
+      client.db as any,
+      userId,
+      accountIndex,
+      {
+        cookie: finalCleanCookie,
+        invalid: false,
+        lastUpdate: new Date().toISOString(),
+      },
+      { scope },
+    );
+    await applyScopedCookieRefreshSuccess(userId, uid, scope);
     return { success: true, cookie: finalCleanCookie };
   } catch (error: any) {
-    // 這裡若是 403 / 401 或特定的 status 錯誤，代表 Cookie 可能真的掛了
-    await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, { invalid: true });
+    const explicitAuthFailure =
+      isExplicitAuthenticationError(error) ||
+      /http error! status:\s*(?:401|403)\b/i.test(String(error?.message ?? error));
+    if (explicitAuthFailure) {
+      if (scope === "redeem") {
+        await markScopedCookieNeedsManualUpdate(uid, scope);
+      } else {
+        await updateLegacyAccountAtIndex(
+          client.db as any,
+          userId,
+          accountIndex,
+          { invalid: true },
+          { scope },
+        );
+      }
+    }
 
     new Logger("Utilities").error(
-      `[用戶 ${userId}] Cookie 刷新失敗並已標記為無效: ${error.message}`,
+      `[用戶 ${userId}] Cookie 刷新失敗（一般狀態${explicitAuthFailure ? "已確認失效" : "保持不變"}）: ${error.message}`,
     );
     throw error;
   }
@@ -887,6 +955,7 @@ export async function autoRefreshCookie(
   userId: string,
   accountIndex: number,
   _cookie: string,
+  scope: AuthScope = "general",
 ) {
   const logger = new Logger("AutoRefreshCookie");
 
@@ -921,16 +990,18 @@ export async function autoRefreshCookie(
         ].join("; ");
         // Update cookie in both stores.
         const { upsertHoyolab } = await import("./accountStore.js");
-        await upsertHoyolab(client.db as any, userId, {
-          ltuid_v2,
-          cookie: baseCookie,
-          stoken: hoyo.stoken, // keep same encrypted stoken
-          ltmid_v2,
-        });
-        if (uid) {
-          await client.db.delete(`${uid}.cookieExpired`);
-          await client.db.delete(`${uid}.needsCookieUpdate`);
-        }
+        await upsertHoyolab(
+          client.db as any,
+          userId,
+          {
+            ltuid_v2,
+            cookie: baseCookie,
+            stoken: hoyo.stoken, // keep same encrypted stoken
+            ltmid_v2,
+          },
+          { scope },
+        );
+        await applyScopedCookieRefreshSuccess(userId, uid, scope);
         logger.success(`[用戶 ${userId}] [帳號 #${accountIndex}] Hoyolab stoken 靜默刷新成功`);
         return { success: true, message: "Cookie 已靜默刷新", newCookie: baseCookie };
       }
@@ -956,15 +1027,18 @@ export async function autoRefreshCookie(
         `cookie_token_v2=${newTokens.cookie_token_v2}`,
       ].join("; ");
 
-      await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, {
-        cookie: baseCookie,
-        invalid: false,
-        lastUpdate: new Date().toISOString(),
-      });
-      if (uid) {
-        await client.db.delete(`${uid}.cookieExpired`);
-        await client.db.delete(`${uid}.needsCookieUpdate`);
-      }
+      await updateLegacyAccountAtIndex(
+        client.db as any,
+        userId,
+        accountIndex,
+        {
+          cookie: baseCookie,
+          invalid: false,
+          lastUpdate: new Date().toISOString(),
+        },
+        { scope },
+      );
+      await applyScopedCookieRefreshSuccess(userId, uid, scope);
       logger.success(`[用戶 ${userId}] [帳號 #${accountIndex}] credentials stoken 靜默刷新成功`);
       return { success: true, message: "Cookie 已靜默刷新", newCookie: baseCookie };
     }
@@ -983,7 +1057,7 @@ export async function autoRefreshCookie(
     const loginRes: any = await appLoginAccount(email, password, creds.deviceId);
 
     if (loginRes?.captcha || loginRes?.emailVerification) {
-      if (uid) await client.db.set(`${uid}.needsCookieUpdate`, true);
+      await markScopedCookieNeedsManualUpdate(uid, scope);
       return { success: false, message: "需要人工驗證，請重新登入" };
     }
 
@@ -1001,24 +1075,26 @@ export async function autoRefreshCookie(
       });
     }
 
-    await updateLegacyAccountAtIndex(client.db as any, userId, accountIndex, {
-      cookie: loginRes.cookie,
-      invalid: false,
-      lastUpdate: new Date().toISOString(),
-    });
+    await updateLegacyAccountAtIndex(
+      client.db as any,
+      userId,
+      accountIndex,
+      {
+        cookie: loginRes.cookie,
+        invalid: false,
+        lastUpdate: new Date().toISOString(),
+      },
+      { scope },
+    );
 
-    if (uid) {
-      await client.db.delete(`${uid}.cookieExpired`);
-      await client.db.delete(`${uid}.needsCookieUpdate`);
-    }
+    await applyScopedCookieRefreshSuccess(userId, uid, scope);
 
     logger.success(`[用戶 ${userId}] [帳號 #${accountIndex}] 重新登入刷新成功`);
     return { success: true, message: "Cookie 已自動刷新", newCookie: loginRes.cookie };
   } catch (error: any) {
     logger.error(`[用戶 ${userId}] [帳號 #${accountIndex}] 自動刷新失敗: ${error.message}`);
-    const account = await getLegacyAccountAtIndex(client.db as any, userId, accountIndex);
-    const uid = account?.uid;
-    if (uid) await client.db.set(`${uid}.needsCookieUpdate`, true);
+    // Transport/server failures remain retryable. Only an explicit human-verification
+    // response above moves the redeem scope into needs-manual-update state.
     return { success: false, message: error.message };
   }
 }
@@ -1037,9 +1113,9 @@ export async function updateAccountInfo(
     invalid: false,
   });
 
-  // Clear stale invalidation/refresh flags so the new cookie is honored
-  // immediately by the autoDaily/autoRedeem schedulers.
-  await client.db.delete(`${uid}.cookieExpired`);
+  // A newly saved general Cookie restores only general daily/profile validity.
+  // Legacy shared redeem evidence is migrated before the ambiguous key is cleared.
+  await applyScopedCookieRefreshSuccess(userId, uid, "general");
   await client.db.delete(`${uid}.lastCookieRefresh`);
 
   new Logger("Utilities").info(

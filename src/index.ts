@@ -6,7 +6,7 @@ import { Client, GatewayIntentBits, Partials } from "discord.js";
 import { getInfo } from "discord-hybrid-sharding";
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages],
   partials: [
     Partials.Channel,
     Partials.Message,

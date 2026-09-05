@@ -55,6 +55,72 @@ async function redeemCodeDirect(
   return { retcode: result.retcode ?? -1, message: result.message ?? "" };
 }
 
+import { buildZZZRedeemCard } from "../../../utilities/canvas/redeemCard.js";
+import { getFirstRedeemRewardIcon } from "../../../utilities/zzz/redeemLayout.js";
+
+
+type ManualRedeemStatus =
+  | "success"
+  | "already_claimed"
+  | "invalid"
+  | "failed";
+
+function hasValidRedeemToken(cookie: string): boolean {
+  return Boolean(
+    cookie.match(/(?:^|;\s*)cookie_token_v2=([^;]+)/)?.[1]?.trim() ||
+    cookie.match(/(?:^|;\s*)cookie_token=([^;]+)/)?.[1]?.trim()
+  );
+}
+
+function toManualRedeemStatus(status?: string): ManualRedeemStatus {
+  switch (status) {
+    case "success":
+      return "success";
+    case "already":
+    case "already_claimed":
+      return "already_claimed";
+    case "invalid":
+      return "invalid";
+    default:
+      return "failed";
+  }
+}
+
+async function editManualRedeemCard(
+  interaction: ChatInputCommandInteraction,
+  data: {
+    uid: string;
+    nickname?: string;
+    codes: Array<{
+      code: string;
+      rewards?: string[] | string;
+      rewardIcons?: string[];
+      status: ManualRedeemStatus;
+    }>;
+  },
+): Promise<void> {
+  const buffer = await buildZZZRedeemCard({
+    accounts: [
+      {
+        title: "兌換結果",
+        nickname: data.nickname || data.uid || "Unknown",
+        uid: data.uid,
+        codes: data.codes,
+      },
+    ],
+  });
+
+  await interaction.editReply({
+    embeds: [],
+    files: [
+      {
+        attachment: buffer,
+        name: "redeem-zzz.png",
+      },
+    ],
+  });
+}
+
 export default {
   data: new SlashCommandBuilder()
     .setName("codes")
@@ -383,7 +449,7 @@ export default {
       // Update cookie after successful redeemall (mirrors redeem subcommand behavior)
       try {
         const cookieStr = await getUserCookie(targetUser.id, accountIndex) ?? "";
-        await updateCookie(targetUser.id, accountIndex, cookieStr);
+        await updateCookie(targetUser.id, accountIndex, cookieStr, "redeem");
         new Logger("Redeem").info(
           `使用者 ${targetUser.id} 的帳號 #${accountIndex} 成功兌換全部禮包碼並更新 Cookie`,
         );
@@ -417,129 +483,175 @@ export default {
         });
       }
 
-      interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(getRandomColor() as any)
-            .setTitle(tr("redeem_SuccessDesc"))
-            .setDescription(
-              results.success
-                .map((code: any) => `✅ **${code.code}** (${code.message})`)
-                .join("\n") +
-                (results.already.length
-                  ? "\n" +
-                    results.already
-                      .map(
-                        (code: any) => `ℹ️ **${code.code}** (${code.message})`,
-                      )
-                      .join("\n")
-                  : "") +
-                (results.invalid.length
-                  ? "\n" +
-                    results.invalid
-                      .map(
-                        (code: any) => `⚠️ **${code.code}** (${code.message})`,
-                      )
-                      .join("\n")
-                  : "") +
-                (results.failed.length
-                  ? "\n" +
-                    results.failed
-                      .map(
-                        (code: any) => `❌ **${code.code}** (${code.message})`,
-                      )
-                      .join("\n")
-                  : "") +
-                `\n### ${tr("redeem_RedeemStats")}\n` +
-                `✅ ${tr("redeem_Success")}: ${results.success.length}\n` +
-                `ℹ️ ${tr("redeem_Already")}: ${results.already.length}\n` +
-                `⚠️ ${tr("redeem_Invalid")}: ${results.invalid.length}\n` +
-                `❌ ${tr("redeem_Failed")}: ${results.failed.length}`,
-            )
-            .setThumbnail(
-              "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png/revision/latest?cb=20240807185318",
-            ),
-        ],
+      const manualCodes = noRedeemedCodes.map((code: any) => {
+        const rewardIcon = getFirstRedeemRewardIcon(code);
+
+        return {
+          code: code.code,
+          ...(code.rewards
+            ? { rewards: code.rewards }
+            : {}),
+          ...(rewardIcon
+            ? { rewardIcons: [rewardIcon] }
+            : {}),
+          status: toManualRedeemStatus(code.status),
+        };
+      });
+
+      await editManualRedeemCard(interaction, {
+        uid: String(uid || ""),
+        nickname:
+          redeemAllAccount?.nickname ||
+          String(uid || "Unknown"),
+        codes: manualCodes,
       });
     } else if (subcommand == "redeem") {
       const code = interaction.options.getString("code")!;
       const targetUser =
         interaction.options.getUser("user") || interaction.user;
-      if (targetUser && targetUser.id !== interaction.user.id && !interaction.memberPermissions?.has('Administrator')) {
-        return failedReply(interaction, 'You can only perform this action for yourself.');
+
+      if (
+        targetUser &&
+        targetUser.id !== interaction.user.id &&
+        !interaction.memberPermissions?.has("Administrator")
+      ) {
+        return failedReply(
+          interaction,
+          "You can only perform this action for yourself.",
+        );
       }
 
       const accountIndex = parseInt(
         interaction.options.getString("account") || "0",
       );
+
       if (isNaN(accountIndex)) {
-        return failedReply(interaction, 'Invalid account index.');
+        return failedReply(interaction, "Invalid account index.");
       }
 
       const uid = await getUserUid(targetUser.id, accountIndex);
+
       if (!uid) {
         return failedReply(interaction, tr("error_NoAccount"));
       }
-      const redeemAccount = await getLegacyAccountAtIndex(db as any, targetUser.id, accountIndex);
-      const redeemCookie = redeemAccount?.cookie;
-      if (!redeemCookie) {
+
+      const userAccount = await getLegacyAccountAtIndex(
+        db as any,
+        targetUser.id,
+        accountIndex,
+      );
+
+      if (!userAccount?.cookie) {
         return failedReply(interaction, tr("error_NoAccount"));
       }
+
       let userRedeemedCodes: string[] =
         (await db.get(`${uid}.redeemedCodes`)) || [];
 
-      try {
-        const res = await redeemCodeDirect(uid, redeemCookie, code);
-        if (res.retcode == 0 || res.message == "OK") {
-          if (!userRedeemedCodes.includes(code)) userRedeemedCodes.push(code);
-          userRedeemedCodes = Array.from(new Set(userRedeemedCodes));
-          await db.set(`${uid}.redeemedCodes`, userRedeemedCodes);
+      let matchedCode: any;
 
-          // 成功兌換時更新Cookie
+      try {
+        const availableCodes: any[] = await getRedeemCodes();
+        matchedCode = availableCodes.find(
+          (item: any) => item.code === code,
+        );
+      } catch {}
+
+      const rewardIcon =
+        getFirstRedeemRewardIcon(matchedCode);
+
+      try {
+        const res = await redeemCodeDirect(
+          uid,
+          userAccount.cookie,
+          code,
+        );
+
+        const result = await handleRedeemResult(
+          code,
+          res,
+          userRedeemedCodes,
+          tr,
+        );
+
+        // handleRedeemResult 會更新 array，
+        // 這裡統一持久化成功 / 已兌換 / 無效結果。
+        if (result.status !== "failed") {
+          userRedeemedCodes = Array.from(
+            new Set(userRedeemedCodes),
+          );
+
+          await db.set(
+            `${uid}.redeemedCodes`,
+            userRedeemedCodes,
+          );
+        }
+
+        // 成功時保留原本 Cookie 更新行為
+        if (result.status === "success") {
           try {
-            const cookieStr = await getUserCookie(targetUser.id, accountIndex) ?? "";
-            await updateCookie(targetUser.id, accountIndex, cookieStr);
-            new Logger("Redeem").info(
-              `使用者 ${targetUser.id} 的帳號 #${accountIndex} 成功兌換禮包碼 ${code} 並更新 Cookie`,
-            );
+            const refreshedAccount =
+              await getLegacyAccountAtIndex(
+                db as any,
+                targetUser.id,
+                accountIndex,
+              );
+
+            if (refreshedAccount?.cookie) {
+              await updateCookie(
+                targetUser.id,
+                accountIndex,
+                refreshedAccount.cookie,
+                "redeem",
+              );
+
+              new Logger("Redeem").info(
+                `使用者 ${targetUser.id} 的帳號 #${accountIndex} 成功兌換禮包碼 ${code} 並更新 Cookie`,
+              );
+            }
           } catch (e: any) {
             new Logger("Redeem").error(
               `使用者 ${targetUser.id} 的帳號 #${accountIndex} 更新 Cookie 失敗: ${e.message}`,
             );
           }
-
-          interaction.editReply({
-            embeds: [
-              new EmbedBuilder()
-                .setColor(getRandomColor() as any)
-                .setTitle(tr("redeem_Success"))
-                .setThumbnail(
-                  "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4c/Item_Polychrome.png",
-                ),
-            ],
-          });
-        } else if (res.retcode == -2017 || res.retcode == -2018) {
-          if (!userRedeemedCodes.includes(code)) userRedeemedCodes.push(code);
-          userRedeemedCodes = Array.from(new Set(userRedeemedCodes));
-          await db.set(`${uid}.redeemedCodes`, userRedeemedCodes);
-          failedReply(interaction, res.message);
-        } else {
-          const userCookie = await getLegacyAccountAtIndex(db as any, targetUser.id, accountIndex);
-          if (!userCookie) {
-            await failedReply(interaction, tr("error_NoAccount"));
-            return;
-          }
-          if (
-            userCookie.cookie.includes("cookie_token_v2") ||
-            userCookie.cookie.includes("account_mid_v2")
-          ) {
-            failedReply(interaction, tr("redeem_CookieTokenInvalid"));
-          } else {
-            failedReply(interaction, tr("redeem_NoCookie"));
-          }
         }
+
+        await editManualRedeemCard(interaction, {
+          uid: String(uid),
+          nickname:
+            userAccount.nickname ||
+            String(uid),
+          codes: [
+            {
+              code,
+              ...(matchedCode?.rewards
+                ? { rewards: matchedCode.rewards }
+                : {}),
+              ...(rewardIcon
+                ? { rewardIcons: [rewardIcon] }
+                : {}),
+              status: toManualRedeemStatus(
+                result.status,
+              ),
+            },
+          ],
+        });
       } catch (e: any) {
-        failedReply(interaction, e.message);
+        await editManualRedeemCard(interaction, {
+          uid: String(uid),
+          nickname:
+            userAccount.nickname ||
+            String(uid),
+          codes: [
+            {
+              code,
+              rewards:
+                e?.message ||
+                tr("redeem_Failed"),
+              status: "failed",
+            },
+          ],
+        });
       }
     } else if (subcommand == "autoredeem") {
        const userAccount = await getLegacyAccounts(db as any, interaction.user.id);
@@ -547,8 +659,9 @@ export default {
         return failedReply(interaction, 'No account found.');
       }
       if (
-        !userAccount[0].cookie.includes("cookie_token_v2") &&
-        !userAccount[0].cookie.includes("account_mid_v2")
+        !userAccount.some((account: any) =>
+          hasValidRedeemToken(account?.cookie || ""),
+        )
       ) {
         return failedReply(interaction, tr("redeem_NoCookie"));
       }
@@ -559,7 +672,9 @@ export default {
       if (enable == "on") {
         await db.set(`autoRedeem.${interaction.user.id}`, {
           channelId: interaction.channelId,
+          guildId: interaction.guildId,
           tag: tag || false,
+          notificationEnabled: true,
         });
 
         return interaction.editReply({

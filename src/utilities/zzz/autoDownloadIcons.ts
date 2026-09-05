@@ -3,6 +3,9 @@ import path from "path";
 import fetch from "node-fetch";
 import axios from "axios";
 import Logger from "../core/logger.js";
+import { findWikiElementIcons } from "./elements.js";
+import { getGachaWeaponIconMap, weaponIconLocalPath } from "./gachaWeaponIcons.js";
+import { bangbooIconLocalPath, getGachaBangbooIconMap } from "./gachaBangbooIcons.js";
 
 const WIKI_PAINTINGS_DIR = "src/assets/images/zzz/wiki_paintings";
 const FACE_CACHE_FILE = path.resolve(WIKI_PAINTINGS_DIR, "face_cache.json");
@@ -23,9 +26,13 @@ export function getFaceY(entryPageId: string | number): number {
 }
 
 /** Get face position (faceX, faceY) for a wiki entry. Returns defaults if not cached. */
-export function getFacePos(entryPageId: string | number): { faceX: number; faceY: number } {
+export function getFacePos(entryPageId: string | number): {
+  faceX: number;
+  faceY: number;
+} {
   try {
-    if (!fs.existsSync(FACE_CACHE_FILE)) return { faceX: DEFAULT_FACE_X, faceY: DEFAULT_FACE_Y };
+    if (!fs.existsSync(FACE_CACHE_FILE))
+      return { faceX: DEFAULT_FACE_X, faceY: DEFAULT_FACE_Y };
     const cache = JSON.parse(fs.readFileSync(FACE_CACHE_FILE, "utf-8"));
     const val = cache[String(entryPageId)];
     if (typeof val === "number") return { faceX: DEFAULT_FACE_X, faceY: val }; // legacy
@@ -48,20 +55,48 @@ const WIKI_HEADERS = {
   "Content-Type": "application/json",
 };
 
+const isPng = (buffer: Buffer) =>
+  buffer.length >= 8 &&
+  buffer.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"));
+const isWebp = (buffer: Buffer) =>
+  buffer.length >= 12 &&
+  buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+  buffer.subarray(8, 12).toString("ascii") === "WEBP";
+const isJpeg = (buffer: Buffer) =>
+  buffer.length >= 3 &&
+  buffer[0] === 0xff &&
+  buffer[1] === 0xd8 &&
+  buffer[2] === 0xff;
+
 const downloadImage = async (url: string, filepath: string) => {
   const res = await fetch(url);
   if (!res.ok) return false;
 
-  const arrayBuffer = await res.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.startsWith("image/")) return false;
 
-  const dir = path.dirname(filepath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  const buffer = Buffer.from(await res.arrayBuffer());
+  if (!isPng(buffer) && !isWebp(buffer) && !isJpeg(buffer)) return false;
+
+  const extension = path.extname(filepath).toLowerCase();
+  if (
+    (extension === ".png" && !isPng(buffer)) ||
+    (extension === ".webp" && !isWebp(buffer)) ||
+    ([".jpg", ".jpeg"].includes(extension) && !isJpeg(buffer))
+  ) {
+    return false;
   }
 
-  fs.writeFileSync(filepath, buffer);
-  return true;
+  const dir = path.dirname(filepath);
+  fs.mkdirSync(dir, { recursive: true });
+  const tempPath = `${filepath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    fs.writeFileSync(tempPath, buffer);
+    fs.renameSync(tempPath, filepath);
+    return true;
+  } finally {
+    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+  }
 };
 
 export async function downloadPaintingCache(url: string) {
@@ -94,8 +129,15 @@ export function paintingIndexForRank(rank: number): number {
 }
 
 /** Get local path for a wiki painting (entry_page_id + index). Returns null if not cached. */
-export function getLocalWikiPainting(entryPageId: string | number, index: number): string | null {
-  const p = path.resolve(WIKI_PAINTINGS_DIR, String(entryPageId), `${index}.png`);
+export function getLocalWikiPainting(
+  entryPageId: string | number,
+  index: number,
+): string | null {
+  const p = path.resolve(
+    WIKI_PAINTINGS_DIR,
+    String(entryPageId),
+    `${index}.png`,
+  );
   return fs.existsSync(p) ? p : null;
 }
 
@@ -111,7 +153,9 @@ export function getLocalWikiPaintings(entryPageId: string | number): string[] {
 }
 
 /** Fetch all agent entry_page entries from wiki (paginated). */
-async function fetchAllAgentEntries(): Promise<Array<{ id: string; name: string }>> {
+async function fetchAllAgentEntries(): Promise<
+  Array<{ id: string; name: string }>
+> {
   const entries: Array<{ id: string; name: string }> = [];
   let page = 1;
   const pageSize = 50;
@@ -119,7 +163,13 @@ async function fetchAllAgentEntries(): Promise<Array<{ id: string; name: string 
   while (true) {
     const res = await axios.post(
       "https://sg-wiki-api.hoyolab.com/hoyowiki/zzz/wapi/get_entry_page_list",
-      { menu_id: "8", page_size: pageSize, page_num: page, lang: "zh-tw", filters: [] },
+      {
+        menu_id: "8",
+        page_size: pageSize,
+        page_num: page,
+        lang: "zh-tw",
+        filters: [],
+      },
       { headers: WIKI_HEADERS },
     );
     if (res.data?.retcode !== 0) break;
@@ -155,6 +205,130 @@ async function fetchWikiPaintingUrls(entryPageId: string): Promise<string[]> {
   }
 }
 
+async function cacheWikiPaintingUrls(
+  entryPageId: string,
+  urls: string[],
+): Promise<string[]> {
+  const directory = path.resolve(WIKI_PAINTINGS_DIR, String(entryPageId));
+  fs.mkdirSync(directory, { recursive: true });
+  const cached: string[] = [];
+  for (let index = 0; index < urls.length; index++) {
+    const destination = path.join(directory, `${index}.png`);
+    if (fs.existsSync(destination)) {
+      cached[index] = destination;
+      continue;
+    }
+    try {
+      if (await downloadImage(urls[index], destination)) {
+        cached[index] = destination;
+      }
+    } catch {
+      // Preserve the remote URL as a last-resort runtime fallback below.
+    }
+  }
+  return cached;
+}
+
+const wikiM6PaintingCache: Record<string, string | null> = {};
+
+function normalizeWikiName(value: unknown): string {
+  return String(value ?? "")
+    .replace(/[「」『』\s'"’]/g, "")
+    .replace(/[·・•]/g, "")
+    .toLowerCase();
+}
+
+function characterWikiNames(character: any): string[] {
+  return [
+    character?.full_name_mi18n,
+    character?.name_mi18n,
+    character?.full_name,
+    character?.name,
+    character?.character_name,
+  ]
+    .filter((value) => typeof value === "string" && value.trim())
+    .map((value) => value.trim())
+    .filter((value, index, values) => values.indexOf(value) === index);
+}
+
+function findLocalWikiEntryId(names: string[]): string | null {
+  const index = loadWikiIndex();
+  const entries = Object.entries(index);
+  for (const name of names) {
+    const normalized = normalizeWikiName(name);
+    if (!normalized) continue;
+    const exact = entries.find(
+      ([entryName]) => normalizeWikiName(entryName) === normalized,
+    );
+    if (exact) return String(exact[1]);
+    const partial = entries.find(([entryName]) => {
+      const candidate = normalizeWikiName(entryName);
+      return candidate.includes(normalized) || normalized.includes(candidate);
+    });
+    if (partial) return String(partial[1]);
+  }
+  return null;
+}
+
+async function findRemoteWikiEntryId(names: string[]): Promise<string | null> {
+  for (const name of names) {
+    try {
+      const response = await axios.get(
+        `https://sg-wiki-api.hoyolab.com/hoyowiki/zzz/wapi/search?keyword=${encodeURIComponent(name.replace(/[「」]/g, ""))}`,
+        { headers: WIKI_HEADERS },
+      );
+      const list: any[] = response.data?.data?.list ?? [];
+      const normalized = normalizeWikiName(name);
+      const entry =
+        list.find((item) => normalizeWikiName(item?.name) === normalized) ??
+        list.find((item) => {
+          const candidate = normalizeWikiName(item?.name);
+          return candidate.includes(normalized) || normalized.includes(candidate);
+        }) ??
+        list[0];
+      if (entry) return String(entry.entry_page_id ?? entry.id);
+    } catch {
+      // Try the next localized name; the local cache remains the primary path.
+    }
+  }
+  return null;
+}
+
+/** Resolve the official Wiki image for fixed M6 (影畫), never based on user rank. */
+export async function getWikiM6Painting(character: any): Promise<string | null> {
+  const names = characterWikiNames(character);
+  const cacheKey = `${String(character?.id ?? "")}:${names.join("|")}`;
+  if (Object.prototype.hasOwnProperty.call(wikiM6PaintingCache, cacheKey)) {
+    return wikiM6PaintingCache[cacheKey];
+  }
+
+  let entryId = findLocalWikiEntryId(names);
+  if (!entryId) entryId = await findRemoteWikiEntryId(names);
+  if (!entryId) {
+    wikiM6PaintingCache[cacheKey] = null;
+    return null;
+  }
+
+  const localM6 = path.resolve(WIKI_PAINTINGS_DIR, entryId, "2.png");
+  if (fs.existsSync(localM6)) {
+    wikiM6PaintingCache[cacheKey] = localM6;
+    return localM6;
+  }
+
+  const remote = await fetchWikiPaintingUrls(entryId);
+  const cached = await cacheWikiPaintingUrls(entryId, remote);
+  const result =
+    cached[2] ??
+    (fs.existsSync(localM6) ? localM6 : null) ??
+    remote[2] ??
+    cached[cached.length - 1] ??
+    remote[remote.length - 1] ??
+    remote[0] ??
+    null;
+  wikiM6PaintingCache[cacheKey] = result;
+  return result;
+}
+
 const WIKI_INDEX_FILE = path.resolve(WIKI_PAINTINGS_DIR, "index.json");
 
 /** Load the name→entry_page_id mapping from disk. */
@@ -163,8 +337,62 @@ export function loadWikiIndex(): Record<string, string> {
     if (fs.existsSync(WIKI_INDEX_FILE)) {
       return JSON.parse(fs.readFileSync(WIKI_INDEX_FILE, "utf-8"));
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return {};
+}
+
+const ELEMENT_ICONS_DIR = "src/assets/images/icons/element";
+const WIKI_MENU_FILTERS_URL =
+  "https://sg-wiki-api.hoyolab.com/hoyowiki/zzz/wapi/get_menu_filters";
+
+async function fetchWikiElementIcons(): Promise<Record<string, string>> {
+  const res = await axios.get(WIKI_MENU_FILTERS_URL, {
+    params: { menu_id: "8", lang: "zh-tw" },
+    headers: WIKI_HEADERS,
+  });
+  if (res.data?.retcode !== 0) return {};
+  return findWikiElementIcons(res.data?.data?.filters ?? []);
+}
+
+/** Download missing Wind/Lumen icons from HoYoLAB Wiki. */
+export async function downloadAllElementIcons(): Promise<void> {
+  const logger = new Logger("ElementIcons");
+  const dir = path.resolve(ELEMENT_ICONS_DIR);
+  fs.mkdirSync(dir, { recursive: true });
+
+  let iconMap: Record<string, string>;
+  try {
+    iconMap = await fetchWikiElementIcons();
+  } catch (e: any) {
+    logger.error(`Failed to fetch official element icons: ${e?.message ?? e}`);
+    return;
+  }
+
+  let downloaded = 0;
+  let skipped = 0;
+  for (const [filename, url] of Object.entries(iconMap)) {
+    const dest = path.join(dir, filename);
+    if (fs.existsSync(dest)) {
+      skipped++;
+      continue;
+    }
+    try {
+      if (await downloadImage(url, dest)) {
+        downloaded++;
+        logger.info(`Downloaded ${filename}`);
+      } else {
+        logger.warn(`Rejected invalid image for ${filename}`);
+      }
+    } catch (e: any) {
+      logger.error(`Error downloading ${filename}: ${e?.message ?? e}`);
+    }
+  }
+
+  logger.success(
+    `屬性圖示更新完成：新增 ${downloaded} 個，略過 ${skipped} 個已存在`,
+  );
 }
 
 const DISC_ICONS_DIR = "src/assets/images/icons/diskdrives";
@@ -174,13 +402,77 @@ const HB_DATA_EQUIPMENT_URL =
 const HB_DATA_ITEM_URL =
   "https://git.mero.moe/dimbreath/ZenlessData/raw/branch/master/FileCfg/ItemTemplateTb.json";
 
-/** Deobfuscate ZenlessData by finding the key whose first-row value matches the anchor. */
-function findKeyByValue(data: any[], anchor: any): string | null {
-  const row = data[0];
-  for (const [k, v] of Object.entries(row)) {
-    if (JSON.stringify(v) === JSON.stringify(anchor)) return k;
+/** Find the obfuscated key in a data array whose value equals anchor. */
+export function findKeyByValue(data: any[], anchor: any): string | null {
+  for (const row of data) {
+    const key = Object.keys(row).find((candidate) => row[candidate] === anchor);
+    if (key) return key;
   }
   return null;
+}
+
+/** Download every W-Engine icon used by signal records. */
+export async function downloadAllWeaponIcons(): Promise<void> {
+  const logger = new Logger("GachaWeaponIcons");
+  const dir = path.dirname(weaponIconLocalPath("placeholder"));
+  fs.mkdirSync(dir, { recursive: true });
+
+  let iconMap: Record<string, string>;
+  try {
+    iconMap = await getGachaWeaponIconMap();
+  } catch (e: any) {
+    logger.error(`Failed to fetch W-Engine icon map: ${e?.message ?? e}`);
+    return;
+  }
+
+  let downloaded = 0;
+  let skipped = 0;
+  for (const [itemId, url] of Object.entries(iconMap)) {
+    const destination = weaponIconLocalPath(itemId);
+    if (fs.existsSync(destination)) {
+      skipped++;
+      continue;
+    }
+    try {
+      if (await downloadImage(url, destination)) downloaded++;
+      else logger.warn(`Rejected invalid W-Engine image for ${itemId}`);
+    } catch (e: any) {
+      logger.error(`Failed W-Engine ${itemId}: ${e?.message ?? e}`);
+    }
+  }
+  logger.success(`音擎圖示更新完成：新增 ${downloaded} 個，略過 ${skipped} 個已存在`);
+}
+
+/** Download every Bangboo portrait used by signal records. */
+export async function downloadAllBangbooIcons(): Promise<void> {
+  const logger = new Logger("GachaBangbooIcons");
+  const dir = path.dirname(bangbooIconLocalPath("placeholder"));
+  fs.mkdirSync(dir, { recursive: true });
+
+  let iconMap: Record<string, string>;
+  try {
+    iconMap = await getGachaBangbooIconMap();
+  } catch (e: any) {
+    logger.error(`Failed to fetch Bangboo icon map: ${e?.message ?? e}`);
+    return;
+  }
+
+  let downloaded = 0;
+  let skipped = 0;
+  for (const [itemId, url] of Object.entries(iconMap)) {
+    const destination = bangbooIconLocalPath(itemId);
+    if (fs.existsSync(destination)) {
+      skipped++;
+      continue;
+    }
+    try {
+      if (await downloadImage(url, destination)) downloaded++;
+      else logger.warn(`Rejected invalid Bangboo image for ${itemId}`);
+    } catch (e: any) {
+      logger.error(`Failed Bangboo ${itemId}: ${e?.message ?? e}`);
+    }
+  }
+  logger.success(`邦布圖示更新完成：新增 ${downloaded} 個，略過 ${skipped} 個已存在`);
 }
 
 /** Fetch disc icon map: { "338_S": "https://static.nanoka.cc/assets/zzz/ItemSuitXxx_S.webp", ... } */
@@ -197,8 +489,9 @@ async function fetchDiscIconMap(): Promise<Record<string, string>> {
   const kItemIDEquip = findKeyByValue(equipRaw, 31021)!;
   const kSuitID = findKeyByValue(equipRaw, 31000)!;
   const kItemIDItem = findKeyByValue(itemRaw, 31021)!;
-  const kItemIcon = findKeyByValue(itemRaw,
-    "Assets/NapResources/UI/Sprite/A1DynamicLoad/Hollow/ItemIcon/UnPacker/IconFund.png"
+  const kItemIcon = findKeyByValue(
+    itemRaw,
+    "Assets/NapResources/UI/Sprite/A1DynamicLoad/Hollow/ItemIcon/UnPacker/IconFund.png",
   )!;
 
   // Build ItemID → icon path map from ItemTemplateTb
@@ -249,7 +542,9 @@ export async function downloadAllDiscIcons(): Promise<void> {
     return;
   }
 
-  logger.info(`Found ${Object.keys(iconMap).length} disc icons in data, checking for missing...`);
+  logger.info(
+    `Found ${Object.keys(iconMap).length} disc icons in data, checking for missing...`,
+  );
   let downloaded = 0;
   let skipped = 0;
 
@@ -272,7 +567,9 @@ export async function downloadAllDiscIcons(): Promise<void> {
     }
   }
 
-  logger.success(`驅動盤圖示更新完成：新增 ${downloaded} 個，略過 ${skipped} 個已存在`);
+  logger.success(
+    `驅動盤圖示更新完成：新增 ${downloaded} 個，略過 ${skipped} 個已存在`,
+  );
 }
 
 /** Download all wiki 意象影畫 for every agent to local disk. Skips already-downloaded entries. */
@@ -301,9 +598,10 @@ export async function downloadAllWikiPaintings(): Promise<void> {
 
   for (const entry of entries) {
     const dir = path.resolve(WIKI_PAINTINGS_DIR, entry.id);
-
-    // Skip if already downloaded (directory exists with at least one file)
-    if (fs.existsSync(dir) && fs.readdirSync(dir).length > 0) {
+    const hasAllPaintingRanks = [0, 1, 2].every((index) =>
+      fs.existsSync(path.join(dir, `${index}.png`)),
+    );
+    if (hasAllPaintingRanks) {
       skipped++;
       continue;
     }
@@ -314,17 +612,19 @@ export async function downloadAllWikiPaintings(): Promise<void> {
     fs.mkdirSync(dir, { recursive: true });
     for (let i = 0; i < urls.length; i++) {
       const dest = path.join(dir, `${i}.png`);
+      if (fs.existsSync(dest)) continue;
       try {
-        await downloadImage(urls[i], dest);
-        downloaded++;
+        if (await downloadImage(urls[i], dest)) downloaded++;
       } catch (e: any) {
         logger.error(`Failed ${entry.name}[${i}]: ${e?.message ?? e}`);
       }
     }
 
-    // Small delay to avoid rate-limiting
+    // Small delay to avoid rate-limiting.
     await new Promise((r) => setTimeout(r, 300));
   }
 
-  logger.success(`意象影畫下載完成：新增 ${downloaded} 張，略過 ${skipped} 個已存在角色`);
+  logger.success(
+    `意象影畫下載完成：新增 ${downloaded} 張，略過 ${skipped} 個已存在角色`,
+  );
 }

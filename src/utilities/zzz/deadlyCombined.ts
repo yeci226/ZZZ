@@ -8,10 +8,12 @@ import {
 import { join } from "path";
 import { ELEMENT_TYPES, getElementIconPath } from "./elements.js";
 import { getDeadlyModeLabels, hasDeadlyExtremeMode } from "./deadlyMode.js";
+import { getZzzCanvasFont } from "./canvasFonts.js";
 import {
   formatBattleRecordDate,
   formatBattleRecordTime,
 } from "./recordDisplay.js";
+import { drawMindscapeBadge } from "./gtCardRenderer.js";
 
 const WIDTH = 1200;
 const HEIGHT = 1440;
@@ -72,11 +74,10 @@ type LocalText = {
 };
 
 function localText(locale: string): LocalText {
-  const labels = getDeadlyModeLabels(locale);
   const normalized = locale.toLowerCase();
   if (normalized === "tw" || normalized === "zh-tw") {
     return {
-      ...labels,
+      ...getDeadlyModeLabels(locale),
       normal: "試煉模式",
       noNormal: "尚無試煉模式紀錄",
       noExtreme: "尚無絕境模式紀錄",
@@ -86,7 +87,7 @@ function localText(locale: string): LocalText {
   }
   if (normalized === "cn" || normalized === "zh-cn") {
     return {
-      ...labels,
+      ...getDeadlyModeLabels(locale),
       normal: "试炼模式",
       noNormal: "暂无试炼模式记录",
       noExtreme: "暂无绝境模式记录",
@@ -94,49 +95,19 @@ function localText(locale: string): LocalText {
       level: (value) => `等级 ${value}`,
     };
   }
-  if (normalized === "jp" || normalized === "ja" || normalized === "ja-jp") {
-    return {
-      ...labels,
-      normal: "試練モード",
-      noNormal: "試練モードの記録なし",
-      noExtreme: "極限モードの記録なし",
-      totalScore: "合計スコア",
-      level: (value) => `レベル ${value}`,
-    };
-  }
-  if (normalized === "kr" || normalized === "ko" || normalized === "ko-kr") {
-    return {
-      ...labels,
-      normal: "시련 모드",
-      noNormal: "시련 모드 기록 없음",
-      noExtreme: "극한 모드 기록 없음",
-      totalScore: "총 점수",
-      level: (value) => `레벨 ${value}`,
-    };
-  }
-  if (normalized === "fr" || normalized === "fr-fr") {
-    return {
-      ...labels,
-      normal: "Mode d’essai",
-      noNormal: "Aucun record du mode d’essai",
-      noExtreme: "Aucun record du mode extrême",
-      totalScore: "Score total",
-      level: (value) => `Niv. ${value}`,
-    };
-  }
-  if (normalized === "vi" || normalized === "vi-vn") {
-    return {
-      ...labels,
-      normal: "Chế độ thử thách",
-      noNormal: "Chưa có dữ liệu chế độ thử thách",
-      noExtreme: "Chưa có dữ liệu chế độ cực hạn",
-      totalScore: "Tổng điểm",
-      level: (value) => `Cấp ${value}`,
-    };
-  }
+
+  // The provider request still uses the user's real language, but this card's
+  // static labels intentionally use English for every non-CJK locale.
   return {
-    ...labels,
     normal: "Trial Mode",
+    extreme: "Extreme Mode",
+    score: "Score",
+    stars: "Stars",
+    clearTime: "Clear Time",
+    team: "Team",
+    bangboo: "Bangboo",
+    weakness: "Weakness",
+    buff: "Stage Effect",
     noNormal: "No Trial Mode record",
     noExtreme: "No Extreme Mode record",
     totalScore: "Total Score",
@@ -501,9 +472,14 @@ function drawBuffTextBlock(
   descriptionSize: number,
   lineHeight: number,
   maxLines: number,
+  icon: Image | null = null,
 ) {
   const horizontalPadding = 16;
   const contentWidth = width - horizontalPadding * 2;
+  const iconSize = icon ? 30 : 0;
+  const iconGap = icon ? 8 : 0;
+  const titleX = x + horizontalPadding + iconSize + iconGap;
+  const titleWidth = contentWidth - iconSize - iconGap;
   const titleSize = 20;
   const titleLineHeight = 27;
   const blockGap = 7;
@@ -522,11 +498,22 @@ function drawBuffTextBlock(
   const blockHeight = titleLineHeight + blockGap + descriptionHeight;
   const blockTop = y + Math.max(10, (height - blockHeight) / 2);
 
+  if (icon) {
+    drawBuffIcon(
+      ctx,
+      icon,
+      x + horizontalPadding,
+      blockTop - 2,
+      iconSize,
+      titleColor,
+    );
+  }
+
   ctx.fillStyle = titleColor;
   ctx.font = `bold ${titleSize}px ${font}`;
   ctx.fillText(
-    truncateText(ctx, name || "—", contentWidth),
-    x + horizontalPadding,
+    truncateText(ctx, name || "—", titleWidth),
+    titleX,
     blockTop + titleSize,
   );
 
@@ -541,24 +528,70 @@ function drawBuffTextBlock(
   ctx.restore();
 }
 
-function drawCircleImage(
+function drawRoundedAvatar(
   ctx: SKRSContext2D,
   image: Image,
   x: number,
   y: number,
   size: number,
 ) {
+  const radius = Math.max(8, Math.round(size * 0.16));
   ctx.save();
   ctx.beginPath();
-  ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+  ctx.roundRect(x, y, size, size, radius);
   ctx.clip();
   drawCover(ctx, image, x, y, size, size);
   ctx.restore();
+  ctx.save();
   ctx.strokeStyle = "rgba(255,255,255,0.3)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+  ctx.roundRect(x, y, size, size, radius);
   ctx.stroke();
+  ctx.restore();
+}
+
+function avatarRarity(avatar: any): "A" | "S" | null {
+  const raw = String(avatar?.rarity ?? avatar?.rank_type ?? "").toUpperCase();
+  if (raw === "5" || raw === "S" || raw.includes("S_RANK")) return "S";
+  if (raw === "4" || raw === "A" || raw.includes("A_RANK")) return "A";
+  return null;
+}
+
+function nameParts(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (!value || typeof value !== "object") return [];
+  return Object.values(value as Record<string, unknown>).flatMap(nameParts);
+}
+
+function isPeloyis(avatar: any): boolean {
+  const avatarId = Number(avatar?.id ?? avatar?.avatar_id ?? avatar?.agent_id);
+  if (avatarId === 1551) return true;
+  const names = [
+    avatar?.name,
+    avatar?.name_mi18n,
+    avatar?.name_cn,
+    avatar?.name_tw,
+    avatar?.name_en,
+  ]
+    .flatMap(nameParts)
+    .join(" ")
+    .toLowerCase();
+  return /佩洛伊斯|peloyis/.test(names);
+}
+
+async function loadOfficialRarityIcon(avatar: any): Promise<Image | null> {
+  const rarity = avatarRarity(avatar);
+  if (!rarity) return null;
+  if (rarity === "S") {
+    return loadSafe("./src/assets/images/icons/rank/rarity-s-rank.png");
+  }
+  if (isPeloyis(avatar)) {
+    return loadSafe(
+      "./src/assets/images/icons/rank/rarity-a-peloyis-special.png",
+    );
+  }
+  return loadSafe("./src/assets/images/icons/rank/rarity-a-peloyis.png");
 }
 
 function drawBuffIcon(
@@ -667,45 +700,15 @@ async function drawTeamRow(
       avatar?.role_square_url,
       `./src/assets/images/agents/${avatar?.id}.webp`,
     );
-    if (image) drawCircleImage(ctx, image, currentX, y, avatarSize);
+    if (image) drawRoundedAvatar(ctx, image, currentX, y, avatarSize);
 
-    const rarity = String(avatar?.rarity || "").toUpperCase();
-    const rarityCorner =
-      rarity === "S" || rarity === "A"
-        ? await loadSafe(
-            `./src/assets/images/icons/shiyu/rating-corner-${rarity.toLowerCase()}.png`,
-          )
-        : null;
-    if (rarityCorner) {
-      const cornerSize = Math.round(avatarSize * 0.43);
-      ctx.drawImage(rarityCorner, currentX - 2, y - 2, cornerSize, cornerSize);
+    const rarityIcon = await loadOfficialRarityIcon(avatar);
+    if (rarityIcon) {
+      const iconSize = Math.round(Math.min(avatarSize * 0.3, 24));
+      ctx.drawImage(rarityIcon, currentX - 3, y - 3, iconSize, iconSize);
     }
 
-    const cinema = Number(avatar?.rank || 0);
-    if (cinema > 0) {
-      ctx.save();
-      const badgeSize = Math.max(18, Math.round(avatarSize * 0.31));
-      roundedRect(
-        ctx,
-        currentX + avatarSize - badgeSize + 2,
-        y - 2,
-        badgeSize,
-        badgeSize,
-        6,
-        "rgba(12,12,15,0.92)",
-        "rgba(255,255,255,0.52)",
-      );
-      ctx.fillStyle = "#FFFFFF";
-      ctx.font = `bold ${Math.max(12, Math.round(badgeSize * 0.62))}px ${font}`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(
-        String(cinema),
-        currentX + avatarSize - badgeSize / 2 + 2,
-        y - 2 + badgeSize / 2,
-      );
-      ctx.restore();
-    }
+    drawMindscapeBadge(ctx, avatar?.rank, currentX, y, avatarSize, font);
     currentX += avatarSize + gap;
   }
 
@@ -717,7 +720,7 @@ async function drawTeamRow(
     if (buddy) {
       const buddySize = avatarSize;
       const buddyX = currentX + 1;
-      drawCircleImage(ctx, buddy, buddyX, y, buddySize);
+      drawRoundedAvatar(ctx, buddy, buddyX, y, buddySize);
 
       const buddyStar = Number(battle.buddy?.star || 0);
       if (buddyStar > 1) {
@@ -864,7 +867,6 @@ async function drawTrialRow(
     font,
     "center",
   );
-  drawBuffIcon(ctx, buffIcon, x + artWidth - 44, y + 2, 42, "#A8DFFF");
 
   ctx.fillStyle = "rgba(168,223,255,0.26)";
   ctx.fillRect(x + artWidth, y + 16, 2, height - 32);
@@ -900,7 +902,7 @@ async function drawTrialRow(
   );
   drawBuffTextBlock(
     ctx,
-    firstBuff?.name || labels.buff,
+    firstBuff?.name || firstBuff?.title || labels.buff,
     firstBuff?.desc || firstBuff?.text || "—",
     buffX,
     y + 14,
@@ -912,6 +914,7 @@ async function drawTrialRow(
     17,
     22,
     7,
+    buffIcon,
   );
 
   const clearTime = formatBattleRecordTime(
@@ -1008,7 +1011,6 @@ async function drawExtremeSection(
     font,
     "center",
   );
-  drawBuffIcon(ctx, buffIcon, artX + artWidth - 54, artY + 2, 52, "#FF628B");
 
   ctx.fillStyle = "#FF628B";
   ctx.fillRect(x, y, 9, height);
@@ -1065,7 +1067,7 @@ async function drawExtremeSection(
     );
     drawBuffTextBlock(
       ctx,
-      firstBuff?.name || labels.buff,
+      firstBuff?.name || firstBuff?.title || labels.buff,
       firstBuff?.desc || firstBuff?.text || "—",
       buffX,
       y + 18,
@@ -1077,6 +1079,7 @@ async function drawExtremeSection(
       18,
       25,
       12,
+      buffIcon,
     );
   }
 }
@@ -1103,7 +1106,7 @@ export async function drawDeadlyCombinedImage(
   userLocale: string,
   deadlyData: any,
 ): Promise<Buffer> {
-  const font = `${FONTS[userLocale.toLowerCase()] || "EN"}, CJKFallback`;
+  const font = getZzzCanvasFont(userLocale);
   const labels = localText(userLocale);
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext("2d");
@@ -1132,18 +1135,24 @@ export async function drawDeadlyCombinedImage(
   ctx.fillStyle = "#FFFFFF";
   ctx.font = `bold 42px ${font}`;
   ctx.textAlign = "left";
-  const period = Number(deadlyData?.zone_id || 0) % 100;
+  const period =
+    Number(deadlyData?.zone_id ?? deadlyData?.schedule_id ?? 0) % 100;
+  const normalizedLocale = userLocale.toLowerCase();
   const title =
-    tr("DeadlyAssault_Period", { period }) ||
-    tr("DeadlyAssault") ||
-    "Deadly Assault";
+    normalizedLocale === "tw" || normalizedLocale === "zh-tw"
+      ? `危局強襲戰・第 ${period} 期`
+      : normalizedLocale === "cn" || normalizedLocale === "zh-cn"
+        ? `危局强袭战・第 ${period} 期`
+        : `Deadly Assault · Period ${period}`;
   fitText(ctx, title, 60, 58, 980, 42, font);
 
-  if (deadlyData?.start_time && deadlyData?.end_time) {
+  const startTime = deadlyData?.start_time ?? deadlyData?.begin_time;
+  const endTime = deadlyData?.end_time;
+  if (startTime && endTime) {
     ctx.fillStyle = "#AAA4AD";
     ctx.font = `18px ${font}`;
     ctx.fillText(
-      `${formatBattleRecordDate(deadlyData.start_time, userLocale)}－${formatBattleRecordDate(deadlyData.end_time, userLocale)}`,
+      `${formatBattleRecordDate(startTime, userLocale)}－${formatBattleRecordDate(endTime, userLocale)}`,
       62,
       91,
     );

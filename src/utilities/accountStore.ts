@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 
+import { clearLegacyInvalidProbe } from "./core/dailyAuthState.js";
+
 /**
- * Extract the Hoyolab account identifier (ltuid_v2) from a cookie string.
  * Mirrors the helper in web-login/app/api/login/email-verify/route.ts so
  * IDs computed bot-side match what the web app stored in Supabase.
  */
@@ -62,6 +63,12 @@ export interface AccountStore {
 	hoyolabs: Hoyolab[];
 }
 
+export type AuthScope = "general" | "redeem";
+
+export interface CookieWriteOptions {
+	scope?: AuthScope;
+}
+
 /** Flat shape kept for old commands and old database entries. */
 export interface LegacyAccount {
 	[key: string]: unknown;
@@ -101,6 +108,70 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function nowIso() {
 	return new Date().toISOString();
+}
+
+interface GachaArchiveBindingStore {
+	markOrphaned(userId: string, uid: string): number;
+	restoreLinked(userId: string, uid: string, region?: string): number;
+	upsertAccount(input: {
+		ownerId: string;
+		uid: string;
+		region?: string;
+		source: "official";
+		everLinked?: boolean;
+	}): unknown;
+	setWeeklyEnabled(userId: string, uid: string, enabled: boolean): void;
+}
+
+export function applyGachaArchiveBinding(
+	operation: "orphan" | "restore",
+	userId: string,
+	uid: string,
+	region: string,
+	weeklyEnabled: boolean,
+	archive: GachaArchiveBindingStore,
+): void {
+	if (operation === "orphan") {
+		archive.markOrphaned(userId, uid);
+		return;
+	}
+	archive.restoreLinked(userId, uid, region);
+	if (!weeklyEnabled) return;
+	archive.upsertAccount({
+		ownerId: userId,
+		uid,
+		region,
+		source: "official",
+		everLinked: true,
+	});
+	archive.setWeeklyEnabled(userId, uid, true);
+}
+
+async function updateGachaArchiveBinding(
+	operation: "orphan" | "restore",
+	db: DbAdapter,
+	userId: string,
+	uid: string,
+	region = "",
+): Promise<void> {
+	// Keep account binding usable even if the optional archive file is
+	// temporarily unavailable. Archive lifecycle is best-effort here and is
+	// also reconciled by the scheduled archive job.
+	if (process.env.NODE_ENV === "test") return;
+	try {
+		const { getGachaArchiveStore } = await import("./zzz/gachaArchive.js");
+		const archive = getGachaArchiveStore();
+		applyGachaArchiveBinding(
+			operation,
+			userId,
+			uid,
+			region,
+			(await db.get<boolean>(`${userId}.gachaWeeklyArchive`)) === true,
+			archive,
+		);
+	} catch {
+		// Never make unlink/relink fail because archive maintenance failed.
+	}
 }
 
 function legacyFields(entry: LegacyChar): Record<string, unknown> {
@@ -297,21 +368,42 @@ export async function updateLegacyAccountAtIndex(
 	userId: string,
 	index: number,
 	patch: Partial<LegacyAccount>,
+	options: CookieWriteOptions = {},
 ): Promise<LegacyAccount | null> {
 	const store = await loadAccounts(db, userId);
 	const found = locateLegacyAccount(store, index);
 	if (!found) return null;
 
 	const { uid, cookie, nickname, lastUpdate, invalid, ...extra } = patch;
+	const scope = options.scope ?? "general";
+	const resetDailyProbe =
+	  scope === "general" && (cookie !== undefined || invalid === false);
+	const dailyProbeAccountKey = found.hoyolab.ltuid_v2;
+	const previousUid = found.character.uid;
 	Object.assign(found.character, extra);
 	if (uid !== undefined) found.character.uid = String(uid);
 	if (nickname !== undefined) found.character.nickname = nickname;
 	if (lastUpdate !== undefined) found.character.lastUpdate = lastUpdate;
-	if (invalid !== undefined) found.character.invalid = invalid === true;
+	if (invalid !== undefined && scope === "general") {
+		found.character.invalid = invalid === true;
+	}
 	if (cookie !== undefined) found.hoyolab.cookie = String(cookie);
 	found.hoyolab.lastUpdate = nowIso();
 
 	await saveAccounts(db, userId, store);
+	if (uid !== undefined && String(uid) !== previousUid) {
+		await updateGachaArchiveBinding("orphan", db, userId, previousUid);
+		await updateGachaArchiveBinding(
+			"restore",
+			db,
+			userId,
+			String(uid),
+			String(found.character.region ?? ""),
+		);
+	}
+	if (resetDailyProbe) {
+	  await clearLegacyInvalidProbe(db, userId, dailyProbeAccountKey);
+	}
 	return toLegacyAccount(found.hoyolab, found.character);
 }
 
@@ -327,6 +419,7 @@ export async function deleteLegacyAccountAtIndex(
 	found.hoyolab.characters.splice(found.hoyolab.characters.indexOf(found.character), 1);
 	store.hoyolabs = store.hoyolabs.filter(h => h.characters.length > 0);
 	await saveAccounts(db, userId, store);
+	await updateGachaArchiveBinding("orphan", db, userId, removed.uid);
 	return removed;
 }
 
@@ -357,7 +450,12 @@ export async function getAllCharacters(
 	const out: Array<Character & { ltuid_v2: string; cookie: string }> = [];
 	for (const h of hs) {
 		for (const c of h.characters) {
-			out.push({ ...c, ltuid_v2: h.ltuid_v2, cookie: h.cookie });
+			out.push({
+				...c,
+				invalid: h.invalid || c.invalid,
+				ltuid_v2: h.ltuid_v2,
+				cookie: h.cookie,
+			});
 		}
 	}
 	return out;
@@ -380,10 +478,12 @@ export async function getCharacter(
 export async function upsertHoyolab(
 	db: DbAdapter,
 	userId: string,
-	patch: { ltuid_v2: string; cookie: string; hoyolabName?: string | null; stoken?: string; ltmid_v2?: string; hoyolabIcon?: string }
+	patch: { ltuid_v2: string; cookie: string; hoyolabName?: string | null; stoken?: string; ltmid_v2?: string; hoyolabIcon?: string },
+	options: CookieWriteOptions = {},
 ): Promise<Hoyolab> {
 	const store = await loadAccounts(db, userId);
 	const idx = store.hoyolabs.findIndex(h => h.ltuid_v2 === patch.ltuid_v2);
+	const scope = options.scope ?? "general";
 	let h: Hoyolab;
 	if (idx === -1) {
 		h = {
@@ -401,7 +501,7 @@ export async function upsertHoyolab(
 	} else {
 		h = store.hoyolabs[idx]!;
 		h.cookie = patch.cookie;
-		h.invalid = false;
+		if (scope === "general") h.invalid = false;
 		h.lastUpdate = nowIso();
 		if (patch.hoyolabName !== undefined) h.hoyolabName = patch.hoyolabName;
 		if (patch.stoken !== undefined) h.stoken = patch.stoken;
@@ -409,6 +509,9 @@ export async function upsertHoyolab(
 		if (patch.hoyolabIcon !== undefined) h.hoyolabIcon = patch.hoyolabIcon;
 	}
 	await saveAccounts(db, userId, store);
+	if (scope === "general") {
+	  await clearLegacyInvalidProbe(db, userId, patch.ltuid_v2);
+	}
 	return h;
 }
 
@@ -430,6 +533,13 @@ export async function upsertCharacter(
 	else h.characters[i] = { ...h.characters[i], ...character };
 	h.lastUpdate = nowIso();
 	await saveAccounts(db, userId, store);
+	await updateGachaArchiveBinding(
+		"restore",
+		db,
+		userId,
+		character.uid,
+		String(character.region ?? ""),
+	);
 }
 
 export async function removeHoyolab(
@@ -438,8 +548,12 @@ export async function removeHoyolab(
 	ltuid_v2: string
 ): Promise<void> {
 	const store = await loadAccounts(db, userId);
+	const removed = store.hoyolabs.find(h => h.ltuid_v2 === ltuid_v2);
 	store.hoyolabs = store.hoyolabs.filter(h => h.ltuid_v2 !== ltuid_v2);
 	await saveAccounts(db, userId, store);
+	for (const character of removed?.characters ?? []) {
+		await updateGachaArchiveBinding("orphan", db, userId, character.uid);
+	}
 }
 
 export async function markCharacterInvalid(
@@ -470,6 +584,39 @@ export async function markHoyolabInvalid(
 	if (!h) return;
 	h.invalid = invalid;
 	await saveAccounts(db, userId, store);
+}
+
+async function setGeneralValidity(
+	db: DbAdapter,
+	userId: string,
+	uid: string,
+	valid: boolean,
+): Promise<void> {
+	const store = await loadAccounts(db, userId);
+	for (const h of store.hoyolabs) {
+		const character = h.characters.find(c => c.uid === String(uid));
+		if (!character) continue;
+		h.invalid = !valid;
+		character.invalid = !valid;
+		await saveAccounts(db, userId, store);
+		return;
+	}
+}
+
+export async function restoreGeneralValidity(
+	db: DbAdapter,
+	userId: string,
+	uid: string,
+): Promise<void> {
+	await setGeneralValidity(db, userId, uid, true);
+}
+
+export async function markGeneralInvalid(
+	db: DbAdapter,
+	userId: string,
+	uid: string,
+): Promise<void> {
+	await setGeneralValidity(db, userId, uid, false);
 }
 
 /**

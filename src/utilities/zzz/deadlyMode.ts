@@ -5,6 +5,10 @@ export interface DeadlyModeContext {
   targetUserId: string;
   accountIndex: number;
   schedule: number;
+  /** Runtime-only fields used by the command; never serialized into custom IDs. */
+  dataOverride?: any;
+  db?: any;
+  locale?: string;
 }
 
 export interface DeadlyModePayload {

@@ -14,6 +14,8 @@ import {
 } from "../../../utilities/utilities.js";
 import { QuickDB } from "quick.db";
 import { getLegacyAccounts } from "../../../utilities/accountStore.js";
+import { buildDailySignInPresentation, normalizeSuccessfulDailyClaimInfo } from "../../../utilities/zzz/dailyPresentation.js";
+import { normalizeAutoDailyNotifyType } from "../../../utilities/core/autoDailyNotification.js";
 
 const timeChoices = Array.from({ length: 24 }, (_, i) => ({
   name: i < 10 ? `0${i}` : `${i}`,
@@ -214,13 +216,17 @@ export default {
         (await db.get(`autoDaily.${interaction.user.id}`)) || {};
       const finalTime = time || existingSettings.time || "12";
       const finalTag = tag || existingSettings.tag || "false";
-      const finalNotifyType = notifyType || existingSettings.notifyType || "dm";
+      const finalNotifyType = normalizeAutoDailyNotifyType(
+        notifyType ?? existingSettings.notifyType,
+      );
 
       await db.set(`autoDaily.${interaction.user.id}`, {
         channelId: interaction.channelId,
+        guildId: interaction.guildId ?? existingSettings.guildId,
         time: finalTime,
         tag: finalTag,
         notifyType: finalNotifyType,
+        notificationEnabled: true,
       });
 
       return interaction.editReply({
@@ -254,12 +260,14 @@ export default {
     const zzz = await getUserZZZData(interaction, tr, user.id);
     if (!zzz) return;
 
+    const infoBeforeClaim = await zzz.daily.info();
     const rewards = await zzz.daily.rewards();
     const res = await zzz.daily.claim();
+    const code = Number((res as any).code);
 
     if (
-      (res as any).code !== 0 &&
-      (res as any).code !== -5003 &&
+      code !== 0 &&
+      code !== -5003 &&
       !res.info.is_sign
     ) {
       return interaction.editReply({
@@ -272,7 +280,7 @@ export default {
       });
     }
 
-    if ((res as any).code === -5003 || res.info.is_sign)
+    if (code === -5003 || (code !== 0 && res.info.is_sign))
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
@@ -281,10 +289,17 @@ export default {
         ],
       });
 
-    // Use post-claim info so total_sign_day reflects today's sign-in
-    const signedDay = res.info.total_sign_day;
-    const todaySign = rewards.awards[signedDay] || rewards.awards[0];
-    const tmrSign = rewards.awards[signedDay + 1];
+    const signedInfo = normalizeSuccessfulDailyClaimInfo(
+      infoBeforeClaim,
+      res.info,
+    );
+    const presentation = buildDailySignInPresentation(
+      signedInfo,
+      rewards.awards,
+    );
+    const signedDay = presentation.signedDays;
+    const todaySign = presentation.todayReward || rewards.awards[0];
+    const tmrSign = presentation.tomorrowReward;
 
     const accounts = await getLegacyAccounts(db as any, interaction.user.id);
     const account =
@@ -301,7 +316,7 @@ export default {
         rewardCount: todaySign?.cnt ?? 1,
         totalDays: signedDay,
         shortSignDay: signedDay,
-        signCntMissed: Math.max(0, new Date().getDate() - 1 - signedDay),
+        signCntMissed: presentation.missedDays,
         tomorrowRewardName: tmrSign?.name,
         tomorrowRewardIcon: tmrSign?.icon,
         tomorrowRewardCount: tmrSign?.cnt,
@@ -328,7 +343,7 @@ export default {
             .addFields(
               { name: `${tr("daily_Month")}`, value: "\u200b", inline: true },
               { name: tr("daily_SignedDay", { z: "`" + signedDay + "`" }), value: "\u200b", inline: true },
-              { name: tr("daily_MissedDay", { z: "`" + Math.max(0, new Date().getDate() - 1 - signedDay) + "`" }), value: "\u200b", inline: true },
+              { name: tr("daily_MissedDay", { z: "`" + presentation.missedDays + "`" }), value: "\u200b", inline: true },
             ),
         ],
       });

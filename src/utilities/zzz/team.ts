@@ -18,6 +18,9 @@ import {
   paintingIndexForRank,
 } from "./autoDownloadIcons.js";
 import { toI18nLang } from "../core/i18n.js";
+import { ELEMENT_ICON_BY_TYPE, getElementIconPath } from "./elements.js";
+import { drawFormalCharacterProfileStack } from "./profileCharacterStack.js";
+import type { ZzzProfileStyle } from "./profileStyle.js";
 
 type TeamPaintingInfo = {
   entryId: string;
@@ -73,17 +76,11 @@ const fonts: Record<string, string> = {
   default: "EN",
 };
 
-// Special title icons and element overrides for certain characters (same as profile.ts)
-const offsetCharacter: Record<number, { title?: string; element?: string }> = {
-  1091: { title: "VoidHunter",  element: "frost"     }, // Miyabi
-  1371: { title: "GrandMaster", element: "auricink"  }, // Yixuan
-  1431: { title: "VoidHunter",  element: "honededge" }, // YeShunguang
-};
-
-// Chinese title name for each title key
-const titleNames: Record<string, string> = {
-  VoidHunter:  "虛狩",
-  GrandMaster: "宗師",
+// Special title icons for certain characters (same as profile.ts)
+const offsetCharacter: Record<number, { title?: string }> = {
+  1091: { title: "VoidHunter" }, // Miyabi
+  1371: { title: "GrandMaster" }, // Yixuan
+  1431: { title: "VoidHunter" }, // YeShunguang
 };
 
 const elementColors: Record<number, string> = {
@@ -162,7 +159,7 @@ const propLabels: Record<number, string> = {
   4: "衝擊力",
   5: "暴擊率",
   6: "暴擊傷害",
-  7: "異常掌控",
+  7: "衝擊力",
   8: "異常精通",
   9: "穿透率",
   10: "能量回復",
@@ -188,7 +185,7 @@ const propLabels: Record<number, string> = {
   23103: "穿透率",
   23203: "穿透值",
   31203: "異常精通",
-  31402: "異常掌控",
+  31402: "衝擊力",
   30502: "能量回復",
   31503: "物理傷害",
   31603: "火屬傷害",
@@ -1046,16 +1043,9 @@ async function drawAgentCard(
   ctx.fillStyle = accentColor;
   ctx.fillRect(cx, cy + PORTRAIT_H - 3, CARD_W, 3);
 
-  // ── Title + Element + Profession icons (top-right capsule) ──
-  const ETAG = 26; // icon size
+  // ── Element + Profession icons (top-right) ──
+  const ETAG = 28; // icon size
   const tagPad = 8;
-  const elementIconKey: Record<number, string> = {
-    200: "physic",
-    201: "fire",
-    202: "ice",
-    203: "thunder",
-    205: "ether",
-  };
   const professionIconKey: Record<number, string> = {
     1: "attack",
     2: "stun",
@@ -1064,60 +1054,41 @@ async function drawAgentCard(
     5: "defense",
     6: "rupture",
   };
-  // Use special element override (frost/auricink/honededge) if available
-  const agentOffsetTop = offsetCharacter[agent.id as number] ?? {};
-  const elemKey = agentOffsetTop.element ?? elementIconKey[agent.element_type as number];
+  const elemKey = ELEMENT_ICON_BY_TYPE[agent.element_type as number];
   const profKey =
     professionIconKey[agent.avatar_profession as number] ??
     professionIconKey[agent.profession as number];
   const elemIco = elemKey
-    ? await loadLocal(`./src/assets/images/icons/element/${elemKey}.webp`)
+    ? await loadLocal(getElementIconPath(agent.element_type as number))
     : null;
   const profIco = profKey
     ? await loadLocal(`./src/assets/images/icons/profession/${profKey}.webp`)
     : null;
 
-  // Title icon (same special characters as profile.ts)
-  const titleKey = agentOffsetTop.title;
-  const titleIco = titleKey
-    ? await loadLocal(
-        `./src/assets/images/icons/other/${titleKey === "GrandMaster" ? "Grandmaster" : titleKey}.png`,
-      )
-    : null;
-
-  // Build icon list: Title (if any) → Element → Profession
-  type PillIcon = { img: Awaited<ReturnType<typeof loadLocal>>; alpha?: number };
-  const pillIcons: PillIcon[] = [];
-  if (titleIco) pillIcons.push({ img: titleIco, alpha: 1 });
-  if (elemIco)  pillIcons.push({ img: elemIco,  alpha: 1 });
-  if (profIco)  pillIcons.push({ img: profIco,  alpha: 0.85 });
-
-  if (pillIcons.length > 0) {
-    const PILL_PAD_X = 6;
-    const PILL_PAD_Y = 8;
-    const ICON_GAP   = 6;
-    const pillW = ETAG + PILL_PAD_X * 2;
-    const pillH =
-      pillIcons.length * ETAG +
-      (pillIcons.length - 1) * ICON_GAP +
-      PILL_PAD_Y * 2;
-    const pillX = cx + CARD_W - pillW - tagPad;
-    const pillY = cy + tagPad;
-
-    // Capsule background
-    rr(ctx, pillX, pillY, pillW, pillH, pillW / 2, "rgba(13,14,18,0.60)");
-    rrStroke(ctx, pillX, pillY, pillW, pillH, pillW / 2, "rgba(255,255,255,0.10)", 1);
-
-    // Draw each icon vertically centred in the pill
-    for (let i = 0; i < pillIcons.length; i++) {
-      const { img, alpha = 1 } = pillIcons[i];
-      if (!img) continue;
-      const ix = pillX + PILL_PAD_X;
-      const iy = pillY + PILL_PAD_Y + i * (ETAG + ICON_GAP);
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(img, ix, iy, ETAG, ETAG);
-      ctx.globalAlpha = 1;
-    }
+  // draw element icon (top-right corner)
+  if (elemIco) {
+    const ex = cx + CARD_W - ETAG - tagPad;
+    const ey = cy + tagPad;
+    // subtle tinted bg circle
+    rr(ctx, ex - 3, ey - 3, ETAG + 6, ETAG + 6, ETAG / 2 + 3, elemBg);
+    ctx.drawImage(elemIco, ex, ey, ETAG, ETAG);
+  }
+  // draw profession icon below element
+  if (profIco) {
+    const px2 = cx + CARD_W - ETAG - tagPad;
+    const py2 = cy + tagPad + ETAG + 6;
+    rr(
+      ctx,
+      px2 - 3,
+      py2 - 3,
+      ETAG + 6,
+      ETAG + 6,
+      ETAG / 2 + 3,
+      "rgba(255,255,255,0.07)",
+    );
+    ctx.globalAlpha = 0.85;
+    ctx.drawImage(profIco, px2, py2, ETAG, ETAG);
+    ctx.globalAlpha = 1;
   }
 
   // ── Name + Camp + Group icon + Meta row ──
@@ -1160,7 +1131,7 @@ async function drawAgentCard(
   }
 
   // ── Meta icons row: rarity + title (right-aligned in portrait) ──
-  const charOffset = agentOffsetTop;
+  const charOffset = offsetCharacter[agent.id as number] ?? {};
   const rarityRaw = String(agent.rarity ?? agent.rank_type ?? "").toUpperCase();
   const rarityGrade =
     rarityRaw === "5" || rarityRaw === "S"
@@ -1179,24 +1150,10 @@ async function drawAgentCard(
       charOffset.title === "GrandMaster" ? "Grandmaster" : charOffset.title
     }.png`;
     const titleIco = await loadLocal(titleIconPath);
-    const titleName = titleNames[charOffset.title] ?? "";
-    if (titleIco || titleName) {
-      // Draw name text first (leftmost of this group)
-      if (titleName) {
-        ctx.font = `20px ${font}`;
-        ctx.fillStyle = "#ffffff";
-        const nameW = ctx.measureText(titleName).width;
-        metaRightX -= nameW;
-        ctx.textAlign = "left";
-        ctx.fillText(titleName, metaRightX, metaY + metaIconSize - 4);
-        metaRightX -= 6;
-      }
-      // Then draw the icon
-      if (titleIco) {
-        metaRightX -= metaIconSize;
-        ctx.drawImage(titleIco, metaRightX, metaY, metaIconSize, metaIconSize);
-        metaRightX -= 6;
-      }
+    if (titleIco) {
+      metaRightX -= metaIconSize;
+      ctx.drawImage(titleIco, metaRightX, metaY, metaIconSize, metaIconSize);
+      metaRightX -= 6;
     }
   }
 
@@ -1685,6 +1642,7 @@ export async function handleTeamDraw(
   paintingMode = false,
   rankDependentPainting = false,
   components: any[] = [],
+  profileStyle: ZzzProfileStyle = "current",
 ): Promise<void> {
   drawQueue.push(async () => {
     try {
@@ -1719,6 +1677,28 @@ export async function handleTeamDraw(
                 tr("team_NoAgentData") || "Could not retrieve agent data.",
               ),
           ],
+        });
+        return;
+      }
+
+      if (profileStyle === "formal") {
+        const formalBuffer = await drawFormalCharacterProfileStack(
+          tr,
+          userLocale,
+          String(zzz.uid || ""),
+          agents,
+        );
+        if (!formalBuffer) {
+          throw new Error(tr("profile_NoImageData"));
+        }
+        await interaction.editReply({
+          files: [
+            new AttachmentBuilder(formalBuffer, {
+              name: `CharacterProfiles_${zzz.uid}.png`,
+            }),
+          ],
+          embeds: [],
+          components,
         });
         return;
       }

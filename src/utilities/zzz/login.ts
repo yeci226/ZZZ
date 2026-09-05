@@ -212,8 +212,6 @@ export async function appLoginAccount(
     const b64data = Buffer.from(JSON.stringify(mmtData)).toString("base64");
     // genshin.py format: "{session_id};{base64(json(mmt_data))}"
     headers["x-rpc-aigis"] = `${sessionId};${b64data}`;
-    console.log("[AppLogin] aigis header (genshin.py fmt):", headers["x-rpc-aigis"]);
-    console.log("[AppLogin] captchaResult:", JSON.stringify(captchaResult));
   }
 
   const response = await fetch(APP_LOGIN_URL, {
@@ -253,7 +251,6 @@ export async function appLoginAccount(
           } catch {}
         }
       }
-      console.log("[AppLogin] -3101 aigis response:", aigisHeader);
     }
     return {
       captcha: true,
@@ -277,7 +274,6 @@ export async function appLoginAccount(
   // Email verification required — extract ActionTicket from response header
   if (data.retcode === -3239) {
     const verifyHeader = response.headers.get("x-rpc-verify");
-    console.log("[AppLogin] -3239 x-rpc-verify header:", verifyHeader);
     if (!verifyHeader) throw new Error("Email 驗證失敗：未取得驗證 ticket");
     const raw = JSON.parse(verifyHeader);
     const actionTicket = {
@@ -287,7 +283,6 @@ export async function appLoginAccount(
           ? JSON.parse(raw.verify_str)
           : raw.verify_str,
     };
-    console.log("[AppLogin] -3239 actionTicket:", JSON.stringify(actionTicket));
     return { emailVerification: true, actionTicket };
   }
 

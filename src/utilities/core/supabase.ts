@@ -16,11 +16,23 @@ import Logger from "./logger.js";
 const logger = new Logger("Supabase");
 
 let _client: any = null;
+let _configurationWarningShown = false;
 
 async function getClient(): Promise<any | null> {
   if (_client) return _client;
   const cfg = getConfig();
-  if (!cfg.SUPABASE_URL || !cfg.SUPABASE_SERVICE_ROLE_KEY) {
+  const missing = [
+    !cfg.SUPABASE_URL ? "SUPABASE_URL" : null,
+    !cfg.SUPABASE_SERVICE_ROLE_KEY ? "SUPABASE_SERVICE_ROLE_KEY" : null,
+    !cfg.WEB_LOGIN_SESSION_SECRET ? "WEB_LOGIN_SESSION_SECRET" : null,
+  ].filter((key): key is string => key !== null);
+  if (missing.length > 0) {
+    if (!_configurationWarningShown) {
+      _configurationWarningShown = true;
+      logger.error(
+        `pending login sync disabled; missing configuration: ${missing.join(", ")}`,
+      );
+    }
     return null;
   }
   try {

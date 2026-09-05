@@ -7,6 +7,10 @@ import {
 import { handleShiyuDraw } from "../../../utilities/zzz/shiyu/index.js";
 import { getUserZZZData, getUserLang } from "../../../utilities/utilities.js";
 import { QuickDB } from "quick.db";
+import {
+  getZzzHistoryEntry,
+  parseHistorySchedule,
+} from "../../../utilities/zzz/recordCache.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -56,28 +60,15 @@ export default {
           vi: "thờigian",
           fr: "temps",
         } as LocalizationMap)
-        .setDescription("...")
+        .setDescription("Select a period")
+        .setDescriptionLocalizations({
+          "zh-TW": "選擇式輿期數",
+          "zh-CN": "选择式舆期数",
+          vi: "Chọn kỳ",
+          fr: "Choisir une période",
+        } as LocalizationMap)
         .setRequired(false)
-        .addChoices(
-          {
-            name: "Live",
-            name_localizations: {
-              "zh-TW": "本期",
-              vi: "kỳhiện tại",
-              fr: "période actuelle",
-            } as LocalizationMap,
-            value: "1",
-          },
-          {
-            name: "End",
-            name_localizations: {
-              "zh-TW": "上期",
-              vi: "kỳtrước",
-              fr: "période précédente",
-            } as LocalizationMap,
-            value: "2",
-          }
-        )
+        .setAutocomplete(true)
     ),
   async execute(
     _client: Client,
@@ -91,18 +82,58 @@ export default {
       interaction.options.getString("account") || "0"
     );
     const targetUser = interaction.options.getUser("user") || interaction.user;
-    const schedule = parseInt(interaction.options.getString("schedule") || "1");
+    const scheduleValue = interaction.options.getString("schedule") || "1";
+    const userLocale = (await getUserLang(interaction.user.id)) || "en";
 
+    if (parseHistorySchedule(scheduleValue)) {
+      const cached = await getZzzHistoryEntry(
+        db,
+        "shiyu",
+        targetUser.id,
+        accountIndex,
+        scheduleValue,
+      );
+      if (!cached) {
+        await interaction.reply({
+          content: tr("NonData") || "找不到已儲存的式輿紀錄。",
+          ephemeral: true,
+        });
+        return;
+      }
+      await interaction.deferReply();
+      await handleShiyuDraw(
+        interaction,
+        tr,
+        targetUser,
+        { uid: `cached-${targetUser.id}`, lang: userLocale } as any,
+        cached.schedule,
+        {
+          db,
+          dataOverride: cached.data,
+          accountIndex,
+          targetUserId: targetUser.id,
+          locale: userLocale,
+        },
+      );
+      return;
+    }
+
+    const schedule = Number(scheduleValue) === 2 ? 2 : 1;
     const zzz = await getUserZZZData(
       interaction,
       tr,
       targetUser.id,
-      await getUserLang(interaction.user.id),
-      accountIndex
+      userLocale,
+      accountIndex,
     );
     if (zzz == null) return;
 
     await interaction.deferReply();
-    handleShiyuDraw(interaction, tr, targetUser, zzz, schedule);
+    await handleShiyuDraw(interaction, tr, targetUser, zzz, schedule, {
+      db,
+      accountIndex,
+      targetUserId: targetUser.id,
+      locale: userLocale,
+    });
   },
 };

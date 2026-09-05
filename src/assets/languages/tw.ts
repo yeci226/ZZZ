@@ -48,6 +48,9 @@ const langs = {
   news_SelectPost: "🐣 請選擇一篇文章",
 
   daily_Failed: "簽到失敗",
+  daily_AuthExpiredTitle: "HoYoLAB 帳號登入已失效",
+  daily_AuthExpiredDesc:
+    "此帳號的 HoYoLAB 登入狀態已過期，請重新綁定 Cookie 後再使用簽到與查詢功能。",
   daily_Signed: "繩匠，你今天已經簽到過了～",
   daily_SignSuccess: "簽到成功！",
   daily_Description: "您已獲得今日獎勵 <a>",
@@ -169,6 +172,11 @@ const langs = {
   profile_SelectCharacter: "選擇角色查看",
   profile_NoImageData: "無法獲取圖片資料",
   profile_CharactersFormat: "等級 <level> • 意象影畫 <rank>",
+  profile_SelectCharacterNextPage: "下一頁",
+  profile_SelectCharacterPreviousPage: "上一頁",
+  profile_SelectCharacterNavigationConflict: "請一次只選擇上一頁或下一頁。",
+  profile_SelectCharacterTooMany: "最多只能選擇三位角色。",
+  profile_SelectCharacterRequired: "請至少選擇一位角色。",
 
   // Profile Canvas
   profileMain_Contacts: "通訊錄",
@@ -247,6 +255,12 @@ const langs = {
   // Settings
   settings_Title: "使用者設定",
   settings_Desc: "此處的設定與你的 Discord 帳戶關聯，適用於所有遊戲帳戶。",
+  settings_ProfileStyleLabel: "角色卡樣式",
+  settings_ProfileStyleDesc: "選擇角色卡的版面樣式。第一樣式為正式版，固定使用 M6 影畫圖；第二樣式保留目前版面。",
+  settings_ProfileStyleFormal: "第一樣式（正式版）",
+  settings_ProfileStyleFormalDesc: "正式版面；固定顯示 M6 影畫圖，不讀取影畫設定。",
+  settings_ProfileStyleCurrent: "第二樣式（目前版）",
+  settings_ProfileStyleCurrentDesc: "保留目前版面，依下方影畫設定顯示。",
   settings_PaintingLabel: "意象影畫",
   settings_PaintingDesc: "角色立繪使用意象影畫取代標準立繪。",
   settings_RankPaintingLabel: "影畫展示",

@@ -324,6 +324,21 @@ describe("read API", () => {
 		expect(a1.cookie).toBe(COOKIE_A);
 	});
 
+	it("projects a parent invalid cookie flag onto every character", async () => {
+		const db = createFakeDb({
+			u1: {
+				hoyolabs: [{ ...seedStore.hoyolabs[0]!, invalid: true }]
+			}
+		});
+		const all = await getAllCharacters(db, "u1");
+		expect(all).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ uid: "800000001", invalid: true }),
+				expect.objectContaining({ uid: "800000002", invalid: true })
+			])
+		);
+	});
+
 	it("getCharacter returns char + parent hoyolab", async () => {
 		const db = seed();
 		const r = await getCharacter(db, "u1", "700000001");

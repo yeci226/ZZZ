@@ -2,10 +2,22 @@ import { client } from "../index.js";
 import { Events, WebhookClient, EmbedBuilder, ActivityType } from "discord.js";
 import moment from "moment";
 import { getConfig } from "../utilities/core/config.js";
+import Logger from "../utilities/core/logger.js";
+import { disableDestinationsMatching } from "../utilities/core/notificationDestination.js";
 const config = getConfig();
 const webhook = config.JLWEBHOOK ? new WebhookClient({ url: config.JLWEBHOOK }) : null;
 
 client.on(Events.GuildDelete, async (guild) => {
+  const disabled = await disableDestinationsMatching(
+    client.db as any,
+    { guildId: guild.id },
+    "guild_unavailable",
+  ).catch(() => 0);
+  if (disabled > 0) {
+    new Logger("通知清理").warn(
+      `Bot 已離開伺服器 ${guild.id}，已停用 ${disabled} 個通知目的地；自動功能維持啟用`,
+    );
+  }
   const results = await client.cluster.broadcastEval(
     (c) => c.guilds.cache.size
   );

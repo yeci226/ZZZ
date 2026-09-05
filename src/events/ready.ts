@@ -6,12 +6,22 @@ import autoRedeem from "../utilities/zzz/autoRedeem.js";
 import { autoRefreshCookie } from "../utilities/utilities.js";
 import schedule from "node-schedule";
 import { refreshWallpapers } from "../utilities/zzz/wallpaperManager.js";
-import { downloadAllWikiPaintings } from "../utilities/zzz/autoDownloadIcons.js";
+import {
+  downloadAllBangbooIcons,
+  downloadAllDiscIcons,
+  downloadAllElementIcons,
+  downloadAllWeaponIcons,
+  downloadAllWikiPaintings,
+} from "../utilities/zzz/autoDownloadIcons.js";
 import { getLegacyAccounts } from "../utilities/accountStore.js";
 import { AUTO_REDEEM_CRON } from "../utilities/core/redeemSchedule.js";
+import runNoteReminders from "../utilities/zzz/reminderService.js";
+import { runGachaArchiveMaintenance } from "../utilities/zzz/gachaArchiveMaintenance.js";
 
 let isRefreshingCookies = false;
 let isAutoRedeemRunning = false;
+let isNoteReminderRunning = false;
+let isGachaArchiveMaintenanceRunning = false;
 
 async function updatePresence() {
   const results = await client.cluster.broadcastEval(
@@ -33,47 +43,74 @@ async function updatePresence() {
   });
 }
 
-client.on(Events.ClientReady, async () => {
+client.once(Events.ClientReady, async () => {
   new Logger("系統").success(`${client.user?.tag} 已經上線！`);
   if (client.cluster.id == 0) {
+    schedule.scheduleJob("0 * * * *", function () {
+      autoDailySign();
+    });
+
+    schedule.scheduleJob("50 7 * * *", function () {
+      refreshAllCookies(client);
+    });
+
+    schedule.scheduleJob(AUTO_REDEEM_CRON, function () {
+      runAutoRedeem();
+    });
+
+    schedule.scheduleJob("0 8 * * *", function () {
+      refreshWallpapers(client.db).catch(() => {});
+    });
+
+    schedule.scheduleJob("*/15 * * * *", function () {
+      runNoteReminderJob();
+    });
+
+    schedule.scheduleJob("30 8 * * *", function () {
+      runGachaArchiveMaintenanceJob();
+    });
+
     autoDailySign();
     // Fire background tasks immediately — don't wait for redeem/cookie flows
     refreshWallpapers(client.db).catch(() => {});
+    downloadAllDiscIcons().catch(() => {});
+    downloadAllElementIcons().catch(() => {});
+    downloadAllWeaponIcons().catch(() => {});
+    downloadAllBangbooIcons().catch(() => {});
     downloadAllWikiPaintings().catch(() => {});
+    runNoteReminderJob();
+    runGachaArchiveMaintenanceJob();
     await runAutoRedeem();
     // 啟動時先做一次 Cookie 刷新
     await refreshAllCookies(client);
   }
 
-  schedule.scheduleJob("0 * * * *", function () {
-    if (client.cluster.id == 0) {
-      autoDailySign();
-    }
-  });
-
   // 每天 07:50 刷新 Cookie，為自動兌換做準備
-  schedule.scheduleJob("50 7 * * *", function () {
-    if (client.cluster.id == 0) {
-      refreshAllCookies(client);
-    }
-  });
-
-  // 每小時 20 分檢查新兌換碼
-  schedule.scheduleJob(AUTO_REDEEM_CRON, function () {
-    if (client.cluster.id == 0) {
-      runAutoRedeem();
-    }
-  });
-
-  // 每天 08:00 刷新壁紙
-  schedule.scheduleJob("0 8 * * *", function () {
-    if (client.cluster.id == 0) {
-      refreshWallpapers(client.db).catch(() => {});
-    }
-  });
-
+  // 每小時 20 分檢查新兌換碼；每天 08:00 刷新壁紙
   setInterval(updatePresence, 300_000);
 });
+
+async function runNoteReminderJob() {
+  if (isNoteReminderRunning) return;
+  isNoteReminderRunning = true;
+  try {
+    await runNoteReminders(client);
+  } finally {
+    isNoteReminderRunning = false;
+  }
+}
+
+async function runGachaArchiveMaintenanceJob() {
+  if (isGachaArchiveMaintenanceRunning) return;
+  isGachaArchiveMaintenanceRunning = true;
+  try {
+    await runGachaArchiveMaintenance(client);
+  } catch (error: any) {
+    new Logger("調頻封存排程").error(`排程執行失敗: ${String(error?.message || error)}`);
+  } finally {
+    isGachaArchiveMaintenanceRunning = false;
+  }
+}
 
 async function runAutoRedeem() {
   const logger = new Logger("自動兌換排程");
@@ -118,7 +155,7 @@ async function refreshAllCookies(client: any) {
 
       for (let i = 0; i < accounts.length; i++) {
         try {
-          const result = await autoRefreshCookie(userId, i, accounts[i].cookie);
+          const result = await autoRefreshCookie(userId, i, accounts[i].cookie, "redeem");
           if (result && (result as any).success) {
             // logger.info(`已完成用戶 ${userId} 第 ${i + 1} 個帳號 Cookie 保活`);
           } else {

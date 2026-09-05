@@ -2,10 +2,6 @@ import { client } from "../../index.js";
 import {
   EmbedBuilder,
   AttachmentBuilder,
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-  ButtonBuilder,
-  ButtonStyle,
 } from "discord.js";
 import Queue from "queue";
 import {
@@ -24,12 +20,14 @@ import {
 import { searchWikiEntry, fetchWikiPaintings } from "../utilities.js";
 import { toI18nLang } from "../core/i18n.js";
 import { drawOfficialCharacterProfile } from "./profileCharacter.js";
-import { drawKnockKnockMainProfile } from "./profileMain.js";
+import { drawFormalCharacterProfile } from "./profileCharacterFormal.js";
 import {
-  ELEMENT_ICON_BY_TYPE as elementId,
-  getElementIconPath,
-} from "./elements.js";
-import emoji from "../../assets/emoji.js";
+  normalizeZzzProfileStyle,
+  type ZzzProfileStyle,
+} from "./profileStyle.js";
+import { drawKnockKnockMainProfile } from "./profileMain.js";
+import { getElementIconPath } from "./elements.js";
+import { buildProfileCharacterSelectRows } from "./profileCharacterSelectMenu.js";
 import {
   createCanvas,
   loadImage,
@@ -241,36 +239,11 @@ export async function handleProfileDraw(
         name: `MainImage_${zzz.uid}.png`,
       });
 
-      function chunkArray(array: any[], size: number) {
-        return Array.from(
-          { length: Math.ceil(array.length / size) },
-          (_, index) => array.slice(index * size, (index + 1) * size),
-        );
-      }
-
-      const characterOptions = characters.map((character: any) => {
-        return {
-          emoji: (emoji as any)[(elementId as any)[character.element_type]],
-          label: `${character.name_mi18n}`,
-          description: `${tr("profile_CharactersFormat", {
-            level: character.level,
-            rank: character.rank,
-          })}`,
-          value: `${user.id}-${accountIndex}-${character.id}`,
-        };
-      });
-
-      const optionChunks = chunkArray(characterOptions, 25);
-
-      const rowSelects = optionChunks.map((optionsChunk, index) =>
-        new ActionRowBuilder().addComponents(
-          new StringSelectMenuBuilder()
-            .setPlaceholder(`${tr("profile_SelectCharacter")} (${index + 1})`)
-            .setCustomId(`profile_SelectCharacter-${index}`)
-            .setMinValues(1)
-            .setMaxValues(Math.min(3, optionsChunk.length))
-            .addOptions(optionsChunk),
-        ),
+      const rowSelects = buildProfileCharacterSelectRows(
+        tr,
+        characters,
+        user.id,
+        accountIndex,
       );
 
       interaction.editReply({
@@ -768,8 +741,17 @@ export async function drawCharacterImage(
   characterDataInput: any,
   usePainting = false,
   rankDependentPainting = false,
+  profileStyle: ZzzProfileStyle = "formal",
 ) {
   void interaction;
+  if (normalizeZzzProfileStyle(profileStyle) === "formal") {
+    return drawFormalCharacterProfile(
+      tr,
+      userLocale,
+      uid,
+      characterDataInput,
+    );
+  }
   return drawOfficialCharacterProfile(
     tr,
     userLocale,

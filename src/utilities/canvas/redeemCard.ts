@@ -36,6 +36,7 @@ export interface ZZZRedeemCodeResult {
 export interface ZZZRedeemAccountResult {
   nickname: string;
   uid: string;
+  title?: string;
   codes: ZZZRedeemCodeResult[];
 }
 
@@ -248,7 +249,7 @@ export async function renderZZZRedeemCard(
   ctx.fillRect(34, 29, 5, 31);
   ctx.fillStyle = "#FFFFFF";
   ctx.font = `bold 27px ${font}`;
-  ctx.fillText("自動兌換", 53, 54);
+  ctx.fillText(accounts[0]?.title?.trim() || "自動兌換", 53, 54);
 
   let accountY = 82;
   for (let accountIndex = 0; accountIndex < accounts.length; accountIndex += 1) {

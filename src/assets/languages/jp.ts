@@ -49,6 +49,9 @@ const langs = {
   news_SelectPost: "🐣 記事を選択してください",
 
   daily_Failed: "サインインに失敗しました",
+  daily_AuthExpiredTitle: "HoYoLABアカウントのログインが期限切れです",
+  daily_AuthExpiredDesc:
+    "このHoYoLABアカウントのログイン状態が期限切れです。サインインや照会を使うにはCookieを再連携してください。",
   daily_Signed: "今日は既にサインイン済みです",
   daily_SignSuccess: "サインイン成功！",
   daily_Description: "今日の報酬を獲得しました <a>",
@@ -166,6 +169,12 @@ const langs = {
   profile_SelectCharacter: "キャラクターを選択して表示",
   profile_NoImageData: "画像データを取得できません",
   profile_CharactersFormat: "レベル <level> • イメージ映像 <rank>",
+  profile_SelectCharacterNextPage: "次のページ",
+  profile_SelectCharacterPreviousPage: "前のページ",
+  profile_SelectCharacterNavigationConflict:
+    "前のページまたは次のページのどちらか一方だけを選択してください。",
+  profile_SelectCharacterTooMany: "選択できるキャラクターは最大3人です。",
+  profile_SelectCharacterRequired: "キャラクターを1人以上選択してください。",
 
   // Profile Canvas
   profileMain_Contacts: "連絡先",
@@ -245,6 +254,12 @@ const langs = {
   // Settings
   settings_Title: "ユーザー設定",
   settings_Desc: "これらの設定はDiscordアカウントに紐付けられ、すべてのゲームアカウントに適用されます。",
+  settings_ProfileStyleLabel: "キャラクターカードのスタイル",
+  settings_ProfileStyleDesc: "キャラクターカードのレイアウトを選択します。スタイル1はM6絵を固定表示する正式版、スタイル2は現在のレイアウトです。",
+  settings_ProfileStyleFormal: "スタイル1（正式版）",
+  settings_ProfileStyleFormalDesc: "正式レイアウト。M6絵を固定表示し、絵画設定を無視します。",
+  settings_ProfileStyleCurrent: "スタイル2（現在版）",
+  settings_ProfileStyleCurrentDesc: "現在のレイアウトを維持し、下の絵画設定を使用します。",
   settings_PaintingLabel: "イメージイラスト",
   settings_PaintingDesc: "標準の立ち絵の代わりにWikiのイメージイラストを使用します。",
   settings_RankPaintingLabel: "ランク別イラスト",

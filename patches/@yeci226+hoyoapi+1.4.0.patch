@@ -1,0 +1,132 @@
+diff --git a/node_modules/@yeci226/hoyoapi/dist/cjs/client/auth/auth.js b/node_modules/@yeci226/hoyoapi/dist/cjs/client/auth/auth.js
+index 92dec84..70bca6b 100644
+--- a/node_modules/@yeci226/hoyoapi/dist/cjs/client/auth/auth.js
++++ b/node_modules/@yeci226/hoyoapi/dist/cjs/client/auth/auth.js
+@@ -85,7 +85,6 @@ class AuthClient {
+           }
+         }
+         const tempCookie = response.headers.get("set-cookie") || void 0;
+-        console.log("[Geetest Debug] set-cookie:", tempCookie);
+         let parsedAigisData = void 0;
+         if (aigisData) {
+           const inner = typeof aigisData.data === "string" ? (() => {
+@@ -138,7 +137,6 @@ class AuthClient {
+       }
+       if (retcode === -3239) {
+         const rawVerify = response.headers.get("x-rpc-verify");
+-        console.log("[Auth Debug] x-rpc-verify raw:", rawVerify);
+         let actionTicket = void 0;
+         if (rawVerify) {
+           try {
+@@ -146,11 +144,9 @@ class AuthClient {
+             const verifyStr = typeof outer.verify_str === "string" ? JSON.parse(outer.verify_str) : outer.verify_str;
+             actionTicket = { ...verifyStr, risk_ticket: outer.risk_ticket };
+           } catch (e) {
+-            console.log("[Auth Debug] x-rpc-verify parse error:", e);
+             actionTicket = { raw: rawVerify };
+           }
+         }
+-        console.log("[Auth Debug] actionTicket:", JSON.stringify(actionTicket));
+         return {
+           status: "require_email_verify",
+           retcode,
+@@ -166,14 +162,6 @@ class AuthClient {
+           message: responseData.message || "Too many requests. Please try again later."
+         };
+       }
+-      console.log(
+-        "[Auth Debug] Login failed. retcode:",
+-        retcode,
+-        "message:",
+-        responseData.message,
+-        "data:",
+-        JSON.stringify(responseData.data)
+-      );
+       return {
+         status: "error",
+         retcode,
+@@ -204,10 +192,6 @@ class AuthClient {
+       action_ticket: (_b = (_a = actionTicket.ticket) != null ? _a : actionTicket.raw) != null ? _b : actionTicket
+     };
+     headers["ds"] = (0, import_auth.generateAppLoginDS)(payload);
+-    console.log(
+-      "[Auth Debug] sendVerificationCode payload:",
+-      JSON.stringify(payload)
+-    );
+     try {
+       const response = await fetch(import_routes.SEND_VERIFICATION_CODE_URL, {
+         method: "POST",
+@@ -215,7 +199,6 @@ class AuthClient {
+         body: JSON.stringify(payload)
+       });
+       const text = await response.text();
+-      console.log("[Auth Debug] sendVerificationCode response text:", text);
+       try {
+         const data = JSON.parse(text);
+         if (data.retcode === 0)
+diff --git a/node_modules/@yeci226/hoyoapi/dist/esm/index.mjs b/node_modules/@yeci226/hoyoapi/dist/esm/index.mjs
+index 3678465..8bb1cae 100644
+--- a/node_modules/@yeci226/hoyoapi/dist/esm/index.mjs
++++ b/node_modules/@yeci226/hoyoapi/dist/esm/index.mjs
+@@ -777,7 +777,6 @@ var AuthClient = class {
+           }
+         }
+         const tempCookie = response.headers.get("set-cookie") || void 0;
+-        console.log("[Geetest Debug] set-cookie:", tempCookie);
+         let parsedAigisData = void 0;
+         if (aigisData) {
+           const inner = typeof aigisData.data === "string" ? (() => {
+@@ -830,7 +829,6 @@ var AuthClient = class {
+       }
+       if (retcode === -3239) {
+         const rawVerify = response.headers.get("x-rpc-verify");
+-        console.log("[Auth Debug] x-rpc-verify raw:", rawVerify);
+         let actionTicket = void 0;
+         if (rawVerify) {
+           try {
+@@ -838,11 +836,9 @@ var AuthClient = class {
+             const verifyStr = typeof outer.verify_str === "string" ? JSON.parse(outer.verify_str) : outer.verify_str;
+             actionTicket = { ...verifyStr, risk_ticket: outer.risk_ticket };
+           } catch (e) {
+-            console.log("[Auth Debug] x-rpc-verify parse error:", e);
+             actionTicket = { raw: rawVerify };
+           }
+         }
+-        console.log("[Auth Debug] actionTicket:", JSON.stringify(actionTicket));
+         return {
+           status: "require_email_verify",
+           retcode,
+@@ -858,14 +854,6 @@ var AuthClient = class {
+           message: responseData.message || "Too many requests. Please try again later."
+         };
+       }
+-      console.log(
+-        "[Auth Debug] Login failed. retcode:",
+-        retcode,
+-        "message:",
+-        responseData.message,
+-        "data:",
+-        JSON.stringify(responseData.data)
+-      );
+       return {
+         status: "error",
+         retcode,
+@@ -896,10 +884,6 @@ var AuthClient = class {
+       action_ticket: (_b = (_a = actionTicket.ticket) != null ? _a : actionTicket.raw) != null ? _b : actionTicket
+     };
+     headers["ds"] = generateAppLoginDS(payload);
+-    console.log(
+-      "[Auth Debug] sendVerificationCode payload:",
+-      JSON.stringify(payload)
+-    );
+     try {
+       const response = await fetch(SEND_VERIFICATION_CODE_URL, {
+         method: "POST",
+@@ -907,7 +891,6 @@ var AuthClient = class {
+         body: JSON.stringify(payload)
+       });
+       const text = await response.text();
+-      console.log("[Auth Debug] sendVerificationCode response text:", text);
+       try {
+         const data = JSON.parse(text);
+         if (data.retcode === 0)

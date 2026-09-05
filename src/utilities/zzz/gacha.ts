@@ -191,7 +191,8 @@ export async function getSingalLog(
 
       temp.push(
         ...list.map((signal: any) => ({
-          id: signal.item_id,
+          id: signal.id,
+          itemId: signal.item_id,
           name: signal.name.toLowerCase().replace(/\s+/g, "_"),
           type: signal.item_type.toLowerCase().replace(/\s+/g, "_"),
           time: signal.time,
@@ -266,7 +267,7 @@ export async function getSingalLog(
         const item = data[i];
 
         if (item.rank === "S") {
-          const isLimited = !standardIds.includes(item.id.toString());
+          const isLimited = !standardIds.includes((item.itemId ?? item.id).toString());
           if (isLimited) {
             limitedPullSegments.push(counterSinceLastS);
             counterSinceLastS = 0;
@@ -906,4 +907,4 @@ function drawText(
 // To get gachaUrl use this in PowerShell
 // Start-Process powershell -Verb runAs -ArgumentList '-NoExit -Command "Invoke-Expression  (New-Object Net.WebClient).DownloadString(\"https://raw.githubusercontent.com/yeci226/ZZZ-ToS-PP/main/getSignal.ps1\")"'
 
-// https://public-operation-nap-sg.hoyoverse.com/common/gacha_record/api/getGachaLog?authkey_ver=1&sign_type=2&auth_appid=webview_gacha&win_mode=fullscreen&gacha_id=ab661a7ad928f17ee22a87f9b1f959b49ef58175&timestamp=1749165432&font_thickness_mode=1&init_log_gacha_type=2001&init_log_gacha_base_type=2&ui_layout=&button_mode=default&plat_type=pc&is_gacha=1&no_joypad_close=1&authkey=GIpnAjPqL54LSBIuuUuVh0fz6inZ3Liui65n6l4ev%2B6i8JihDuk6ujW8k8JQy0GVi8sFLraW3JgP%2BBcI6ttSPAE1%2Fwh3R9FcgpTAJqRypxokZ198SDQKDU3z%2B5JoZ%2FuT99LTTP1XeaG1wy3FT4XpDh9uCfqGYjecMejRCM7k2Ce51JzMoqyso1dANa0sO8ehsaaWDVgVeaDClSi2%2FlJe1jMqcnMTJyaTxCHOMkMsYrMBBHQUoWfCUQYRSlTX2sLCC%2BHTUFJscqq8EW9JSsUi9I1SR22jwKU7RPjwQdI0SUuyYDDjbVnyPYtcMDdcJUAxNhdU2rPDcJ6BcBsNiw9lT5WvcibxBAdIizNeVCAXWnxxNNoUQfcRf3flUCVpeVz0TJztQXnAOx62tfbeRE3tTOEYgKy05hfq%2Ba0g806AjUawFRMILPRS167mANCEVHU9mdgalBwCUHmq%2F7QydriiYlNWFfSP7Cp8O8tJojzEo3f%2BDoIJA6G%2BCZM3MmGnk%2BK4X6AAUWza5tC6fp2%2BLAAiuaw1rYbKlVZKEKTxOdvARVnKaxip9iUxcyOg7f5MhzLJD7JVDnkptykorsY5en1I2oUkGPUW%2BoAJ%2BgbopxWVfI88gSxp1SB64D7I2R5ISKR836W9wvG6QAJHUnQ3%2FSf6E%2Bt9kYjfu6Ex6WeWNVK%2Fhm42Xosr6Lb4NXvr5veGYQIV%2F6ursGChprhKEF8tvjYSKdtT%2BGsWjgpUZ8KN29JCF9EmpIcpmCH2RjlfL9Pr2fjz&lang=zh-tw&region=prod_gf_jp&game_biz=nap_global&page=1&size=5&gacha_type=2001&real_gacha_type=2&end_id=
+// Never store or commit an example URL: it contains a request-scoped authkey.

@@ -11,6 +11,18 @@ import { buildZZZRedeemCard } from "../canvas/redeemCard.js";
 import { getLegacyAccounts } from "../accountStore.js";
 import { hasUnredeemedCodes } from "../core/redeemSchedule.js";
 import { getFirstRedeemRewardIcon } from "./redeemLayout.js";
+import {
+  clearRedeemCookieState,
+  getRedeemCookieState,
+  markRedeemTokenInvalid,
+  migrateLegacyRedeemCookieState,
+  setRedeemRefreshAttempt,
+} from "../core/redeemCookieState.js";
+import {
+  classifyPermanentNotificationError,
+  disableNotificationDestination,
+  isNotificationEnabled,
+} from "../core/notificationDestination.js";
 
 // Constants
 const CONFIG = {
@@ -37,7 +49,7 @@ interface RedeemStats {
   invalid: number;
 }
 
-class AutoRedeemSystem {
+export class AutoRedeemSystem {
   client: any;
   db: any;
   logger: Logger;
@@ -75,14 +87,16 @@ class AutoRedeemSystem {
   }
 
   async shouldRetryCookieRefresh(uid: string) {
-    const lastAttempt = await this.db.get(`${uid}.lastCookieRefreshAttempt`);
-    if (!lastAttempt) return true;
-    const elapsed = Date.now() - Number(lastAttempt);
+    await migrateLegacyRedeemCookieState(this.db, uid);
+    const { lastRefreshAttempt } = await getRedeemCookieState(this.db, uid);
+    if (!lastRefreshAttempt) return true;
+    const elapsed = Date.now() - lastRefreshAttempt;
     return elapsed >= CONFIG.COOKIE_REFRESH_RETRY_INTERVAL;
   }
 
   async markCookieRefreshAttempt(uid: string) {
-    await this.db.set(`${uid}.lastCookieRefreshAttempt`, Date.now());
+    await migrateLegacyRedeemCookieState(this.db, uid);
+    await setRedeemRefreshAttempt(this.db, uid, Date.now());
   }
 
   async processCode(code: any, account: any, userId: string) {
@@ -141,7 +155,8 @@ class AutoRedeemSystem {
       };
 
       if (status.tokenInvalid) {
-        await this.db.set(`${account.uid}.cookieExpired`, true);
+        await migrateLegacyRedeemCookieState(this.db, account.uid);
+        await markRedeemTokenInvalid(this.db, account.uid);
       }
 
       return {
@@ -216,11 +231,11 @@ class AutoRedeemSystem {
     const { userId, userLang, tr, accountIndex, accountNickname } = context;
 
     const displayNickname = accountNickname || String(account.uid);
-    const isCookieExpired = await this.db.get(`${account.uid}.cookieExpired`);
-    if (isCookieExpired) {
+    await migrateLegacyRedeemCookieState(this.db, account.uid);
+    const redeemState = await getRedeemCookieState(this.db, account.uid);
+    if (redeemState.invalid) {
       // 若之前已確認無法自動刷新（需人工介入），直接跳過
-      const needsManualUpdate = await this.db.get(`${account.uid}.needsCookieUpdate`);
-      if (needsManualUpdate) {
+      if (redeemState.needsCookieUpdate) {
         return {
           uid: account.uid,
           nickname: displayNickname,
@@ -248,6 +263,7 @@ class AutoRedeemSystem {
         userId,
         accountIndex,
         account.cookie,
+        "redeem",
       );
 
       if (!refreshResult.success) {
@@ -326,16 +342,15 @@ class AutoRedeemSystem {
           redeemedCodeSet.add(code.code);
         }
 
-        // 非 token 無效的回應表示這個 Cookie 仍然可用
+        // 非 token 無效的回應表示這個兌換 Cookie 仍然可用
         if (!(result.status as any).tokenInvalid) {
-          await this.db.delete(`${account.uid}.cookieExpired`);
+          await clearRedeemCookieState(this.db, account.uid);
         }
 
         if ((result.status as any).tokenInvalid) {
           this.logger.warn(
-            `[用戶 ${userId}] [帳號 #${accountIndex}] Cookie 已過期，標記待自動刷新`,
+            `[用戶 ${userId}] [帳號 #${accountIndex}] 兌換 Cookie 已過期，標記待自動刷新`,
           );
-          await this.db.set(`${account.uid}.cookieExpired`, true);
           return {
             uid: account.uid,
             nickname: displayNickname,
@@ -349,7 +364,6 @@ class AutoRedeemSystem {
           this.logger.warn(
             `[用戶 ${userId}] [帳號 #${accountIndex}] 觸發風控限制（-502），稍後重試`,
           );
-          await this.db.delete(`${account.uid}.cookieExpired`);
           return {
             uid: account.uid,
             nickname: displayNickname,
@@ -375,7 +389,7 @@ class AutoRedeemSystem {
           // this.logger.error(
           //   `[用戶 ${userId}] [帳號 #${accountIndex}] 兌換失敗: ${code.code} - ${result.message}`
           // );
-          // await this.db.set(`${account.uid}.cookieExpired`, true);
+          // Auth state is updated only for explicit redemption-token failures above.
         }
 
         results.push(result);
@@ -421,13 +435,10 @@ class AutoRedeemSystem {
     }
 
     const userRedeemConfig = redeemData[userId];
-    if (!userRedeemConfig?.channelId) {
-      await this.db.delete(`autoRedeem.${userId}`);
-      this.logger.warn(
-        `用戶 ${userId} 缺少頻道設定，已自動移除 autoRedeem 設定`,
-      );
-      return false;
-    }
+    const shouldNotify =
+      isNotificationEnabled(userRedeemConfig) &&
+      typeof userRedeemConfig?.channelId === "string" &&
+      userRedeemConfig.channelId.length > 0;
 
     const candidateAccountIndexes: number[] = [];
     for (let i = 0; i < accounts.length; i++) {
@@ -448,11 +459,11 @@ class AutoRedeemSystem {
       const account = accounts[i];
       if (!account || !account.uid || !account.cookie) continue;
 
-      const isCookieExpired = await this.db.get(`${account.uid}.cookieExpired`);
-      if (isCookieExpired) {
+      await migrateLegacyRedeemCookieState(this.db, account.uid);
+      const redeemState = await getRedeemCookieState(this.db, account.uid);
+      if (redeemState.invalid) {
         // 若之前已確認無法自動刷新（需人工介入），直接跳過
-        const needsManualUpdate = await this.db.get(`${account.uid}.needsCookieUpdate`);
-        if (needsManualUpdate) {
+        if (redeemState.needsCookieUpdate) {
           continue;
         }
 
@@ -466,6 +477,7 @@ class AutoRedeemSystem {
           userId,
           i,
           account.cookie,
+          "redeem",
         );
         if (refreshResult.success) {
           this.logger.success(
@@ -475,7 +487,7 @@ class AutoRedeemSystem {
       }
     }
 
-    const channelId = userRedeemConfig.channelId;
+    const channelId = shouldNotify ? userRedeemConfig.channelId : undefined;
     const tag = userRedeemConfig.tag === "true" ? `<@${userId}>` : "";
     const tr = createTranslator(userLang);
 
@@ -511,22 +523,34 @@ class AutoRedeemSystem {
       (r) => r.hasResults && Boolean(r.description?.trim()),
     );
 
-    // Send one card per account (separate messages to avoid image stacking)
-    for (let i = 0; i < visibleResults.length; i++) {
+    // Redemption is complete before notification begins. A missing or invalid
+    // destination must never disable redemption itself or retry claimed codes.
+    for (let i = 0; shouldNotify && i < visibleResults.length; i++) {
       const r = visibleResults[i];
       const isFirst = i === 0;
-      await this.sendRedeemMessage(channelId, {
+      const canContinue = await this.sendRedeemMessage(
+        userId,
+        userRedeemConfig,
+        channelId!,
+        {
         tr,
         tag: isFirst ? tag : "",
         accounts: [{ nickname: r.nickname || r.uid, uid: r.uid, codes: r.codeResults || [] }],
         hasSuccess: r.hasSuccess,
-      });
+        },
+      );
+      if (!canContinue) break;
     }
 
     return true;
   }
 
-  async sendRedeemMessage(channelId: string, data: any) {
+  async sendRedeemMessage(
+    userId: string,
+    userRedeemConfig: Record<string, any>,
+    channelId: string,
+    data: any,
+  ): Promise<boolean> {
     // Build canvas card
     let cardFile: { buffer: string; name: string } | null = null;
     try {
@@ -537,25 +561,55 @@ class AutoRedeemSystem {
     }
 
     try {
-      await this.client.cluster.broadcastEval(
+      const results = await this.client.cluster.broadcastEval(
         async (c: any, { channelId, content, cardFile }: any) => {
           const channel = c.channels.cache.get(channelId);
-          if (!channel) return;
+          if (!channel || typeof channel.send !== "function") return false;
           const { AttachmentBuilder } = await import("discord.js");
           if (cardFile) {
             const file = new AttachmentBuilder(Buffer.from(cardFile.buffer, "base64"), { name: cardFile.name });
             await channel.send({ content: content || undefined, files: [file] });
           }
+          return true;
         },
         {
           context: { channelId, content: data.tag || "", cardFile },
           timeout: 10000,
         },
       );
+      if (!results.some(Boolean)) {
+        await disableNotificationDestination(
+          this.db,
+          "autoRedeem",
+          userId,
+          userRedeemConfig,
+          "unknown_channel",
+        );
+        this.logger.warn(
+          `用戶 ${userId} 的自動兌換通知頻道不存在；已停用通知，自動兌換維持啟用`,
+        );
+        return false;
+      }
+      return true;
     } catch (error) {
+      const permanentReason = classifyPermanentNotificationError(error);
+      if (permanentReason) {
+        await disableNotificationDestination(
+          this.db,
+          "autoRedeem",
+          userId,
+          userRedeemConfig,
+          permanentReason,
+        );
+        this.logger.warn(
+          `用戶 ${userId} 的自動兌換通知目的地永久失效 (${permanentReason})；已停用通知，自動兌換維持啟用`,
+        );
+        return false;
+      }
       this.logger.error(
         `發送訊息至頻道 ${channelId} 時發生錯誤: ${(error as any).message}`,
       );
+      return true;
     }
   }
 
