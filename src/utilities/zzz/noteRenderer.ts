@@ -25,13 +25,14 @@ export interface NoteRenderOptions {
 
 type NoteTone = "complete" | "progress" | "action" | "neutral";
 
-const NOTE_COLORS: Record<NoteTone | "label" | "secondary", string> = {
-  complete: "#83E3A5",
-  progress: "#79CFFF",
-  action: "#F4D52D",
-  neutral: "#F3F3F3",
-  label: "#C8CBC9",
-  secondary: "#9DA19F",
+const NOTE_COLORS: Record<NoteTone | "label" | "secondary" | "surface", string> = {
+  complete: "#7D7F80",
+  progress: "#FFFFFF",
+  action: "#FFDE00",
+  neutral: "#FFFFFF",
+  label: "#D9DBDD",
+  secondary: "#7D7F80",
+  surface: "#161817",
 };
 
 function progressTone(currentValue: unknown, maxValue: unknown): NoteTone {
@@ -124,15 +125,15 @@ function drawCardFrame(ctx: SKRSContext2D, x: number, y: number, w: number, h: n
   ctx.save();
   ctx.globalAlpha = dimmed ? 0.43 : 1;
   roundedRect(ctx, x, y, w, h, 18);
-  ctx.fillStyle = "rgba(24,24,24,.94)";
+  ctx.fillStyle = NOTE_COLORS.surface;
   ctx.fill();
   ctx.lineWidth = highlighted ? 5 : 2;
-  ctx.strokeStyle = highlighted ? "#f4d52d" : "rgba(255,255,255,.16)";
+  ctx.strokeStyle = highlighted ? NOTE_COLORS.action : "rgba(255,255,255,.16)";
   ctx.stroke();
   if (highlighted) {
     roundedRect(ctx, x + 8, y + 8, w - 16, h - 16, 12);
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = "rgba(244,213,45,.48)";
+    ctx.strokeStyle = "rgba(255,222,0,.48)";
     ctx.stroke();
   }
   ctx.restore();

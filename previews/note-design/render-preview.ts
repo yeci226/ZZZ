@@ -12,7 +12,6 @@ const [page] = await renderOfficialNote({
   playerName: "匿名繩匠",
   locale: "tw",
   now,
-  highlighted: ["energy", "cardSign", "event:1"],
   note: {
     energy: { progress: { current: 123, max: 240 }, restore: 72000, day_type: 2, hour: 10, minute: 28 },
     member_card: { is_open: true, member_card_state: "MemberCardStateACK", exp_time: 29 * 86400 },
@@ -32,7 +31,7 @@ const [page] = await renderOfficialNote({
   },
   calendar: { activity_list: [
     { activity_id: 1, name: "恰浪花逐夏而至", monochrome_got_cnt: 0, monochrome_cnt: 1050, state: "STATE_IN_PROGRESS", left_end_ts: 277200 },
-    { activity_id: 2, name: "極危險通緝與悠遊假期", monochrome_got_cnt: 0, monochrome_cnt: 300, state: "STATE_IN_PROGRESS", left_end_ts: 277200 },
+    { activity_id: 2, name: "極危險通緝與悠遊假期", monochrome_got_cnt: 300, monochrome_cnt: 300, state: "STATE_COMPLETED", left_end_ts: 0 },
   ] },
 });
 return page!;
