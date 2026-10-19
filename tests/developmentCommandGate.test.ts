@@ -37,3 +37,19 @@ describe("commands moved to settings", () => {
     expect(shouldLoadCommand({ data: { name } }, "production")).toBe(true);
   });
 });
+
+describe("interknot wiring", () => {
+  const read = (...p: string[]) => readFileSync(join(process.cwd(), "src", ...p), "utf8");
+  it("keeps /interknot development-only until launch", () => {
+    expect(read("commands", "slash", "zzz", "interknot.ts")).toMatch(/developmentOnly:\s*true/);
+  });
+  it.each(["modal.ts", "interactionCreate.ts", "selectMenu.ts"])("generic %s handler leaves ik: interactions alone", (file) => {
+    // These handlers ack or reply to everything they do not skip, which would break ik: modals and deferUpdate.
+    expect(read("events", file)).toMatch(/startsWith\("ik:"\)/);
+  });
+  it("both selectMenu.ts listeners leave ik: interactions alone", () => {
+    const source = read("events", "selectMenu.ts");
+    expect(source.split("client.on(").length - 1).toBe(2);
+    expect(source.match(/startsWith\("ik:"\)/g)).toHaveLength(2);
+  });
+});

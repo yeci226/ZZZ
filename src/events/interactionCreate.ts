@@ -45,7 +45,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   // never acknowledged by this generic listener first.
   if ("customId" in interaction
     && typeof interaction.customId === "string"
-    && ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:")) || interaction.customId.startsWith("gsim:"))) return;
+    && ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:")) || interaction.customId.startsWith("gsim:") || interaction.customId.startsWith("ik:"))) return;
   // DM interactions are valid Discord interactions. Commands that truly need
   // a guild must validate that requirement in their own command handler.
   // lookups as well as before the pending-login network query.

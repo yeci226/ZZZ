@@ -64,7 +64,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (!interaction.isButton()) return;
   if (interaction.customId.startsWith("zdisc:")) return;
   if (interaction.customId.startsWith("zcombat:")) return;
-  if ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:")) || interaction.customId.startsWith("gsim:")) return;
+  if ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:")) || interaction.customId.startsWith("gsim:") || interaction.customId.startsWith("ik:")) return;
   const buttonInteraction = interaction as ButtonInteraction;
   const { locale, customId } = buttonInteraction;
   const userLocale =
@@ -138,7 +138,7 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (!interaction.isStringSelectMenu()) return;
   if (interaction.customId.startsWith("zdisc:")) return;
   if (interaction.customId.startsWith("zcombat:")) return;
-  if ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:"))) return;
+  if ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:")) || interaction.customId.startsWith("ik:")) return;
   const selectInteraction = interaction as StringSelectMenuInteraction;
   const { locale, customId, values } = selectInteraction;
   const userLocale =

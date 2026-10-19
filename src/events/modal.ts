@@ -33,7 +33,7 @@ import { getLegacyAccounts, updateLegacyAccountAtIndex } from "../utilities/acco
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (!interaction.isModalSubmit()) return;
   if (interaction.customId.startsWith("zcombat:")) return;
-  if ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:")) || interaction.customId.startsWith("gsim:")) return;
+  if ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:")) || interaction.customId.startsWith("gsim:") || interaction.customId.startsWith("ik:")) return;
   const modalInteraction = interaction as ModalSubmitInteraction;
 
   const { locale, customId, fields } = modalInteraction;
