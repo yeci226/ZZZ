@@ -24,7 +24,7 @@ const categoryLabels: Record<string, string> = {
   other: "其他",
 };
 
-function getDeveloperIds(): string[] {
+export function getDeveloperIds(): string[] {
   const configured = [process.env.CONTACT_DEV_IDS, process.env.DEVIDS, process.env.DEVELOPER_ID]
     .filter(Boolean)
     .join(",");
@@ -35,7 +35,7 @@ function getDeveloperIds(): string[] {
   return [...new Set(ids.length ? ids : DEFAULT_DEVELOPER_IDS)];
 }
 
-function isDeveloper(userId: string): boolean {
+export function isDeveloper(userId: string): boolean {
   return getDeveloperIds().includes(userId);
 }
 

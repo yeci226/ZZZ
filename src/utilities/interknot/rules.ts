@@ -16,6 +16,8 @@ export const REPORT_HIDE_THRESHOLD = 3;
 export const POST_COOLDOWN_MS = 300_000;
 export const POSTS_PER_DAY = 10;
 export const COMMENT_COOLDOWN_MS = 15_000;
+/** Largest valid Date value; banned_until at this value means a permanent ban. */
+export const PERMANENT_BAN = 8_640_000_000_000_000;
 
 export type RateResult = { ok: true } | { ok: false; retryAt: number };
 
