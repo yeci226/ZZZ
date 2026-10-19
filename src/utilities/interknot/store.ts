@@ -252,12 +252,13 @@ export class InterknotStore {
     return !!this.db.prepare("SELECT 1 FROM ik_hearts WHERE post_id = ? AND user_id = ?").get(postId, userId);
   }
 
-  reputation(userId: string): number {
+  /** Hearts on visible posts; anonymous posts count only toward the owner's own view, or they would reveal the author. */
+  reputation(userId: string, opts: { includeAnonymous?: boolean } = {}): number {
     return (
       this.db
         .prepare(
           `SELECT COUNT(*) AS n FROM ik_hearts h JOIN ik_posts p ON p.id = h.post_id
-           WHERE p.author_id = ? AND p.status = 'visible'`,
+           WHERE p.author_id = ? AND p.status = 'visible'${opts.includeAnonymous ? "" : " AND p.anonymous = 0"}`,
         )
         .get(userId) as { n: number }
     ).n;
@@ -279,6 +280,10 @@ export class InterknotStore {
         .prepare("SELECT COUNT(*) AS n FROM ik_reports WHERE target_type = ? AND target_id = ?")
         .get(type, targetId) as { n: number }
     ).n;
+  }
+
+  clearReports(type: "post" | "comment", targetId: number): void {
+    this.db.prepare("DELETE FROM ik_reports WHERE target_type = ? AND target_id = ?").run(type, targetId);
   }
 
   recentPostTimes(userId: string, since: number): number[] {

@@ -1,8 +1,9 @@
 import { GlobalFonts, loadImage, type Image, type SKRSContext2D } from "@napi-rs/canvas";
-import { existsSync } from "node:fs";
+import { closeSync, existsSync, openSync, readSync } from "node:fs";
 import { join } from "node:path";
 
 import { getZzzOfficialFont } from "../zzz/canvasFonts.js";
+import { imageSize } from "./covers.js";
 
 export const ASSET_DIR = "./src/assets/images/interknot";
 export const [WIDTH, HEIGHT] = [1920, 1080];
@@ -110,7 +111,7 @@ export function wrapLines(ctx: SKRSContext2D, text: string, maxWidth: number, ma
   return lines;
 }
 
-// Only bundled assets and stored covers are loaded here; the cache is bounded by the post count in view.
+// Decoded bitmaps are large (~4MB per 1024² cover), so only what one page draws is kept around.
 const imageCache = new Map<string, Promise<Image>>();
 const FALLBACK = "./src/assets/images/None.png";
 export function cachedImage(path: string): Promise<Image> {
@@ -118,9 +119,29 @@ export function cachedImage(path: string): Promise<Image> {
   if (!image) {
     image = loadImage(path).catch(() => loadImage(FALLBACK));
     imageCache.set(path, image);
-    if (imageCache.size > 500) imageCache.delete(imageCache.keys().next().value!);
+    if (imageCache.size > 64) imageCache.delete(imageCache.keys().next().value!);
   }
   return image;
+}
+
+// Covers are content-addressed and never change, so their header-read sizes can be cached cheaply.
+const sizeCache = new Map<string, { width: number; height: number } | null>();
+/** Image dimensions from the file header, without decoding; null when unreadable. */
+export function cachedSize(path: string): { width: number; height: number } | null {
+  if (sizeCache.has(path)) return sizeCache.get(path)!;
+  let size: { width: number; height: number } | null = null;
+  try {
+    const fd = openSync(path, "r");
+    const head = Buffer.alloc(4096);
+    const n = readSync(fd, head, 0, head.length, 0);
+    closeSync(fd);
+    size = imageSize(head.subarray(0, n));
+  } catch {
+    size = null;
+  }
+  sizeCache.set(path, size);
+  if (sizeCache.size > 5000) sizeCache.delete(sizeCache.keys().next().value!);
+  return size;
 }
 
 export function avatarPath(id: number): string {

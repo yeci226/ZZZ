@@ -137,3 +137,15 @@ describe("renderAvatarSheet", () => {
     expect(img.width).toBeGreaterThan(0);
   });
 });
+
+describe("renderFeed memory use", () => {
+  it("decodes only covers on the current page, not the whole feed", async () => {
+    const drawing = await import("../src/utilities/interknot/drawing.js");
+    const spy = jest.spyOn(drawing, "cachedImage");
+    await renderFeed(input(60));
+    const coverLoads = spy.mock.calls.filter(([p]) => p === COVER).length;
+    spy.mockRestore();
+    expect(coverLoads).toBeGreaterThan(0);
+    expect(coverLoads).toBeLessThan(30);
+  });
+});

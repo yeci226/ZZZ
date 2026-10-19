@@ -181,3 +181,18 @@ describe("applyModeration", () => {
     expect(s.getProfile("u2")!.bannedUntil).toBe(PERMANENT_BAN);
   });
 });
+
+describe("restore safety", () => {
+  it("never resurrects deleted content", async () => {
+    s.setPostStatus(p, "deleted");
+    expect(await applyModeration(s, "restore", "post", p, t, dir)).toBe(false);
+    expect(s.getPost(p)!.status).toBe("deleted");
+  });
+  it("resets reports so one new report cannot re-hide restored content", async () => {
+    for (const r of ["a", "b", "c"]) await submitReport(s, n, rep(r), t);
+    expect(s.getPost(p)!.status).toBe("hidden");
+    await applyModeration(s, "restore", "post", p, t, dir);
+    await submitReport(s, n, rep("d"), t);
+    expect(s.getPost(p)!.status).toBe("visible");
+  });
+});

@@ -7,6 +7,7 @@ import {
   HEIGHT,
   WIDTH,
   cachedImage,
+  cachedSize,
   drawAvatar,
   drawFeaturedPill,
   drawNewBadge,
@@ -70,13 +71,15 @@ export async function renderFeed(
   const ctx = canvas.getContext("2d");
   ctx.drawImage(await cachedImage(`${ASSET_DIR}/bgDark.jpg`), 0, 0, WIDTH, HEIGHT);
 
-  const covers = await Promise.all(i.cards.map((c) => cachedImage(c.coverPath ?? `${ASSET_DIR}/postDefault.webp`)));
-  const measured = i.cards.map((c, n) => {
+  const coverOf = (c: FeedCard) => c.coverPath ?? `${ASSET_DIR}/postDefault.webp`;
+  // Layout needs every card's aspect ratio, but only cards on this page are decoded.
+  const measured = i.cards.map((c) => {
     ctx.font = font(i.locale, 22);
     const title = wrapLines(ctx, c.title, INNER_W - 34, 2);
     ctx.font = font(i.locale, 19, "normal");
     const excerpt = wrapLines(ctx, c.excerpt, INNER_W - 34, 1);
-    const ratio = covers[n].width ? covers[n].height / covers[n].width : 1;
+    const size = cachedSize(coverOf(c));
+    const ratio = size?.width ? size.height / size.width : 1;
     const coverH = Math.min(COVER_MAX, Math.max(COVER_MIN, Math.round(INNER_W * ratio)));
     return { title, excerpt, coverH, height: FEED.border + coverH + 86 + LINE * title.length };
   });
@@ -103,7 +106,7 @@ export async function renderFeed(
     const { x, h } = boxes[n];
     const y = boxes[n].y - offset;
     if (y + h < 0 || y > HEIGHT) continue;
-    await drawCard(ctx, i, i.cards[n], measured[n], x, y, h, covers[n]);
+    await drawCard(ctx, i, i.cards[n], measured[n], x, y, h, await cachedImage(coverOf(i.cards[n])));
   }
 
   ctx.restore();

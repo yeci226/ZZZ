@@ -67,7 +67,7 @@ process.stdin.on("data", (c) => chunks.push(c)).on("end", async () => {
   try {
     const img = await loadImage(Buffer.concat(chunks));
     if (!img.width || !img.height) process.exit(2);
-    const scale = Math.min(1, Number(process.argv[2]) / img.width);
+    const scale = Math.min(1, Number(process.argv[2]) / img.width, Number(process.argv[3]) / img.height);
     const canvas = createCanvas(Math.round(img.width * scale), Math.max(1, Math.round(img.height * scale)));
     canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
     process.stdout.write(await canvas.encode("webp", 85));
@@ -78,7 +78,7 @@ function reencode(buf: Buffer): Promise<Buffer> {
   return new Promise((done, fail) => {
     const child = spawn(
       process.execPath,
-      ["-e", REENCODE_SCRIPT, resolve("node_modules/@napi-rs/canvas"), String(LIMITS.coverWidth)],
+      ["-e", REENCODE_SCRIPT, resolve("node_modules/@napi-rs/canvas"), String(LIMITS.coverWidth), String(LIMITS.coverHeight)],
       { stdio: ["pipe", "pipe", "ignore"], timeout: REENCODE_TIMEOUT_MS },
     );
     const out: Buffer[] = [];

@@ -159,3 +159,24 @@ describe("persistence", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe("reputation privacy", () => {
+  it("excludes hearts on anonymous posts unless asked for the owner's own total", () => {
+    const named = s.createPost(base, t);
+    const anon = s.createPost({ ...base, anonymous: true }, t);
+    s.toggleHeart(named, "u2", t);
+    s.toggleHeart(anon, "u2", t);
+    expect(s.reputation("u1")).toBe(1);
+    expect(s.reputation("u1", { includeAnonymous: true })).toBe(2);
+  });
+});
+
+describe("report reset", () => {
+  it("clears reports for one target", () => {
+    const p = s.createPost(base, t);
+    s.addReport("post", p, "r1", "spam", "", t);
+    s.addReport("post", p, "r2", "spam", "", t);
+    s.clearReports("post", p);
+    expect(s.addReport("post", p, "r3", "spam", "", t)).toBe(1);
+  });
+});

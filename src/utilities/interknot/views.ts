@@ -17,7 +17,8 @@ import { commentPageFloors, renderDetail } from "./detailRenderer.js";
 import { renderFeed } from "./feedRenderer.js";
 import { isNew, LIMITS, TAGS } from "./rules.js";
 import { AVATAR_IDS, renderAvatarSheet } from "./setupRenderer.js";
-import type { InterknotStore, Post, Profile } from "./store.js";
+import type { DetailComment } from "./detailRenderer.js";
+import type { Comment, InterknotStore, Post, Profile } from "./store.js";
 
 export interface ViewCtx {
   store: InterknotStore;
@@ -81,7 +82,7 @@ export async function buildFeedMessage(ctx: ViewCtx, state: IkState): Promise<Me
   const items = ctx.store.listFeed({ viewerId: ctx.viewerId, main: s.main, sub: s.sub, guildId: ctx.guildId });
   const byId = new Map(items.map((p) => [p.id, p]));
   const result = await renderFeed({
-    viewer: { nickname: profile.nickname, avatarId: profile.avatarId, reputation: ctx.store.reputation(ctx.viewerId) },
+    viewer: { nickname: profile.nickname, avatarId: profile.avatarId, reputation: ctx.store.reputation(ctx.viewerId, { includeAnonymous: true }) },
     mainLabels: MAIN_KEYS.map((k) => ctx.tr(k)),
     subLabels: SUB_KEYS.map((k) => ctx.tr(k)),
     main: MAINS.indexOf(s.main),
@@ -162,7 +163,7 @@ export async function buildDetailMessage(ctx: ViewCtx, state: IkState): Promise<
     coverPath: post.coverHash ? coverPath(post.coverHash) : null,
     featured: post.featured,
     featuredLabel: ctx.tr("interknot_Tab_Featured"),
-    comments: comments.map((c) => ({ floor: c.floor, ...displayAuthor(c, ctx.tr), body: c.body, isOp: c.authorId === post.authorId })),
+    comments: detailComments(ctx, post, comments),
     expanded: !!s.expanded,
     commentPage: s.cpage ?? 0,
     endLabel: ctx.tr("interknot_End"),
@@ -208,6 +209,16 @@ export async function buildDetailMessage(ctx: ViewCtx, state: IkState): Promise<
       ),
     );
   return payload([new AttachmentBuilder(result.buffer, { name: "interknot-post.png" })], rows);
+}
+
+/** [樓主] only when the comment and post share anonymity; a mixed pair would link a named identity to an anonymous one. */
+export function detailComments(ctx: ViewCtx, post: Pick<Post, "authorId" | "anonymous">, comments: Comment[]): DetailComment[] {
+  return comments.map((c) => ({
+    floor: c.floor,
+    ...displayAuthor(c, ctx.tr),
+    body: c.body,
+    isOp: c.authorId === post.authorId && c.anonymous === post.anonymous,
+  }));
 }
 
 /** Floors visible on the viewer's current comment page, offered as report targets. */

@@ -9,6 +9,7 @@ export const LIMITS = {
   nicknameMax: 12,
   coverBytes: 8 * 1024 * 1024,
   coverWidth: 1024,
+  coverHeight: 1536,
 };
 
 export const NEW_WINDOW_MS = 24 * 3600e3;

@@ -7,6 +7,7 @@ import {
   buildDetailMessage,
   buildFeedMessage,
   buildSetupMessage,
+  detailComments,
   displayAuthor,
   postModal,
   reportModal,
@@ -129,5 +130,19 @@ describe("modals", () => {
   it("displayAuthor hides anonymous identity", () => {
     expect(displayAuthor({ anonymous: true, nickname: "RealName", avatarId: 5 }, tr)).toEqual({ nickname: tr("interknot_Anonymous"), avatarId: 1 });
     expect(displayAuthor({ anonymous: false, nickname: "RealName", avatarId: 5 }, tr)).toEqual({ nickname: "RealName", avatarId: 5 });
+  });
+});
+
+describe("OP tag anonymity", () => {
+  const post = (anonymous: boolean) => ({ authorId: "author", anonymous });
+  const comment = (authorId: string, anonymous: boolean) =>
+    ({ id: 1, postId: 1, authorId, floor: 1, body: "x", anonymous, status: "visible" as const, createdAt: t, nickname: "RealName", avatarId: 2 });
+  it("tags the OP only when the comment and post share the same anonymity", () => {
+    expect(detailComments(ctx, post(false), [comment("author", false)])[0].isOp).toBe(true);
+    expect(detailComments(ctx, post(true), [comment("author", true)])[0].isOp).toBe(true);
+    // Either mix would link a named identity to an anonymous one.
+    expect(detailComments(ctx, post(true), [comment("author", false)])[0].isOp).toBe(false);
+    expect(detailComments(ctx, post(false), [comment("author", true)])[0].isOp).toBe(false);
+    expect(detailComments(ctx, post(false), [comment("other", false)])[0].isOp).toBe(false);
   });
 });

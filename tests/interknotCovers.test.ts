@@ -122,3 +122,10 @@ describe("removeCoverIfUnused", () => {
     await expect(removeCoverIfUnused(h, 0, dir)).resolves.toBeUndefined();
   });
 });
+
+describe("storeCover size cap", () => {
+  it("fits tall images inside 1024x1536 so decoded covers stay small", async () => {
+    const img = await loadImage(coverPath(await storeCover(pngOf(500, 4000), dir), dir));
+    expect([img.width, img.height]).toEqual([192, 1536]);
+  });
+});

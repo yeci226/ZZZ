@@ -44,8 +44,12 @@ export async function applyModeration(
   const target = type === "post" ? store.getPost(id) : store.getComment(id);
   if (!target) return false;
   if (action === "restore") {
+    // Only auto-hidden content comes back; deleted content stays deleted (its cover may already be gone).
+    if (target.status !== "hidden") return false;
     if (type === "post") store.setPostStatus(id, "visible");
     else store.setCommentStatus(id, "visible");
+    // A developer cleared it, so it needs three fresh reporters to be hidden again.
+    store.clearReports(type, id);
     return true;
   }
   if (type === "post") {
