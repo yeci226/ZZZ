@@ -59,6 +59,15 @@ export async function renderDetail(
 
   roundedRect(ctx, PANEL.x, PANEL.y, PANEL.w, PANEL.h, 30, { fill: COLORS.panel, stroke: "#2a2a2a", lineWidth: 6 });
   roundedRect(ctx, PANEL.x + 3, PANEL.y + 3, PANEL.w - 6, 112, 28, { corners: ["topLeft", "topRight"], fill: "#1f1f1f" });
+  // The game panel carries a faint halftone texture.
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h, 30);
+  ctx.clip();
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = ctx.createPattern(await cachedImage(`${ASSET_DIR}/panelDots.webp`), "repeat")!;
+  ctx.fillRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h);
+  ctx.restore();
   await drawHeader(ctx, i);
 
   roundedRect(ctx, 300, 308, 790, 570, 22, { fill: "#0e0e0e" });
@@ -99,28 +108,8 @@ async function drawHeader(ctx: SKRSContext2D, i: DetailInput): Promise<void> {
   ctx.fillStyle = "#cfcfcf";
   ctx.fillText(rep, 406, 251);
 
-  // Decorative close button; the real close is the Discord "back" button.
-  ctx.beginPath();
-  ctx.moveTo(1560, 205);
-  ctx.lineTo(1632, 205);
-  ctx.lineTo(1617, 260);
-  ctx.lineTo(1545, 260);
-  ctx.closePath();
-  ctx.fillStyle = COLORS.close;
-  ctx.fill();
-  ctx.strokeStyle = "#ff6a3d";
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 5;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(1578, 222);
-  ctx.lineTo(1598, 242);
-  ctx.moveTo(1598, 222);
-  ctx.lineTo(1578, 242);
-  ctx.stroke();
-  ctx.lineCap = "butt";
+  // Decorative close button (game sprite); the real close is the Discord "back" button.
+  ctx.drawImage(await cachedImage(`${ASSET_DIR}/closeBtn.webp`), 1545, 203, 87, 57);
 }
 
 /** Normal mode: cover | title + body. Returns whether the body was cut off. */
