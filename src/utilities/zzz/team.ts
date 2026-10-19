@@ -1,3 +1,4 @@
+import { commandTipContent } from "../core/commandTips.js";
 import {
   AttachmentBuilder,
   ChatInputCommandInteraction,
@@ -21,6 +22,8 @@ import { toI18nLang } from "../core/i18n.js";
 import { ELEMENT_ICON_BY_TYPE, getElementIconPath } from "./elements.js";
 import { drawFormalCharacterProfileStack } from "./profileCharacterStack.js";
 import type { ZzzProfileStyle } from "./profileStyle.js";
+import { buildCombatEntry } from "./combat/workbench.js";
+import { buildDiscLeaderboardEntry, recordDiscCharacters } from "./discLeaderboard.js";
 
 type TeamPaintingInfo = {
   entryId: string;
@@ -1643,6 +1646,7 @@ export async function handleTeamDraw(
   rankDependentPainting = false,
   components: any[] = [],
   profileStyle: ZzzProfileStyle = "current",
+  ownerId?: string,
 ): Promise<void> {
   drawQueue.push(async () => {
     try {
@@ -1681,6 +1685,8 @@ export async function handleTeamDraw(
         return;
       }
 
+      components = [...components, ...buildCombatEntry(interaction.user.id, userLocale, agents)].slice(0, 5);
+      components = [...components, ...buildDiscLeaderboardEntry(agents, userLocale)].slice(0, 5);
       if (profileStyle === "formal") {
         const formalBuffer = await drawFormalCharacterProfileStack(
           tr,
@@ -1692,6 +1698,7 @@ export async function handleTeamDraw(
           throw new Error(tr("profile_NoImageData"));
         }
         await interaction.editReply({
+          content: commandTipContent(interaction, "team", userLocale, ownerId ? recordDiscCharacters(interaction, ownerId, String(zzz.uid || ""), agents, userLocale) : ""),
           files: [
             new AttachmentBuilder(formalBuffer, {
               name: `CharacterProfiles_${zzz.uid}.png`,
@@ -1795,6 +1802,7 @@ export async function handleTeamDraw(
 
       const buf = (canvas as any).toBuffer("image/png");
       await interaction.editReply({
+        content: commandTipContent(interaction, "team", userLocale, ownerId ? recordDiscCharacters(interaction, ownerId, String(zzz.uid || ""), agents, userLocale) : ""),
         files: [new AttachmentBuilder(buf, { name: "team.png" })],
         embeds: [],
         components,

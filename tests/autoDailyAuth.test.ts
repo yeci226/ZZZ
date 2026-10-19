@@ -110,3 +110,11 @@ describe("AutoDaily authentication policy", () => {
     expect(shouldMarkGeneralInvalid(new Error("HTTP 503"))).toBe(false);
   });
 });
+
+it.each([
+  new Error('10035 Geetest required'), { code: 10035, message: 'authentication required' },
+  new Error('Given UID 801422231 is invalid !'), new Error('UID invalid'),
+  new Error('Required parameter missing'),
+])('does not expire credentials for validation or challenge errors', error => {
+  expect(isExplicitAuthenticationError(error)).toBe(false);
+});

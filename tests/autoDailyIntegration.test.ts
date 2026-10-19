@@ -29,14 +29,15 @@ jest.mock("../src/utilities/utilities.js", () => ({
 }));
 jest.mock("../src/utilities/accountStore.js", () => ({
   getLegacyAccounts: (...args: unknown[]) => mockGetLegacyAccounts(...args),
-  restoreGeneralValidity: (...args: unknown[]) => mockRestoreGeneralValidity(...args),
+  restoreGeneralValidity: (...args: unknown[]) =>
+    mockRestoreGeneralValidity(...args),
   markGeneralInvalid: (...args: unknown[]) => mockMarkGeneralInvalid(...args),
   updateLegacyAccountAtIndex: (...args: unknown[]) =>
     mockUpdateLegacyAccountAtIndex(...args),
   getCharacter: jest.fn(),
 }));
 jest.mock("../src/utilities/core/config.js", () => ({
-  getConfig: () => ({ LOGWEBHOOK: "", ERRWEBHOOK: "" }),
+  getConfig: () => ({ LOGWEBHOOK: "not-a-valid-webhook-url", ERRWEBHOOK: "" }),
   getVerifyBaseUrl: () => "https://verify.invalid",
 }));
 jest.mock("../src/utilities/core/i18n.js", () => ({
@@ -51,7 +52,8 @@ jest.mock("../src/utilities/zzz/dailyPresentation.js", () => ({
     missedDays: 0,
     todayReward: { name: "Reward", cnt: 1, icon: "" },
   }),
-  normalizeSuccessfulDailyClaimInfo: (_before: unknown, after: unknown) => after,
+  normalizeSuccessfulDailyClaimInfo: (_before: unknown, after: unknown) =>
+    after,
 }));
 jest.mock("@yeci226/hoyoapi", () => ({
   LanguageEnum: { TRADIIONAL_CHINESE: "tw", ENGLISH: "en" },
@@ -61,6 +63,18 @@ jest.mock("@yeci226/hoyoapi", () => ({
 import { AutoDailyService } from "../src/utilities/zzz/autoDaily";
 
 describe("AutoDaily passive authentication recovery", () => {
+  test("disabled saved settings never enter the sign-in worker", async () => {
+    mockDb.get.mockImplementation(async (key: string) =>
+      key === "autoDaily"
+        ? { owner: { enabled: false, time: "0" } }
+        : undefined,
+    );
+    const service = new AutoDailyService();
+    const process = jest.spyOn(service as any, "processUser");
+    await service.run();
+    expect(process).not.toHaveBeenCalled();
+    expect(mockZzz).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     jest.clearAllMocks();
     mockBuildDailyCard.mockResolvedValue(Buffer.from("synthetic-png"));
@@ -86,9 +100,11 @@ describe("AutoDaily passive authentication recovery", () => {
         info: jest.fn().mockResolvedValue({
           is_sign: true,
           total_sign_day: 1,
+          today: "2026-09-27",
         }),
         claim: jest.fn(),
         rewards: jest.fn().mockResolvedValue({
+          month: 9,
           awards: [{ name: "Reward", cnt: 1, icon: "" }],
         }),
       },
@@ -121,9 +137,13 @@ describe("AutoDaily passive authentication recovery", () => {
     const sendNotification = jest.fn().mockResolvedValue(true);
     (service as any).sendNotification = sendNotification;
 
-    const first = await (service as any).processUser("user-1", {}, {
-      allowLegacyInvalidRecovery: true,
-    });
+    const first = await (service as any).processUser(
+      "user-1",
+      {},
+      {
+        allowLegacyInvalidRecovery: true,
+      },
+    );
 
     expect(first.failed).toBe(1);
     expect(first.shouldMarkProcessed).toBe(true);
@@ -138,9 +158,13 @@ describe("AutoDaily passive authentication recovery", () => {
     // classification silently instead of notifying the user again.
     expect(sendNotification).not.toHaveBeenCalled();
 
-    const second = await (service as any).processUser("user-1", {}, {
-      allowLegacyInvalidRecovery: true,
-    });
+    const second = await (service as any).processUser(
+      "user-1",
+      {},
+      {
+        allowLegacyInvalidRecovery: true,
+      },
+    );
 
     expect(second.skipped).toBe(1);
     expect(mockZzz).toHaveBeenCalledTimes(1);
@@ -169,9 +193,13 @@ describe("AutoDaily passive authentication recovery", () => {
     const sendNotification = jest.fn().mockResolvedValue(true);
     (service as any).sendNotification = sendNotification;
 
-    const result = await (service as any).processUser("user-1", {}, {
-      allowLegacyInvalidRecovery: true,
-    });
+    const result = await (service as any).processUser(
+      "user-1",
+      {},
+      {
+        allowLegacyInvalidRecovery: true,
+      },
+    );
 
     expect(result.failed).toBe(1);
 
@@ -210,9 +238,13 @@ describe("AutoDaily passive authentication recovery", () => {
     const service = new AutoDailyService();
     (service as any).sendNotification = jest.fn().mockResolvedValue(true);
 
-    const result = await (service as any).processUser("user-1", {}, {
-      allowLegacyInvalidRecovery: true,
-    });
+    const result = await (service as any).processUser(
+      "user-1",
+      {},
+      {
+        allowLegacyInvalidRecovery: true,
+      },
+    );
 
     expect(result.alreadySigned).toBe(1);
     expect(mockZzz).toHaveBeenCalledTimes(1);
@@ -246,9 +278,13 @@ describe("AutoDaily passive authentication recovery", () => {
     const sendNotification = jest.fn().mockResolvedValue(true);
     (service as any).sendNotification = sendNotification;
 
-    const result = await (service as any).processUser("user-1", {}, {
-      allowLegacyInvalidRecovery: true,
-    });
+    const result = await (service as any).processUser(
+      "user-1",
+      {},
+      {
+        allowLegacyInvalidRecovery: true,
+      },
+    );
 
     expect(result.alreadySigned).toBe(1);
 
@@ -285,17 +321,19 @@ describe("AutoDaily passive authentication recovery", () => {
       },
     ]);
 
-    mockGetAllGameRoles.mockRejectedValue(
-      new Error("game record unavailable"),
-    );
+    mockGetAllGameRoles.mockRejectedValue(new Error("game record unavailable"));
 
     const service = new AutoDailyService();
     const sendNotification = jest.fn().mockResolvedValue(true);
     (service as any).sendNotification = sendNotification;
 
-    const result = await (service as any).processUser("user-1", {}, {
-      allowLegacyInvalidRecovery: true,
-    });
+    const result = await (service as any).processUser(
+      "user-1",
+      {},
+      {
+        allowLegacyInvalidRecovery: true,
+      },
+    );
 
     expect(result.alreadySigned).toBe(1);
     expect(result.failed).toBe(0);
@@ -398,5 +436,211 @@ describe("AutoDaily passive authentication recovery", () => {
     expect(delivered).toBe(false);
     expect(mockUsersFetch).not.toHaveBeenCalled();
   });
+});
 
+describe("AutoDaily UID and claim regression", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetUserLang.mockResolvedValue("tw");
+    mockDb.get.mockResolvedValue(undefined);
+    mockGetLegacyAccounts.mockResolvedValue([
+      { uid: "801422231", cookie: "first-cookie", nickname: "First" },
+      { uid: "416561269", cookie: "second-cookie", nickname: "Second" },
+    ]);
+  });
+  it.each([0, -5003, -100, 10035, -1])(
+    "preserves identities and classifies claim code %s",
+    async (code) => {
+      mockZzz.mockImplementation((options) => {
+        if (options.uid !== undefined)
+          throw new Error("UID must not reach constructor");
+        return {
+          daily: {
+            info: jest.fn().mockResolvedValue({
+              is_sign: false,
+              total_sign_day: 0,
+              today: "2026-09-27",
+            }),
+            claim: jest.fn().mockResolvedValue({
+              code,
+              info: { is_sign: true, total_sign_day: 1, today: "2026-09-27" },
+            }),
+            rewards: jest.fn().mockResolvedValue({
+              month: 9,
+              awards: [{ name: "Reward", cnt: 1 }],
+            }),
+          },
+        };
+      });
+      const service = new AutoDailyService();
+      const send = jest.fn().mockResolvedValue(true);
+      (service as any).sendNotification = send;
+      const stats = await (service as any).processUser("user-1", {});
+      const success = code === 0 || code === -5003;
+      expect(stats.shouldMarkProcessed).toBe(success);
+      expect(stats.failed).toBe(success ? 0 : 2);
+      expect(mockMarkGeneralInvalid).toHaveBeenCalledTimes(
+        code === -100 ? 2 : 0,
+      );
+      expect(mockRestoreGeneralValidity).toHaveBeenCalledTimes(success ? 2 : 0);
+      expect(send.mock.calls[0][2]).toEqual([
+        expect.objectContaining({
+          uid: "801422231",
+          nickname: "First",
+          status:
+            code === 0
+              ? "success"
+              : code === -5003
+                ? "already_signed"
+                : "failed",
+        }),
+        expect.objectContaining({ uid: "416561269", nickname: "Second" }),
+      ]);
+    },
+  );
+  it("leaves a timed-out daily request retryable without invalidating the account", async () => {
+    mockZzz.mockImplementation(() => ({
+      daily: {
+        info: jest
+          .fn()
+          .mockRejectedValue(new Error("Request timed out after 15000ms")),
+      },
+    }));
+    const service = new AutoDailyService();
+    (service as any).sendNotification = jest.fn().mockResolvedValue(true);
+    const stats = await (service as any).processUser("user-1", {});
+    expect(stats.shouldMarkProcessed).toBe(false);
+    expect(mockMarkGeneralInvalid).not.toHaveBeenCalled();
+  });
+});
+
+test("statistics stay local even when LOGWEBHOOK is configured", async () => {
+  jest.clearAllMocks();
+  const service = new AutoDailyService();
+  await expect(
+    (service as any).updateStatistics(
+      { total: 0, success: 0, alreadySigned: 0, skipped: 0, failed: 0 },
+      Date.now(),
+      1,
+    ),
+  ).resolves.toBeUndefined();
+  expect(mockUserSend).not.toHaveBeenCalled();
+});
+
+describe("AutoDaily missing game role", () => {
+  let state: Map<string, unknown>;
+  let now: number;
+  let claim: jest.Mock;
+  let send: jest.Mock;
+  let webhook: jest.Mock;
+  const account = {
+    uid: "130000001",
+    cookie: "ltuid_v2=123456789; ltoken_v2=fixture",
+    nickname: "Test",
+  };
+  function service() {
+    const result = new AutoDailyService();
+    (result as any).sendNotification = send;
+    (result as any).errorWebhook = { send: webhook };
+    return result as any;
+  }
+  beforeEach(() => {
+    jest.resetAllMocks();
+    now = Date.UTC(2026, 9, 19, 6);
+    jest.spyOn(Date, "now").mockImplementation(() => now);
+    state = new Map();
+    mockDb.get.mockImplementation(async (key: string) => state.get(key));
+    mockDb.set.mockImplementation(async (key: string, value: unknown) =>
+      state.set(key, value),
+    );
+    mockDb.delete.mockImplementation(async (key: string) => state.delete(key));
+    mockGetUserLang.mockResolvedValue("tw");
+    mockGetLegacyAccounts.mockResolvedValue([account]);
+    claim = jest.fn().mockResolvedValue({
+      code: -10002,
+      status: "找不到遊戲內已建立的角色",
+      info: { is_sign: false, total_sign_day: 0, today: "2026-10-19" },
+    });
+    mockZzz.mockImplementation(() => ({
+      daily: {
+        info: jest.fn().mockResolvedValue({
+          is_sign: false,
+          total_sign_day: 0,
+          today: "2026-10-19",
+        }),
+        claim,
+        rewards: jest.fn().mockResolvedValue({
+          month: 10,
+          awards: [{ name: "Reward", cnt: 1 }],
+        }),
+      },
+    }));
+    send = jest.fn().mockResolvedValue(true);
+    webhook = jest.fn().mockResolvedValue(undefined);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it("persists a 24-hour cooldown across restart and silent cookie refresh; notifies once", async () => {
+    await service().processUser("user", {});
+    expect(claim).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][2][0].error).toBe("daily_MissingRoleDesc");
+    expect(mockMarkGeneralInvalid).not.toHaveBeenCalled();
+    expect(mockRestoreGeneralValidity).not.toHaveBeenCalled();
+
+    now += 3600_000;
+    mockGetLegacyAccounts.mockResolvedValue([
+      { ...account, cookie: "ltuid_v2=123456789; ltoken_v2=refreshed" },
+    ]);
+    expect((await service().processUser("user", {})).skipped).toBe(1);
+    expect(claim).toHaveBeenCalledTimes(1);
+    now += 23 * 3600_000;
+    await service().processUser("user", {});
+    expect(claim).toHaveBeenCalledTimes(2);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(webhook).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps healthy accounts working and clears the restriction after recovery", async () => {
+    await service().processUser("user", {});
+    const successful = {
+      info: jest.fn().mockResolvedValue({
+        is_sign: true,
+        total_sign_day: 1,
+        today: "2026-10-20",
+      }),
+      claim: jest.fn(),
+      rewards: jest
+        .fn()
+        .mockResolvedValue({ month: 10, awards: [{ name: "Reward", cnt: 1 }] }),
+    };
+    mockZzz.mockImplementation(() => ({ daily: successful }));
+    mockGetLegacyAccounts.mockResolvedValue([
+      account,
+      {
+        ...account,
+        uid: "130000002",
+        cookie: "ltuid_v2=987654321; ltoken_v2=healthy",
+      },
+    ]);
+    const mixed = await service().processUser("user", {});
+    expect(mixed.skipped).toBe(1);
+    expect(mixed.alreadySigned).toBe(1);
+    now += 24 * 3600_000;
+    expect((await service().processUser("user", {})).alreadySigned).toBe(2);
+    expect(
+      [...state.keys()].some((key) => key.startsWith("dailyMissingRole:")),
+    ).toBe(false);
+  });
+
+  it.each([-100, 10035, -1])(
+    "does not apply the missing-role cooldown to code %s",
+    async (code) => {
+      claim.mockResolvedValue({ code, info: { is_sign: false } });
+      await service().processUser("user", {});
+      expect(
+        [...state.keys()].some((key) => key.startsWith("dailyMissingRole:")),
+      ).toBe(false);
+    },
+  );
 });

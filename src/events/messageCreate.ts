@@ -1,3 +1,4 @@
+import { trackCommand } from "../telemetry.js";
 import { client } from "../index.js";
 import { Events, Message } from "discord.js";
 import emoji from "../assets/emoji.js";
@@ -23,5 +24,5 @@ client.on(Events.MessageCreate, async (message: Message) => {
     client.commands.message.get(cmd.toLowerCase()) ||
     client.commands.message.find((c) => c.alias?.includes(cmd.toLowerCase()));
 
-  if (command) await command.execute(client, message, args, emoji);
+  if (command) await trackCommand(message, async () => command.execute(client, message, args, emoji), command.name);
 });

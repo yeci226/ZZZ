@@ -50,6 +50,8 @@ const langs = {
   news_SelectPost: "🐣 Please select an article",
 
   daily_Failed: "Sign-in failed",
+  daily_MissingRoleDesc:
+    "HoYoLAB could not find a Zenless Zone Zero character for this account (-10002). Check that you linked the HoYoLAB account you use for ZZZ and have created a character in the game. After fixing this, retry with `/daily`. Automatic check-in will check again every 24 hours without repeating this error notification.",
   daily_AuthExpiredTitle: "HoYoLAB account login expired",
   daily_AuthExpiredDesc:
     "This HoYoLAB account login has expired. Please bind a new Cookie before using check-in or account queries.",
@@ -69,7 +71,8 @@ const langs = {
   autoDaily_NotifyType: "Notification channel: <z>",
   autoDaily_NotifyType_DM: "Private Message",
   autoDaily_NotifyType_Channel: "Channel",
-  autoDaily_GeetestTitle: "<uid> Please complete Geetest to continue auto check-in!",
+  autoDaily_GeetestTitle:
+    "<uid> Please complete Geetest to continue auto check-in!",
 
   card_TodayReward: "Today's Reward",
   card_TomorrowReward: "Tomorrow's Reward",
@@ -120,6 +123,31 @@ const langs = {
   account_AlreadySet: "You have already set <z>!",
   account_UidSetSuccess: "UID <z> set successfully!",
 
+  admin_ManageDone: "Notification management results",
+  admin_ManageInvalid: "Invalid options or source channel.",
+  admin_ManageNewsSource:
+    "News requires a source channel; do not select a user.",
+  admin_ManageUser: "Select a human user or enter a valid user ID.",
+  admin_ManagePermissions:
+    "Cannot use this destination channel. Check member and bot permissions.",
+  admin_Manage_success: "Succeeded",
+  admin_Manage_skipped: "Skipped",
+  admin_Manage_conflict: "Conflict",
+  admin_Manage_failed: "Failed",
+  admin_Manage_source_required: "News skipped: specify a source channel.",
+  admin_Manage_same_channel: "Source and destination are the same.",
+  admin_Manage_permissions: "The user or bot lacks destination permissions.",
+  admin_Manage_changed: "Settings changed; retry using the latest settings.",
+  admin_Manage_target_exists:
+    "The destination already has a news subscription; neither subscription was changed.",
+  admin_Manage_no_match: "No matching active channel notifications.",
+  admin_Manage_unavailable:
+    "Could not complete the operation or verify access. Retry; completed items are not rolled back.",
+  admin_Feature_autoDaily: "Auto daily",
+  admin_Feature_autoRedeem: "Auto redeem",
+  admin_Feature_noteReminder: "Note reminders",
+  admin_Feature_autoMimo: "Auto Mimo",
+  admin_Feature_news: "News subscriptions",
   admin_NoPermission: "You do not have permission to use this command!",
   admin_RemoveFail: "Deletion failed",
   admin_UserNotSet: "<user> has not set this feature yet",
@@ -187,6 +215,13 @@ const langs = {
   profile_SelectCharacterRequired: "Please select at least one character.",
 
   // Profile Canvas
+  profileMain_Current: "Current",
+  profileMain_Previous: "Previous",
+  profileMain_Extreme: "Extreme",
+  profileMain_Trial: "Trial",
+  profileMain_Empty: "No record",
+  profileMain_Unavailable: "Temporarily unavailable",
+  profileMain_Frontier: "Frontier <floor>",
   profileMain_Contacts: "Contacts",
   profileMain_Online: "Online",
   profileMain_Offline: "Offline",
@@ -210,6 +245,7 @@ const langs = {
   profileCharacter_WEngine: "W-Engine",
   profileCharacter_NoWEngine: "No W-Engine Equipped",
   profileCharacter_SlotUnequipped: "Slot <slot> · Not Equipped",
+  profileCharacter_EnhancementDotLegend: "= one substat upgrade",
   profileCharacter_ValidRolls: "Valid Rolls",
   profileCharacter_TwoPiece: "2-Pc",
   profileCharacter_FourPiece: "4-Pc",
@@ -264,17 +300,23 @@ const langs = {
 
   // Settings
   settings_Title: "User Settings",
-  settings_Desc: "These settings are linked to your Discord account and apply across all game accounts.",
+  settings_Desc:
+    "These settings are linked to your Discord account and apply across all game accounts.",
   settings_ProfileStyleLabel: "Profile Card Style",
-  settings_ProfileStyleDesc: "Choose the character-card layout. Style 1 is the formal version with fixed M6 art; Style 2 keeps the current layout.",
-  settings_ProfileStyleFormal: "Style 1 (Formal)",
-  settings_ProfileStyleFormalDesc: "Formal layout; always uses M6 art and ignores painting settings.",
-  settings_ProfileStyleCurrent: "Style 2 (Current)",
-  settings_ProfileStyleCurrentDesc: "Keep the current layout and use the painting settings below.",
-  settings_PaintingLabel: "Imagining Painting",
-  settings_PaintingDesc: "Use wiki Imagining Painting art instead of the standard character portrait.",
-  settings_RankPaintingLabel: "Painting by Rank",
-  settings_RankPaintingDesc: "Automatically select Imagining Painting based on Mindscape rank.",
+  settings_ProfileStyleDesc:
+    "Choose a character card layout. Style 1 uses fixed Mindscape 6 art; Style 2 uses the illustration switches below.",
+  settings_ProfileStyleFormal: "Style 1: Fixed Mindscape art",
+  settings_ProfileStyleFormalDesc:
+    "Uses Mindscape 6 art regardless of the switches below. Your actual character rank is unchanged.",
+  settings_ProfileStyleCurrent: "Style 2: Adjustable illustration",
+  settings_ProfileStyleCurrentDesc:
+    "Choose a standard portrait or Mindscape art using the switches below.",
+  settings_PaintingLabel: "Use Mindscape art",
+  settings_PaintingDesc:
+    "For Style 2. On uses Mindscape art; off uses the standard character portrait.",
+  settings_RankPaintingLabel: "Match art to Mindscape level",
+  settings_RankPaintingDesc:
+    "For Style 2 with Mindscape art enabled. On selects art based on your character’s actual Mindscape level.",
   settings_LocaleLabel: "Language",
   settings_LocaleDesc: "The bot will reply to you in this language.",
   settings_On: "On",

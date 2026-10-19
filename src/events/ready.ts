@@ -1,3 +1,5 @@
+import { runAutoMimo } from "../utilities/mimo/runtime.js";
+import { startWebLoginSync } from '../utilities/webhookLogin.js';
 import { client } from "../index.js";
 import { Events, ActivityType, Client } from "discord.js";
 import Logger from "../utilities/core/logger.js";
@@ -6,6 +8,7 @@ import autoRedeem from "../utilities/zzz/autoRedeem.js";
 import { autoRefreshCookie } from "../utilities/utilities.js";
 import schedule from "node-schedule";
 import { refreshWallpapers } from "../utilities/zzz/wallpaperManager.js";
+import { startBotBannerRotation } from "../utilities/zzz/botBanner.js";
 import {
   downloadAllBangbooIcons,
   downloadAllDiscIcons,
@@ -46,12 +49,20 @@ async function updatePresence() {
 client.once(Events.ClientReady, async () => {
   new Logger("系統").success(`${client.user?.tag} 已經上線！`);
   if (client.cluster.id == 0) {
+    startWebLoginSync();
+    const mimoTick = () => { void runAutoMimo(client, client.db).catch(() => new Logger("Mimo").error("Mimo background check failed")); };
+    schedule.scheduleJob("* * * * *", mimoTick);
+    mimoTick();
     schedule.scheduleJob("0 * * * *", function () {
       autoDailySign();
     });
 
     schedule.scheduleJob("50 7 * * *", function () {
       refreshAllCookies(client);
+    });
+
+    schedule.scheduleJob("* * * * *", () => {
+      void autoRedeem(false).catch(error => new Logger("自動兌換排程").error(String(error)));
     });
 
     schedule.scheduleJob(AUTO_REDEEM_CRON, function () {
@@ -72,7 +83,7 @@ client.once(Events.ClientReady, async () => {
 
     autoDailySign();
     // Fire background tasks immediately — don't wait for redeem/cookie flows
-    refreshWallpapers(client.db).catch(() => {});
+    startBotBannerRotation(client);
     downloadAllDiscIcons().catch(() => {});
     downloadAllElementIcons().catch(() => {});
     downloadAllWeaponIcons().catch(() => {});

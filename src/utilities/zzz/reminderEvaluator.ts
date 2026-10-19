@@ -1,4 +1,4 @@
-import type { ReminderItemKey } from "./noteRenderer.js";
+import type { ReminderAttention, ReminderItemKey } from "./noteRenderer.js";
 import type { NoteReminderConfig } from "./reminderConfig.js";
 
 export interface ReminderTrigger {
@@ -8,6 +8,8 @@ export interface ReminderTrigger {
 
 export interface ReminderEvaluation {
   triggers: ReminderTrigger[];
+  highlighted: ReminderItemKey[];
+  attention: Partial<Record<ReminderItemKey, ReminderAttention>>;
   energyCondition: boolean;
 }
 
@@ -15,7 +17,9 @@ function secondsUntil(value: unknown, nowMs: number): number {
   const number = Number(value) || 0;
   if (number <= 0) return 0;
   // HoYoLAB uses both absolute Unix timestamps and duration fields.
-  return number > 1_000_000_000 ? Math.max(0, number - Math.floor(nowMs / 1000)) : number;
+  return number > 1_000_000_000
+    ? Math.max(0, number - Math.floor(nowMs / 1000))
+    : number;
 }
 
 function serverOffsetHours(region: unknown): number {
@@ -25,7 +29,11 @@ function serverOffsetHours(region: unknown): number {
   return 8;
 }
 
-function nextReset(nowMs: number, offsetHours: number, weekly: boolean): number {
+function nextReset(
+  nowMs: number,
+  offsetHours: number,
+  weekly: boolean,
+): number {
   const shifted = new Date(nowMs + offsetHours * 3600_000);
   const year = shifted.getUTCFullYear();
   const month = shifted.getUTCMonth();
@@ -35,7 +43,8 @@ function nextReset(nowMs: number, offsetHours: number, weekly: boolean): number 
     const weekday = new Date(resetShifted).getUTCDay();
     const daysSinceMonday = (weekday + 6) % 7;
     resetShifted -= daysSinceMonday * 86400_000;
-    if (resetShifted <= nowMs + offsetHours * 3600_000) resetShifted += 7 * 86400_000;
+    if (resetShifted <= nowMs + offsetHours * 3600_000)
+      resetShifted += 7 * 86400_000;
   } else if (resetShifted <= nowMs + offsetHours * 3600_000) {
     resetShifted += 86400_000;
   }
@@ -43,7 +52,9 @@ function nextReset(nowMs: number, offsetHours: number, weekly: boolean): number 
 }
 
 function cycleDate(timestampMs: number, offsetHours: number): string {
-  return new Date(timestampMs + offsetHours * 3600_000).toISOString().slice(0, 10);
+  return new Date(timestampMs + offsetHours * 3600_000)
+    .toISOString()
+    .slice(0, 10);
 }
 
 export function evaluateNoteReminder(
@@ -61,65 +72,140 @@ export function evaluateNoteReminder(
   const dailyCycle = cycleDate(dailyReset, offset);
   const weeklyCycle = cycleDate(weeklyReset, offset);
   const triggers: ReminderTrigger[] = [];
+  const attention: ReminderEvaluation["attention"] = {};
+  const addAttention = (
+    key: ReminderItemKey,
+    remainingSeconds: number | null,
+    near: boolean,
+    urgentHours = 3,
+  ) => {
+    attention[key] = {
+      level: !near
+        ? "normal"
+        : remainingSeconds !== null && remainingSeconds <= urgentHours * 3600
+          ? "urgent"
+          : "soon",
+      remainingSeconds,
+    };
+  };
 
-  const current = Number(note?.energy?.progress?.current ?? note?.energy?.current ?? 0);
+  const current = Number(
+    note?.energy?.progress?.current ?? note?.energy?.current ?? 0,
+  );
   const max = Number(note?.energy?.progress?.max ?? note?.energy?.max ?? 0);
   const restore = Number(note?.energy?.restore ?? 0);
-  const energyCondition = config.energyMode === "amount"
-    ? current >= config.energyValue && current < max
-    : config.energyMode === "time"
-      ? current < max && restore > 0 && restore <= config.energyValue * 60
-      : false;
-  if (energyCondition) triggers.push({ key: "energy", cycle: "energy" });
-
-  if (config.vitalityEnabled && dailyNear && Number(note?.vitality?.current ?? 0) < Number(note?.vitality?.max ?? 0)) {
-    triggers.push({ key: "vitality", cycle: `daily:${dailyCycle}:vitality` });
+  const energyCondition =
+    config.energyMode === "amount"
+      ? current >= config.energyValue && current < max
+      : config.energyMode === "time"
+        ? current < max && restore > 0 && restore <= config.energyValue * 60
+        : false;
+  if (energyCondition) {
+    triggers.push({ key: "energy", cycle: "energy" });
   }
-  if (config.cardSignEnabled && dailyNear && String(note?.card_sign) !== "CardSignDone") {
-    triggers.push({ key: "cardSign", cycle: `daily:${dailyCycle}:cardSign` });
+  if (max > 0 && current >= max) {
+    // A full battery must remain visible when another task sends a reminder.
+    // This visual state does not send or rearm an energy notification.
+    addAttention("energy", 0, true);
+  } else if (restore > 0 || energyCondition) {
+    addAttention("energy", restore > 0 ? restore : null, energyCondition, 2);
+  }
+
+  // Urgency follows the remaining time and configured windows. Delivery switches
+  // and notification history only control sending, never the visual priority.
+  if (Number(note?.vitality?.current ?? 0) < Number(note?.vitality?.max ?? 0)) {
+    addAttention("vitality", (dailyReset - now) / 1000, dailyNear);
+    if (config.vitalityEnabled && dailyNear) {
+      triggers.push({ key: "vitality", cycle: `daily:${dailyCycle}:vitality` });
+    }
+  }
+  if (String(note?.card_sign) !== "CardSignDone") {
+    addAttention("cardSign", (dailyReset - now) / 1000, dailyNear);
+    if (config.cardSignEnabled && dailyNear) {
+      triggers.push({ key: "cardSign", cycle: `daily:${dailyCycle}:cardSign` });
+    }
   }
   const saleState = String(note?.vhs_sale?.sale_state ?? "");
-  const temple = note?.temple_running ?? {};
-  const autoWork = temple?.auto_work;
-  const templeNeedsAction = autoWork?.is_auto_work_running
-    ? Boolean(autoWork.auto_work_ended)
-    : [
-        "ExpeditionStateEnd",
-        "ExpeditionStateInCanSend",
-      ].includes(String(temple?.expedition_state ?? ""))
-      || String(temple?.bench_state ?? "") === "BenchStateCanProduce"
-      || ["ShelveStateSoldOut", "ShelveStateCanSell"].includes(String(temple?.shelve_state ?? ""));
-  if (config.vhsEnabled && dailyNear && (
-    saleState === "SaleStateNo" || saleState === "SaleStateDone" || templeNeedsAction
-  )) {
-    triggers.push({ key: "vhs", cycle: `daily:${dailyCycle}:vhs` });
+  // Match the video-store state displayed by the note renderer.
+  if (saleState === "SaleStateNo" || saleState === "SaleStateDone") {
+    addAttention("vhs", (dailyReset - now) / 1000, dailyNear);
+    if (config.vhsEnabled && dailyNear) {
+      triggers.push({ key: "vhs", cycle: `daily:${dailyCycle}:vhs` });
+    }
   }
 
-  const bountyRefresh = secondsUntil(note?.bounty_commission?.refresh_time, now);
-  const bountyNear = bountyRefresh > 0 ? bountyRefresh <= config.weeklyHours * 3600 : weeklyNearDefault;
-  if (config.bountyEnabled && bountyNear && Number(note?.bounty_commission?.num ?? 0) < Number(note?.bounty_commission?.total ?? 0)) {
-    triggers.push({ key: "bounty", cycle: `weekly:${weeklyCycle}:bounty` });
+  const bountyRefresh = secondsUntil(
+    note?.bounty_commission?.refresh_time,
+    now,
+  );
+  const bountyNear =
+    bountyRefresh > 0
+      ? bountyRefresh <= config.weeklyHours * 3600
+      : weeklyNearDefault;
+  if (
+    Number(note?.bounty_commission?.num ?? 0) <
+    Number(note?.bounty_commission?.total ?? 0)
+  ) {
+    addAttention(
+      "bounty",
+      bountyRefresh || (weeklyReset - now) / 1000,
+      bountyNear,
+    );
+    if (config.bountyEnabled && bountyNear) {
+      triggers.push({ key: "bounty", cycle: `weekly:${weeklyCycle}:bounty` });
+    }
   }
   const weeklyRefresh = secondsUntil(note?.weekly_task?.refresh_time, now);
-  const weeklyNear = weeklyRefresh > 0 ? weeklyRefresh <= config.weeklyHours * 3600 : weeklyNearDefault;
-  if (config.weeklyEnabled && weeklyNear && Number(note?.weekly_task?.cur_point ?? 0) < config.weeklyTarget) {
-    triggers.push({ key: "weekly", cycle: `weekly:${weeklyCycle}:points:${config.weeklyTarget}` });
+  const weeklyNear =
+    weeklyRefresh > 0
+      ? weeklyRefresh <= config.weeklyHours * 3600
+      : weeklyNearDefault;
+  if (Number(note?.weekly_task?.cur_point ?? 0) < config.weeklyTarget) {
+    addAttention(
+      "weekly",
+      weeklyRefresh || (weeklyReset - now) / 1000,
+      weeklyNear,
+    );
+    if (config.weeklyEnabled && weeklyNear) {
+      triggers.push({
+        key: "weekly",
+        cycle: `weekly:${weeklyCycle}:points:${config.weeklyTarget}`,
+      });
+    }
   }
 
-  const events = Array.isArray(calendar?.activity_list) ? calendar.activity_list : [];
-  if (config.eventEnabled) {
-    for (const event of events) {
-      const state = String(event?.state ?? "");
-      const total = Number(event?.monochrome_cnt ?? 0);
-      const got = Number(event?.monochrome_got_cnt ?? 0);
-      const remaining = secondsUntil(event?.left_end_ts, now);
-      if (state === "STATE_IN_PROGRESS" && total > got && remaining > 0 && remaining <= config.eventHours * 3600) {
-        const id = String(event.activity_id ?? event.id ?? "unknown");
-        triggers.push({ key: `event:${id}`, cycle: `event:${id}:${String(event.left_end_ts ?? "")}` });
+  const events = Array.isArray(calendar?.activity_list)
+    ? calendar.activity_list
+    : Array.isArray(calendar?.list)
+      ? calendar.list
+      : [];
+  for (const event of events) {
+    const state = String(event?.state ?? "");
+    const total = Number(event?.monochrome_cnt ?? 0);
+    const got = Number(event?.monochrome_got_cnt ?? 0);
+    const remaining = secondsUntil(event?.left_end_ts, now);
+    if (state === "STATE_IN_PROGRESS" && total > got && remaining > 0) {
+      const id = String(event.activity_id ?? event.id ?? "unknown");
+      addAttention(
+        `event:${id}`,
+        remaining,
+        remaining <= config.eventHours * 3600,
+      );
+      if (config.eventEnabled && remaining <= config.eventHours * 3600) {
+        // left_end_ts can be a countdown that changes on every poll. The
+        // activity ID identifies the event throughout its notification window.
+        triggers.push({ key: `event:${id}`, cycle: `event:${id}` });
       }
     }
   }
-  return { triggers, energyCondition };
+  const highlighted = (Object.keys(attention) as ReminderItemKey[]).filter(
+    (key) => attention[key]!.level !== "normal",
+  );
+  return { triggers, highlighted, attention, energyCondition };
 }
 
-export const __reminderEvaluatorInternals = { secondsUntil, nextReset, serverOffsetHours };
+export const __reminderEvaluatorInternals = {
+  secondsUntil,
+  nextReset,
+  serverOffsetHours,
+};

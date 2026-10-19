@@ -11,11 +11,18 @@ import kr from "../src/assets/languages/kr.js";
 import fr from "../src/assets/languages/fr.js";
 import { createTranslator } from "../src/utilities/core/i18n.js";
 import { getDeadlyModeLabels } from "../src/utilities/zzz/deadlyMode.js";
-import { drawKnockKnockMainProfile } from "../src/utilities/zzz/profileMain.js";
+import { drawOfficialMainProfile } from "../src/utilities/zzz/profileMain.js";
 import { normalizeZzzProfileStyle } from "../src/utilities/zzz/profileStyle.js";
 
 const locales = { en, tw, cn, vi, jp, kr, fr } as const;
 const profileKeys = [
+  "profileMain_Current",
+  "profileMain_Previous",
+  "profileMain_Extreme",
+  "profileMain_Trial",
+  "profileMain_Empty",
+  "profileMain_Unavailable",
+  "profileMain_Frontier",
   "profileMain_Contacts",
   "profileMain_Online",
   "profileMain_Offline",
@@ -39,6 +46,7 @@ const profileKeys = [
   "profileCharacter_WEngine",
   "profileCharacter_NoWEngine",
   "profileCharacter_SlotUnequipped",
+  "profileCharacter_EnhancementDotLegend",
   "profileCharacter_ValidRolls",
   "profileCharacter_TwoPiece",
   "profileCharacter_FourPiece",
@@ -90,14 +98,16 @@ describe("個人介面與危局強襲戰多語系", () => {
   });
 
   it.each(Object.keys(locales))(
-    "%s 個人首頁可實際輸出 1000×625 PNG",
+    "%s 官網風格個人首頁可實際輸出 PNG",
     async (locale) => {
-      const image = await drawKnockKnockMainProfile(
+      const image = await drawOfficialMainProfile(
         createTranslator(locale),
         locale,
-        { nickname: "Test", level: 60, game_role_id: "100000001" },
-        { stats: {}, game_data_show: { all_medal_list: [] } },
-        [],
+        {
+          account: { nickname: "Test", level: 60, game_role_id: "100000001" },
+          record: { stats: {}, game_data_show: {} },
+          characters: [], showcase: [], deadly: [], shiyu: [],
+        },
       );
       expect(image).toBeInstanceOf(Buffer);
       expect(image?.subarray(1, 4).toString("ascii")).toBe("PNG");

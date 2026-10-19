@@ -1,298 +1,166 @@
-import { createCanvas, loadImage, GlobalFonts } from "@napi-rs/canvas";
-import axios from "axios";
-import fs from "fs";
-import path from "path";
-import {
-  calculateRedeemCardLayout,
-  getFirstRedeemRewardIcon,
-  getRedeemStatusPresentation,
-  normalizeRedeemRewards,
-  type RedeemResultStatus,
-} from "../zzz/redeemLayout.js";
-
-const assetDir = path.join(process.cwd(), "src/assets");
-for (const { file, family } of [
-  { file: "zh-tw.ttf", family: "ZZZFont" },
-  { file: "en-us.ttf", family: "ZZZFontEn" },
-]) {
-  for (const candidate of [
-    path.join(assetDir, file),
-    path.join(process.cwd(), "dist/assets", file),
-  ]) {
-    if (fs.existsSync(candidate)) {
-      GlobalFonts.registerFromPath(candidate, family);
-      break;
-    }
-  }
-}
+import { createCanvas } from "@napi-rs/canvas";
+import path from "node:path";
+import { uiFont, uiLocale, uiText, safeImage, numberLocale, type UiLocale } from "../settings/presentation.js";
+import { normalizeRewardDetails, localizeReward, rewardLabel, rewardIcon, type RewardDetail } from "../mimo/rewards.js";
+import type { RedeemResultStatus } from "../zzz/redeemLayout.js";
 
 export interface ZZZRedeemCodeResult {
   code: string;
   rewards?: string[] | string;
   rewardIcons?: string[];
-  status: RedeemResultStatus;
+  rewardDetails?: RewardDetail[];
+  status: RedeemResultStatus | "awaiting";
+  privateCode?: boolean;
 }
-
-export interface ZZZRedeemAccountResult {
-  nickname: string;
-  uid: string;
-  title?: string;
-  codes: ZZZRedeemCodeResult[];
-}
-
+export interface ZZZRedeemAccountResult { nickname: string; uid: string; title?: string; codes: ZZZRedeemCodeResult[] }
 export interface ZZZRedeemCardPayload {
   accounts: ZZZRedeemAccountResult[];
+  locale?: string;
+  source?: "manual" | "auto" | "mimo";
+  at?: number;
+  points?: { earned: number; spent: number; remaining: number };
 }
-
-export const ZZZ_REDEEM_BACKGROUND = path.join(
-  assetDir,
-  "images",
-  "profileBgDark.png",
-);
-
-const imageCache = new Map<string, Buffer>();
-
-async function loadImageBuffer(source: string): Promise<Buffer | null> {
-  if (!source) return null;
-  const cached = imageCache.get(source);
-  if (cached) return cached;
-  try {
-    const buffer = /^https?:\/\//i.test(source)
-      ? Buffer.from(
-          (
-            await axios.get<ArrayBuffer>(source, {
-              responseType: "arraybuffer",
-              timeout: 8000,
-            })
-          ).data,
-        )
-      : fs.readFileSync(source);
-    imageCache.set(source, buffer);
-    return buffer;
-  } catch {
-    return null;
-  }
-}
-
-function roundedRect(
-  ctx: any,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-): void {
-  const r = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
-function fitText(
-  ctx: any,
-  text: string,
-  maxWidth: number,
-  font: string,
-  startSize: number,
-  minSize: number,
-  weight = "bold",
-): void {
-  let size = startSize;
-  do {
-    ctx.font = `${weight} ${size}px ${font}`;
-    if (ctx.measureText(text).width <= maxWidth || size <= minSize) return;
-    size -= 1;
-  } while (size >= minSize);
-}
-
-function ellipsize(ctx: any, text: string, maxWidth: number): string {
-  if (ctx.measureText(text).width <= maxWidth) return text;
-  let value = text;
-  while (value.length > 1 && ctx.measureText(`${value}…`).width > maxWidth) {
-    value = value.slice(0, -1);
-  }
-  return `${value}…`;
-}
-
-function drawCover(
-  ctx: any,
-  image: any,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-): void {
-  const scale = Math.max(width / image.width, height / image.height);
-  const drawWidth = image.width * scale;
-  const drawHeight = image.height * scale;
-  ctx.drawImage(
-    image,
-    x + (width - drawWidth) / 2,
-    y + (height - drawHeight) / 2,
-    drawWidth,
-    drawHeight,
-  );
-}
-
-async function drawBackground(ctx: any, width: number, height: number): Promise<void> {
-  const backgroundBuffer = await loadImageBuffer(ZZZ_REDEEM_BACKGROUND);
-  if (backgroundBuffer) {
-    try {
-      const background = await loadImage(backgroundBuffer);
-      drawCover(ctx, background, 0, 0, width, height);
-      ctx.fillStyle = "rgba(5, 7, 4, 0.34)";
-      ctx.fillRect(0, 0, width, height);
-      return;
-    } catch {
-      // Fall back to the branded dark surface below.
+export const ZZZ_REDEEM_BACKGROUND = path.resolve("src/assets/images/profileBgDark.png");
+const colors = { success: "#d2ee8d", already_claimed: "#9bb7d2", awaiting: "#e8cd8d", invalid: "#e9a897", failed: "#e9a897" };
+interface Row { account: ZZZRedeemAccountResult; result: ZZZRedeemCodeResult; reward?: RewardDetail }
+export function redeemCardRows(payload: ZZZRedeemCardPayload): Row[] {
+  const rows: Row[] = [];
+  for (const account of payload.accounts) {
+    for (const result of [...account.codes].sort((a, b) => Number(b.status === "success") - Number(a.status === "success"))) {
+      const details = result.rewardDetails || normalizeRewardDetails(result.rewards, result.rewardIcons);
+      for (const reward of details.length ? details : [undefined]) rows.push({ account, result, reward });
     }
   }
-
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, "#15170F");
-  gradient.addColorStop(0.55, "#222217");
-  gradient.addColorStop(1, "#10120D");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
+  return rows;
 }
-
-async function drawCodeRow(
-  ctx: any,
-  result: ZZZRedeemCodeResult,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  font: string,
-): Promise<void> {
-  const presentation = getRedeemStatusPresentation(result.status);
-  roundedRect(ctx, x, y, width, height, 12);
-  ctx.fillStyle = "rgba(8, 9, 6, 0.58)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.10)";
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  ctx.fillStyle = presentation.color;
-  ctx.fillRect(x, y + 12, 3, height - 24);
-
-  const iconSource = getFirstRedeemRewardIcon(result);
-  const iconBuffer = iconSource ? await loadImageBuffer(iconSource) : null;
-  let textX = x + 22;
-  if (iconBuffer) {
-    try {
-      const icon = await loadImage(iconBuffer);
-      const iconSize = 58;
-      const iconX = x + 15;
-      const iconY = y + (height - iconSize) / 2;
-      roundedRect(ctx, iconX, iconY, iconSize, iconSize, 10);
-      ctx.fillStyle = "rgba(255,255,255,0.08)";
-      ctx.fill();
-      const scale = Math.min((iconSize - 8) / icon.width, (iconSize - 8) / icon.height);
-      const drawWidth = icon.width * scale;
-      const drawHeight = icon.height * scale;
-      ctx.drawImage(
-        icon,
-        iconX + (iconSize - drawWidth) / 2,
-        iconY + (iconSize - drawHeight) / 2,
-        drawWidth,
-        drawHeight,
-      );
-      textX = iconX + iconSize + 16;
-    } catch {
-      // Keep the compact text-only row when the optional icon cannot be decoded.
+function statusText(locale: UiLocale, status: ZZZRedeemCodeResult["status"]) { return uiText(locale, status === "failed" ? "redeemFailed" : status); }
+function lines(ctx: any, value: string, width: number, max = 2): string[] {
+  const result: string[] = []; let line = "";
+  for (const token of value.match(/\S+\s*/g) || []) {
+    if (ctx.measureText(line + token.trimEnd()).width > width && line) { result.push(line.trim()); line = ""; }
+    for (const c of token) {
+      if (ctx.measureText(line + c).width > width && line) { result.push(line.trim()); line = ""; }
+      line += c;
     }
   }
-
-  const statusWidth = 125;
-  ctx.fillStyle = "#FFFFFF";
-  fitText(ctx, result.code, width - (textX - x) - statusWidth - 25, font, 22, 16);
-  ctx.fillText(result.code, textX, y + 34);
-
-  ctx.font = `15px ${font}`;
-  ctx.fillStyle = "rgba(255,255,255,0.64)";
-  const rewardText = normalizeRedeemRewards(result.rewards, result.status);
-  ctx.fillText(
-    ellipsize(ctx, rewardText, width - (textX - x) - 25),
-    textX,
-    y + 62,
-  );
-
-  ctx.textAlign = "right";
-  ctx.font = `bold 14px ${font}`;
-  ctx.fillStyle = presentation.color;
-  ctx.fillText(presentation.label, x + width - 18, y + 33);
-  ctx.textAlign = "left";
+  if (line.trim()) result.push(line.trim());
+  if (result.length > max) { result.length = max; result[max - 1] = result[max - 1].slice(0, -1) + "…"; }
+  return result;
 }
-
-export async function renderZZZRedeemCard(
-  payload: ZZZRedeemCardPayload,
-): Promise<Buffer> {
-  const accounts = payload.accounts || [];
-  const layout = calculateRedeemCardLayout(
-    accounts.map((account) => account.codes.length),
-  );
-  const canvas = createCanvas(layout.width, layout.canvasHeight);
-  const ctx = canvas.getContext("2d") as any;
-  const font = '"ZZZFont", "ZZZFontEn", sans-serif';
-
-  await drawBackground(ctx, layout.width, layout.canvasHeight);
-  ctx.fillStyle = "#E8FF70";
-  ctx.fillRect(34, 29, 5, 31);
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = `bold 27px ${font}`;
-  ctx.fillText(accounts[0]?.title?.trim() || "自動兌換", 53, 54);
-
-  let accountY = 82;
-  for (let accountIndex = 0; accountIndex < accounts.length; accountIndex += 1) {
-    const account = accounts[accountIndex]!;
-    ctx.fillStyle = "#F7F3DD";
-    fitText(ctx, account.nickname || "未命名帳號", 520, font, 23, 17);
-    ctx.fillText(account.nickname || "未命名帳號", 34, accountY + 27);
-    ctx.fillStyle = "rgba(255,255,255,0.48)";
-    ctx.font = `16px ${font}`;
-    ctx.fillText(`UID ${account.uid}`, 34, accountY + 52);
-
-    const rowsY = accountY + layout.accountHeaderHeight;
-    if (account.codes.length === 0) {
-      await drawCodeRow(
-        ctx,
-        { code: "沒有新的兌換碼", status: "already_claimed" },
-        34,
-        rowsY,
-        layout.width - 68,
-        layout.rowHeight,
-        font,
-      );
-    } else {
-      for (let index = 0; index < account.codes.length; index += 1) {
-        await drawCodeRow(
-          ctx,
-          account.codes[index]!,
-          34,
-          rowsY + index * (layout.rowHeight + layout.rowGap),
-          layout.width - 68,
-          layout.rowHeight,
-          font,
-        );
+export interface RedeemGroup { account: ZZZRedeemAccountResult; result: ZZZRedeemCodeResult; rows: Row[] }
+/** One exchange result owns all its rewards, including when continued on another page. */
+export function redeemCardGroups(rows: Row[]): RedeemGroup[] {
+  const groups: RedeemGroup[] = [];
+  for (const row of rows) {
+    let group = groups[groups.length - 1];
+    if (!group || group.account !== row.account || group.result !== row.result) { group = { account: row.account, result: row.result, rows: [] }; groups.push(group); }
+    group.rows.push(row);
+  }
+  return groups;
+}
+interface ReceiptBlock { group: RedeemGroup; x: number; y: number; width: number; height: number; columns: number }
+function receiptLayout(rows: Row[]) {
+  const accounts: { account: ZZZRedeemAccountResult; y: number; blocks: ReceiptBlock[] }[] = [];
+  let cursor = 0, used = 0, shelfHeight = 0;
+  for (const group of redeemCardGroups(rows)) {
+    let account = accounts[accounts.length - 1];
+    if (!account || account.account !== group.account) {
+      cursor += shelfHeight; used = 0; shelfHeight = 0;
+      account = { account: group.account, y: cursor, blocks: [] }; accounts.push(account); cursor += 60;
+    }
+    const columns = Math.min(3, group.rows.length);
+    if (used + columns > 3) { cursor += shelfHeight; used = 0; shelfHeight = 0; }
+    const height = 54 + Math.ceil(group.rows.length / columns) * 184;
+    account.blocks.push({ group, x: 28 + used * 293, y: cursor, width: columns * 293 - 15, height, columns });
+    used += columns; shelfHeight = Math.max(shelfHeight, height + 14);
+  }
+  return { accounts, height: cursor + shelfHeight };
+}
+async function renderPage(payload: ZZZRedeemCardPayload, rows: Row[], page: number, total: number): Promise<Buffer> {
+  const locale = uiLocale(payload.locale), font = uiFont(locale), width = 920, layout = receiptLayout(rows);
+  const headerHeight = 98 + (payload.points ? 56 : 0);
+  const canvas = createCanvas(width, headerHeight + layout.height + (rows.length ? 34 : 108));
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#14171b"; ctx.fillRect(0, 0, width, canvas.height);
+  const background = await safeImage(ZZZ_REDEEM_BACKGROUND);
+  if (background) { ctx.globalAlpha = 0.15; ctx.drawImage(background, 0, 0, width, canvas.height); ctx.globalAlpha = 1; }
+  ctx.fillStyle = "#dced9e"; ctx.fillRect(28, 27, 4, 31);
+  ctx.fillStyle = "#f5f7f9"; ctx.font = `400 27px ${font}`;
+  ctx.fillText((payload.source === "mimo" ? "Mimo · " : "") + uiText(locale, "result"), 48, 52);
+  ctx.font = `400 16px ${font}`; ctx.fillStyle = "#b9c1ca";
+  ctx.fillText(new Intl.DateTimeFormat(numberLocale[locale], { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(payload.at ?? Date.now()) + " · UTC+8", 30, 81);
+  if (total > 1) { ctx.textAlign = "right"; ctx.fillText(`${page + 1} / ${total}`, width - 30, 50); ctx.textAlign = "left"; }
+  if (payload.points) {
+    const p = payload.points;
+    ctx.font = `400 18px ${font}`; ctx.fillStyle = "#d3e4b0";
+    ctx.fillText(`${uiText(locale, "points")} · ${uiText(locale, "earned")} +${p.earned}   ${uiText(locale, "spent")} -${p.spent}   ${uiText(locale, "remaining")} ${p.remaining}`, 30, 125, 860);
+  }
+  for (const account of layout.accounts) {
+    const y = headerHeight + account.y;
+    ctx.textAlign = "left"; ctx.fillStyle = "#edf1f5"; ctx.font = `400 21px ${font}`; ctx.fillText(account.account.nickname || account.account.uid, 30, y + 22, 530);
+    ctx.fillStyle = "#c7d0da"; ctx.font = `400 17px ${font}`; ctx.fillText(`UID ${account.account.uid}`, 30, y + 46);
+    for (const block of account.blocks) {
+      const { x, width: w, height, columns, group } = block, top = headerHeight + block.y, result = group.result;
+      ctx.fillStyle = "#1e2329"; ctx.beginPath(); ctx.roundRect(x, top, w, height, 12); ctx.fill();
+      ctx.fillStyle = colors[result.status]; ctx.beginPath(); ctx.roundRect(x + 14, top, w - 28, 3, 1); ctx.fill();
+      const count = result.rewardDetails?.length || normalizeRewardDetails(result.rewards, result.rewardIcons).length;
+      const countLabel = count > 1 ? `${group.rows.length < count ? `${group.rows.length}/${count}` : count} ${uiText(locale, "items")}` : "";
+      ctx.textAlign = "left"; ctx.font = `400 16px ${font}`;
+      ctx.fillText(statusText(locale, result.status), x + 14, top + 25, w - (countLabel ? 100 : 28));
+      if (countLabel) { ctx.textAlign = "right"; ctx.fillText(countLabel, x + w - 14, top + 25, 80); }
+      ctx.textAlign = "left"; ctx.font = `400 12px ${font}`; ctx.fillStyle = "#b0bac5";
+      const identifier = payload.source === "mimo" || result.privateCode ? `Mimo #${group.account.codes.indexOf(result) + 1}` : result.code;
+      ctx.fillText(identifier.slice(0, 100), x + 14, top + 44, w - 28);
+      const tileWidth = (w - 20 - (columns - 1) * 12) / columns;
+      for (const [index, row] of group.rows.entries()) {
+        const tileX = x + 10 + (index % columns) * (tileWidth + 12), tileY = top + 54 + Math.floor(index / columns) * 184, center = tileX + tileWidth / 2;
+        const reward = row.reward ? localizeReward(row.reward, locale) : undefined;
+        ctx.fillStyle = "#292e35"; ctx.beginPath(); ctx.roundRect(tileX, tileY, tileWidth, 174, 9); ctx.fill();
+        ctx.font = `400 20px ${font}`;
+        const nameLines = lines(ctx, reward?.name || uiText(locale, "unknownReward"), tileWidth - 24);
+        const iconSize = nameLines.length > 1 ? 56 : 70;
+        const image = (await safeImage(rewardIcon(reward?.kind))) || await safeImage(reward?.icon);
+        if (image) { const scale = iconSize / Math.max(image.width, image.height); ctx.drawImage(image, center - image.width * scale / 2, tileY + 12 + (iconSize - image.height * scale) / 2, image.width * scale, image.height * scale); }
+        else {
+          // A neutral gift symbol keeps unavailable artwork distinct from a broken image.
+          ctx.fillStyle = "#8793a1";
+          ctx.fillRect(center - 22, tileY + 40, 44, 29);
+          ctx.fillRect(center - 26, tileY + 32, 52, 10);
+          ctx.strokeStyle = "#c7d0da"; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(center, tileY + 32); ctx.lineTo(center, tileY + 69);
+          ctx.moveTo(center, tileY + 32); ctx.bezierCurveTo(center - 28, tileY + 32, center - 17, tileY + 10, center, tileY + 32);
+          ctx.bezierCurveTo(center + 17, tileY + 10, center + 28, tileY + 32, center, tileY + 32); ctx.stroke();
+        }
+        ctx.textAlign = "center"; ctx.fillStyle = "#f2f4f7"; ctx.font = `400 20px ${font}`;
+        nameLines.forEach((line, i) => ctx.fillText(line, center, tileY + 104 + (i - (nameLines.length - 1) / 2) * 23, tileWidth - 24));
+        if (reward?.quantity !== undefined) { ctx.fillStyle = colors[result.status]; ctx.font = `400 27px ${font}`; ctx.fillText(`× ${reward.quantity.toLocaleString(numberLocale[locale])}`, center, tileY + 149, tileWidth - 24); }
       }
     }
-    accountY += layout.accountHeights[accountIndex]! + layout.accountGap;
   }
-
+  ctx.textAlign = "left";
+  if (!rows.length) { ctx.fillStyle = "#cad0d7"; ctx.font = `20px ${font}`; ctx.fillText(uiText(locale, "unavailable"), 30, headerHeight + 35); }
+  ctx.fillStyle = "#b4bec9"; ctx.font = `400 15px ${font}`; ctx.fillText(uiText(locale, "mail"), 30, canvas.height - 15, 860);
   return canvas.toBuffer("image/png");
 }
+export async function buildZZZRedeemCards(payload: ZZZRedeemCardPayload): Promise<Buffer[]> {
+  const pageRows: Row[][] = [], pages: Buffer[] = [];
+  // Never put the end of one account and the start of another on the same image.
+  for (const account of payload.accounts) {
+    const rows = redeemCardRows({ ...payload, accounts: [account] });
+    for (let i = 0; i < rows.length; i += 6) pageRows.push(rows.slice(i, i + 6));
+  }
+  if (!pageRows.length) pageRows.push([]);
+  for (let i = 0; i < pageRows.length; i++) pages.push(await renderPage(payload, pageRows[i], i, pageRows.length));
+  return pages;
+}
+export async function renderZZZRedeemCard(payload: ZZZRedeemCardPayload): Promise<Buffer> { return (await buildZZZRedeemCards(payload))[0]; }
+export const buildZZZRedeemCard = renderZZZRedeemCard;
 
-export async function buildZZZRedeemCard(
-  payload: ZZZRedeemCardPayload,
-): Promise<Buffer> {
-  return renderZZZRedeemCard(payload);
+/** Text fallback uses the same actual outcomes and never reveals private codes. */
+export function redeemSummaryText(payload: ZZZRedeemCardPayload): string {
+  const locale = uiLocale(payload.locale);
+  return [uiText(locale, "result"), ...payload.accounts.flatMap(account => [
+    `${account.nickname} · UID ${account.uid}`,
+    ...account.codes.map(result => `${statusText(locale, result.status)} · ${(result.rewardDetails || normalizeRewardDetails(result.rewards, result.rewardIcons)).map(r => rewardLabel(r, locale)).join(" / ") || uiText(locale, "unknownReward")}`),
+  ])].join("\n");
 }

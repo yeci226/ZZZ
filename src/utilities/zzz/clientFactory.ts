@@ -2,6 +2,18 @@ import { LanguageEnum, ZenlessZoneZero } from "@yeci226/hoyoapi";
 
 type ZzzClientConstructor<T> = new (options: any) => T;
 
+/** Daily endpoints authenticate with the cookie; UID inference is unnecessary. */
+export function createZzzDailyClient({
+  cookie,
+  lang,
+}: Pick<
+  ConstructorParameters<typeof ZenlessZoneZero>[0],
+  "cookie" | "lang"
+>): Pick<ZenlessZoneZero, "daily"> {
+  const client = new ZenlessZoneZero({ cookie, lang });
+  return { daily: client.daily };
+}
+
 export function createZzzClient<T = ZenlessZoneZero>(
   options: ConstructorParameters<typeof ZenlessZoneZero>[0],
   ClientConstructor: ZzzClientConstructor<T> = ZenlessZoneZero as unknown as ZzzClientConstructor<T>,

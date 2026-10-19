@@ -1,3 +1,4 @@
+import { commandTipContent } from "../core/commandTips.js";
 import { client } from "../../index.js";
 import {
   EmbedBuilder,
@@ -25,8 +26,11 @@ import {
   normalizeZzzProfileStyle,
   type ZzzProfileStyle,
 } from "./profileStyle.js";
-import { drawKnockKnockMainProfile } from "./profileMain.js";
+import { drawOfficialMainProfile } from "./profileMain.js";
+import { loadProfileMainData, type ProfileMainData } from "./profileMainData.js";
 import { getElementIconPath } from "./elements.js";
+import { queueProfileDiscSync } from "./discProfileSync.js";
+import { discContent } from "./discLeaderboardCopy.js";
 import { buildProfileCharacterSelectRows } from "./profileCharacterSelectMenu.js";
 import {
   createCanvas,
@@ -205,34 +209,20 @@ export async function handleProfileDraw(
       });
 
       // Request
-      const requestStartTime = Date.now();
       const userLocale =
         (await getUserLang(interaction.user.id)) ||
         toI18nLang(interaction.locale) ||
         "en";
-      const record = await zzz.record.records();
-      const characters = await zzz.record.characters();
-      const userData = await getUserHoyolabData(
-        interaction,
-        tr,
-        user.id,
-        userLocale,
+      const data = await loadProfileMainData(zzz, {
+        targetUserId: user.id,
         accountIndex,
-      );
-
-      const requestEndTime = Date.now();
-
-      // Generate
-      const drawStartTime = Date.now();
-      const imageBuffer = await drawMainImage(
-        tr,
-        userLocale,
-        userData,
-        record,
-        characters,
-      );
+        locale: userLocale,
+        loadAccount: (userId, locale, index) =>
+          getUserHoyolabData(interaction, tr, userId, locale, index),
+      });
+      const characters = data.characters;
+      const imageBuffer = await drawMainImage(tr, userLocale, data);
       if (!imageBuffer) throw new Error(tr("profile_NoImageData"));
-      const drawEndTime = Date.now();
 
       // bla bla bla Builder
       const image = new AttachmentBuilder(imageBuffer, {
@@ -246,11 +236,13 @@ export async function handleProfileDraw(
         accountIndex,
       );
 
-      interaction.editReply({
+      await interaction.editReply({
+        content: commandTipContent(interaction, "profile", userLocale, user.id === interaction.user.id ? discContent(userLocale, "syncStarted") : ""),
         embeds: [],
         components: [...rowSelects],
         files: [image],
       });
+      queueProfileDiscSync(interaction, user.id, zzz, characters, userLocale);
     } catch (error: any) {
       if (error?.code == "-501000") {
         interaction.editReply({
@@ -297,440 +289,9 @@ export async function handleProfileDraw(
 export async function drawMainImage(
   tr: (key: string, args?: any) => string,
   userLocale: string,
-  userData: any,
-  record: any,
-  characters: any[] = record?.avatar_list ?? [],
+  data: ProfileMainData,
 ) {
-  return drawKnockKnockMainProfile(
-    tr,
-    userLocale,
-    userData,
-    record,
-    characters,
-  );
-
-  try {
-    const selectedFont =
-      fonts[userLocale as keyof typeof fonts] || fonts.default;
-    const canvas = createCanvas(1000, 1600);
-    const ctx = canvas.getContext("2d");
-
-    const imagePaths = [
-      `./src/assets/images/profileBg.png`,
-      record.cur_head_icon_url,
-      ...(await Promise.all(
-        record.avatar_list.map(async (agent: any) => {
-          if (agent.skin_list && agent.skin_list.length > 0) {
-            const skin = agent.skin_list.find(
-              (s: any) => s.unlocked && !s.is_original,
-            );
-            if (skin?.skin_vertical_painting_url) {
-              return skin.skin_vertical_painting_url;
-            }
-          }
-          return agent.role_vertical_painting_url ?? agent.role_square_url;
-        }),
-      )),
-      "./src/assets/images/icons/other/showmore.png",
-      ...record.buddy_list.map((buddy: any) => buddy.bangboo_rectangle_url),
-      "./src/assets/images/icons/other/showmore.png",
-    ];
-    const images = await Promise.all(imagePaths.map((p) => loadImageAsync(p)));
-    const [bg, userHeadIcon, ...restImages] = images;
-    const agentImages = restImages.slice(0, record.avatar_list.length + 1);
-    const buddyImages = restImages.slice(record.avatar_list.length + 1);
-    const boxColor = "rgba(48, 48, 48, 255)";
-
-    // Draw BackGround
-    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
-
-    // Draw BackGround Text
-    ctx.fillStyle = "white";
-    ctx.textAlign = "left";
-    ctx.font = `24px ${selectedFont}`;
-    ctx.fillText(tr("InterKnot"), 30, 33);
-
-    // Draw User Card
-    if (record.game_data_show?.card_url) {
-      // Main Card
-      const cardImage = await loadImageAsync(record.game_data_show.card_url);
-
-      const cardImageHeight = 265;
-      const cardImageScale = Math.min(1, cardImageHeight / cardImage.height);
-      ctx.drawImage(
-        cardImage,
-        -(cardImage.width * cardImageScale) / 2 + canvas.width * 0.66,
-        0,
-        cardImage.width * cardImageScale,
-        cardImageHeight,
-      );
-
-      // Underline
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(0, cardImageHeight);
-      ctx.lineTo(canvas.width, cardImageHeight);
-      ctx.stroke();
-    }
-
-    // Draw User Info
-    // Draw circular background for user head icon
-    const headIconX = 54;
-    const headIconY = 94;
-    const headIconSize = 129;
-
-    // Draw circular background
-    ctx.beginPath();
-    ctx.arc(
-      headIconX + headIconSize / 2,
-      headIconY + headIconSize / 2,
-      headIconSize / 2 + 2.5,
-      0,
-      Math.PI * 2,
-    );
-    ctx.fillStyle = "rgba(162, 162, 162, 1)";
-    ctx.fill();
-
-    // Draw border
-    ctx.beginPath();
-    ctx.arc(
-      headIconX + headIconSize / 2,
-      headIconY + headIconSize / 2,
-      headIconSize / 2 + 2.5,
-      0,
-      Math.PI * 2,
-    );
-    ctx.strokeStyle = "rgba(22, 22, 22, 1)";
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // Draw user head icon
-    ctx.drawImage(
-      userHeadIcon,
-      headIconX,
-      headIconY,
-      headIconSize,
-      headIconSize,
-    );
-
-    const userNameX = 200;
-    // Draw User Name
-    ctx.textAlign = "left";
-    drawText(
-      ctx,
-      userData?.nickname ?? "Unknown",
-      selectedFont,
-      170,
-      46,
-      22,
-      userNameX,
-      record.game_data_show?.personal_title ? 150 : 180,
-    ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
-
-    // Draw User Name Outline
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
-    ctx.lineWidth = 2;
-    ctx.strokeText(
-      userData?.nickname ?? "Unknown",
-      userNameX,
-      record.game_data_show?.personal_title ? 150 : 180,
-    );
-
-    // Draw User level
-    const userNameWidth = ctx.measureText(userData?.nickname ?? "").width;
-    const userLevelString = `Lv.${userData.level}`;
-    drawTextWithBackground(
-      ctx,
-      userLevelString,
-      userNameX + userNameWidth + 20,
-      145,
-      {
-        font: `25px ${selectedFont}`,
-        textColor: "black",
-        backgroundColor: "#FFDE00",
-        padding: 7.5,
-      },
-    );
-
-    // Draw User title
-    const gameDataShow = record.game_data_show ?? null;
-    const title = gameDataShow?.personal_title ?? null;
-    if (title) {
-      const titleMainColor = `#${gameDataShow.title_main_color.toUpperCase()}`;
-      const titleBottomColor = `#${gameDataShow.title_bottom_color.toUpperCase()}`;
-
-      ctx.textAlign = "left";
-      drawTextWithBackground(ctx, `${title}`, 210, 200, {
-        font: `30px ${selectedFont}`,
-        textColor: "black",
-        backgroundColor: "black",
-        padding: 12.5,
-        radius: 20,
-        outlineWidth: 3,
-        outlineColor: "rgba(255, 255, 255, 0.12)",
-      });
-
-      const gradient = ctx.createLinearGradient(0, 220 - 26, 0, 220);
-      gradient.addColorStop(0, titleMainColor);
-      gradient.addColorStop(1, titleBottomColor);
-
-      ctx.font = `30px ${selectedFont}`;
-      ctx.fillStyle = gradient;
-      ctx.fillText(`${title}`, 210, 200);
-    }
-
-    // // Draw User World Level Name
-    // ctx.textAlign = "left";
-    // drawText(
-    //   ctx,
-    //   tr("InterKnotReputation"),
-    //   selectedFont,
-    //   320,
-    //   28,
-    //   20,
-    //   425,
-    //   128
-    // ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
-    // ctx.textAlign = "right";
-    // drawText(
-    //   ctx,
-    //   record.stats.world_level_name,
-    //   selectedFont,
-    //   160,
-    //   28,
-    //   22,
-    //   970,
-    //   128
-    // ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
-
-    // // Draw User Active Days
-    // ctx.textAlign = "left";
-    // drawText(ctx, tr("ActiveDays"), selectedFont, 320, 28, 20, 425, 178); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
-    // ctx.fillStyle = "white";
-    // ctx.textAlign = "right";
-    // ctx.font = `28px ${selectedFont}`;
-    // ctx.fillText(`${record.stats.active_days}`, 970, 178);
-
-    // Draw User Medal
-    if (gameDataShow.medal_item_list.length > 0) {
-      const userTitleWidth = ctx.measureText(title).width;
-      for (
-        let index = 0;
-        index < gameDataShow.medal_item_list.length;
-        index++
-      ) {
-        const medal = gameDataShow.medal_item_list[index];
-        const medalIcon = await loadImageAsync(medal.medal_icon);
-        const medalIconX =
-          (userTitleWidth ? 220 + userTitleWidth + 10 : 220) + 10 + index * 70;
-        const medalIconY = 155;
-
-        ctx.drawImage(medalIcon, medalIconX, medalIconY, 64, 64);
-
-        ctx.fillStyle = "white";
-        ctx.textAlign = "center";
-        ctx.font = `28px Impact`;
-
-        function formatNumber(num: number) {
-          const units = [
-            { value: 1_000_000_000, suffix: "B" }, // 十億以上顯示 B
-            { value: 1_000_000, suffix: "M" }, // 百萬以上顯示 M
-            { value: 1_000, suffix: "K" }, // 千以上顯示 K
-          ];
-
-          for (const unit of units) {
-            if (num >= unit.value) {
-              const value = num / unit.value;
-              // 根據數字大小決定小數位
-              if (value >= 1000) {
-                // 超過 1000x 的單位，繼續進位 (例如 1000M = 1B)
-                continue;
-              } else if (value >= 100) {
-                return value.toFixed(1) + unit.suffix; // 100~999.X
-              } else {
-                return value.toFixed(2) + unit.suffix; // <100 顯示兩位小數
-              }
-            }
-          }
-
-          return num.toString(); // 小於 1000 就直接顯示原數字
-        }
-
-        // 使用範例
-        let displayNumber = formatNumber(medal.number);
-        ctx.fillText(displayNumber, medalIconX + 32, medalIconY + 67);
-
-        // Text Outline
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 1.75;
-        ctx.strokeText(displayNumber, medalIconX + 32, medalIconY + 67);
-      }
-    }
-
-    // Agents
-    ctx.fillStyle = "white";
-    ctx.textAlign = "left";
-    ctx.font = `36px ${selectedFont}`;
-    ctx.fillText(tr("Agents") + ` (${record.stats.avatar_num})`, 50, 330);
-
-    if (record.avatar_list.length == 9)
-      record.avatar_list.push({ name_mi18n: tr("Showmore") });
-    record.avatar_list.map((agent: any, index: number) => {
-      const offset_x = 180 * (index % 5);
-      const offset_y = 280 * Math.floor(index / 5);
-      drawRoundedRect(
-        ctx,
-        60 + offset_x,
-        360 + offset_y,
-        160,
-        260,
-        30,
-        boxColor,
-      ); // (ctx, x, y, width, height, radius, color)
-
-      drawCircleImage(
-        ctx,
-        agentImages[index],
-        60 + offset_x + 10,
-        360 + offset_y + 10,
-        140,
-      );
-
-      // Draw Agent Name
-      ctx.textAlign = "center";
-      drawText(
-        ctx,
-        agent.name_mi18n,
-        selectedFont,
-        140,
-        24,
-        20,
-        140 + offset_x,
-        550 + offset_y,
-      ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
-
-      // Draw Agent Level
-      ctx.fillStyle = "rgba(128, 128, 128, 255)";
-      ctx.textAlign = "center";
-      ctx.font = `20px ${selectedFont}`;
-      ctx.fillText(
-        agent.level
-          ? tr("levelFormat2", {
-              level: agent.level,
-            })
-          : "",
-        140 + offset_x,
-        588 + offset_y,
-      );
-
-      // Draw Agent Rank
-      if (agent.rank ? agent.rank != 0 : false) {
-        drawRoundedRect(
-          ctx,
-          178 + offset_x,
-          357 + offset_y,
-          45,
-          45,
-          22.5,
-          "rgba(206, 35, 40, 255)",
-        ); // (ctx, x, y, width, height, radius, color)
-        ctx.fillStyle = "white";
-        ctx.textAlign = "center";
-        ctx.font = `28px ${selectedFont}`;
-        ctx.fillText(`${agent.rank}`, 200 + offset_x, 388 + offset_y);
-      }
-    });
-
-    // Buddy
-    ctx.fillStyle = "white";
-    ctx.textAlign = "left";
-    ctx.font = `36px ${selectedFont}`;
-    ctx.fillText(tr("Bangboo") + ` (${record.stats.buddy_num})`, 50, 960);
-
-    if (record.buddy_list.length == 9)
-      record.buddy_list.push({ name: tr("Showmore") });
-    record.buddy_list.map((buddy: any, index: number) => {
-      const offset_x = 180 * (index % 5);
-      const offset_y = 280 * Math.floor(index / 5);
-      drawRoundedRect(
-        ctx,
-        60 + offset_x,
-        990 + offset_y,
-        160,
-        260,
-        30,
-        boxColor,
-      ); // (ctx, x, y, width, height, radius, color)
-
-      drawCircleImage(
-        ctx,
-        buddyImages[index],
-        60 + offset_x + 10,
-        990 + offset_y + 10,
-        140,
-      ); // (ctx, img, x, y, size, scaleFactor)
-
-      // Draw Buddy Name
-      ctx.textAlign = "center";
-      drawText(
-        ctx,
-        buddy.name,
-        selectedFont,
-        140,
-        24,
-        20,
-        140 + offset_x,
-        1180 + offset_y,
-      ); // (ctx, text, userLocale, maxWidth, initialFontSize, minFontSize, x, y)
-
-      // Draw Buddy Level
-      ctx.fillStyle = "rgba(128, 128, 128, 255)";
-      ctx.textAlign = "center";
-      ctx.font = `20px ${selectedFont}`;
-      ctx.fillText(
-        buddy.level
-          ? tr("levelFormat2", {
-              level: buddy.level,
-            })
-          : "",
-        140 + offset_x,
-        1218 + offset_y,
-      );
-
-      // Draw Buddy Rank
-      if (buddy.star ? buddy.star - 1 != 0 : false) {
-        drawRoundedRect(
-          ctx,
-          178 + offset_x,
-          987 + offset_y,
-          45,
-          45,
-          22.5,
-          "rgba(206, 35, 40, 255)",
-        ); // (ctx, x, y, width, height, radius, color)
-        ctx.fillStyle = "white";
-        ctx.textAlign = "center";
-        ctx.font = `28px ${selectedFont}`;
-        ctx.fillText(`${buddy.star}`, 200 + offset_x, 1018 + offset_y);
-      }
-    });
-
-    // Player UID
-    ctx.font = `28px ${selectedFont}`;
-    ctx.fillStyle = "white";
-    ctx.textAlign = "right";
-    ctx.fillText(
-      `${userData.region_name} | ${userData?.game_role_id ? `UID ${userData.game_role_id}` : ""}`,
-      canvas.width - 10,
-      canvas.height - 10,
-    );
-
-    return canvas.toBuffer("image/png");
-  } catch (error) {
-    console.log(error);
-    console.error("Error generating image:", error);
-  }
+  return drawOfficialMainProfile(tr, userLocale, data);
 }
 
 export async function drawCharacterImage(

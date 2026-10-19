@@ -82,6 +82,7 @@ describe("ZZZ DM interaction routing", () => {
       commandName: "profile",
       createdTimestamp: Date.now(),
       options: { data: [] },
+      isAutocomplete: () => false,
       isCommand: () => true,
       isChatInputCommand: () => true,
       isButton: () => false,

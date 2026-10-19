@@ -1,3 +1,8 @@
+import { commandTipContent } from "../../../utilities/core/commandTips.js";
+import {
+  resolveDailySignIn,
+  dailyAwardAt,
+} from "../../../utilities/core/dailyRewards.js";
 import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
@@ -5,22 +10,27 @@ import {
   MessageFlags,
   LocalizationMap,
   Client,
-  ChatInputApplicationCommandData,
 } from "discord.js";
 import { buildZZZDailyCard } from "../../../utilities/canvas/dailyCard.js";
-import {
-  getRandomColor,
-  getUserZZZData,
-} from "../../../utilities/utilities.js";
+import { getRandomColor, getUserLang } from "../../../utilities/utilities.js";
 import { QuickDB } from "quick.db";
-import { getLegacyAccounts } from "../../../utilities/accountStore.js";
-import { buildDailySignInPresentation, normalizeSuccessfulDailyClaimInfo } from "../../../utilities/zzz/dailyPresentation.js";
-import { normalizeAutoDailyNotifyType } from "../../../utilities/core/autoDailyNotification.js";
-
-const timeChoices = Array.from({ length: 24 }, (_, i) => ({
-  name: i < 10 ? `0${i}` : `${i}`,
-  value: `${i}`,
-}));
+import {
+  getLegacyAccounts,
+  markGeneralInvalid,
+  restoreGeneralValidity,
+} from "../../../utilities/accountStore.js";
+import {
+  createZzzDailyClient,
+  getZzzClientLanguage,
+} from "../../../utilities/zzz/clientFactory.js";
+import {
+  isExplicitAuthenticationError,
+  isDailyRoleMissingError,
+} from "../../../utilities/zzz/autoDailyAuth.js";
+import { getDailyMissingRoleKey } from "../../../utilities/core/dailyAuthState.js";
+import { buildDailySignInPresentation } from "../../../utilities/zzz/dailyPresentation.js";
+import { automationText } from "../../../utilities/settings/automationCopy.js";
+import { blockExpiredAccount } from "../../../utilities/accountAccess.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -45,133 +55,6 @@ export default {
         } as LocalizationMap)
         .setRequired(false)
         .setAutocomplete(true),
-    )
-    .addStringOption((option) =>
-      option
-        .setName("autosign")
-        .setDescription(
-          "Automatic check-in every day, messages will be sent wherever command used!",
-        )
-        .setNameLocalizations({
-          "zh-TW": "自動簽到",
-          vi: "điểmdanhhàngngày",
-          fr: "signéautomatique",
-        } as LocalizationMap)
-        .setDescriptionLocalizations({
-          "zh-TW": "每天自動簽到，訊息會在使用指令的地方自動發送！",
-          vi: "Thông báo điểm danh tự động hằng ngày: không giới hạn kênh thông báo!",
-          fr: "Signé automatique activée, des notifications seront envoyées là où cette commande a été utilisée",
-        } as LocalizationMap)
-        .setRequired(false)
-        .addChoices(
-          {
-            name: "On",
-            name_localizations: {
-              "zh-TW": "開啟",
-              vi: "Bật",
-              fr: "Activée",
-            },
-            value: "on",
-          },
-          {
-            name: "Off",
-            name_localizations: {
-              "zh-TW": "關閉",
-              vi: "Tắt",
-              fr: "Désactivé",
-            },
-            value: "off",
-          },
-        ),
-    )
-    .addStringOption((option) =>
-      option
-        .setName("time")
-        .setDescription("Automatic check-in time")
-        .setNameLocalizations({
-          "zh-TW": "簽到時間",
-          vi: "thờigianđiểmdanh",
-          fr: "letempsdesigné",
-        } as LocalizationMap)
-        .setDescriptionLocalizations({
-          "zh-TW": "自動簽到的時間",
-          vi: "Thời gian tự động điểm danh",
-          fr: "Le temps de signé automatiquement",
-        } as LocalizationMap)
-        .setRequired(false)
-        .addChoices(...timeChoices),
-    )
-    .addStringOption((option) =>
-      option
-        .setName("tag")
-        .setDescription(
-          "Whether tag in the automatic check-in, turn on this also turn on the automatic check-in",
-        )
-        .setNameLocalizations({
-          "zh-TW": "標註",
-          vi: "thôngbáo",
-          fr: "mentionner",
-        } as LocalizationMap)
-        .setDescriptionLocalizations({
-          "zh-TW": "是否在自動簽到中標註，開啟這個也相當於開啟了自動簽到",
-          vi: "Chọn Bật sẽ tự động kích hoạt chế độ điểm danh tự động nếu bạn chưa kích hoạt.",
-          fr: "Mentionner dans le signé automatique, activer cela activera également le signé automatique",
-        } as LocalizationMap)
-        .setRequired(false)
-        .addChoices(
-          {
-            name: "On",
-            name_localizations: {
-              "zh-TW": "開啟",
-              vi: "Bật",
-              fr: "Activée",
-            },
-            value: "true",
-          },
-          {
-            name: "Off",
-            name_localizations: {
-              "zh-TW": "關閉",
-              vi: "Tắt",
-              fr: "Désactivé",
-            },
-            value: "false",
-          },
-        ),
-    )
-    .addStringOption((option) =>
-      option
-        .setName("notify_type")
-        .setDescription("Notification method")
-        .setNameLocalizations({
-          "zh-TW": "通知管道",
-          vi: "kênhthôngbáo",
-          fr: "canaldenotifiction",
-        } as LocalizationMap)
-        .setDescriptionLocalizations({
-          "zh-TW": "自動簽到訊息的通知管道，預設為私訊",
-        } as LocalizationMap)
-        .setRequired(false)
-        .addChoices(
-          {
-            name: "Private Message (DM)",
-            name_localizations: {
-              "zh-TW": "私訊",
-              vi: "Tin nhắn riêng",
-              fr: "Message privé",
-            },
-            value: "dm",
-          },
-          {
-            name: "Channel",
-            name_localizations: {
-              "zh-TW": "頻道",
-              vi: "Kênh",
-              fr: "Canal",
-            },
-            value: "channel",
-          },
-        ),
     ),
 
   async execute(
@@ -184,7 +67,22 @@ export default {
   ) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const haveAccount = await getLegacyAccounts(db as any, interaction.user.id);
+    const hintLocale =
+      (await getUserLang(interaction.user.id)) || interaction.locale;
+    const hint = commandTipContent(interaction, "daily", hintLocale);
+    // Reject cached automatic options without signing in or opening a settings panel.
+    if (
+      ["autosign", "time", "tag", "notify_type"].some(
+        (name) => interaction.options.getString(name) != null,
+      )
+    ) {
+      return interaction.editReply({
+        content: automationText(hintLocale, "hintDaily"),
+      });
+    }
+    const user = interaction.options.getUser("user") ?? interaction.user;
+    const accountOwnerId = user.id;
+    const haveAccount = await getLegacyAccounts(db as any, accountOwnerId);
     if (!haveAccount.length) {
       return interaction.editReply({
         embeds: [
@@ -196,124 +94,106 @@ export default {
       });
     }
 
-    const user = interaction.options.getUser("user") ?? interaction.user;
-    const auto = interaction.options.getString("autosign");
-    const time = interaction.options.getString("time");
-    const tag = interaction.options.getString("tag");
-    const notifyType = interaction.options.getString("notify_type");
-
-    if (auto === "off") {
-      await db.delete(`autoDaily.${interaction.user.id}`);
+    const accountOption = interaction.options.getString("account");
+    const accountIndex = accountOption === null ? 0 : Number(accountOption);
+    const account =
+      Number.isInteger(accountIndex) && accountIndex >= 0
+        ? haveAccount[accountIndex]
+        : undefined;
+    if (!account?.cookie || !account.uid) {
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
-            .setTitle(tr("autoDaily_Off"))
-            .setConfig("#E76161", "smirk"),
+            .setColor("#E76161")
+            .setTitle(tr("daily_NonAccount"))
+            .setDescription(tr("daily_NonAccountDesc")),
         ],
       });
-    } else if (time || tag || auto === "on") {
-      const existingSettings =
-        (await db.get(`autoDaily.${interaction.user.id}`)) || {};
-      const finalTime = time || existingSettings.time || "12";
-      const finalTag = tag || existingSettings.tag || "false";
-      const finalNotifyType = normalizeAutoDailyNotifyType(
-        notifyType ?? existingSettings.notifyType,
+    }
+
+    const nickname = account.nickname || "Unknown";
+    if (
+      await blockExpiredAccount(interaction, db, {
+        ownerId: accountOwnerId,
+        accountIndex,
+        account,
+      })
+    )
+      return;
+    const locale = await getUserLang(accountOwnerId);
+    const zzz = createZzzDailyClient({
+      cookie: account.cookie,
+      lang: getZzzClientLanguage(locale || interaction.locale),
+    });
+    let rewards;
+    let res;
+    try {
+      const result = await resolveDailySignIn(zzz.daily);
+      await db.delete(
+        getDailyMissingRoleKey(
+          accountOwnerId,
+          String(account.cookie),
+          String(account.uid),
+        ),
       );
-
-      await db.set(`autoDaily.${interaction.user.id}`, {
-        channelId: interaction.channelId,
-        guildId: interaction.guildId ?? existingSettings.guildId,
-        time: finalTime,
-        tag: finalTag,
-        notifyType: finalNotifyType,
-        notificationEnabled: true,
-      });
-
+      rewards = result.rewards;
+      res = { info: result.info };
+      const status = result.status;
+      await restoreGeneralValidity(
+        db as any,
+        accountOwnerId,
+        String(account.uid),
+      );
+      if (status === "already_signed") {
+        return interaction.editReply({
+          content: hint,
+          embeds: [
+            new EmbedBuilder().setColor("#A2CDB0").setTitle(tr("daily_Signed")),
+          ],
+        });
+      }
+    } catch (error: any) {
+      const authenticationError = isExplicitAuthenticationError(error);
+      if (authenticationError) {
+        await markGeneralInvalid(
+          db as any,
+          accountOwnerId,
+          String(account.uid),
+        );
+      }
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
-            .setConfig("#A2CDB0", "smirk")
-            .setTitle(tr("autoDaily_On"))
+            .setColor("#E76161")
+            .setTitle(tr("daily_Failed"))
             .setDescription(
-              tr("autoDaily_Time", {
-                time: "`" + finalTime + ":00`",
-              }) +
-                "\n" +
-                tr("autoDaily_Tag", {
-                  z:
-                    finalTag === "true"
-                      ? "`" + tr("True") + "`"
-                      : "`" + tr("False") + "`",
-                }) +
-                "\n" +
-                tr("autoDaily_NotifyType", {
-                  z:
-                    finalNotifyType === "dm"
-                      ? "`" + tr("autoDaily_NotifyType_DM") + "`"
-                      : "`" + tr("autoDaily_NotifyType_Channel") + "`",
-                }),
+              authenticationError
+                ? tr("daily_AuthExpiredDesc")
+                : isDailyRoleMissingError(error)
+                  ? tr("daily_MissingRoleDesc")
+                  : String(error?.message || error),
             ),
         ],
       });
     }
 
-    const zzz = await getUserZZZData(interaction, tr, user.id);
-    if (!zzz) return;
-
-    const infoBeforeClaim = await zzz.daily.info();
-    const rewards = await zzz.daily.rewards();
-    const res = await zzz.daily.claim();
-    const code = Number((res as any).code);
-
-    if (
-      code !== 0 &&
-      code !== -5003 &&
-      !res.info.is_sign
-    ) {
-      return interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setConfig("#E76161", "sob")
-            .setTitle(`${tr("daily_Failed")}`)
-            .setDescription(`Code: ${(res as any).code}`),
-        ],
-      });
-    }
-
-    if (code === -5003 || (code !== 0 && res.info.is_sign))
-      return interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setConfig("#E76161", "sob")
-            .setTitle(`${tr("daily_Failed")} ${tr("daily_Signed")}`),
-        ],
-      });
-
-    const signedInfo = normalizeSuccessfulDailyClaimInfo(
-      infoBeforeClaim,
-      res.info,
-    );
+    const signedInfo = res.info;
     const presentation = buildDailySignInPresentation(
       signedInfo,
       rewards.awards,
     );
     const signedDay = presentation.signedDays;
-    const todaySign = presentation.todayReward || rewards.awards[0];
-    const tmrSign = presentation.tomorrowReward;
-
-    const accounts = await getLegacyAccounts(db as any, interaction.user.id);
-    const account =
-      accounts.find((acc: any) => acc.uid === zzz.uid) || accounts[0];
-    const nickname = account?.nickname || "Unknown";
+    const todaySign = dailyAwardAt(signedInfo, rewards);
+    const tmrSign = dailyAwardAt(signedInfo, rewards, 1);
 
     try {
       const cardBuf = await buildZZZDailyCard({
         nickname,
-        uid: String(zzz.uid),
+        uid: String(account.uid),
         status: "success",
         rewardName: todaySign?.name || "",
         rewardIcon: todaySign?.icon,
-        rewardCount: todaySign?.cnt ?? 1,
+        rewardCount: todaySign?.cnt,
         totalDays: signedDay,
         shortSignDay: signedDay,
         signCntMissed: presentation.missedDays,
@@ -321,29 +201,31 @@ export default {
         tomorrowRewardIcon: tmrSign?.icon,
         tomorrowRewardCount: tmrSign?.cnt,
         labelTodayReward: tr("card_TodayReward"),
+        labelCheckedIn: tr("daily_Signed"),
         labelTomorrowReward: tr("card_TomorrowReward"),
         labelMonthSignIn: tr("card_MonthSignIn"),
         labelMonthMissed: tr("card_MonthMissed"),
       });
       const { AttachmentBuilder } = await import("discord.js");
       await interaction.editReply({
+        content: hint,
         files: [new AttachmentBuilder(cardBuf, { name: "daily-zzz.png" })],
       });
     } catch (e) {
       // Fallback to embed
       await interaction.editReply({
+        content: hint,
         embeds: [
           new EmbedBuilder()
             .setColor(getRandomColor() as any)
-            .setTitle(`${nickname} (${zzz.uid}) ${tr("daily_SignSuccess")}`)
-            .setThumbnail(todaySign?.icon)
+            .setTitle(`${nickname} (${account.uid}) ${tr("daily_SignSuccess")}`)
+            .setThumbnail(todaySign?.icon || null)
             .setDescription(
-              `${tr("daily_Description", { a: `\`${todaySign?.name}x${todaySign?.cnt}\`` })}${res.info.month_last_day ? "" : `\n\n${tr("daily_DescriptionTmr", { b: `\`${tmrSign?.name}x${tmrSign?.cnt}\`` })}`}`,
-            )
-            .addFields(
-              { name: `${tr("daily_Month")}`, value: "\u200b", inline: true },
-              { name: tr("daily_SignedDay", { z: "`" + signedDay + "`" }), value: "\u200b", inline: true },
-              { name: tr("daily_MissedDay", { z: "`" + presentation.missedDays + "`" }), value: "\u200b", inline: true },
+              todaySign
+                ? tr("daily_Description", {
+                    a: `${todaySign.name} ×${todaySign.cnt}`,
+                  })
+                : null,
             ),
         ],
       });

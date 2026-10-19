@@ -22,6 +22,8 @@ import {
 } from "../../utilities/zzz/profileStyle.js";
 import { getGachaArchiveStore } from "../../utilities/zzz/gachaArchive.js";
 import type { GachaArchiveAccount } from "../../utilities/zzz/gachaArchive.js";
+import { getDiscLeaderboardStore } from "../../utilities/zzz/discLeaderboardStore.js";
+import { discText } from "../../utilities/zzz/discLeaderboardCopy.js";
 
 const ARCHIVE_UIDS_PER_PAGE = 8;
 
@@ -74,6 +76,7 @@ export async function buildSettingsComponents(
   );
   const gachaPublic = (await db.get(`${userId}.gachaPublic`)) !== false;
   const gachaWeeklyArchive = (await db.get(`${userId}.gachaWeeklyArchive`)) === true;
+  const discRankingEnabled = process.env.NODE_ENV === "test" || getDiscLeaderboardStore().enabled(userId);
   const allArchiveRows = archiveRowsOverride ?? (process.env.NODE_ENV === "test"
     ? []
     : getGachaArchiveStore().listAccounts(userId));
@@ -126,32 +129,25 @@ export async function buildSettingsComponents(
     );
 
   const archiveStatus = allArchiveRows.length === 0
-    ? "尚未建立調頻封存。第一次成功查看官方紀錄後會自動啟用每週封存。"
-    : [`共 ${archive.totalUids} 個 UID、${allArchiveRows.length} 個來源｜第 ${archive.page + 1}/${archive.pageCount} 頁`, ...archiveRows.map((row) => {
-      const source = row.source === "official" ? "官方封存" : "手動匯入";
+    ? "還沒有儲存的抽卡紀錄。查看官方紀錄或匯入紀錄後，就會顯示在這裡。"
+    : [`已儲存 ${archive.totalUids} 個遊戲帳號的紀錄｜第 ${archive.page + 1}/${archive.pageCount} 頁`, ...archiveRows.map((row) => {
       const sync = row.lastSyncedAt
         ? `<t:${Math.floor(new Date(row.lastSyncedAt).getTime() / 1000)}:R>`
-        : "尚未同步";
+        : "尚無更新時間";
       const purge = row.purgeAfter
-        ? `；待刪除 <t:${Math.floor(new Date(row.purgeAfter).getTime() / 1000)}:R>`
+        ? `；預計刪除時間 <t:${Math.floor(new Date(row.purgeAfter).getTime() / 1000)}:R>`
         : "";
-      return `• UID \`${row.uid}\`｜${source}｜${row.syncStatus === "failed" ? "同步失敗" : sync}${purge}`;
+      const sources = (row.sources ?? [row.source]).map((source) =>
+        source === "official" ? "官方紀錄" : source === "manual" ? "遊戲連結匯入" : "rng.moe 匯入").join("＋");
+      return `• UID \`${row.uid}\`｜${sources}｜${row.syncStatus === "failed" ? "更新失敗" : `最後更新：${sync}`}${purge}`;
     })].join("\n");
 
-  const clearOptions = archiveRows.flatMap((row) => [
-    { label: `${row.uid}－${row.source === "official" ? "官方封存" : "手動匯入"}`, value: `${row.uid}:${row.source}` },
-  ]);
-  const allUidOptions = [...new Set(archiveRows.map((row) => row.uid))]
-    .slice(0, Math.max(0, 25 - clearOptions.length))
-    .map((uid) => ({ label: `${uid}－全部紀錄`, value: `${uid}:all` }));
+  const clearOptions = archiveRows.map((row) => ({ label: `UID ${row.uid} 的全部抽卡紀錄`, value: `${row.uid}:all` }));
 
   const container = new ContainerBuilder()
     // ── Header ──────────────────────────────────────────────────
     .addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(`## ${tr("settings_Title")}`),
-    )
-    .addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(tr("settings_Desc")),
+      new TextDisplayBuilder().setContent(`## ${tr("settings_Title")}\n${tr("settings_Desc")}`),
     )
     .addSeparatorComponents(
       new SeparatorBuilder()
@@ -164,7 +160,7 @@ export async function buildSettingsComponents(
       new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `🔐 **允許其他使用者查看抽卡資訊**\n關閉後，卡池會隱藏資源與保底，調頻封存則拒絕他人查看。`,
+            `🔐 **允許其他使用者查看抽卡資訊**\n關閉後，其他人無法查看你的抽卡紀錄，卡池圖片也會隱藏你的抽卡資源與保底進度。`,
           ),
         )
         .setButtonAccessory(
@@ -174,14 +170,11 @@ export async function buildSettingsComponents(
             .setStyle(gachaPublic ? ButtonStyle.Success : ButtonStyle.Secondary),
         ),
     )
-    .addSeparatorComponents(
-      new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
-    )
     .addSectionComponents(
       new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `🗃️ **官方每週封存**\n套用目前及之後綁定的全部 ZZZ 帳號；關閉不會刪除既有紀錄。`,
+            `🗃️ **自動同步抽卡紀錄**\n每 7 天自動更新所有已綁定帳號的官方抽卡紀錄。關閉只會停止更新，已儲存的紀錄仍會保留。\n\n**已儲存的抽卡紀錄**\n${archiveStatus}`,
           ),
         )
         .setButtonAccessory(
@@ -190,9 +183,6 @@ export async function buildSettingsComponents(
             .setLabel(gachaWeeklyArchive ? tr("settings_On") : tr("settings_Off"))
             .setStyle(gachaWeeklyArchive ? ButtonStyle.Success : ButtonStyle.Secondary),
         ),
-    )
-    .addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(`**封存狀態**\n${archiveStatus}`),
     )
     .addSeparatorComponents(
       new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true),
@@ -205,10 +195,13 @@ export async function buildSettingsComponents(
       ),
     )
     .addActionRowComponents(profileStyleRow)
-    .addSeparatorComponents(
-      new SeparatorBuilder()
-        .setSpacing(SeparatorSpacingSize.Small)
-        .setDivider(false),
+    .addSectionComponents(
+      new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(
+        `🏆 **${discText(currentLocale, "title")}**\n${discText(currentLocale, "settings")}`,
+      )).setButtonAccessory(new ButtonBuilder()
+        .setCustomId(`zdisc:settings:${userId}:${discRankingEnabled ? "off" : "on"}`)
+        .setLabel(discText(currentLocale, discRankingEnabled ? "joined" : "left"))
+        .setStyle(discRankingEnabled ? ButtonStyle.Success : ButtonStyle.Secondary)),
     )
 
     // ── Painting toggle ──────────────────────────────────────────
@@ -225,11 +218,6 @@ export async function buildSettingsComponents(
             .setLabel(painting ? tr("settings_On") : tr("settings_Off"))
             .setStyle(painting ? ButtonStyle.Success : ButtonStyle.Secondary),
         ),
-    )
-    .addSeparatorComponents(
-      new SeparatorBuilder()
-        .setSpacing(SeparatorSpacingSize.Small)
-        .setDivider(false),
     )
 
     // ── Rank painting toggle ─────────────────────────────────────
@@ -263,15 +251,13 @@ export async function buildSettingsComponents(
     )
     .addActionRowComponents(localeRow);
 
-  if (clearOptions.length || allUidOptions.length) {
-    container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent("🗑️ **清除調頻紀錄**\n選擇後仍須再次確認；刪除完成後無法復原。"),
-    ).addActionRowComponents(
+  if (clearOptions.length) {
+    container.addActionRowComponents(
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId("settings_selectGachaClear")
-          .setPlaceholder("選擇要清除的 UID 與來源")
-          .addOptions([...clearOptions, ...allUidOptions]),
+          .setPlaceholder("刪除已儲存的抽卡紀錄（選擇帳號後需再次確認）")
+          .addOptions(clearOptions),
       ),
     );
   }
@@ -318,14 +304,7 @@ export default {
     tr: any,
     _db: QuickDB,
   ) {
-    const { container } = await buildSettingsComponents(
-      interaction.user.id,
-      tr,
-    );
-
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
-      components: [container],
-    });
+    const { openGeneralSettings } = await import("../../utilities/settings/general.js");
+    await openGeneralSettings(_client, interaction, _db);
   },
 };

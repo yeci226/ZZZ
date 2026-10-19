@@ -3,6 +3,7 @@ import {
   extractProfileCharacterIdFromOptionValue,
   paginateProfileCharacters,
   parseProfileCharacterSelectCustomId,
+  parseProfileMainPageCustomId,
   PROFILE_SELECT_NEXT_PAGE,
   PROFILE_SELECT_PREVIOUS_PAGE,
   resolveProfileCharacterSelection,
@@ -13,6 +14,16 @@ const characters = (count: number) =>
   Array.from({ length: count }, (_, index) => ({ id: index + 1 }));
 
 const option = (id: number) => `target-0-${id}`;
+
+describe("profile return-to-main context", () => {
+  it("retains the original target and non-default account index", () => {
+    expect(parseProfileMainPageCustomId("profile_MainPage-283946584461410305-2"))
+      .toEqual({ targetUserId: "283946584461410305", accountIndex: 2 });
+  });
+  it.each(["profile_MainPage-123", "profile_MainPage-123--1", "profile_MainPage-123-2-extra", "profile_MainPage-123-9007199254740992"])("rejects malformed context %s", (value) => {
+    expect(parseProfileMainPageCustomId(value)).toBeNull();
+  });
+});
 
 describe("ZZZ profile 角色選單分頁", () => {
   it.each([

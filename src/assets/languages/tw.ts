@@ -48,6 +48,8 @@ const langs = {
   news_SelectPost: "🐣 請選擇一篇文章",
 
   daily_Failed: "簽到失敗",
+  daily_MissingRoleDesc:
+    "HoYoLAB 找不到此帳號的絕區零遊戲角色（-10002）。請確認綁定的是遊玩絕區零的 HoYoLAB 帳號，且已在遊戲內建立角色。處理後可使用 `/daily` 重試；自動簽到會每 24 小時檢查一次，期間不再重複通知此錯誤。",
   daily_AuthExpiredTitle: "HoYoLAB 帳號登入已失效",
   daily_AuthExpiredDesc:
     "此帳號的 HoYoLAB 登入狀態已過期，請重新綁定 Cookie 後再使用簽到與查詢功能。",
@@ -117,6 +119,28 @@ const langs = {
   account_AlreadySet: "您已經設定過 <z> 了！",
   account_UidSetSuccess: "UID <z> 設定成功！",
 
+  admin_ManageDone: "通知管理結果",
+  admin_ManageInvalid: "選項或來源頻道無效。",
+  admin_ManageNewsSource: "新聞需指定來源頻道，不需選擇使用者。",
+  admin_ManageUser: "請選擇非機器人使用者，或輸入有效的使用者 ID。",
+  admin_ManagePermissions: "無法使用目標頻道，請檢查成員與機器人權限。",
+  admin_Manage_success: "成功",
+  admin_Manage_skipped: "略過",
+  admin_Manage_conflict: "衝突",
+  admin_Manage_failed: "失敗",
+  admin_Manage_source_required: "已略過新聞：請指定來源頻道。",
+  admin_Manage_same_channel: "來源與目標為同一頻道。",
+  admin_Manage_permissions: "使用者或機器人沒有目標頻道權限。",
+  admin_Manage_changed: "設定已變更，請以最新設定重試。",
+  admin_Manage_target_exists: "目標已有新聞訂閱，雙方設定皆未改動。",
+  admin_Manage_no_match: "沒有符合條件的已啟用頻道通知。",
+  admin_Manage_unavailable:
+    "操作或權限查證未完成，請重試；已完成的項目不會回滾。",
+  admin_Feature_autoDaily: "自動簽到",
+  admin_Feature_autoRedeem: "自動兌換",
+  admin_Feature_noteReminder: "即時便箋提醒",
+  admin_Feature_autoMimo: "Auto Mimo",
+  admin_Feature_news: "新聞頻道訂閱",
   admin_NoPermission: "你沒有權限使用此指令！",
   admin_RemoveFail: "刪除失敗",
   admin_UserNotSet: "<user> 尚未設置此功能",
@@ -179,6 +203,13 @@ const langs = {
   profile_SelectCharacterRequired: "請至少選擇一位角色。",
 
   // Profile Canvas
+  profileMain_Current: "本期",
+  profileMain_Previous: "上期",
+  profileMain_Extreme: "絕境",
+  profileMain_Trial: "試煉",
+  profileMain_Empty: "尚無紀錄",
+  profileMain_Unavailable: "暫時無法取得",
+  profileMain_Frontier: "第<floor>防線",
   profileMain_Contacts: "通訊錄",
   profileMain_Online: "線上",
   profileMain_Offline: "離線",
@@ -202,6 +233,7 @@ const langs = {
   profileCharacter_WEngine: "音擎",
   profileCharacter_NoWEngine: "未裝備音擎",
   profileCharacter_SlotUnequipped: "槽位 <slot>・未裝備",
+  profileCharacter_EnhancementDotLegend: "＝副屬性強化一次",
   profileCharacter_ValidRolls: "有效詞條",
   profileCharacter_TwoPiece: "二件套",
   profileCharacter_FourPiece: "四件套",
@@ -254,17 +286,21 @@ const langs = {
 
   // Settings
   settings_Title: "使用者設定",
-  settings_Desc: "此處的設定與你的 Discord 帳戶關聯，適用於所有遊戲帳戶。",
+  settings_Desc: "設定機器人的回覆語言、角色卡圖片，以及自動簽到等功能。",
   settings_ProfileStyleLabel: "角色卡樣式",
-  settings_ProfileStyleDesc: "選擇角色卡的版面樣式。第一樣式為正式版，固定使用 M6 影畫圖；第二樣式保留目前版面。",
-  settings_ProfileStyleFormal: "第一樣式（正式版）",
-  settings_ProfileStyleFormalDesc: "正式版面；固定顯示 M6 影畫圖，不讀取影畫設定。",
-  settings_ProfileStyleCurrent: "第二樣式（目前版）",
-  settings_ProfileStyleCurrentDesc: "保留目前版面，依下方影畫設定顯示。",
-  settings_PaintingLabel: "意象影畫",
-  settings_PaintingDesc: "角色立繪使用意象影畫取代標準立繪。",
-  settings_RankPaintingLabel: "影畫展示",
-  settings_RankPaintingDesc: "依影畫等級自動選擇意象影畫。",
+  settings_ProfileStyleDesc:
+    "選擇查看角色資料時的卡片樣式。樣式一固定使用第 6 階影畫插圖；樣式二可用下方開關調整插圖。",
+  settings_ProfileStyleFormal: "樣式一：固定影畫插圖",
+  settings_ProfileStyleFormalDesc:
+    "使用第 6 階影畫插圖，不受下方開關影響；不會改變角色實際影畫等級。",
+  settings_ProfileStyleCurrent: "樣式二：可調整角色插圖",
+  settings_ProfileStyleCurrentDesc: "可用下方開關選擇一般立繪或影畫插圖。",
+  settings_PaintingLabel: "使用影畫插圖",
+  settings_PaintingDesc:
+    "樣式二適用。開啟後以意象影畫插圖取代一般角色立繪；關閉則使用一般立繪。",
+  settings_RankPaintingLabel: "插圖跟隨角色影畫等級",
+  settings_RankPaintingDesc:
+    "樣式二並開啟「使用影畫插圖」時適用。開啟後依角色實際影畫等級顯示；關閉則顯示完整的第 6 階插圖。",
   settings_LocaleLabel: "語言",
   settings_LocaleDesc: "機器人將使用此語言回覆你。",
   settings_On: "開",

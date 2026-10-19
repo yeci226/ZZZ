@@ -86,10 +86,12 @@ describe("簽到後即時資料正規化", () => {
   it("成功簽到後 API 暫時回傳舊天數時，至少計入本次簽到", () => {
     const normalized = normalizeSuccessfulDailyClaimInfo(
       {
+        today: "2026-09-22",
         total_sign_day: 0,
         is_sign: false,
       },
       {
+        today: "2026-09-22",
         total_sign_day: 0,
         is_sign: true,
         sign_cnt_missed: 0,

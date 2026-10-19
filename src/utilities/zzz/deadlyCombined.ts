@@ -277,10 +277,11 @@ function truncateText(
   return `${result}…`;
 }
 
-function normalizedPercent(raw: unknown): number | null {
+function percentFromRawRank(raw: unknown): number | null {
   const value = Number(raw);
   if (!Number.isFinite(value) || value <= 0) return null;
-  return value > 100 ? value / 100 : value;
+  // Both API rank fields use hundredths of a percent, including the top 1%.
+  return value / 100;
 }
 
 function rankPercentOf(data: any, fallback?: unknown): number | null {
@@ -291,7 +292,7 @@ function rankPercentOf(data: any, fallback?: unknown): number | null {
     fallback,
   ];
   for (const value of candidates) {
-    const percent = normalizedPercent(value);
+    const percent = percentFromRawRank(value);
     if (percent !== null) return percent;
   }
   return null;
@@ -313,14 +314,13 @@ export function getDeadlyRankFromAbstract(
 
 async function drawRankRibbon(
   ctx: SKRSContext2D,
-  rawPercent: unknown,
+  percent: number | null,
   x: number,
   y: number,
   width: number,
   height: number,
   font: string,
 ) {
-  const percent = normalizedPercent(rawPercent);
   if (percent === null) return;
   const tier =
     percent >= 20
@@ -1207,7 +1207,9 @@ export async function drawDeadlyCombinedImage(
   const totalRankX = 300 + totalScoreWidth + 18;
   await drawRankRibbon(
     ctx,
-    getDeadlyRankFromAbstract(deadlyData?.abstract_info, "normal") ??
+    percentFromRawRank(
+      getDeadlyRankFromAbstract(deadlyData?.abstract_info, "normal"),
+    ) ??
       rankPercentOf(deadlyData),
     totalRankX,
     642,

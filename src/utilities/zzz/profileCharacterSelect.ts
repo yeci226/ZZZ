@@ -3,6 +3,17 @@ export const PROFILE_SELECT_NEXT_PAGE = "__profile_next_page__";
 export const PROFILE_SELECT_PREVIOUS_PAGE = "__profile_previous_page__";
 export const PROFILE_MAX_SELECTED_CHARACTERS = 3;
 
+export function parseProfileMainPageCustomId(customId: string): {
+  targetUserId: string;
+  accountIndex: number;
+} | null {
+  const match = /^profile_MainPage-(\d{1,20})-(\d+)$/.exec(customId);
+  if (!match) return null;
+  const accountIndex = Number(match[2]);
+  if (!Number.isSafeInteger(accountIndex)) return null;
+  return { targetUserId: match[1], accountIndex };
+}
+
 export type ProfileSelectableCharacter = {
   id: string | number;
 };

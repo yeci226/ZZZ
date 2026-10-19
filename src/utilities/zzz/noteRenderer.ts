@@ -13,6 +13,12 @@ export type ReminderItemKey =
   | "energy" | "vitality" | "cardSign" | "vhs" | "bounty" | "weekly"
   | `event:${string}`;
 
+export interface ReminderAttention {
+  level: "normal" | "soon" | "urgent";
+  /** Null when the amount threshold is reached but the API provides no ETA. */
+  remainingSeconds: number | null;
+}
+
 export interface NoteRenderOptions {
   uid: string;
   playerName?: string | null;
@@ -20,10 +26,12 @@ export interface NoteRenderOptions {
   note: any;
   calendar?: any;
   highlighted?: Iterable<ReminderItemKey>;
+  attention?: Partial<Record<ReminderItemKey, ReminderAttention>>;
   now?: number;
 }
 
-type NoteTone = "complete" | "energy" | "daily" | "weekly" | "event" | "action" | "neutral";
+type NoteTone = "complete" | "energy" | "daily" | "weekly" | "event" | "action" | "urgent" | "neutral";
+type AttentionLevel = ReminderAttention["level"];
 
 const NOTE_COLORS: Record<NoteTone | "label" | "secondary" | "surface", string> = {
   complete: "#7D7F80",
@@ -32,6 +40,7 @@ const NOTE_COLORS: Record<NoteTone | "label" | "secondary" | "surface", string> 
   weekly: "#F1AD3D",
   event: "#FF4483",
   action: "#FFDE00",
+  urgent: "#FF805C",
   neutral: "#FFFFFF",
   label: "#D9DBDD",
   secondary: "#7D7F80",
@@ -47,7 +56,7 @@ function progressTone(currentValue: unknown, maxValue: unknown, activeTone: Note
 function metricTone(key: ReminderItemKey, note: any): NoteTone {
   if (key === "vitality") return progressTone(note?.vitality?.current, note?.vitality?.max, "daily");
   if (key === "cardSign") return String(note?.card_sign) === "CardSignDone" ? "complete" : "daily";
-  if (key === "vhs") return "daily";
+  if (key === "vhs") return String(note?.vhs_sale?.sale_state) === "SaleStateDoing" ? "complete" : "daily";
   if (key === "bounty") return progressTone(note?.bounty_commission?.num, note?.bounty_commission?.total, "weekly");
   if (key === "weekly") return progressTone(note?.weekly_task?.cur_point, note?.weekly_task?.max_point, "weekly");
   return "neutral";
@@ -121,19 +130,47 @@ function energyFullLabel(energy: any, now: number, locale?: string): string {
   return `${tomorrow ? labels.tomorrow : labels.today}${hour}:${minute}${labels.fullSuffix}`;
 }
 
-function drawCardFrame(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, highlighted: boolean, dimmed: boolean): void {
+function attentionColor(level: AttentionLevel): string {
+  return level === "urgent" ? NOTE_COLORS.urgent : NOTE_COLORS.action;
+}
+
+function attentionDeadline(key: ReminderItemKey, attention: ReminderAttention, locale?: string): string {
+  const labels = noteText(locale);
+  if (attention.remainingSeconds === null) return labels.threshold;
+  if (key === "energy" && attention.remainingSeconds <= 0) return labels.full;
+  const suffix = key === "energy" ? labels.restores : key.startsWith("event:") ? labels.ends : labels.resets;
+  return `${secondsLabel(attention.remainingSeconds, locale)}${suffix}`;
+}
+
+function drawAttentionBadge(ctx: SKRSContext2D, x: number, y: number, level: AttentionLevel, locale?: string): number {
+  if (level === "normal") return 0;
   ctx.save();
-  ctx.globalAlpha = dimmed ? 0.43 : 1;
+  ctx.font = `20px ${getZzzOfficialFont(locale)}`;
+  const label = level === "urgent" ? noteText(locale).urgent : noteText(locale).soon;
+  const width = ctx.measureText(label).width + 20;
+  ctx.fillStyle = attentionColor(level);
+  roundedRect(ctx, x, y, width, 28, 6);
+  ctx.fill();
+  ctx.fillStyle = NOTE_COLORS.surface;
+  ctx.fillText(label, x + 10, y + 21);
+  ctx.restore();
+  return width;
+}
+
+function drawCardFrame(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, level: AttentionLevel, dimmed: boolean): void {
+  const highlighted = level !== "normal";
+  ctx.save();
+  ctx.globalAlpha = dimmed ? 0.62 : 1;
   roundedRect(ctx, x, y, w, h, 18);
   ctx.fillStyle = NOTE_COLORS.surface;
   ctx.fill();
-  ctx.lineWidth = highlighted ? 5 : 2;
-  ctx.strokeStyle = highlighted ? NOTE_COLORS.action : "rgba(255,255,255,.16)";
+  ctx.lineWidth = level === "urgent" ? 5 : highlighted ? 3 : 2;
+  ctx.strokeStyle = highlighted ? attentionColor(level) : "rgba(255,255,255,.16)";
   ctx.stroke();
-  if (highlighted) {
+  if (level === "urgent") {
     roundedRect(ctx, x + 8, y + 8, w - 16, h - 16, 12);
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = "rgba(255,222,0,.48)";
+    ctx.strokeStyle = "rgba(255,128,92,.4)";
     ctx.stroke();
   }
   ctx.restore();
@@ -147,29 +184,34 @@ function drawMetricCard(ctx: SKRSContext2D, options: {
   label: string;
   value: string;
   detail?: string;
-  highlighted: boolean;
+  level: AttentionLevel;
   dimmed: boolean;
   tone: NoteTone;
+  reminderMode: boolean;
   locale?: string;
 }): void {
-  drawCardFrame(ctx, options.x, options.y, options.width, options.height, options.highlighted, options.dimmed);
+  const highlighted = options.level !== "normal";
+  const color = highlighted ? attentionColor(options.level)
+    : options.reminderMode && options.tone !== "complete" ? NOTE_COLORS.label : NOTE_COLORS[options.tone];
+  drawCardFrame(ctx, options.x, options.y, options.width, options.height, options.level, options.dimmed);
   ctx.save();
-  ctx.globalAlpha = options.dimmed ? 0.43 : 1;
+  ctx.globalAlpha = options.dimmed ? 0.62 : 1;
   ctx.fillStyle = NOTE_COLORS.label;
   ctx.font = `30px ${getZzzOfficialFont(options.locale)}`;
   ctx.fillText(fitText(ctx, options.label, options.width - 44), options.x + 22, options.y + 42);
-  ctx.fillStyle = options.highlighted ? NOTE_COLORS.action : NOTE_COLORS[options.tone];
+  ctx.fillStyle = color;
   ctx.font = `44px ${getZzzOfficialNumberFont(options.locale)}`;
   ctx.fillText(fitText(ctx, options.value, options.width - 44), options.x + 22, options.y + 94);
+  const badgeWidth = drawAttentionBadge(ctx, options.x + 22, options.y + options.height - 40, options.level, options.locale);
   if (options.detail) {
-    ctx.fillStyle = NOTE_COLORS.secondary;
+    ctx.fillStyle = highlighted ? color : NOTE_COLORS.secondary;
     ctx.font = `20px ${getZzzOfficialFont(options.locale)}`;
     ctx.textAlign = "right";
-    ctx.fillText(fitText(ctx, options.detail, options.width - 44), options.x + options.width - 22, options.y + options.height - 18);
+    ctx.fillText(fitText(ctx, options.detail, options.width - 44 - (badgeWidth ? badgeWidth + 12 : 0)), options.x + options.width - 22, options.y + options.height - 18);
     ctx.textAlign = "left";
   }
-  ctx.globalAlpha = (options.dimmed ? 0.43 : 1) * 0.28;
-  ctx.fillStyle = options.highlighted ? NOTE_COLORS.action : NOTE_COLORS[options.tone];
+  ctx.globalAlpha = (options.dimmed ? 0.62 : 1) * 0.28;
+  ctx.fillStyle = color;
   roundedRect(ctx, options.x + 22, options.y + options.height - 7, options.width - 44, 2, 1);
   ctx.fill();
   ctx.restore();
@@ -177,9 +219,19 @@ function drawMetricCard(ctx: SKRSContext2D, options: {
 
 export async function renderOfficialNote(options: NoteRenderOptions): Promise<Buffer[]> {
   const labels = noteText(options.locale);
+  const now = options.now ?? Date.now();
   const highlights = new Set(options.highlighted ?? []);
-  const reminderMode = highlights.size > 0;
+  const reminderMode = options.attention !== undefined || highlights.size > 0;
+  const attentionLevel = (key: ReminderItemKey): AttentionLevel => options.attention
+    ? options.attention[key]?.level ?? "normal"
+    : highlights.has(key) ? "soon" : "normal";
   const events = activityList(options.calendar);
+  const priorities = (Object.entries(options.attention ?? {}) as Array<[ReminderItemKey, ReminderAttention]>)
+    .filter(([, item]) => item.level !== "normal")
+    .sort(([, a], [, b]) => Number(b.level === "urgent") - Number(a.level === "urgent")
+      || (a.remainingSeconds ?? Infinity) - (b.remainingSeconds ?? Infinity));
+  const priority = priorities[0];
+  const summaryHeight = priority ? 88 : 0;
   const eventPages = events.length
     ? Array.from({ length: Math.ceil(events.length / 18) }, (_, index) => events.slice(index * 18, (index + 1) * 18))
     : [[]];
@@ -194,7 +246,7 @@ export async function renderOfficialNote(options: NoteRenderOptions): Promise<Bu
   for (let pageIndex = 0; pageIndex < eventPages.length; pageIndex++) {
     const pageEvents = eventPages[pageIndex]!;
     const includeNote = pageIndex === 0;
-    const topSectionHeight = includeNote ? 840 : 190;
+    const topSectionHeight = (includeNote ? 840 : 190) + summaryHeight;
     const eventHeight = pageEvents.length ? 98 + pageEvents.length * 132 : 0;
     const height = topSectionHeight + eventHeight + 64;
     const canvas = createCanvas(1044, height);
@@ -212,34 +264,71 @@ export async function renderOfficialNote(options: NoteRenderOptions): Promise<Bu
     ctx.textAlign = "left";
 
     let y = 152;
+    if (priority) {
+      const [key, attention] = priority;
+      const names: Partial<Record<ReminderItemKey, string>> = {
+        energy: labels.energy, vitality: labels.vitality, cardSign: labels.scratch,
+        vhs: labels.vhs, bounty: labels.bounty, weekly: labels.weekly,
+      };
+      const event = events.find((item) => `event:${String(item.activity_id ?? item.id ?? "unknown")}` === key);
+      const name = names[key] ?? event?.name ?? labels.activity;
+      roundedRect(ctx, 48, y, 948, 64, 12);
+      ctx.fillStyle = NOTE_COLORS.surface;
+      ctx.fill();
+      ctx.fillStyle = attentionColor(attention.level);
+      ctx.fillRect(48, y + 12, 4, 40);
+      ctx.font = `27px ${getZzzOfficialFont(options.locale)}`;
+      const prefix = `${labels.priority} · `;
+      ctx.fillText(prefix, 70, y + 42);
+      const nameX = 70 + ctx.measureText(prefix).width;
+      ctx.font = `24px ${getZzzOfficialFont(options.locale)}`;
+      const deadline = attentionDeadline(key, attention, options.locale);
+      const deadlineWidth = Math.min(440, ctx.measureText(deadline).width);
+      ctx.textAlign = "right";
+      ctx.fillText(fitText(ctx, deadline, 440), 974, y + 42);
+      ctx.textAlign = "left";
+      ctx.font = `27px ${getZzzOfficialFont(options.locale)}`;
+      ctx.fillStyle = NOTE_COLORS.label;
+      ctx.fillText(fitText(ctx, name, 974 - deadlineWidth - 24 - nameX), nameX, y + 42);
+      y += summaryHeight;
+    }
     if (includeNote) {
       const current = Number(options.note?.energy?.progress?.current ?? options.note?.energy?.current ?? 0);
       const max = Number(options.note?.energy?.progress?.max ?? options.note?.energy?.max ?? 0);
-      const highlighted = highlights.has("energy");
-      drawCardFrame(ctx, 48, y, 948, 190, highlighted, reminderMode && !highlighted);
+      const level = attentionLevel("energy");
+      const highlighted = level !== "normal";
+      const energyColor = highlighted ? attentionColor(level)
+        : reminderMode ? NOTE_COLORS.label : NOTE_COLORS[progressTone(current, max, "energy")];
+      drawCardFrame(ctx, 48, y, 948, 190, level, false);
       ctx.save();
-      ctx.globalAlpha = reminderMode && !highlighted ? 0.43 : 1;
       ctx.drawImage(batteryIcon, 70, y + 24, 140, 140);
       ctx.fillStyle = NOTE_COLORS.label;
       ctx.font = `31px ${getZzzOfficialFont(options.locale)}`;
       ctx.fillText(labels.energy, 226, y + 54);
-      const energyTone = progressTone(current, max, "energy");
-      ctx.fillStyle = highlighted ? NOTE_COLORS.action : NOTE_COLORS[energyTone];
+      drawAttentionBadge(ctx, 226 + ctx.measureText(labels.energy).width + 18, y + 28, level, options.locale);
+      ctx.fillStyle = energyColor;
       ctx.font = `72px ${getZzzOfficialNumberFont(options.locale)}`;
       ctx.fillText(`${current}`, 226, y + 127);
       ctx.fillStyle = NOTE_COLORS.secondary;
       ctx.font = `33px ${getZzzOfficialNumberFont(options.locale)}`;
       ctx.fillText(`/ ${max}`, 343, y + 126);
       ctx.font = `24px ${getZzzOfficialFont(options.locale)}`;
-      ctx.fillStyle = highlighted ? NOTE_COLORS.action : NOTE_COLORS[energyTone];
-      ctx.fillText(current >= max && max > 0 ? labels.full : energyFullLabel(options.note?.energy, options.now ?? Date.now(), options.locale), 620, y + 105);
+      const energyAttention = options.attention?.energy;
+      if (energyAttention) {
+        ctx.fillStyle = energyColor;
+        ctx.fillText(fitText(ctx, attentionDeadline("energy", energyAttention, options.locale), 330), 620, y + 70);
+      }
+      ctx.fillStyle = energyAttention ? NOTE_COLORS.secondary : energyColor;
+      const fullLabel = energyAttention?.remainingSeconds === null ? ""
+        : current >= max && max > 0 ? labels.full : energyFullLabel(options.note?.energy, now, options.locale);
+      ctx.fillText(fitText(ctx, fullLabel, 330), 620, y + 105);
       const energyRatio = max > 0 ? Math.min(1, Math.max(0, current / max)) : 0;
       roundedRect(ctx, 620, y + 124, 330, 6, 3);
       ctx.fillStyle = "rgba(255,255,255,.16)";
       ctx.fill();
       if (energyRatio > 0) {
         roundedRect(ctx, 620, y + 124, Math.max(6, 330 * energyRatio), 6, 3);
-        ctx.fillStyle = highlighted ? NOTE_COLORS.action : NOTE_COLORS[energyTone];
+        ctx.fillStyle = energyColor;
         ctx.fill();
       }
       ctx.restore();
@@ -252,13 +341,15 @@ export async function renderOfficialNote(options: NoteRenderOptions): Promise<Bu
         ["vitality", labels.vitality, `${Number(options.note?.vitality?.current ?? 0)} / ${Number(options.note?.vitality?.max ?? 0)}`],
         ["cardSign", labels.scratch, String(options.note?.card_sign) === "CardSignDone" ? labels.done : labels.notDone],
         ["vhs", labels.vhs, saleState === "SaleStateDoing" ? labels.doing : saleState === "SaleStateDone" ? labels.claim : labels.notDone],
-        ["bounty", labels.bounty, `${Number(options.note?.bounty_commission?.num ?? 0)} / ${Number(options.note?.bounty_commission?.total ?? 0)}`, bountyRefresh ? `${secondsLabel(countdownSeconds(bountyRefresh, options.now ?? Date.now()), options.locale)}${labels.refresh}` : undefined],
-        ["weekly", labels.weekly, `${Number(options.note?.weekly_task?.cur_point ?? 0)} / ${Number(options.note?.weekly_task?.max_point ?? 0)}`, weeklyRefresh ? `${secondsLabel(countdownSeconds(weeklyRefresh, options.now ?? Date.now()), options.locale)}${labels.refresh}` : undefined],
+        ["bounty", labels.bounty, `${Number(options.note?.bounty_commission?.num ?? 0)} / ${Number(options.note?.bounty_commission?.total ?? 0)}`, bountyRefresh ? `${secondsLabel(countdownSeconds(bountyRefresh, now), options.locale)}${labels.refresh}` : undefined],
+        ["weekly", labels.weekly, `${Number(options.note?.weekly_task?.cur_point ?? 0)} / ${Number(options.note?.weekly_task?.max_point ?? 0)}`, weeklyRefresh ? `${secondsLabel(countdownSeconds(weeklyRefresh, now), options.locale)}${labels.refresh}` : undefined],
       ];
       metrics.forEach(([key, label, value, detail], index) => {
         const row = Math.floor(index / 2);
         const col = index % 2;
-        const active = highlights.has(key);
+        const level = attentionLevel(key);
+        const tone = metricTone(key, options.note);
+        const attention = options.attention?.[key];
         drawMetricCard(ctx, {
           x: 48 + col * 486,
           y: y + row * 158,
@@ -266,10 +357,11 @@ export async function renderOfficialNote(options: NoteRenderOptions): Promise<Bu
           height: 140,
           label,
           value,
-          detail,
-          highlighted: active,
-          dimmed: reminderMode && !active,
-          tone: metricTone(key, options.note),
+          detail: attention ? attentionDeadline(key, attention, options.locale) : detail,
+          level,
+          dimmed: reminderMode && level === "normal" && tone === "complete",
+          tone,
+          reminderMode,
           locale: options.locale,
         });
       });
@@ -283,28 +375,39 @@ export async function renderOfficialNote(options: NoteRenderOptions): Promise<Bu
       y += 78;
       pageEvents.forEach((event: any) => {
         const key = `event:${String(event.activity_id ?? event.id ?? "unknown")}` as ReminderItemKey;
-        const active = highlights.has(key);
-        const dimmed = reminderMode && !active;
+        const level = attentionLevel(key);
+        const active = level !== "normal";
+        const state = String(event.state ?? "");
         const tone = eventTone(event);
-        drawCardFrame(ctx, 48, y, 948, 112, active, dimmed);
+        const expired = state !== "STATE_NOT_START" && countdownSeconds(event.left_end_ts, now) <= 0;
+        const dimmed = reminderMode && !active && (tone === "complete" || state !== "STATE_IN_PROGRESS" || expired);
+        const color = active ? attentionColor(level) : reminderMode ? NOTE_COLORS.label : NOTE_COLORS[tone];
+        drawCardFrame(ctx, 48, y, 948, 112, level, dimmed);
         ctx.save();
-        ctx.globalAlpha = dimmed ? 0.43 : 1;
+        ctx.globalAlpha = dimmed ? 0.62 : 1;
         for (let x = 62; x < 982; x += 160) ctx.drawImage(calendarBg, x, y + 20, 160, 72);
         ctx.fillStyle = NOTE_COLORS.label;
         ctx.font = `27px ${getZzzOfficialFont(options.locale)}`;
         ctx.fillText(fitText(ctx, event.name ?? labels.activity, 520), 76, y + 46);
-        ctx.fillStyle = active ? NOTE_COLORS.action : NOTE_COLORS[tone];
+        ctx.fillStyle = color;
         ctx.drawImage(polychromeIcon, 72, y + 52, 50, 50);
         ctx.font = `27px ${getZzzOfficialNumberFont(options.locale)}`;
         ctx.fillText(`${Number(event.monochrome_got_cnt ?? 0)} / ${Number(event.monochrome_cnt ?? 0)}`, 130, y + 83);
-        const state = String(event.state ?? "");
         const countdown = state === "STATE_NOT_START"
-          ? countdownSeconds(event.left_start_ts, options.now ?? Date.now())
-          : countdownSeconds(event.left_end_ts, options.now ?? Date.now());
+          ? countdownSeconds(event.left_start_ts, now)
+          : countdownSeconds(event.left_end_ts, now);
+        if (active) {
+          ctx.font = `20px ${getZzzOfficialFont(options.locale)}`;
+          const badgeWidth = ctx.measureText(level === "urgent" ? labels.urgent : labels.soon).width + 20;
+          drawAttentionBadge(ctx, 966 - badgeWidth, y + 18, level, options.locale);
+        }
         ctx.textAlign = "right";
-        ctx.fillStyle = active ? NOTE_COLORS.action : NOTE_COLORS[tone];
+        ctx.fillStyle = color;
         ctx.font = `31px ${getZzzOfficialFont(options.locale)}`;
-        ctx.fillText(state === "STATE_COMPLETED" ? labels.done : `${secondsLabel(countdown, options.locale)}${state === "STATE_NOT_START" ? labels.opens : ""}`, 966, y + 67);
+        const countdownLabel = state === "STATE_COMPLETED" || (reminderMode && tone === "complete") ? labels.done
+          : reminderMode && expired ? labels.ended
+          : `${secondsLabel(countdown, options.locale)}${state === "STATE_NOT_START" ? labels.opens : reminderMode ? labels.ends : ""}`;
+        ctx.fillText(fitText(ctx, countdownLabel, 344), 966, y + (active ? 86 : 67));
         ctx.textAlign = "left";
         ctx.restore();
         y += 132;

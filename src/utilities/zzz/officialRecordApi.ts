@@ -2,6 +2,7 @@ export const ZZZ_RECORD_API_BASE =
   "https://sg-public-api.hoyolab.com/event/game_record_zzz/api/zzz";
 
 export type ZzzRecordEndpoint =
+  | "hadal_mem_abstract_info"
   | "activity_calendar"
   | "gacha_calendar"
   | "cur_gacha_detail"

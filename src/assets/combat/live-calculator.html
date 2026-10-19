@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ZZZ · 實際配裝傷害試算</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #17181d;
+        --panel: #24262e;
+        --text: #eeeff4;
+        --muted: #b2b5c2;
+        --line: #414450;
+        --accent: #f2a350;
+        --input: #1b1d24;
+        font:
+          15px/1.5 system-ui,
+          -apple-system,
+          "Noto Sans TC",
+          sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+      }
+      main {
+        max-width: 1100px;
+        margin: auto;
+        padding: 28px 20px 48px;
+      }
+      header {
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+      }
+      h1 {
+        font-size: 25px;
+        margin: 3px 0 6px;
+      }
+      h2 {
+        font-size: 18px;
+        margin: 0 0 15px;
+      }
+      h3 {
+        font-size: 15px;
+        margin: 0 0 8px;
+      }
+      p {
+        margin: 6px 0;
+      }
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 1.5px;
+        color: var(--accent);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .badge {
+        background: #3b2e23;
+        color: #ffbd7c;
+        border-radius: 6px;
+        padding: 5px 9px;
+        font-size: 12px;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 18px;
+      }
+      .box {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 18px;
+      }
+      .team {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin: 20px 0;
+      }
+      .agent {
+        padding: 15px;
+        border-left: 3px solid var(--accent);
+        background: var(--panel);
+        border-radius: 6px;
+      }
+      .agent h2 {
+        margin: 0 0 8px;
+        font-size: 17px;
+      }
+      .agent dl {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        margin: 12px 0 0;
+        font-size: 13px;
+      }
+      .agent dt {
+        color: var(--muted);
+      }
+      .agent dd {
+        margin: 0;
+        font-variant-numeric: tabular-nums;
+      }
+      .fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      label {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      input,
+      select,
+      button {
+        font: inherit;
+        color: var(--text);
+        background: var(--input);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 9px 10px;
+        min-width: 0;
+        max-width: 100%;
+      }
+      input,
+      select {
+        width: 100%;
+        margin-top: 5px;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button.primary {
+        background: var(--accent);
+        color: #201b16;
+        font-weight: 600;
+        border: 0;
+      }
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 10px 0;
+      }
+      .check input {
+        width: 16px;
+        min-width: 16px;
+        margin: 0;
+      }
+      .full {
+        grid-column: 1/-1;
+      }
+      details {
+        margin-top: 16px;
+      }
+      summary {
+        cursor: pointer;
+        color: var(--text);
+      }
+      .conditions {
+        padding-top: 8px;
+      }
+      .conditions label {
+        font-size: 13px;
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+      .metric {
+        font-size: 34px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.3;
+      }
+      .result-label {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 7px 0;
+      }
+      .row b {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .line {
+        border-top: 1px solid var(--line);
+        margin-top: 16px;
+        padding-top: 12px;
+      }
+      #error {
+        color: #ffb4b4;
+        padding: 12px 0;
+      }
+      .bar {
+        height: 5px;
+        background: #3b3e48;
+        margin: 4px 0 10px;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .bar span {
+        height: 100%;
+        display: block;
+        background: var(--accent);
+      }
+      .rotation-item {
+        border-top: 1px solid var(--line);
+        padding: 12px 0;
+        display: grid;
+        grid-template-columns: 1fr 78px 45px;
+        gap: 10px;
+        align-items: center;
+      }
+      .rotation-item p {
+        font-size: 13px;
+        margin: 0;
+      }
+      .rotation-item input {
+        margin: 0;
+      }
+      .rotation-item button {
+        padding: 8px;
+      }
+      .footnote {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 14px 0 0;
+      }
+      ul {
+        padding-left: 20px;
+        margin: 8px 0;
+      }
+      li {
+        margin: 6px 0;
+      }
+      a {
+        color: #ffbc7b;
+      }
+      #formula {
+        font-size: 13px;
+        line-height: 1.8;
+        overflow-wrap: anywhere;
+      }
+      .source {
+        margin-top: 10px;
+        font-size: 12px;
+      }
+      #effects {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .no-items {
+        color: var(--muted);
+        font-size: 13px;
+        padding: 12px 0;
+      }
+      .pill {
+        display: inline-block;
+        font-size: 11px;
+        background: #333642;
+        border-radius: 3px;
+        padding: 2px 5px;
+        margin-left: 6px;
+      }
+      .status {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      [hidden] {
+        display: none !important;
+      }
+      @media (max-width: 760px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        .team {
+          grid-template-columns: 1fr;
+        }
+        .agent {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
+        .agent dl {
+          margin: 0;
+        }
+        main {
+          padding: 20px 12px;
+        }
+        .box {
+          padding: 16px;
+        }
+        .metric {
+          font-size: 29px;
+        }
+      }
+      @media (max-width: 380px) {
+        .fields {
+          grid-template-columns: 1fr;
+        }
+        .full {
+          grid-column: auto;
+        }
+        .agent {
+          grid-template-columns: 1fr;
+        }
+        .rotation-item {
+          grid-template-columns: 1fr 62px 40px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <div class="eyebrow">ZZZ · COMBAT LAB</div>
+          <h1>實際配裝傷害試算</h1>
+          <p class="muted" id="fetched">讀取角色資料中…</p>
+        </div>
+        <span class="badge">實際面板 · 條件式試算</span>
+      </header>
+      <div class="team" id="team"></div>
+      <div class="layout">
+        <div>
+          <section class="box">
+            <h2>敵人與增益</h2>
+            <div class="fields">
+              <label
+                >自訂敵人防禦<input
+                  id="defense"
+                  type="number"
+                  min="0"
+                  max="1000000"
+                  step="0.1"
+                  value="953"
+              /></label>
+              <label
+                >共用屬性抗性（%）<input
+                  id="resistance"
+                  type="number"
+                  min="-100"
+                  max="100"
+                  value="0"
+              /></label>
+              <label
+                >失衡倍率<input
+                  id="stunMultiplier"
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="0.1"
+                  value="1.5"
+              /></label>
+              <label class="check"
+                ><input type="checkbox" id="stunned" />目標處於失衡</label
+              >
+            </div>
+            <p class="footnote">初始值為自訂中性目標；未指定關卡。各傷害項目共用此抗性。</p>
+            <details>
+              <summary>調整生效中的裝備與隊伍效果</summary>
+              <div class="conditions">
+                <label class="check"
+                  ><input
+                    type="checkbox"
+                    data-condition="phase"
+                  />相變時流增傷生效</label
+                >
+                <label class="check"
+                  ><input
+                    type="checkbox"
+                    data-condition="signatureActive"
+                  />空羽復歸之詩觸發後增傷生效</label
+                >
+                <label class="check"
+                  ><input
+                    type="checkbox"
+                    data-condition="phantom"
+                  />幻色／二影防禦忽視生效</label
+                >
+                <label class="check"
+                  ><input
+                    type="checkbox"
+                    data-condition="remielleDisc"
+                    checked
+                  />讖羽之誓四件增益生效</label
+                >
+                <label class="check"
+                  ><input
+                    type="checkbox"
+                    data-condition="fangedMetal"
+                  />獠牙重金屬四件增傷生效</label
+                >
+                <label class="check"
+                  ><input
+                    type="checkbox"
+                    data-condition="chaosJazz"
+                    checked
+                  />混沌爵士後場／換入餘效生效</label
+                >
+                <div class="fields">
+                  <label
+                    >淬鋒鉗刺層數<input
+                      type="number"
+                      min="0"
+                      max="3"
+                      value="3"
+                      data-condition="huntStacks" /></label
+                  ><label
+                    >嵌合編譯器層數<input
+                      type="number"
+                      min="0"
+                      max="3"
+                      value="0"
+                      data-condition="compilerStacks"
+                  /></label>
+                </div>
+              </div>
+            </details>
+          </section>
+          <section class="box">
+            <h2>選擇傷害項目</h2>
+            <div class="fields">
+              <label class="full">角色<select id="actor"></select></label
+              ><label class="full"
+                >招式／倍率段<select id="attack"></select
+              ></label>
+              <label
+                >次數<input
+                  id="count"
+                  type="number"
+                  min="1"
+                  max="10000"
+                  value="1"
+              /></label>
+            </div>
+            <p class="footnote" id="attack-note"></p>
+            <div class="actions">
+              <button class="primary" id="calculate" type="button">
+                計算此項傷害</button
+              ><button id="add" type="button">加入手動循環</button>
+            </div>
+            <div id="error" role="alert" hidden></div>
+          </section>
+          <section class="box">
+            <h2>手動循環</h2>
+            <p class="muted">每項保留加入時的增益狀態；敵人設定共用。</p>
+            <div id="rotation"></div>
+            <label
+              >手動循環時長（秒，可留白）<input
+                id="duration"
+                type="number"
+                min="0.1"
+                max="3600"
+                step="0.1"
+                placeholder="未指定時不計算每秒傷害"
+            /></label>
+            <div class="actions">
+              <button id="sum" type="button">計算循環加總</button
+              ><button id="export" type="button" disabled>匯出計算紀錄</button>
+            </div>
+          </section>
+        </div>
+        <div>
+          <section class="box" aria-live="polite">
+            <h2 id="result-title">所選項目傷害期望</h2>
+            <div class="metric" id="total">—</div>
+            <p class="status" id="result-context"></p>
+            <div id="actor-results"></div>
+            <div class="line" id="single-detail">
+              <div class="row"><span>未暴擊</span><b id="noncrit">—</b></div>
+              <div class="row"><span>暴擊</span><b id="crit">—</b></div>
+              <div class="line">
+                <h3>計算拆解</h3>
+                <div id="formula"></div>
+              </div>
+              <details>
+                <summary>目前面板與生效增益</summary>
+                <div id="panel-stats"></div>
+                <ul id="effects"></ul>
+              </details>
+              <div class="source" id="source"></div>
+            </div>
+          </section>
+          <section class="box">
+            <h2>計算範圍</h2>
+            <ul class="muted">
+              <li>
+                使用匯入時的角色面板、技能等級、影畫、覺醒及音擎精煉；數值可能有官方面板顯示取整誤差。
+              </li>
+              <li>
+                可計算已列出的直傷段、餘燼、愛麗絲獨立強擊與柏妮思獨立灼燒跳傷。
+              </li>
+              <li>
+                未計異化、耀變、紊亂、異常貢獻分攤與後續追加傷害；柏妮思覺醒新增招式及混合／持續招式尚未列入。
+              </li>
+              <li>
+                循環次數與時間由你指定，不會自動檢查能量、冷卻與動作時間。循環加總不是完整隊伍
+                DPS。
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </main>
+    <script>
+      (() => {
+        const token = "__CALCULATOR_TOKEN__";
+        const $ = (id) => document.getElementById(id);
+        const fmt = (n, d = 0) =>
+          Number(n).toLocaleString("zh-TW", { maximumFractionDigits: d });
+        let data,
+          entries = [],
+          lastResult = null,
+          requestId = 0,
+          revision = 0;
+        function node(tag, text, className) {
+          const el = document.createElement(tag);
+          if (text !== undefined) el.textContent = text;
+          if (className) el.className = className;
+          return el;
+        }
+        async function api(path, body) {
+          const res = await fetch(path, {
+            method: body ? "POST" : "GET",
+            headers: {
+              "X-Calculator-Token": token,
+              ...(body ? { "Content-Type": "application/json" } : {}),
+            },
+            ...(body ? { body: JSON.stringify(body) } : {}),
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || "無法讀取資料");
+          return json;
+        }
+        function fail(error) {
+          $("error").textContent = error.message;
+          $("error").hidden = false;
+        }
+        function number(id) {
+          const el = $(id);
+          if (el.value === "" || !el.checkValidity())
+            throw new Error("請檢查數值欄位");
+          return Number(el.value);
+        }
+        function conditions() {
+          return Object.fromEntries(
+            [...document.querySelectorAll("[data-condition]")].map((el) => {
+              if (
+                !el.checkValidity() ||
+                (el.type === "number" && el.value === "")
+              )
+                throw new Error("請檢查增益設定");
+              return [
+                el.dataset.condition,
+                el.type === "checkbox" ? el.checked : Number(el.value),
+              ];
+            }),
+          );
+        }
+        function target() {
+          return {
+            defense: number("defense"),
+            resistance: number("resistance"),
+            stunMultiplier: number("stunMultiplier"),
+            stunned: $("stunned").checked,
+          };
+        }
+        function selected() {
+          return {
+            actor: $("actor").value,
+            attack: $("attack").value,
+            count: number("count"),
+            conditions: conditions(),
+          };
+        }
+        function invalidate() {
+          revision++;
+          lastResult = null;
+          $("export").disabled = true;
+          $("result-context").textContent = "設定已變更，請重新計算";
+          $("total").textContent = "—";
+          $("single-detail").hidden = true;
+          $("actor-results").replaceChildren();
+        }
+        function attacks() {
+          const list = data.attacks[$("actor").value];
+          $("attack").replaceChildren(
+            ...list.map((a) => {
+              const option = node("option", a.name);
+              option.value = a.id;
+              return option;
+            }),
+          );
+          if ($("actor").value === "1171") $("attack").value = "afterburn";
+          note();
+        }
+        function note() {
+          $("attack-note").textContent =
+            data.attacks[$("actor").value].find(
+              (a) => a.id === $("attack").value,
+            )?.note || "";
+        }
+        function rotation() {
+          const out = $("rotation");
+          out.replaceChildren();
+          if (!entries.length) {
+            out.append(node("div", "尚未加入傷害項目", "no-items"));
+            return;
+          }
+          entries.forEach((entry, i) => {
+            const row = node("div", undefined, "rotation-item");
+            const actor = data.team.find((a) => a.id === entry.actor),
+              attack = data.attacks[entry.actor].find(
+                (a) => a.id === entry.attack,
+              );
+            const text = node("div");
+            text.append(
+              node("p", actor.name + " · " + attack.name),
+              node("p", "保留加入時增益", "muted"),
+            );
+            const count = node("input");
+            count.type = "number";
+            count.min = "1";
+            count.max = "10000";
+            count.value = entry.count;
+            count.setAttribute("aria-label", actor.name + "招式次數");
+            count.addEventListener("change", () => {
+              invalidate();
+              if (!count.checkValidity() || count.value === "") {
+                count.reportValidity();
+                return;
+              }
+              entry.count = Number(count.value);
+              invalidate();
+            });
+            const del = node("button", "×");
+            del.type = "button";
+            del.setAttribute("aria-label", "移除" + attack.name);
+            del.addEventListener("click", () => {
+              entries.splice(i, 1);
+              rotation();
+              invalidate();
+            });
+            row.append(text, count, del);
+            out.append(row);
+          });
+        }
+        function render(result, all) {
+          $("error").hidden = true;
+          $("total").textContent = fmt(result.total);
+          $("result-title").textContent = all
+            ? "已加入項目的傷害加總"
+            : "所選項目傷害期望";
+          $("result-context").textContent =
+            (all ? "手動循環加總" : "非完整招式／隊伍總傷") +
+            (result.modeledDps === null
+              ? ""
+              : ` · 僅計入項目 ${fmt(result.modeledDps)} / 秒（手動 ${result.durationSeconds} 秒）`);
+          $("single-detail").hidden = all;
+          $("actor-results").replaceChildren();
+          if (all) {
+            result.byActor.forEach((a) => {
+              const row = node("div", undefined, "row");
+              row.append(node("span", a.name), node("b", fmt(a.damage)));
+              const bar = node("div", undefined, "bar"),
+                fill = node("span");
+              fill.style.width =
+                (result.total ? (a.damage / result.total) * 100 : 0) + "%";
+              bar.append(fill);
+              $("actor-results").append(row, bar);
+            });
+          } else {
+            const r = result.rows[0],
+              b = r.breakdown;
+            $("noncrit").textContent = fmt(r.nonCritical);
+            $("crit").textContent = fmt(r.critical);
+            $("formula").textContent =
+              `攻擊 ${fmt(b.basis, 2)} × 倍率 ${fmt(b.multiplier * 100, 2)}% × 增傷 ${fmt(b.bonus, 4)} × 防禦 ${fmt(b.defense, 4)} × 抗性 ${fmt(b.resistance, 4)} × 易傷 ${fmt(b.vulnerability, 4)} × 失衡 ${fmt(b.stun, 4)} × 異常／特殊係數 ${fmt(b.domain, 4)}`;
+            $("panel-stats").textContent =
+              `攻擊 ${fmt(r.stats.panel.atk, 2)} · 精通 ${fmt(r.stats.panel.anomalyProficiency, 2)} · 掌控 ${fmt(r.stats.panel.anomalyMastery, 2)}`;
+            $("effects").replaceChildren(
+              ...r.stats.effects.map((e) => node("li", e)),
+            );
+            if (r.stats.afterburnCooldownMs)
+              $("effects").append(
+                node(
+                  "li",
+                  `餘燼最短觸發間隔 ${r.stats.afterburnCooldownMs / 1000} 秒`,
+                ),
+              );
+            const link = node("a", "倍率來源");
+            link.href = r.source;
+            link.target = "_blank";
+            link.rel = "noreferrer";
+            $("source").replaceChildren(link);
+          }
+          lastResult = result;
+          $("export").disabled = false;
+        }
+        async function calculate(all) {
+          const id = ++requestId,
+            rev = revision;
+          try {
+            if (
+              all &&
+              [...document.querySelectorAll(".rotation-item input")].some(
+                (el) => !el.checkValidity() || el.value === "",
+              )
+            )
+              throw new Error("請檢查循環次數");
+            const chosen = all ? entries : [selected()];
+            if (!chosen.length) throw new Error("請先加入循環項目");
+            const request = {
+              target: target(),
+              entries: chosen,
+              conditions: conditions(),
+              ...(all && $("duration").value !== ""
+                ? { durationSeconds: number("duration") }
+                : {}),
+            };
+            $("error").hidden = true;
+            const result = await api("/api/calculate", request);
+            if (id === requestId && rev === revision) render(result, all);
+          } catch (error) {
+            if (id === requestId) fail(error);
+          }
+        }
+        $("actor").addEventListener("change", () => {
+          attacks();
+          invalidate();
+        });
+        $("attack").addEventListener("change", () => {
+          note();
+          invalidate();
+        });
+        document
+          .querySelectorAll("input")
+          .forEach((el) => el.addEventListener("change", invalidate));
+        $("calculate").addEventListener("click", () => calculate(false));
+        $("sum").addEventListener("click", () => calculate(true));
+        $("add").addEventListener("click", () => {
+          try {
+            if (entries.length >= 100) throw new Error("最多 100 個循環項目");
+            entries.push(selected());
+            rotation();
+            invalidate();
+            $("error").hidden = true;
+          } catch (error) {
+            fail(error);
+          }
+        });
+        $("export").addEventListener("click", () => {
+          if (!lastResult) return;
+          const url = URL.createObjectURL(
+            new Blob([JSON.stringify(lastResult, null, 2)], {
+              type: "application/json",
+            }),
+          );
+          const a = node("a");
+          a.href = url;
+          a.download = "zzz-live-damage-calculation.json";
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+        api("/api/team")
+          .then((result) => {
+            data = result;
+            $("fetched").textContent =
+              "HoYoLAB 配裝快照 · " +
+              (data.fetchedAt
+                ? new Date(data.fetchedAt).toLocaleString("zh-TW")
+                : "擷取時間未提供");
+            data.team.forEach((a) => {
+              const option = node("option", a.name);
+              option.value = a.id;
+              $("actor").append(option);
+              const card = node("section", undefined, "agent"),
+                title = node("div");
+              title.append(
+                node("h2", a.name),
+                node(
+                  "div",
+                  `Lv.${a.level} · ${a.cinema} 影` +
+                    (a.awakening ? ` · 覺醒 ${a.awakening}` : ""),
+                  "muted",
+                ),
+                node(
+                  "div",
+                  a.weapon
+                    ? `${a.weapon.name} · ${a.weapon.refinement} 階`
+                    : "未裝備音擎",
+                  "muted",
+                ),
+              );
+              const stats = node("dl");
+              [
+                ["面板攻擊", a.displayed.atk],
+                ["面板精通", a.displayed.anomalyProficiency],
+                ["面板掌控", a.displayed.anomalyMastery],
+              ].forEach(([name, value]) =>
+                stats.append(node("dt", name), node("dd", fmt(value))),
+              );
+              card.append(title, stats);
+              $("team").append(card);
+            });
+            $("actor").value = data.team.some((a) => a.id === "1171")
+              ? "1171"
+              : data.team[0].id;
+            attacks();
+            rotation();
+            calculate(false);
+          })
+          .catch(fail);
+      })();
+    </script>
+  </body>
+</html>

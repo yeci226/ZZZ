@@ -33,9 +33,9 @@
       "updatedAt": "2026-02-10T09:05:06.269Z"
     },
     {
-      "name": "/locale",
-      "sourceFile": "src/commands/slash/info/locale.ts",
-      "updatedAt": "2026-02-10T09:05:06.396Z"
+      "name": "/leaderboard",
+      "sourceFile": "src/commands/slash/zzz/leaderboard.ts",
+      "updatedAt": "2026-10-02T08:06:11.078538Z"
     },
     {
       "name": "/news",
@@ -51,6 +51,11 @@
       "name": "/profile",
       "sourceFile": "src/commands/slash/zzz/profile.ts",
       "updatedAt": "2025-12-22T09:42:12.622Z"
+    },
+    {
+      "name": "/setup",
+      "sourceFile": "src/commands/slash/setup.ts",
+      "updatedAt": "2026-10-03T06:34:47.222Z"
     },
     {
       "name": "/shiyudefense",

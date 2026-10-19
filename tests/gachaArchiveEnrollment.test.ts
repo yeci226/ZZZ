@@ -32,6 +32,23 @@ describe("future gacha archive enrollment", () => {
     expect(archive.upsertAccount).not.toHaveBeenCalled();
   });
 
+  it("enables a waiting rng.moe archive when the same UID is later bound", () => {
+    const archive = {
+      markOrphaned: jest.fn(() => 0),
+      restoreLinked: jest.fn(() => 1),
+      getAccount: jest.fn(() => ({ sources: ["rng_moe"] })),
+      upsertAccount: jest.fn(),
+      setWeeklyEnabled: jest.fn(),
+    };
+    expect(applyGachaArchiveBinding(
+      "restore", "owner", "130000001", "prod_gf_jp", undefined, archive,
+    )).toBe(true);
+    expect(archive.upsertAccount).toHaveBeenCalledWith(expect.objectContaining({
+      ownerId: "owner", uid: "130000001", source: "official", everLinked: true,
+    }));
+    expect(archive.setWeeklyEnabled).toHaveBeenCalledWith("owner", "130000001", true);
+  });
+
   it("discovers global weekly owners even before they have an archive row", async () => {
     const db = { all: jest.fn(async () => [
       { id: "enabled", value: { gachaWeeklyArchive: true } },

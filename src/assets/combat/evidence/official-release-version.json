@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "gameVersion": "3.2",
+  "title": "3.2版本「她与她的隐秘往事」更新公告",
+  "publishedDate": "2026-09-09",
+  "startsAt": "2026-09-09T06:00:00+08:00",
+  "endsAt": "2026-10-21T06:00:00+08:00",
+  "url": "https://zzz.mihoyo.com/news/166026?nav=news%3Fnav%3Dnews",
+  "corroboratingUrl": "https://zenless.hoyoverse.com/zh-tw/news",
+  "fetchedAt": "2026-10-02T06:10:25.309Z",
+  "retrieval": "Indexed text from the official publisher update notice; the publisher page currently renders as a JavaScript shell when fetched directly.",
+  "scope": "Establishes the live release interval containing the 2026-10-02 authorized character snapshot. Does not attest that older wiki or community models match all 3.2 mechanics.",
+  "fullRosterVerified": false,
+  "apiFindings": {
+    "characterSnapshot": "The authorized response has no semantic game-version field; its fetch timestamp is external metadata.",
+    "wikiPage": "page.version is a page revision timestamp, not semantic game version; status Online is publishing status.",
+    "inventory": "Official character landing page also lists announced characters; cannot infer released roster from all listed names. Wiki paginated entry-list request returned HTTP403; no complete released agent/weapon/disc/bangboo inventory was independently established."
+  },
+  "sha256": "83da122752cbf7115b76f057e0231c2268e912713175966683c46a21b0371151",
+  "digestScope": "Normalized extracted notice facts, not raw page bytes"
+}

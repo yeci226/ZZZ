@@ -18,8 +18,11 @@ export async function getAllFiles(dir: string, extension: string = ".js") {
 }
 
 export function shouldLoadCommand(
-  command: { developmentOnly?: boolean },
+  command: { developmentOnly?: boolean; data?: { name?: string } },
   nodeEnv = process.env.NODE_ENV,
 ): boolean {
+  // Incremental tsc builds can leave removed command modules in dist.
+  // These settings are now available exclusively through /settings.
+  if (["automimo", "reminder", "locale"].includes(command.data?.name ?? "")) return false;
   return command.developmentOnly !== true || nodeEnv === "dev";
 }

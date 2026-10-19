@@ -1,4 +1,5 @@
 import { GachaArchiveStore } from "../src/utilities/zzz/gachaArchive.js";
+jest.mock("../src/utilities/zzz/gachaSimulationCatalog.js", () => ({ cacheSimulationCalendar: jest.fn() }));
 import {
   activeCalendarBanner,
   activeCalendarBanners,
@@ -153,6 +154,92 @@ describe("ZZZ gacha synchronization", () => {
       bannerId: "return-31", version: "3.1", channelCategory: "character_return",
     });
     expect(archive.getAccount("owner", "130000001", "official")?.weeklyEnabled).toBe(true);
+
+    await syncOfficialGachaArchive({
+      ownerId: "owner", archive, pageDelayMs: 0, enableWeekly: false,
+      zzz: { uid: "130000001", region: "prod_gf_jp", lang: "zh-tw", record: { request } },
+    });
+    expect(archive.getAccount("owner", "130000001", "official")?.weeklyEnabled).toBe(false);
+  });
+
+  it("does not treat rng.moe overlap as a completed official sync boundary", async () => {
+    const base = (recordId: string, source: "rng_moe" | "official") => ({
+      ownerId: "owner", uid: "130000001", source, recordId, itemId: "1091",
+      name: "測試代理人", itemType: "代理人", rarity: "S", gachaType: "2001",
+      channelCategory: "character_up" as const, pulledAt: "2025-01-01T00:00:00.000Z",
+    });
+    archive.addRecords([base("1000000000000000001", "rng_moe"), base("1000000000000000002", "rng_moe")]);
+    let query: Record<string, unknown> = {};
+    let pages = 0;
+    const request = {
+      setQueryParams(value: Record<string, unknown>) { query = value; return this; },
+      setDs() { return this; },
+      async send(url: string) {
+        if (url.endsWith("/gacha_calendar")) throw new Error("optional");
+        if (!url.endsWith("/gacha_record")) throw new Error(`unexpected ${url}`);
+        pages++;
+        const id = query.end_id ? "1000000000000000002" : "1000000000000000001";
+        return { response: { retcode: 0, data: {
+          has_more: !query.end_id,
+          gacha_item_list: [{
+            id, item_id: "1091", item_name: "測試代理人", item_type: "代理人",
+            rarity: "S", gacha_type: "GACHA_TYPE_CHARACTER_UP",
+            date: { year: 2025, month: 1, day: 1, hour: 8, minute: 0, second: 0 },
+          }],
+        } } };
+      },
+    };
+    await syncOfficialGachaArchive({
+      ownerId: "owner", archive, pageDelayMs: 0,
+      gachaTypes: ["GACHA_TYPE_CHARACTER_UP"],
+      zzz: { uid: "130000001", region: "prod_gf_jp", record: { request } },
+    });
+    expect(pages).toBe(2);
+    expect(archive.countRecords({ ownerId: "owner", uid: "130000001" })).toBe(2);
+    expect(archive.countRecords({ ownerId: "owner", uid: "130000001", source: "official" })).toBe(2);
+
+    pages = 0;
+    await syncOfficialGachaArchive({
+      ownerId: "owner", archive, pageDelayMs: 0,
+      gachaTypes: ["GACHA_TYPE_CHARACTER_UP"],
+      zzz: { uid: "130000001", region: "prod_gf_jp", record: { request } },
+    });
+    expect(pages).toBe(1);
+  });
+
+  it("does not commit an official boundary after a failed traversal", async () => {
+    let query: Record<string, unknown> = {};
+    let failSecondPage = true;
+    let pages = 0;
+    const request = {
+      setQueryParams(value: Record<string, unknown>) { query = value; return this; },
+      setDs() { return this; },
+      async send(url: string) {
+        if (url.endsWith("/gacha_calendar")) throw new Error("optional");
+        pages++;
+        if (query.end_id && failSecondPage) throw new Error("page failed");
+        const id = query.end_id ? "1000000000000000002" : "1000000000000000001";
+        return { response: { retcode: 0, data: {
+          has_more: !query.end_id,
+          gacha_item_list: [{ id, item_id: "1091", item_name: "代理人", item_type: "代理人",
+            rarity: "S", gacha_type: "GACHA_TYPE_CHARACTER_UP",
+            date: { year: 2025, month: 1, day: 1, hour: 8, minute: 0, second: 0 } }],
+        } } };
+      },
+    };
+    const options = {
+      ownerId: "owner", archive, pageDelayMs: 0,
+      gachaTypes: ["GACHA_TYPE_CHARACTER_UP"],
+      zzz: { uid: "130000001", region: "prod_gf_jp", record: { request } },
+    };
+    await expect(syncOfficialGachaArchive(options)).rejects.toThrow("page failed");
+    expect(archive.getOfficialSyncBoundary("owner", "130000001", "GACHA_TYPE_CHARACTER_UP")).toBeNull();
+    failSecondPage = false;
+    pages = 0;
+    await syncOfficialGachaArchive(options);
+    expect(pages).toBe(2);
+    expect(archive.getOfficialSyncBoundary("owner", "130000001", "GACHA_TYPE_CHARACTER_UP"))
+      .toBe("1000000000000000001");
   });
 
   it("archives an ID-less schedule as a stable merged period and backfills its records", async () => {

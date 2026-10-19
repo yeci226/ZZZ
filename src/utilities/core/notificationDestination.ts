@@ -3,6 +3,7 @@ import type { DbAdapter } from "../accountStore.js";
 export type NotificationFeature = "autoDaily" | "autoRedeem" | "noteReminder";
 
 export type NotificationInvalidReason =
+  | "admin_disabled"
   | "missing_target"
   | "unknown_channel"
   | "unknown_guild"

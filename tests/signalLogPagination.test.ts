@@ -1,4 +1,7 @@
-import { paginateSignalBannerChoices } from "../src/utilities/zzz/signalLogPagination.js";
+import {
+  paginateSignalBannerChoices,
+  paginateSignalBannerChoicesWithPinned,
+} from "../src/utilities/zzz/signalLogPagination.js";
 
 describe("signal log banner pagination", () => {
   const choices = Array.from({ length: 51 }, (_, index) => ({
@@ -17,5 +20,15 @@ describe("signal log banner pagination", () => {
     expect(paginateSignalBannerChoices(choices, 99).page).toBe(2);
     expect(paginateSignalBannerChoices(choices, -3).page).toBe(0);
     expect(paginateSignalBannerChoices([], 8)).toEqual({ items: [], page: 0, pages: 1 });
+  });
+
+  it("pins the all-history option while reserving 24 slots for banners", () => {
+    const all = { label: "全部紀錄", value: "__all__" };
+    const first = paginateSignalBannerChoicesWithPinned(choices, 0, all);
+    const second = paginateSignalBannerChoicesWithPinned(choices, 1, all);
+    expect(first.items).toEqual([all, ...choices.slice(0, 24)]);
+    expect(second.items).toEqual([all, ...choices.slice(24, 48)]);
+    expect(first.items).toHaveLength(25);
+    expect(first.pages).toBe(3);
   });
 });

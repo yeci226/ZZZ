@@ -6,7 +6,6 @@ import fs from "fs";
 import axios from "axios";
 import moment from "moment-timezone";
 import { getTodayWallpaper } from "../zzz/wallpaperManager.js";
-import { client } from "../../index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -37,7 +36,7 @@ export interface ZZZDailyCardPayload {
   status: "success" | "already_signed";
   rewardName: string;
   rewardIcon?: string;
-  rewardCount: number;
+  rewardCount?: number;
   totalDays: number;
   shortSignDay?: number;
   signCntMissed?: number;
@@ -46,16 +45,22 @@ export interface ZZZDailyCardPayload {
   tomorrowRewardCount?: number;
   // i18n labels (pre-translated by caller)
   labelTodayReward?: string;
+  labelCheckedIn?: string;
   labelTomorrowReward?: string;
   labelMonthSignIn?: string;
   labelMonthMissed?: string;
 }
 
 const imageCache = new Map<string, Buffer>();
+const backgroundCache = new Map<string, Buffer>();
 
-async function loadImageBuffer(urlOrPath: string): Promise<Buffer | null> {
+async function loadImageBuffer(
+  urlOrPath: string,
+  background = false,
+): Promise<Buffer | null> {
   if (!urlOrPath) return null;
-  const cached = imageCache.get(urlOrPath);
+  const cache = background ? backgroundCache : imageCache;
+  const cached = cache.get(urlOrPath);
   if (cached) return cached;
   try {
     let buf: Buffer;
@@ -68,7 +73,8 @@ async function loadImageBuffer(urlOrPath: string): Promise<Buffer | null> {
     } else {
       buf = fs.readFileSync(urlOrPath);
     }
-    imageCache.set(urlOrPath, buf);
+    cache.set(urlOrPath, buf);
+    if (background && cache.size > 2) cache.delete(cache.keys().next().value!);
     return buf;
   } catch {
     return null;
@@ -111,8 +117,15 @@ function drawFallbackBg(ctx: any, W: number, H: number) {
   ctx.fillRect(0, 0, W, H);
 }
 
+export interface ZZZDailyCardOptions {
+  /** Explicit null renders the fallback without loading the bot or calling the network. */
+  background?: string | Buffer | null;
+  now?: Date;
+}
+
 export async function buildZZZDailyCard(
   payload: ZZZDailyCardPayload,
+  options: ZZZDailyCardOptions = {},
 ): Promise<Buffer> {
   const W = 1280;
   const H = 720;
@@ -121,13 +134,22 @@ export async function buildZZZDailyCard(
   const font = '"ZZZFont", "ZZZFontEn", sans-serif';
 
   // ── BACKGROUND: wallpaper or fallback gradient ──
-  const wallpaperUrl = await getTodayWallpaper(client.db).catch(() => null);
-  const wallpaperBuf = wallpaperUrl ? await loadImageBuffer(wallpaperUrl) : null;
+  const wallpaper =
+    options.background !== undefined
+      ? options.background
+      : await import("../../index.js")
+          .then(({ client }) => getTodayWallpaper(client.db))
+          .catch(() => null);
+  const wallpaperBuf = Buffer.isBuffer(wallpaper)
+    ? wallpaper
+    : wallpaper
+      ? await loadImageBuffer(wallpaper, true)
+      : null;
 
   if (wallpaperBuf) {
     try {
       const wpImg = await loadImage(wallpaperBuf);
-      // Cover-fit: scale so image fills 1280×720, crop center
+      // Preserve the original full-bleed, centered cover crop.
       const scale = Math.max(W / wpImg.width, H / wpImg.height);
       const dw = wpImg.width * scale;
       const dh = wpImg.height * scale;
@@ -135,13 +157,14 @@ export async function buildZZZDailyCard(
       const dy = (H - dh) / 2;
       ctx.drawImage(wpImg, dx, dy, dw, dh);
     } catch {
+      if (typeof wallpaper === "string") backgroundCache.delete(wallpaper);
       drawFallbackBg(ctx, W, H);
     }
   } else {
     drawFallbackBg(ctx, W, H);
   }
 
-  // Bottom gradient for text legibility
+  // Preserve the original bottom gradient and information layout.
   const grad = ctx.createLinearGradient(0, H * 0.45, 0, H);
   grad.addColorStop(0, "rgba(0,0,0,0)");
   grad.addColorStop(1, "rgba(0,0,0,0.62)");
@@ -155,6 +178,7 @@ export async function buildZZZDailyCard(
   ctx.font = `26px ${font}`;
   drawTextWithStroke(ctx, `UID ${payload.uid}`, 48, 116, 4);
 
+  if (payload.rewardName) {
   // ── CENTER: Today's reward ──
   const iconSize = 160;
   const centerX = Math.floor(W / 2);
@@ -165,25 +189,52 @@ export async function buildZZZDailyCard(
   ctx.fillStyle = "#d4b870";
   ctx.font = `22px ${font}`;
   const todayLabel = payload.labelTodayReward ?? "今日獎勵";
-  ctx.fillText(todayLabel, centerX - ctx.measureText(todayLabel).width / 2, iconY - 16);
+  ctx.fillText(
+    todayLabel,
+    centerX - ctx.measureText(todayLabel).width / 2,
+    iconY - 16,
+  );
   clearShadow(ctx);
 
-  const iconBuf = payload.rewardIcon ? await loadImageBuffer(payload.rewardIcon) : null;
+  const iconBuf = payload.rewardIcon
+    ? await loadImageBuffer(payload.rewardIcon)
+    : null;
   if (iconBuf) {
     try {
       const img = await loadImage(iconBuf);
       const ratio = Math.min(iconSize / img.width, iconSize / img.height);
       const dw = img.width * ratio;
       const dh = img.height * ratio;
-      ctx.drawImage(img, iconX + (iconSize - dw) / 2, iconY + (iconSize - dh) / 2, dw, dh);
-    } catch { /* no icon */ }
+      ctx.drawImage(
+        img,
+        iconX + (iconSize - dw) / 2,
+        iconY + (iconSize - dh) / 2,
+        dw,
+        dh,
+      );
+    } catch {
+      /* no icon */
+    }
   }
 
   applyTextShadow(ctx, "rgba(0,0,0,0.9)", 10);
   ctx.font = `28px ${font}`;
-  const rewardLabel = `${payload.rewardName} ×${payload.rewardCount}`;
-  drawTextWithStroke(ctx, rewardLabel, centerX - ctx.measureText(rewardLabel).width / 2, iconY + iconSize + 38, 5);
+  const rewardLabel = `${payload.rewardName}${payload.rewardCount === undefined ? "" : ` ×${payload.rewardCount}`}`;
+  drawTextWithStroke(
+    ctx,
+    rewardLabel,
+    centerX - ctx.measureText(rewardLabel).width / 2,
+    iconY + iconSize + 38,
+    5,
+  );
   clearShadow(ctx);
+
+  }
+
+  if (!payload.rewardName) {
+    ctx.font = `26px ${font}`;
+    drawTextWithStroke(ctx, payload.labelCheckedIn ?? "已簽到", 48, 160, 4);
+  }
 
   // ── RIGHT: Tomorrow's reward + stats ──
   const rightX = W - 340;
@@ -207,14 +258,25 @@ export async function buildZZZDailyCard(
         const ratio = Math.min(tmIconSize / img.width, tmIconSize / img.height);
         const dw = img.width * ratio;
         const dh = img.height * ratio;
-        ctx.drawImage(img, rightX + (tmIconSize - dw) / 2, rightY + (tmIconSize - dh) / 2, dw, dh);
-      } catch { /* no icon */ }
+        ctx.drawImage(
+          img,
+          rightX + (tmIconSize - dw) / 2,
+          rightY + (tmIconSize - dh) / 2,
+          dw,
+          dh,
+        );
+      } catch {
+        /* no icon */
+      }
     }
 
     const tmrLabel = payload.tomorrowRewardCount
       ? `${payload.tomorrowRewardName} ×${payload.tomorrowRewardCount}`
       : payload.tomorrowRewardName;
     ctx.font = `28px ${font}`;
+    const availableWidth = W - 48 - (rightX + tmIconSize + 10);
+    const textWidth = ctx.measureText(tmrLabel).width;
+    if (textWidth > availableWidth) ctx.font = `${28 * availableWidth / textWidth}px ${font}`;
     drawTextWithStroke(ctx, tmrLabel, rightX + tmIconSize + 10, rightY + 50, 5);
     clearShadow(ctx);
     rightY += tmIconSize + 16;
@@ -223,9 +285,15 @@ export async function buildZZZDailyCard(
   // Stats
   const statLines: [string, string][] = [];
   if (payload.shortSignDay !== undefined)
-    statLines.push([payload.labelMonthSignIn ?? "本月簽到", `${payload.shortSignDay} 天`]);
+    statLines.push([
+      payload.labelMonthSignIn ?? "本月簽到",
+      `${payload.shortSignDay} 天`,
+    ]);
   if (payload.signCntMissed !== undefined)
-    statLines.push([payload.labelMonthMissed ?? "本月漏簽", `${payload.signCntMissed} 天`]);
+    statLines.push([
+      payload.labelMonthMissed ?? "本月漏簽",
+      `${payload.signCntMissed} 天`,
+    ]);
 
   for (const [label, value] of statLines) {
     applyTextShadow(ctx, "rgba(0,0,0,0.8)", 8);
@@ -240,7 +308,7 @@ export async function buildZZZDailyCard(
   }
 
   // ── BOTTOM-RIGHT: Timestamp ──
-  const ts = moment().tz("Asia/Taipei").format("YYYY/MM/DD HH:mm");
+  const ts = moment(options.now).tz("Asia/Taipei").format("YYYY/MM/DD HH:mm");
   ctx.font = `18px ${font}`;
   const tsW = ctx.measureText(ts).width;
   drawTextWithStroke(ctx, ts, W - 48 - tsW, H - 24, 3);

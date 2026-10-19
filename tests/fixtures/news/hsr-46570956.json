@@ -1,0 +1,224 @@
+{
+  "post": {
+    "game_id": 6,
+    "post_id": "46570956",
+    "f_forum_id": 0,
+    "uid": "172534910",
+    "subject": "《崩壞：星穹鐵道》走近星穹——「砂金•戲浪：蘇樂達給了你多少廣告費？」",
+    "content": "zh-tw",
+    "cover": "",
+    "view_type": 1,
+    "created_at": 1788494403,
+    "images": [],
+    "post_status": {
+      "is_top": false,
+      "is_good": false,
+      "is_official": false,
+      "is_vote": false,
+      "is_quiz_vote": false,
+      "is_demoted": false,
+      "is_hot": false
+    },
+    "topic_ids": [],
+    "view_status": 1,
+    "max_floor": 85,
+    "is_original": 1,
+    "republish_authorization": 2,
+    "reply_time": "2026-09-08 08:38:15",
+    "is_deleted": 0,
+    "is_interactive": false,
+    "structured_content": "[{\"insert\":{\"image\":\"https://upload-os-bbs.hoyolab.com/upload/2026/09/04/0/8311205e7a4420b0340c6ac67bf004f6_5442922047783999190.jpeg\"},\"attributes\":{\"height\":1080,\"width\":1920,\"size\":\"348601\"}},{\"insert\":\"\\n\\n據《狸狸週刊》報導：近日，面對「來千星城是否真的只是度假」的疑問，\\n「石心十人」砂金回應稱，此次出行的主要目的，是參與蘇樂達的宣傳活動，\\n但對他來說，這種沒有勾心鬥角，又有朋友相伴的活動，絕對算是難得的假期了。\\n※戰鬥展示具體數值僅供參考，請開拓者以上線版本為準。\\n\\n\"},{\"insert\":{\"video\":\"https://www.youtube.com/embed/0lb2dtaMPOk\"}},{\"insert\":\"\\n中文CV：\\n嘰米——刘北辰\\n翡翠——张若瑜\\n\"}]",
+    "structured_content_rows": [],
+    "lang": "zh-tw",
+    "official_type": 3,
+    "reply_forbid": {
+      "date_type": 0,
+      "start_date": "0",
+      "cur_date": "0",
+      "level": 0
+    },
+    "video": "",
+    "contribution_id": "0",
+    "event_start_date": "0",
+    "event_end_date": "0",
+    "classification_id": "22",
+    "is_audit": false,
+    "is_multi_language": true,
+    "origin_lang": "zh-tw",
+    "sub_type": 0,
+    "reprint_source": "",
+    "can_edit": true,
+    "last_modify_time": 0,
+    "multi_language_info": {
+      "langs": [
+        "zh-cn",
+        "zh-tw",
+        "en-us",
+        "id-id",
+        "th-th",
+        "de-de",
+        "fr-fr",
+        "es-es",
+        "pt-pt",
+        "ru-ru",
+        "ko-kr",
+        "vi-vn",
+        "ja-jp",
+        "tr-tr",
+        "it-it"
+      ],
+      "future_post_id": "24308",
+      "lang_subject": {
+        "fr-fr": "Sur les traces du Star Rail — Aventurine • Croisette : Félicitâme a payé combien ? | HSR",
+        "th-th": "มุ่งสู่ดวงดาว - \"Aventurine - คลื่นสำราญ: ได้ค่าโฆษณา SoulGlad มาเท่าไหร่เนี่ย?\" | Honkai: Star Rail",
+        "pt-pt": "Conhecendo Star Rail - Aventurine - Veraneio: Quanto a FelizAlma Pagou? | Honkai: Star Rail",
+        "ru-ru": "«Авантюрин: Прибой, сколько тебе заплатила \"Услада\"?» | «Ближе к звёздам» | Honkai: Star Rail",
+        "ja-jp": "【崩壊：スターレイル】イッテ星穹！——「アベンチュリン・波と戯れる夏：スラーダから広告費をいくらもらった？」",
+        "ko-kr": "〈붕괴: 스타레일〉 은하탐구생활——「어벤츄린•웨이브: 솔글래드에서 광고비를 얼마나 줬나요?」",
+        "en-us": "Keeping Up With Star Rail — Aventurine • Waveflair: How Much Did SoulGlad Pay? | Honkai: Star Rail",
+        "zh-cn": "《崩坏：星穹铁道》走近星穹——「砂金•戏浪：苏乐达给了你多少广告费？」",
+        "tr-tr": "Keeping Up With Star Rail — Aventurine • Waveflair: How Much Did SoulGlad Pay? | Honkai: Star Rail",
+        "id-id": "Mendekati Star Rail — \"Aventurine • Waveflair: Berapa yang Dibayar SoulGlad?\" | Honkai: Star Rail",
+        "it-it": "Keeping Up With Star Rail — Aventurine • Waveflair: How Much Did SoulGlad Pay? | Honkai: Star Rail",
+        "zh-tw": "《崩壞：星穹鐵道》走近星穹——「砂金•戲浪：蘇樂達給了你多少廣告費？」",
+        "es-es": "Hacia las estrellas - \"Aventurino Oleaje: ¿Cuánto te pagó FelizAlma?\" | Honkai: Star Rail",
+        "vi-vn": "Honkai: Star Rail Tiến Đến Trời Sao - Aventurine - Waveflair: SoulGlad Trả Bao Nhiêu Phí Quảng Cáo?",
+        "de-de": "Alles über Star Rail: Aventurin – Wellenflair: Wie viel hat SeelFroh bezahlt? | Honkai: Star Rail"
+      },
+      "lang_content": {},
+      "lang_structured_content": {}
+    },
+    "visible_level": 1,
+    "has_cover": false,
+    "suid": "0",
+    "desc": "據《狸狸週刊》報導：近日，面對「來千星城是否真的只是度假」的疑問， 「石心十人」砂金回應稱，此次出行的主要目的，是參與蘇樂達的宣傳活動， 但對他來說，這種沒有勾心鬥角，又有朋友相伴的活動，絕對算是難得的假期了。 ※戰鬥展示具體數值僅供參考，請開拓者以上線版本為準。 中文CV： 嘰米——刘北辰 翡翠——张若瑜",
+    "game_uid": "0",
+    "game_region": "",
+    "channel_id": "42"
+  },
+  "user": {
+    "uid": "172534910"
+  },
+  "image_list": [
+    {
+      "url": "https://upload-os-bbs.hoyolab.com/upload/2026/09/04/0/8311205e7a4420b0340c6ac67bf004f6_5442922047783999190.jpeg",
+      "height": 1080,
+      "width": 1920,
+      "format": "JPEG",
+      "size": "348601",
+      "spoiler": false,
+      "cuts": [
+        {
+          "ratio": 4,
+          "lt_point": {
+            "x": 67,
+            "y": 347
+          },
+          "rb_point": {
+            "x": 844,
+            "y": 784
+          }
+        },
+        {
+          "ratio": 1,
+          "lt_point": {
+            "x": 67,
+            "y": 140
+          },
+          "rb_point": {
+            "x": 650,
+            "y": 916
+          }
+        },
+        {
+          "ratio": 2,
+          "lt_point": {
+            "x": 67,
+            "y": 347
+          },
+          "rb_point": {
+            "x": 844,
+            "y": 930
+          }
+        },
+        {
+          "ratio": 3,
+          "lt_point": {
+            "x": 67,
+            "y": 140
+          },
+          "rb_point": {
+            "x": 844,
+            "y": 916
+          }
+        }
+      ],
+      "tag_info": {
+        "is_long_picture": false
+      },
+      "template_info": null,
+      "image_id": "142911268"
+    }
+  ],
+  "cover_list": [
+    {
+      "url": "https://upload-os-bbs.hoyolab.com/upload/2026/09/04/0/8311205e7a4420b0340c6ac67bf004f6_5442922047783999190.jpeg",
+      "height": 1080,
+      "width": 1920,
+      "format": "JPEG",
+      "size": "348601",
+      "spoiler": false,
+      "cuts": [
+        {
+          "ratio": 4,
+          "lt_point": {
+            "x": 67,
+            "y": 347
+          },
+          "rb_point": {
+            "x": 844,
+            "y": 784
+          }
+        },
+        {
+          "ratio": 1,
+          "lt_point": {
+            "x": 67,
+            "y": 140
+          },
+          "rb_point": {
+            "x": 650,
+            "y": 916
+          }
+        },
+        {
+          "ratio": 2,
+          "lt_point": {
+            "x": 67,
+            "y": 347
+          },
+          "rb_point": {
+            "x": 844,
+            "y": 930
+          }
+        },
+        {
+          "ratio": 3,
+          "lt_point": {
+            "x": 67,
+            "y": 140
+          },
+          "rb_point": {
+            "x": 844,
+            "y": 916
+          }
+        }
+      ],
+      "tag_info": {
+        "is_long_picture": false
+      },
+      "template_info": null,
+      "image_id": "142911268"
+    }
+  ]
+}

@@ -22,6 +22,7 @@ import {
 import path from "path";
 import { failedReply, getRandomColor } from "../../../utilities/utilities.js";
 import { getConfig } from "../../../utilities/core/config.js";
+import { accountLoginUrl } from "../../../utilities/accountAccess.js";
 import { QuickDB } from "quick.db";
 import {
   getAllCharacters,
@@ -279,13 +280,8 @@ export default {
             );
           }
           // Map Discord interaction locale → web app locale (en | zh-TW)
-          const rawLocale = String(interaction.locale ?? "").toLowerCase();
-          const webLang =
-            rawLocale === "zh-tw" || rawLocale === "zh-cn" || rawLocale === "zh"
-              ? "zh-TW"
-              : "en";
-          const langQs = webLang === "en" ? "" : `&lang=${webLang}`;
-          const url = `${baseUrl.replace(/\/$/, "")}/login?botId=zzz${langQs}`;
+          const url = accountLoginUrl(interaction.locale);
+          if (!url) return failedReply(interaction, "Web login is not configured correctly. Please contact the administrator.");
           console.log(`[/account WebLogin] url=${url}`);
           console.log(
             `[/account WebLogin] tr keys: title=${tr("account_WebLoginTitle")} desc=${tr("account_WebLoginDesc")?.slice(0, 30)} btn=${tr("account_WebLoginButton")}`,

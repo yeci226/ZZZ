@@ -1,15 +1,13 @@
+import { resolveDailySignIn, dailyAwardAt } from "../core/dailyRewards.js";
 import { client } from "../../index.js";
 import { EmbedBuilder, WebhookClient, AttachmentBuilder } from "discord.js";
 
-import { ZenlessZoneZero, LanguageEnum } from "@yeci226/hoyoapi";
+import { LanguageEnum } from "@yeci226/hoyoapi";
+import { createZzzDailyClient } from "./clientFactory.js";
 import moment from "moment-timezone";
 import Logger from "../core/logger.js";
 import { createTranslator } from "../core/i18n.js";
-import {
-  getAllGameRoles,
-  getUserCookie,
-  getUserLang,
-} from "../utilities.js";
+import { getAllGameRoles, getUserCookie, getUserLang } from "../utilities.js";
 import { getConfig, getVerifyBaseUrl } from "../core/config.js";
 import { buildZZZDailyCard } from "../canvas/dailyCard.js";
 import {
@@ -18,14 +16,16 @@ import {
   restoreGeneralValidity,
   updateLegacyAccountAtIndex,
 } from "../accountStore.js";
-import { buildDailySignInPresentation, normalizeSuccessfulDailyClaimInfo } from "./dailyPresentation.js";
+import { buildDailySignInPresentation } from "./dailyPresentation.js";
 import {
   isExplicitAuthenticationError,
+  isDailyRoleMissingError,
   shouldRestoreGeneralValidity,
   shouldSkipAutoDailyAccount,
 } from "./autoDailyAuth.js";
 import {
   getDailyAuthAccountKey,
+  getDailyMissingRoleKey,
   hasLegacyInvalidProbeCompleted,
   markLegacyInvalidProbeCompleted,
 } from "../core/dailyAuthState.js";
@@ -34,9 +34,7 @@ import {
   normalizeAutoDailyNotifyType,
   resolveAndPersistAutoDailyGuildId,
 } from "../core/autoDailyNotification.js";
-import {
-  shouldMarkAutoDailyProcessed,
-} from "./autoDailyPolicy.js";
+import { shouldMarkAutoDailyProcessed } from "./autoDailyPolicy.js";
 import {
   classifyPermanentNotificationError,
   disableNotificationDestination,
@@ -49,6 +47,7 @@ const CONFIG = {
   API_TIMEOUT: 15000,
   USER_TIMEOUT: 60000,
   MAX_RETRIES: 3,
+  MISSING_ROLE_RETRY_MS: 24 * 60 * 60 * 1000,
   DEFAULT_LANGUAGE: "tw",
   ERROR_CODES: {
     ALREADY_SIGNED: -5003,
@@ -118,7 +117,6 @@ interface ProcessUserStats {
 export class AutoDailyService {
   private client: any;
   private db: any;
-  private webhook: WebhookClient | null;
   private errorWebhook: WebhookClient | null;
   private logger: Logger;
   private isRunning: boolean = false;
@@ -127,9 +125,6 @@ export class AutoDailyService {
     const config = getConfig();
     this.client = client;
     this.db = client.db;
-    this.webhook = config.LOGWEBHOOK
-      ? new WebhookClient({ url: config.LOGWEBHOOK })
-      : null;
     this.errorWebhook = config.ERRWEBHOOK
       ? new WebhookClient({ url: config.ERRWEBHOOK })
       : null;
@@ -174,17 +169,21 @@ export class AutoDailyService {
           const result = await withTimeout(
             (async () => {
               const config = dailyData[userId];
+              if (config.enabled === false) return null;
               let scheduledHour = Number(config.time ?? 13);
               if (!Number.isFinite(scheduledHour)) scheduledHour = 13;
               if (scheduledHour === 24) scheduledHour = 0;
-              else if (scheduledHour < 0 || scheduledHour > 23) scheduledHour = 13;
+              else if (scheduledHour < 0 || scheduledHour > 23)
+                scheduledHour = 13;
 
               // Catch-up behavior: if the bot missed the exact hour (restart/offline),
               // run once later the same day as long as it has not been processed today.
               if (currentHour < scheduledHour) return null;
 
               // Skip if already processed today
-              const lastProcessed = await this.db.get(`${userId}.lastAutoDaily`);
+              const lastProcessed = await this.db.get(
+                `${userId}.lastAutoDaily`,
+              );
               if (lastProcessed === today) return null;
 
               const processed = await this.processUser(userId, config, {
@@ -281,43 +280,42 @@ export class AutoDailyService {
             `用戶 ${userId} 帳號 #${i} 已確認為整體失效，跳過自動簽到`,
           );
         } else {
-          this.logger.warn(`用戶 ${userId} 帳號 #${i} 缺少 UID 或 Cookie，已跳過`);
+          this.logger.warn(
+            `用戶 ${userId} 帳號 #${i} 缺少 UID 或 Cookie，已跳過`,
+          );
         }
+        continue;
+      }
+
+      const missingRoleKey = getDailyMissingRoleKey(
+        userId,
+        String(account.cookie),
+        String(account.uid),
+      );
+      const missingRoleState = (await this.db.get(missingRoleKey)) as {
+        retryAfter: number;
+      } | null;
+      if (missingRoleState && missingRoleState.retryAfter > Date.now()) {
+        stats.skipped++;
         continue;
       }
 
       stats.total++;
       try {
-        const zzz = new ZenlessZoneZero({
-          uid: Number(account.uid),
+        const zzz = createZzzDailyClient({
           cookie: account.cookie,
           lang: this.getLanguage(userLang),
         });
 
-        const info = await withTimeout(zzz.daily.info(), CONFIG.API_TIMEOUT);
-        let signResult: {
-          status: "success" | "already_signed";
-          info: any;
-        };
-
-        if (info.is_sign) {
-          signResult = { status: "already_signed", info };
-        } else {
-          const claim = await withTimeout(zzz.daily.claim(), CONFIG.API_TIMEOUT);
-          if (
-            claim.code === CONFIG.ERROR_CODES.ALREADY_SIGNED
-          ) {
-            signResult = { status: "already_signed", info: claim.info || info };
-          } else {
-            signResult = {
-              status: "success",
-              info: normalizeSuccessfulDailyClaimInfo(info, claim.info || info),
-            };
-          }
-        }
+        const signResult = await resolveDailySignIn(zzz.daily);
+        if (missingRoleState) await this.db.delete(missingRoleKey);
 
         if (shouldRestoreGeneralValidity(signResult.status)) {
-          await restoreGeneralValidity(this.db as any, userId, String(account.uid));
+          await restoreGeneralValidity(
+            this.db as any,
+            userId,
+            String(account.uid),
+          );
           if (legacyProbe) {
             await markLegacyInvalidProbeCompleted(this.db, userId, accountKey);
             stats.legacyProbeCompleted = true;
@@ -356,12 +354,9 @@ export class AutoDailyService {
 
               // Nickname-only patch: do not touch cookie, invalid state,
               // lastUpdate or the AutoDaily legacy probe marker.
-              await updateLegacyAccountAtIndex(
-                this.db as any,
-                userId,
-                i,
-                { nickname: fetchedNickname },
-              );
+              await updateLegacyAccountAtIndex(this.db as any, userId, i, {
+                nickname: fetchedNickname,
+              });
 
               this.logger.info(
                 `用戶 ${userId} UID ${account.uid} 已自動補回玩家名稱`,
@@ -376,20 +371,24 @@ export class AutoDailyService {
           }
         }
 
-        const rewards = await withTimeout(zzz.daily.rewards(), CONFIG.API_TIMEOUT);
+        const rewards = signResult.rewards;
+        if (!rewards.awards.length)
+          this.logger.warn(
+            `Daily rewards unavailable: date=${signResult.info.today} month=${rewards.month}; sign-in=${signResult.status}`,
+          );
         const presentation = buildDailySignInPresentation(
           signResult.info,
           rewards.awards,
         );
-        const reward = presentation.todayReward || rewards.awards[0];
-        const tomorrowReward = presentation.tomorrowReward;
+        const reward = dailyAwardAt(signResult.info, rewards);
+        const tomorrowReward = dailyAwardAt(signResult.info, rewards, 1);
         results.push({
           uid: account.uid,
           nickname: resolvedNickname || "Unknown",
           status: signResult.status as any,
-          rewardName: reward.name,
-          rewardCount: reward.cnt,
-          rewardIcon: reward.icon,
+          rewardName: reward?.name || "",
+          rewardCount: reward?.cnt,
+          rewardIcon: reward?.icon,
           totalDays: presentation.signedDays,
           shortSignDay: presentation.signedDays,
           signCntMissed: presentation.missedDays,
@@ -403,10 +402,24 @@ export class AutoDailyService {
       } catch (error: any) {
         const errorMessage = error?.message || String(error);
         const authenticationError = isExplicitAuthenticationError(error);
+        const missingRoleError = isDailyRoleMissingError(error);
         const displayError = authenticationError
           ? tr("daily_AuthExpiredDesc")
-          : errorMessage;
+          : missingRoleError
+            ? tr("daily_MissingRoleDesc")
+            : errorMessage;
         stats.failed++;
+
+        // Keep a daily recovery probe, but notify only on the first failure.
+        // Stable account identity survives restarts and silent cookie refreshes.
+        if (missingRoleError) {
+          await this.db.set(missingRoleKey, {
+            retryAfter: Date.now() + CONFIG.MISSING_ROLE_RETRY_MS,
+          });
+        }
+        const notifyFailure =
+          !(legacyProbe && authenticationError) &&
+          !(missingRoleError && missingRoleState);
 
         // Legacy invalid accounts are probed once to classify old shared auth
         // state. If Daily itself confirms an explicit auth failure, persist the
@@ -416,7 +429,7 @@ export class AutoDailyService {
         // Normal accounts still receive their first auth-expired notification.
         // Transient/non-auth legacy probe failures are also still notified and
         // remain retryable.
-        if (!(legacyProbe && authenticationError)) {
+        if (notifyFailure) {
           results.push({
             uid: account.uid,
             nickname: account.nickname || "Unknown",
@@ -440,7 +453,7 @@ export class AutoDailyService {
           }
         }
 
-        if (this.errorWebhook) {
+        if (this.errorWebhook && notifyFailure) {
           const errorEmbed = new EmbedBuilder()
             .setColor("#E76161")
             .setTitle(`[自動簽到失敗] 用戶: ${userId}`)
@@ -544,7 +557,7 @@ export class AutoDailyService {
           status: res.status as "success" | "already_signed",
           rewardName: res.rewardName || "",
           rewardIcon: res.rewardIcon,
-          rewardCount: res.rewardCount ?? 1,
+          rewardCount: res.rewardCount,
           totalDays: res.totalDays ?? 0,
           shortSignDay: res.shortSignDay,
           signCntMissed: res.signCntMissed,
@@ -552,6 +565,7 @@ export class AutoDailyService {
           tomorrowRewardIcon: res.tomorrowRewardIcon,
           tomorrowRewardCount: res.tomorrowRewardCount,
           labelTodayReward: tr("card_TodayReward"),
+          labelCheckedIn: tr("daily_Signed"),
           labelTomorrowReward: tr("card_TomorrowReward"),
           labelMonthSignIn: tr("card_MonthSignIn"),
           labelMonthMissed: tr("card_MonthMissed"),
@@ -563,13 +577,20 @@ export class AutoDailyService {
       } catch (e) {
         this.logger.error(`Canvas card 生成失敗 (${res.uid}): ${e}`);
         // Fallback: send a plain embed so user is still notified
-        const statusLabel = res.status === "success" ? tr("daily_Success") : tr("daily_AlreadySigned");
+        const statusLabel =
+          res.status === "success"
+            ? tr("daily_Success")
+            : tr("daily_AlreadySigned");
         canvasFallbackEmbeds.push(
           new EmbedBuilder()
             .setColor(res.status === "success" ? "#5BB85D" : "#5B9BD5")
             .setTitle(`${res.uid} ${statusLabel}`)
-            .setDescription(res.rewardName ? `${tr("card_TodayReward")}: ${res.rewardName} ×${res.rewardCount ?? 1}` : null)
-            .toJSON()
+            .setDescription(
+              res.rewardName
+                ? `${tr("card_TodayReward")}: ${res.rewardName}${res.rewardCount === undefined ? "" : ` ×${res.rewardCount}`}`
+                : null,
+            )
+            .toJSON(),
         );
       }
     }
@@ -629,7 +650,8 @@ export class AutoDailyService {
               const attachment = file.attachment;
               let buffer = Buffer.alloc(0);
               if (Buffer.isBuffer(attachment)) buffer = Buffer.from(attachment);
-              else if (attachment instanceof Uint8Array) buffer = Buffer.from(attachment);
+              else if (attachment instanceof Uint8Array)
+                buffer = Buffer.from(attachment);
               return {
                 buffer: buffer.toString("base64"),
                 name: file.name,
@@ -651,7 +673,8 @@ export class AutoDailyService {
           if (!channel && typeof c.channels.fetch === "function") {
             channel = await c.channels.fetch(ctx.channelId).catch(() => null);
           }
-          if (!channel || typeof (channel as any).send !== "function") return false;
+          if (!channel || typeof (channel as any).send !== "function")
+            return false;
           const { AttachmentBuilder } = await import("discord.js");
           const files = ctx.payload.files.map(
             (f: any) =>
@@ -673,7 +696,9 @@ export class AutoDailyService {
         },
       );
       if (!sendResults.some(Boolean)) {
-        throw new Error(`No cluster sent message to channel ${targetChannelId}`);
+        throw new Error(
+          `No cluster sent message to channel ${targetChannelId}`,
+        );
       }
     };
 
@@ -749,24 +774,8 @@ export class AutoDailyService {
   ) {
     const duration = (Date.now() - startTime) / 1000;
     this.logger.success(
-      `已完成 ${currentHour}:00 自動簽到: ${stats.total} 總數, ${stats.success} 成功, ${stats.alreadySigned} 已簽到, ${stats.skipped} 跳過, ${stats.failed} 失敗`,
+      `已完成 ${currentHour}:00 自動簽到: ${stats.total} 總數, ${stats.success} 成功, ${stats.alreadySigned} 已簽到, ${stats.skipped} 跳過, ${stats.failed} 失敗, ${duration.toFixed(2)}s`,
     );
-
-    if (this.webhook) {
-      const statsEmbed = new EmbedBuilder()
-        .setColor("#F2BE22")
-        .setTitle(`${currentHour}:00 自動簽到統計`)
-        .addFields(
-          { name: "總數", value: `\`${stats.total}\``, inline: true },
-          { name: "成功", value: `\`${stats.success}\``, inline: true },
-          { name: "已簽到", value: `\`${stats.alreadySigned}\``, inline: true },
-          { name: "跳過", value: `\`${stats.skipped}\``, inline: true },
-          { name: "失敗", value: `\`${stats.failed}\``, inline: true },
-          { name: "耗時", value: `\`${duration.toFixed(2)}s\``, inline: true },
-        )
-        .setTimestamp();
-      await this.webhook.send({ embeds: [statsEmbed] }).catch(() => {});
-    }
   }
 }
 

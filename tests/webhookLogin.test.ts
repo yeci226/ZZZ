@@ -1,54 +1,21 @@
-/**
- * Routing tests for `drainPendingLogins` (Plan C Task 3).
- *
- * Three branches:
- *   1. enriched payload with a ZZZ card (game_id=8)  → bindFromEnriched
- *   2. enriched payload without a ZZZ card           → bindHoyolabOnly
- *   3. no enriched payload                           → bindCookieToUser (legacy)
- *
- * Uses commonjs `jest.mock` (tsconfig.test.json sets module:"commonjs"),
- * not `jest.unstable_mockModule`.
- */
-import { jest } from "@jest/globals";
-
-// ---- mocks -----------------------------------------------------------------
-
-const mockFetchPendingLogins: jest.Mock<any> = jest.fn();
-const mockMarkConsumed: jest.Mock<any> = jest.fn();
-const mockDecryptString: jest.Mock<any> = jest.fn((s: string) => `decrypted(${s})`);
-
-const mockGetAllGameRoles: jest.Mock<any> = jest.fn();
-const mockUpdateAccountInfo: jest.Mock<any> = jest.fn();
-
-const mockUpsertHoyolab: jest.Mock<any> = jest.fn();
-const mockUpsertCharacter: jest.Mock<any> = jest.fn();
-const mockGetLegacyAccounts: jest.Mock<any> = jest.fn();
-
-const mockDbGet: jest.Mock<any> = jest.fn();
-const mockUserSend: jest.Mock<any> = jest.fn();
-const mockUsersFetch: jest.Mock<any> = jest.fn(async () => ({ send: mockUserSend }));
-
-jest.mock("../src/utilities/core/supabase.js", () => ({
-  fetchPendingLogins: (...args: any[]) => (mockFetchPendingLogins as any)(...args),
-  markConsumed: (...args: any[]) => (mockMarkConsumed as any)(...args),
-  decryptString: (...args: any[]) => (mockDecryptString as any)(...args),
-}));
-
+const mockRoles = jest.fn();
+const mockUpdate = jest.fn();
+const mockPending = jest.fn();
+const mockConsumed = jest.fn();
+const mockDecrypt = jest.fn();
+const mockAccounts = jest.fn();
+const mockCharacter = jest.fn();
 jest.mock("../src/utilities/utilities.js", () => ({
-  getAllGameRoles: (...args: any[]) => (mockGetAllGameRoles as any)(...args),
-  updateAccountInfo: (...args: any[]) => (mockUpdateAccountInfo as any)(...args),
+  getAllGameRoles: (...a: any[]) => mockRoles(...a),
+  updateAccountInfo: (...a: any[]) => mockUpdate(...a),
 }));
-
-jest.mock("../src/utilities/accountStore.js", () => ({
-  upsertHoyolab: (...args: any[]) => (mockUpsertHoyolab as any)(...args),
-  upsertCharacter: (...args: any[]) => (mockUpsertCharacter as any)(...args),
-  getLegacyAccounts: (...args: any[]) => (mockGetLegacyAccounts as any)(...args),
+jest.mock("../src/utilities/gameRoles.js", () => ({
+  getAccountGameRoles: (...a: any[]) => mockRoles(...a),
 }));
-
+jest.mock("../src/index.js", () => ({ client: { db: {} }, database: {} }));
 jest.mock("../src/utilities/core/config.js", () => ({
   getConfig: () => ({ DEVIDS: [] }),
 }));
-
 jest.mock("../src/utilities/core/logger.js", () => ({
   __esModule: true,
   default: class {
@@ -58,130 +25,197 @@ jest.mock("../src/utilities/core/logger.js", () => ({
     success() {}
   },
 }));
-
-jest.mock("../src/index.js", () => ({
-  client: {
-    db: { get: (...args: any[]) => (mockDbGet as any)(...args) },
-    users: { fetch: (...args: any[]) => (mockUsersFetch as any)(...args) },
-  },
+jest.mock("../src/utilities/core/supabase.js", () => ({
+  claimPendingLogin: (...a: any[]) => mockPending(...a),
+  finishPendingLogin: (...a: any[]) => mockConsumed(...a),
+  renewPendingLogin: async () => true,
+  decryptString: (...a: any[]) => mockDecrypt(...a),
 }));
-
-// Sync import — commonjs.
+jest.mock("../src/utilities/accountStore.js", () => ({
+  getLegacyAccounts: (...a: any[]) => mockAccounts(...a),
+  upsertHoyolab: jest.fn(),
+  upsertCharacter: (...a: any[]) => mockCharacter(...a),
+}));
 import { drainPendingLogins } from "../src/utilities/webhookLogin";
-
-// ---- helpers ---------------------------------------------------------------
-
-function row(opts: { id: number; enriched?: any }) {
-  return {
-    id: opts.id,
-    discord_id: "u1",
-    ltuid_v2: "L1",
-    encrypted_cookies: "enc",
-    hoyo_account: null,
-    enriched: opts.enriched ?? null,
-    created_at: "2026-04-27T00:00:00.000Z",
-  };
-}
-
-const ZZZ_CARD = {
-  game_id: 8,
-  game_role_id: "1500111111",
-  nickname: "Wise",
-  level: 55,
-  region: "prod_gf_jp",
-  region_name: "Asia",
-  game_name: "Zenless Zone Zero",
-  logo: "logo.png",
-  background_image: "cov1.png",
-  background_image_v2: "cov2.png",
-  data: [
-    { name: "Active Days", value: "100" },
-    { name: "Agents", value: "20" },
-    { name: "W-Engines", value: "30" },
-    { name: "Bangboo", value: "10" },
-    { name: "extra", value: "ignored" },
-  ],
-};
-
-const HSR_CARD = {
-  game_id: 6,
-  game_role_id: "800000001",
-  nickname: "HSRPlayer",
-  level: 70,
-  region: "prod_official_asia",
-  region_name: "Asia",
-};
-
+const roles = [
+  { uid: "800000001", nickname: "Asia", region: "asia", gameId: 8 },
+  { uid: "900000001", nickname: "TW", region: "taiwan", gameId: 8 },
+];
+const row = (extra: any = {}) => ({
+  id: 1,
+  discord_id: "user",
+  ltuid_v2: "123",
+  encrypted_cookies: "encrypted",
+  owner: "owner",
+  receipt: { attempts: 1 },
+  ...extra,
+});
+const enqueue = (extra: any = {}) =>
+  mockPending.mockResolvedValueOnce(row(extra));
 beforeEach(() => {
-  jest.clearAllMocks();
-  mockDbGet.mockResolvedValue([] as any);
-  mockGetLegacyAccounts.mockResolvedValue([] as any);
+  jest.resetAllMocks();
+  mockPending.mockResolvedValue(null);
+  mockConsumed.mockResolvedValue(true);
+  mockAccounts.mockResolvedValue([]);
+  mockRoles.mockResolvedValue(roles);
+  mockDecrypt.mockReturnValue("ltuid_v2=123; cookie_token_v2=test");
+});
+it.each([
+  null,
+  { cards: [], fetched_at: "2026-09-17" },
+  {
+    cards: [
+      {
+        game_id: 8,
+        game_role_id: "800000001",
+        nickname: "Asia",
+        region: "asia",
+        data: [],
+      },
+    ],
+    fetched_at: "2026-09-17",
+  },
+])("discovers all servers regardless of preview cards %j", async (enriched) => {
+  enqueue({ enriched });
+  const result = await drainPendingLogins("user");
+  expect(result.map((r) => r.uid)).toEqual(roles.map((r) => r.uid));
+  expect(mockUpdate).toHaveBeenCalledTimes(2);
+  expect(mockConsumed).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ status: "success" }),
+  );
+});
+it("transient discovery failure schedules retry rather than success", async () => {
+  enqueue();
+  mockRoles.mockRejectedValue(new Error("network down"));
+  expect(await drainPendingLogins("user")).toEqual([]);
+  expect(mockConsumed).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ status: "retrying", code: "sync_error" }),
+  );
+});
+it("updates existing accounts at the cap and reports the skipped role", async () => {
+  enqueue();
+  mockAccounts.mockResolvedValue([
+    roles[0],
+    ...[1, 2, 3, 4].map((uid) => ({ uid: String(uid) })),
+  ]);
+  expect((await drainPendingLogins("user")).map((r) => r.uid)).toEqual([
+    "800000001",
+  ]);
+  expect(mockUpdate).toHaveBeenCalledTimes(1);
+  expect(mockConsumed).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      status: "partial",
+      code: "account_limit",
+      skipped: [expect.objectContaining({ uid: "900000001" })],
+    }),
+  );
+});
+it("reports empty roles after successful discovery", async () => {
+  enqueue();
+  mockRoles.mockResolvedValue([]);
+  expect(await drainPendingLogins("user")).toEqual([]);
+  expect(mockConsumed).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ status: "no_roles" }),
+  );
+});
+it("preserves successful roles on partial failure and retries only unfinished writes", async () => {
+  enqueue();
+  mockUpdate
+    .mockResolvedValueOnce(undefined)
+    .mockRejectedValueOnce(new Error("db unavailable"));
+  expect((await drainPendingLogins("user")).map((r) => r.uid)).toEqual([
+    "800000001",
+  ]);
+  expect(mockConsumed).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      status: "retrying",
+      roles: [expect.objectContaining({ uid: "800000001" })],
+    }),
+  );
+  mockUpdate.mockReset();
+  mockUpdate.mockResolvedValue(undefined);
+  enqueue({ receipt: { attempts: 2, roles: [roles[0]] } });
+  expect((await drainPendingLogins("user")).map((r) => r.uid)).toEqual([
+    "800000001",
+    "900000001",
+  ]);
+  expect(mockUpdate).toHaveBeenCalledTimes(1);
+  expect(mockUpdate).toHaveBeenCalledWith(
+    "user",
+    expect.objectContaining({ uid: "900000001" }),
+  );
+});
+it("caps four existing roles at five", async () => {
+  const accounts = [1, 2, 3, 4].map((uid) => ({ uid: String(uid) }));
+  mockAccounts.mockImplementation(async () => accounts);
+  mockUpdate.mockImplementation(async (_u: string, r: any) =>
+    accounts.push({ uid: r.uid }),
+  );
+  enqueue();
+  expect((await drainPendingLogins("user")).map((r) => r.uid)).toEqual([
+    "800000001",
+  ]);
+  expect(accounts).toHaveLength(5);
+});
+it("does not attach metadata from another server", async () => {
+  enqueue({
+    enriched: {
+      cards: [{ game_id: 8, game_role_id: "not-bound", nickname: "Wrong" }],
+    },
+  });
+  await drainPendingLogins("user");
+  expect(mockCharacter).not.toHaveBeenCalled();
+});
+it("reports a decryption failure and never binds it", async () => {
+  enqueue();
+  mockDecrypt.mockImplementation(() => {
+    throw new Error("invalid");
+  });
+  await drainPendingLogins("user");
+  expect(mockUpdate).not.toHaveBeenCalled();
+  expect(mockConsumed).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ status: "failed", code: "invalid_credentials" }),
+  );
+});
+it("stops automatic retries after the fourth attempt", async () => {
+  enqueue({ receipt: { attempts: 4 } });
+  mockRoles.mockRejectedValue(new Error("offline"));
+  await drainPendingLogins("user");
+  expect(mockConsumed).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ status: "failed" }),
+  );
 });
 
-// ---- tests -----------------------------------------------------------------
 
-describe("drainPendingLogins routing", () => {
-  it("enriched-with-ZZZ-card → bindFromEnriched (no Hoyolab API)", async () => {
-    mockFetchPendingLogins.mockResolvedValue([
-      row({
-        id: 1,
-        enriched: {
-          ltuid_v2: "L1",
-          cards: [ZZZ_CARD],
-          fetched_at: "2026-04-27T01:00:00.000Z",
-        },
-      }),
-    ] as any);
-
-    const out = await drainPendingLogins("u1");
-
-    expect(mockGetAllGameRoles).not.toHaveBeenCalled();
-    expect(mockUpsertHoyolab).toHaveBeenCalledTimes(1);
-    expect(mockUpsertCharacter).toHaveBeenCalledTimes(1);
-
-    const charArg = (mockUpsertCharacter as any).mock.calls[0][3];
-    expect(charArg.uid).toBe("1500111111");
-    expect(charArg.level).toBe(55);
-    expect(charArg.region_name).toBe("Asia");
-    expect(charArg.cover).toBe("cov2.png");
-    expect(charArg.stats).toHaveLength(4);
-
-    expect(out).toEqual([{ uid: "1500111111", nickname: "Wise" }]);
-    expect(mockMarkConsumed).toHaveBeenCalledWith(1);
-  });
-
-  it("enriched-without-ZZZ-card → bindHoyolabOnly (no character, no DM)", async () => {
-    mockFetchPendingLogins.mockResolvedValue([
-      row({
-        id: 2,
-        enriched: {
-          ltuid_v2: "L1",
-          cards: [HSR_CARD],
-          fetched_at: "2026-04-27T01:00:00.000Z",
-        },
-      }),
-    ] as any);
-
-    const out = await drainPendingLogins("u1");
-
-    expect(mockGetAllGameRoles).not.toHaveBeenCalled();
-    expect(mockUpsertHoyolab).toHaveBeenCalledTimes(1);
-    expect(mockUpsertCharacter).not.toHaveBeenCalled();
-    expect(out).toEqual([]);
-    expect(mockMarkConsumed).toHaveBeenCalledWith(2);
-  });
-
-  it("no enriched payload → falls back to bindCookieToUser (calls getAllGameRoles)", async () => {
-    mockFetchPendingLogins.mockResolvedValue([row({ id: 3 })] as any);
-    mockGetAllGameRoles.mockResolvedValue([
-      { gameId: 8, uid: "1500999999", nickname: "Legacy" },
-    ] as any);
-
-    const out = await drainPendingLogins("u1");
-
-    expect(mockGetAllGameRoles).toHaveBeenCalledTimes(1);
-    expect(mockUpdateAccountInfo).toHaveBeenCalledTimes(1);
-    expect(out).toEqual([{ uid: "1500999999", nickname: "Legacy" }]);
-    expect(mockMarkConsumed).toHaveBeenCalledWith(3);
-  });
+it("releases a stalled queue and fences late writes after timeout", async () => {
+  jest.useFakeTimers();
+  try {
+    enqueue();
+    const { processLoginQueue } = await import("../src/utilities/loginQueue");
+    let lateWrite: (() => void) | undefined;
+    const pending = processLoginQueue(async (_row, _cookie, options) => {
+      lateWrite = options.assertLease;
+      return new Promise(() => {});
+    }, "user");
+    await jest.advanceTimersByTimeAsync(120000);
+    await pending;
+    expect(mockConsumed).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ status: "retrying", code: "sync_error" }),
+    );
+    expect(lateWrite).toBeDefined();
+    expect(() => lateWrite!()).toThrow("lease_lost");
+    enqueue();
+    const next = await processLoginQueue(async () => ({ status: "success", roles: [roles[0]!] }), "user");
+    expect(next).toHaveLength(1);
+  } finally {
+    jest.useRealTimers();
+  }
 });

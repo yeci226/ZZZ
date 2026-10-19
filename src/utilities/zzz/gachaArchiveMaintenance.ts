@@ -47,7 +47,9 @@ async function sendPurgeWarning(client: any, ownerId: string, rows: GachaArchive
     ?? await client.db.get(`noteReminder.${ownerId}`);
   if (!config || !isNotificationEnabled(config)) return;
   const uid = rows[0]?.uid ?? "";
-  const sources = rows.map((row) => row.source === "official" ? "官方封存" : "手動匯入").join("、");
+  const sources = [...new Set(rows.flatMap((row) => row.sources ?? [row.source]))]
+    .map((source) => source === "official" ? "官方" : source === "manual" ? "URL" : "rng.moe")
+    .join("、");
   const purgeAfter = rows[0]?.purgeAfter;
   const days = purgeAfter
     ? Math.max(0, Math.ceil((new Date(purgeAfter).getTime() - Date.now()) / 86_400_000))
@@ -112,7 +114,7 @@ export async function runGachaArchiveMaintenance(client: any, now = new Date()):
     for (const account of accounts) {
       if (!account.uid || !account.cookie || account.invalid === true) continue;
       const uid = String(account.uid);
-      const existing = archive.getAccount(ownerId, uid, "official");
+      const existing = archive.getAccount(ownerId, uid);
       if (!globallyEnabled && !existing?.weeklyEnabled) continue;
       if (existing?.lastSyncedAt && new Date(existing.lastSyncedAt) > dueBefore) continue;
       try {

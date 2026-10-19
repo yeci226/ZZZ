@@ -1,0 +1,1450 @@
+{
+  "schemaVersion": 1,
+  "revision": "coverage-2026-10-02-1",
+  "gameVersion": null,
+  "modelVersion": "unverified",
+  "sources": {
+    "official-agent-1581": {
+      "url": "https://wiki.hoyolab.com/pc/zzz/entry/1112?lang=zh-tw",
+      "sha256": "828254dba8370a530a8cbc23e43e8aa96198a44d9ad9058243e0c256f891945d",
+      "fetchedAt": "2026-10-02T05:44:38.048Z",
+      "gameVersion": null,
+      "authority": "official"
+    },
+    "official-agent-1401": {
+      "url": "https://wiki.hoyolab.com/pc/zzz/entry/838?lang=zh-tw",
+      "sha256": "07fe147dbc8042754ad6255b1293e5d99a8ff0dd36e1d64c2b11d019e4784ba2",
+      "fetchedAt": "2026-10-02T05:44:38.048Z",
+      "gameVersion": null,
+      "authority": "official"
+    },
+    "official-agent-1171": {
+      "url": "https://wiki.hoyolab.com/pc/zzz/entry/382?lang=zh-tw",
+      "sha256": "a8c9e19680bec3b8237309ab54d05cc22a71c0e6a48d89508b5587755b33abab",
+      "fetchedAt": "2026-10-02T05:44:38.048Z",
+      "gameVersion": null,
+      "authority": "official"
+    },
+    "zsim-skills": {
+      "sha256": "8a5182b211ec42efa779e9a65d708abebb980d8e2b7c0b77dd8db4312f8377f5",
+      "url": "https://raw.githubusercontent.com/ZSim-Dev/ZSim/e248e9f149a6b889290579d8e673e132be9bde31/zsim/data/skill.csv",
+      "fetchedAt": "2026-10-02T05:44:38.048Z",
+      "gameVersion": null,
+      "authority": "community"
+    },
+    "zsim-characters": {
+      "sha256": "dd0993793d3bc2fd8e6ecdf441cced287b8bdb85cb19f739de801bcc8d6df5c2",
+      "url": "https://raw.githubusercontent.com/ZSim-Dev/ZSim/e248e9f149a6b889290579d8e673e132be9bde31/zsim/data/character.csv",
+      "fetchedAt": "2026-10-02T05:44:38.048Z",
+      "gameVersion": null,
+      "authority": "community"
+    },
+    "local-gacha-inventory": {
+      "url": "src/assets/gacha-simulation/catalog.json",
+      "sha256": "3332895e6f8d705206b1906fe51268aa6c313bca8150a61a4c844f9545ee79e7",
+      "fetchedAt": "2026-10-02T05:45:57.690Z",
+      "gameVersion": null,
+      "authority": "local-inventory"
+    },
+    "local-bangboo-assets": {
+      "url": "src/assets/images/icons/gacha/bangboo",
+      "sha256": "b6d811b62d0c855b797ead782960fba6d8cbf2329341aacc7868afb9ff044994",
+      "fetchedAt": "2026-10-02T05:45:57.691Z",
+      "gameVersion": null,
+      "authority": "local-inventory"
+    },
+    "local-set-assets": {
+      "url": "src/assets/images/icons/disk-suits",
+      "sha256": "4d22eb57bd3b7a52e2323ed29229255fe1ede9c8c5b086d9f99642fabae55093",
+      "fetchedAt": "2026-10-02T05:45:57.691Z",
+      "gameVersion": null,
+      "authority": "local-inventory"
+    },
+    "official-character-api-text": {
+      "url": "https://sg-public-api.hoyolab.com/event/game_record_zzz/api/zzz/avatar/info",
+      "fetchedAt": "2026-10-02T04:40:52.967Z",
+      "sha256": "6774fc30248d6164cef84cf77961ed55e01b049c8d497e364b1a26b3d53a8724",
+      "gameVersion": null,
+      "authority": "official"
+    },
+    "official-release-3.2": {
+      "url": "https://zzz.mihoyo.com/news/166026?nav=news%3Fnav%3Dnews",
+      "sha256": "83da122752cbf7115b76f057e0231c2268e912713175966683c46a21b0371151",
+      "fetchedAt": "2026-10-02T06:10:25.309Z",
+      "gameVersion": "3.2",
+      "authority": "official"
+    }
+  },
+  "inventories": {
+    "agent": {
+      "status": "candidate",
+      "ids": [
+        "1011",
+        "1021",
+        "1031",
+        "1041",
+        "1051",
+        "1061",
+        "1071",
+        "1081",
+        "1091",
+        "1101",
+        "1111",
+        "1121",
+        "1131",
+        "1141",
+        "1151",
+        "1161",
+        "1171",
+        "1181",
+        "1191",
+        "1201",
+        "1211",
+        "1221",
+        "1241",
+        "1251",
+        "1261",
+        "1271",
+        "1281",
+        "1291",
+        "1301",
+        "1311",
+        "1321",
+        "1331",
+        "1341",
+        "1351",
+        "1361",
+        "1371",
+        "1381",
+        "1391",
+        "1401",
+        "1411",
+        "1421",
+        "1431",
+        "1441",
+        "1451",
+        "1461",
+        "1471",
+        "1481",
+        "1491",
+        "1501",
+        "1511",
+        "1521",
+        "1531",
+        "1541",
+        "1561",
+        "1571",
+        "1581",
+        "1591",
+        "1611"
+      ],
+      "sources": [
+        "local-gacha-inventory"
+      ]
+    },
+    "bangboo": {
+      "status": "candidate",
+      "ids": [
+        "53001",
+        "53002",
+        "53003",
+        "53004",
+        "53005",
+        "53006",
+        "53007",
+        "53008",
+        "53009",
+        "53010",
+        "53011",
+        "53012",
+        "53013",
+        "53014",
+        "53015",
+        "53016",
+        "53017",
+        "53019",
+        "53021",
+        "54001",
+        "54002",
+        "54003",
+        "54004",
+        "54005",
+        "54006",
+        "54008",
+        "54009",
+        "54010",
+        "54011",
+        "54012",
+        "54013",
+        "54014",
+        "54015",
+        "54016",
+        "54017",
+        "54018",
+        "54019",
+        "54020",
+        "54021",
+        "54022",
+        "54023"
+      ],
+      "sources": [
+        "local-bangboo-assets"
+      ]
+    },
+    "weapon": {
+      "status": "candidate",
+      "ids": [
+        "12001",
+        "12002",
+        "12003",
+        "12004",
+        "12005",
+        "12006",
+        "12007",
+        "12008",
+        "12009",
+        "12010",
+        "12011",
+        "12012",
+        "12013",
+        "12014",
+        "12015",
+        "12016",
+        "13001",
+        "13002",
+        "13003",
+        "13004",
+        "13005",
+        "13006",
+        "13007",
+        "13008",
+        "13010",
+        "13012",
+        "13017",
+        "13101",
+        "13103",
+        "13106",
+        "13108",
+        "13111",
+        "13112",
+        "13113",
+        "13115",
+        "13127",
+        "13128",
+        "13135",
+        "13142",
+        "13144",
+        "14102",
+        "14104",
+        "14105",
+        "14107",
+        "14109",
+        "14110",
+        "14114",
+        "14116",
+        "14117",
+        "14118",
+        "14119",
+        "14120",
+        "14121",
+        "14122",
+        "14124",
+        "14125",
+        "14126",
+        "14129",
+        "14130",
+        "14131",
+        "14132",
+        "14133",
+        "14134",
+        "14136",
+        "14137",
+        "14138",
+        "14139",
+        "14140",
+        "14141",
+        "14143",
+        "14145",
+        "14146",
+        "14147",
+        "14148",
+        "14149",
+        "14150",
+        "14151",
+        "14152",
+        "14153",
+        "14154",
+        "14156",
+        "14157",
+        "14158",
+        "14159",
+        "14161"
+      ],
+      "sources": [
+        "local-gacha-inventory"
+      ]
+    },
+    "set": {
+      "status": "candidate",
+      "ids": [
+        "31000",
+        "31100",
+        "31200",
+        "31300",
+        "31400",
+        "31600",
+        "31800",
+        "31900",
+        "32200",
+        "32300",
+        "32500",
+        "32600",
+        "32700",
+        "32800",
+        "32900",
+        "33000",
+        "33100",
+        "33200",
+        "33300",
+        "33400",
+        "33500",
+        "33600",
+        "33800",
+        "33900",
+        "34000",
+        "34100",
+        "34200"
+      ],
+      "sources": [
+        "local-set-assets"
+      ]
+    },
+    "enemy": {
+      "status": "candidate",
+      "ids": [],
+      "sources": []
+    }
+  },
+  "models": {
+    "agent:1581": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "panel": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1581"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified."
+          ]
+        },
+        "skill-coefficients": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": true,
+          "verification": "unit-tested",
+          "sources": [
+            "official-agent-1581"
+          ],
+          "tests": [
+            "tests/combatLiveCalculator.test.ts"
+          ],
+          "captures": [],
+          "notes": [
+            "16 official tables are available; strict scalar extraction is used by manual damage calculation. Aggregate/mixed-element skills are not full runtime hit models."
+          ]
+        },
+        "hit-timing": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "No actor or skill rows in this source",
+            "No per-hit timing evidence",
+            "0 candidate skill rows. Upstream support flags are not treated as verification."
+          ]
+        },
+        "resource-costs": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1581"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified."
+          ]
+        },
+        "anomaly-buildup": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "No actor or skill rows in this source",
+            "No per-hit timing evidence",
+            "0 candidate skill rows. Upstream support flags are not treated as verification."
+          ]
+        },
+        "states-and-triggers": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1581",
+            "official-character-api-text"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified.",
+            "Missing full aberration/voidflare strength, luminous buildup points, radiance state and delayed trigger order. Entry ATK helper alone does not cover these."
+          ]
+        },
+        "cinema-and-awakening": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1581",
+            "official-character-api-text"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified."
+          ]
+        },
+        "team-conditions": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1581"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified."
+          ]
+        },
+        "cancel-and-clock": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "No actor or skill rows in this source",
+            "No per-hit timing evidence",
+            "0 candidate skill rows. Upstream support flags are not treated as verification."
+          ]
+        },
+        "equipment-integration": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required."
+          ]
+        }
+      }
+    },
+    "agent:1401": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "panel": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1401"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified."
+          ]
+        },
+        "skill-coefficients": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": true,
+          "verification": "unit-tested",
+          "sources": [
+            "official-agent-1401"
+          ],
+          "tests": [
+            "tests/combatLiveCalculator.test.ts"
+          ],
+          "captures": [],
+          "notes": [
+            "13 official tables are available; strict scalar extraction is used by manual damage calculation. Aggregate/mixed-element skills are not full runtime hit models."
+          ]
+        },
+        "hit-timing": {
+          "numeric": "reference",
+          "timing": "reference",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "zsim-skills",
+            "zsim-characters"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Unverified current-version compatibility",
+            "No reviewed in-game captures",
+            "22 candidate skill rows. Upstream support flags are not treated as verification."
+          ]
+        },
+        "resource-costs": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1401"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified."
+          ]
+        },
+        "anomaly-buildup": {
+          "numeric": "reference",
+          "timing": "reference",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "zsim-skills",
+            "zsim-characters"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Unverified current-version compatibility",
+            "No reviewed in-game captures",
+            "22 candidate skill rows. Upstream support flags are not treated as verification."
+          ]
+        },
+        "states-and-triggers": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1401",
+            "official-character-api-text"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified.",
+            "Missing complete sword resource, polarity assault/assault follow-up trigger order and dynamic mastery conversion."
+          ]
+        },
+        "cinema-and-awakening": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1401",
+            "official-character-api-text"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified."
+          ]
+        },
+        "team-conditions": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1401"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified."
+          ]
+        },
+        "cancel-and-clock": {
+          "numeric": "reference",
+          "timing": "reference",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "zsim-skills",
+            "zsim-characters"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Unverified current-version compatibility",
+            "No reviewed in-game captures",
+            "22 candidate skill rows. Upstream support flags are not treated as verification."
+          ]
+        },
+        "equipment-integration": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required."
+          ]
+        }
+      }
+    },
+    "agent:1171": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "panel": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1171"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified."
+          ]
+        },
+        "skill-coefficients": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": true,
+          "verification": "unit-tested",
+          "sources": [
+            "official-agent-1171"
+          ],
+          "tests": [
+            "tests/combatLiveCalculator.test.ts"
+          ],
+          "captures": [],
+          "notes": [
+            "13 official tables are available; strict scalar extraction is used by manual damage calculation. Aggregate/mixed-element skills are not full runtime hit models."
+          ]
+        },
+        "hit-timing": {
+          "numeric": "reference",
+          "timing": "reference",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "zsim-skills",
+            "zsim-characters"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Upstream marks character incomplete",
+            "Source predates the active level-6 awakening build",
+            "No reviewed in-game captures",
+            "23 candidate skill rows. Upstream support flags are not treated as verification."
+          ]
+        },
+        "resource-costs": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1171"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified."
+          ]
+        },
+        "anomaly-buildup": {
+          "numeric": "reference",
+          "timing": "reference",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "zsim-skills",
+            "zsim-characters"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Upstream marks character incomplete",
+            "Source predates the active level-6 awakening build",
+            "No reviewed in-game captures",
+            "23 candidate skill rows. Upstream support flags are not treated as verification."
+          ]
+        },
+        "states-and-triggers": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1171",
+            "official-character-api-text"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified.",
+            "Missing complete heat/scorched/afterburn lifecycle, mixed physical/fire hit distribution and level-6 awakening actions."
+          ]
+        },
+        "cinema-and-awakening": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1171",
+            "official-character-api-text"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Current character API provides all six awakening levels including the new entry action text and settlement fractions; direct hit coefficients, hit distribution, buildup, current-version validation and animation times remain missing."
+          ]
+        },
+        "team-conditions": {
+          "numeric": "reference",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "official-agent-1171"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Official coefficients, combat descriptions and ascension breakpoints are archived; current-version and in-game agreement unverified."
+          ]
+        },
+        "cancel-and-clock": {
+          "numeric": "reference",
+          "timing": "reference",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [
+            "zsim-skills",
+            "zsim-characters"
+          ],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Upstream marks character incomplete",
+            "Source predates the active level-6 awakening build",
+            "No reviewed in-game captures",
+            "23 candidate skill rows. Upstream support flags are not treated as verification."
+          ]
+        },
+        "equipment-integration": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required."
+          ]
+        },
+        "awakening-flowing-fire-counter": {
+          "numeric": "reference",
+          "timing": "not-applicable",
+          "implemented": true,
+          "verification": "unit-tested",
+          "sources": [
+            "official-character-api-text"
+          ],
+          "tests": [
+            "tests/combatBurniceState.test.ts"
+          ],
+          "captures": [],
+          "notes": [
+            "Pure counter transition uses already validated ally Afterburn triggers (+1) or enhanced-basic Afterburn hits (+2); 12 grants one token, counts pause while held, swap-in consumes and clears. No animation durations are assumed.",
+            "Anomaly settlement fractions are sourced, but applying them requires the anomaly snapshot model and a verified entry-action hit event."
+          ]
+        }
+      }
+    },
+    "weapon:14158": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "panel": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "passive-triggers": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "refinements": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "durations-stacking": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        }
+      }
+    },
+    "weapon:14126": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "panel": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "passive-triggers": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "refinements": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "durations-stacking": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        }
+      }
+    },
+    "weapon:14118": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "panel": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "passive-triggers": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "refinements": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "durations-stacking": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        }
+      }
+    },
+    "set:34100": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "two-piece": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "four-piece-triggers": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "durations-stacking": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        }
+      }
+    },
+    "set:31300": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "two-piece": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "four-piece-triggers": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "durations-stacking": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        }
+      }
+    },
+    "set:32600": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "two-piece": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "four-piece-triggers": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "durations-stacking": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        }
+      }
+    },
+    "set:33000": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "two-piece": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "four-piece-triggers": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "durations-stacking": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        }
+      }
+    },
+    "set:31800": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "two-piece": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "four-piece-triggers": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "durations-stacking": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        }
+      }
+    },
+    "set:33400": {
+      "gameVersion": null,
+      "modelVersion": "unverified",
+      "mechanics": {
+        "two-piece": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "four-piece-triggers": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "durations-stacking": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        },
+        "in-game-validation": {
+          "numeric": "missing",
+          "timing": "missing",
+          "implemented": false,
+          "verification": "missing",
+          "sources": [],
+          "tests": [],
+          "captures": [],
+          "notes": [
+            "Full runtime adapter and version-matched in-game evidence remain required.",
+            "Manual calculator contains only the currently equipped numeric subset; it is not a complete equipment adapter across all levels/refinements and triggers."
+          ]
+        }
+      }
+    }
+  },
+  "focusTeam": [
+    {
+      "id": "1581",
+      "level": 60,
+      "cinema": 2,
+      "awakening": 0,
+      "weapon": "14158",
+      "refinement": 1,
+      "sets": [
+        "34100",
+        "31300"
+      ]
+    },
+    {
+      "id": "1401",
+      "level": 60,
+      "cinema": 0,
+      "awakening": 0,
+      "weapon": "14126",
+      "refinement": 1,
+      "sets": [
+        "32600",
+        "33000"
+      ]
+    },
+    {
+      "id": "1171",
+      "level": 60,
+      "cinema": 0,
+      "awakening": 6,
+      "weapon": "14118",
+      "refinement": 2,
+      "sets": [
+        "31800",
+        "33400"
+      ]
+    }
+  ]
+}

@@ -29,19 +29,16 @@ import {
 } from "./gachaAnalysis.js";
 import { canViewPrivateGacha } from "./gachaPrivacy.js";
 import {
-  activeCalendarBanner,
   archiveCalendarMetadata,
   calendarBannerMetadata,
-  importManualGachaArchive,
-  mergedActiveCalendarBanner,
   syncOfficialGachaArchive,
   type GachaCalendarBanner,
 } from "./gachaSync.js";
 import { requestZzzRecordApi } from "./officialRecordApi.js";
 import { renderSignalLog } from "./signalLogRenderer.js";
-import { paginateSignalBannerChoices } from "./signalLogPagination.js";
+import { paginateSignalBannerChoicesWithPinned } from "./signalLogPagination.js";
 import { signalCategoryText, signalText } from "./recordText.js";
-import { formatSignalAction, signalActionText } from "./signalActionText.js";
+import { signalActionText } from "./signalActionText.js";
 
 export interface SignalLogSession {
   token: string;
@@ -66,6 +63,7 @@ export interface SignalLogSession {
 type SignalCommandInteraction = ChatInputCommandInteraction | ButtonInteraction;
 
 const sessions = new Map<string, SignalLogSession>();
+export const ALL_SIGNAL_BANNERS = "__all__";
 
 function saveSession(session: SignalLogSession): void {
   sessions.set(session.token, session);
@@ -91,7 +89,7 @@ function sessionFrom(customId: string): SignalLogSession | null {
 }
 
 function hasRecords(ownerId: string, uid: string, source: GachaArchiveSource, category: GachaChannelCategory): boolean {
-  return getGachaArchiveStore().countRecords({ ownerId, uid, source, channelCategory: category }) > 0;
+  return getGachaArchiveStore().countRecords({ ownerId, uid, channelCategory: category }) > 0;
 }
 
 function firstCategory(ownerId: string, uid: string, source: GachaArchiveSource): GachaChannelCategory {
@@ -101,11 +99,11 @@ function firstCategory(ownerId: string, uid: string, source: GachaArchiveSource)
 function bannersFor(session: SignalLogSession): GachaArchiveBanner[] {
   const archive = getGachaArchiveStore();
   const metadata = archive.listBanners({
-    ownerId: session.ownerId, uid: session.uid, source: session.source, channelCategory: session.category,
+    ownerId: session.ownerId, uid: session.uid, channelCategory: session.category,
   });
   const known = new Set(metadata.map((banner) => banner.bannerId));
   const records = archive.listTimeline({
-    ownerId: session.ownerId, uid: session.uid, source: session.source, channelCategory: session.category,
+    ownerId: session.ownerId, uid: session.uid, channelCategory: session.category,
   });
   for (const record of [...records].reverse()) {
     if (!record.bannerId || known.has(record.bannerId)) continue;
@@ -121,7 +119,7 @@ function bannersFor(session: SignalLogSession): GachaArchiveBanner[] {
 
 function hasUnclassified(session: SignalLogSession): boolean {
   return getGachaArchiveStore().countRecords({
-    ownerId: session.ownerId, uid: session.uid, source: session.source,
+    ownerId: session.ownerId, uid: session.uid,
     channelCategory: session.category, bannerId: null,
   }) > 0;
 }
@@ -135,49 +133,9 @@ function bannerLabel(banner: GachaArchiveBanner | undefined, bannerId: string | 
   return `${prefix}${name || `${copy.banner} ${banner.bannerId.slice(-8)}`}`;
 }
 
-function newestBanner(session: SignalLogSession): string | null {
-  const latest = getGachaArchiveStore().listRecords({
-    ownerId: session.ownerId, uid: session.uid, source: session.source,
-    channelCategory: session.category, limit: 1,
-  })[0];
-  return latest?.bannerId ?? null;
-}
-
-function archivedActiveBanner(session: SignalLogSession, now = new Date()): GachaArchiveBanner | undefined {
-  const timestamp = now.getTime();
-  return bannersFor(session).find((banner) => {
-    const start = banner.startAt ? Date.parse(banner.startAt) : Number.NaN;
-    const end = banner.endAt ? Date.parse(banner.endAt) : Number.NaN;
-    return Number.isFinite(start) && Number.isFinite(end) && start <= timestamp && timestamp < end;
-  });
-}
-
-function preferredBanner(session: SignalLogSession): string | null {
-  if (session.source === "official") {
-    const live = activeCalendarBanner(session.calendarBanners ?? [], session.category);
-    if (live?.recordMatchable) return live.bannerId;
-    const archived = archivedActiveBanner(session);
-    if (archived) return archived.bannerId;
-  }
-  return newestBanner(session);
-}
-
 function displayBanner(session: SignalLogSession, selected?: GachaArchiveBanner): GachaArchiveBanner | undefined {
-  if (selected?.upItems.length || selected?.name) return selected;
-  const active = mergedActiveCalendarBanner(session.calendarBanners ?? [], session.category);
-  if (!active) return selected;
-  return {
-    ownerId: session.ownerId,
-    uid: session.uid,
-    source: session.source,
-    bannerId: active.bannerId,
-    channelCategory: active.channelCategory,
-    name: active.name,
-    version: active.version,
-    startAt: active.startAt,
-    endAt: active.endAt,
-    upItems: active.upItems,
-  };
+  if (session.bannerId === ALL_SIGNAL_BANNERS) return undefined;
+  return selected;
 }
 
 async function validateSession(
@@ -200,7 +158,7 @@ async function validateSession(
     await deny(actionCopy.privateDisabled);
     return false;
   }
-  const account = getGachaArchiveStore().getAccount(session.ownerId, session.uid, session.source);
+  const account = getGachaArchiveStore().getAccount(session.ownerId, session.uid);
   if (account?.orphanedAt && interaction.user.id !== session.ownerId) {
     await deny(actionCopy.orphaned);
     return false;
@@ -219,12 +177,16 @@ function controls(session: SignalLogSession, pageCount: number): ActionRowBuilde
       }))),
   ));
   const banners = bannersFor(session);
-  const allChoices = [
+  const bannerChoices = [
     ...banners.map((banner) => ({ label: bannerLabel(banner, banner.bannerId, session.locale).slice(0, 100), value: banner.bannerId })),
     ...(hasUnclassified(session) ? [{ label: copy.unclassified, value: "__unknown__" }] : []),
   ];
-  if (allChoices.length) {
-    const pagination = paginateSignalBannerChoices(allChoices, session.bannerPage);
+  if (bannerChoices.length) {
+    const pagination = paginateSignalBannerChoicesWithPinned(
+      bannerChoices,
+      session.bannerPage,
+      { label: copy.allRecords, value: ALL_SIGNAL_BANNERS },
+    );
     session.bannerPage = pagination.page;
     rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
       new StringSelectMenuBuilder().setCustomId(`glog-banner:${token}`).setPlaceholder(copy.bannerPlaceholder)
@@ -233,7 +195,11 @@ function controls(session: SignalLogSession, pageCount: number): ActionRowBuilde
         }))),
     ));
   }
-  const bannerPages = paginateSignalBannerChoices(allChoices, session.bannerPage).pages;
+  const bannerPages = paginateSignalBannerChoicesWithPinned(
+    bannerChoices,
+    session.bannerPage,
+    { label: copy.allRecords, value: ALL_SIGNAL_BANNERS },
+  ).pages;
   rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`glog-banner-prev:${token}`).setLabel(copy.newer)
       .setStyle(ButtonStyle.Secondary).setDisabled(session.bannerPage <= 0),
@@ -244,18 +210,12 @@ function controls(session: SignalLogSession, pageCount: number): ActionRowBuilde
     new ButtonBuilder().setCustomId(`glog-page-next:${token}`).setLabel(copy.next)
       .setStyle(ButtonStyle.Secondary).setDisabled(session.page >= pageCount - 1),
   ));
-  if (session.source === "manual" && session.invokerId === session.ownerId) {
-    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`glog-import:${token}`).setLabel(copy.importUrl).setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId(`glog-how:${token}`).setLabel(copy.howUrl).setStyle(ButtonStyle.Secondary),
-    ));
-  }
   return rows.slice(0, 5);
 }
 
 export async function buildSignalLogMessage(session: SignalLogSession) {
   const archive = getGachaArchiveStore();
-  const account = archive.getAccount(session.ownerId, session.uid, session.source);
+  const account = archive.getAccount(session.ownerId, session.uid);
   const region = session.region || account?.region || "";
   if (session.calendarBanners?.length) {
     archiveCalendarMetadata(
@@ -270,13 +230,17 @@ export async function buildSignalLogMessage(session: SignalLogSession) {
   archive.classifyUnresolvedUpRecords({
     ownerId: session.ownerId, uid: session.uid, source: session.source, region,
   });
-  const banner = bannersFor(session).find((item) => item.bannerId === session.bannerId);
+  const banner = session.bannerId === ALL_SIGNAL_BANNERS
+    ? undefined
+    : bannersFor(session).find((item) => item.bannerId === session.bannerId);
   const timeline = archive.listTimeline({
-    ownerId: session.ownerId, uid: session.uid, source: session.source, channelCategory: session.category,
+    ownerId: session.ownerId, uid: session.uid, channelCategory: session.category,
   });
   const live = session.source === "official" ? readLiveGachaState(session.details, session.category) : { pity: null, guaranteed: null };
   const summary = analyzeGachaRecords({
-    records: timeline, category: session.category, bannerId: session.bannerId,
+    records: timeline,
+    category: session.category,
+    bannerId: session.bannerId === ALL_SIGNAL_BANNERS ? undefined : session.bannerId,
     livePity: live.pity, liveGuaranteed: live.guaranteed,
   });
   const latestBangboo = session.category === "bangboo" ? latestBangbooSRecord(timeline) : null;
@@ -289,7 +253,10 @@ export async function buildSignalLogMessage(session: SignalLogSession) {
     locale: session.locale,
     source: session.source, uid: session.uid, playerName: session.playerName,
     archivedAt: account?.lastSyncedAt, stale: session.stale || account?.syncStatus === "failed",
-    category: session.category, bannerLabel: bannerLabel(banner, session.bannerId, session.locale),
+    category: session.category,
+    bannerLabel: session.bannerId === ALL_SIGNAL_BANNERS
+      ? signalText(session.locale).allRecords
+      : bannerLabel(banner, session.bannerId, session.locale),
     banner: renderedBanner,
     headerItem: latestBangboo ? {
       id: latestBangboo.itemId,
@@ -324,17 +291,17 @@ export async function createSignalLogSession(input: {
   let uid = String(input.uid ?? input.zzz?.uid ?? "");
   if (!uid) {
     const first = getGachaArchiveStore().listAccounts(input.ownerId)
-      .find((account) => account.source === input.source && !account.orphanedAt);
+      .find((account) => !account.orphanedAt);
     uid = first?.uid ?? "";
   }
   if (!uid) throw new Error(input.source === "manual" ? actionCopy.manualMissing : actionCopy.accountMissing);
   const archive = getGachaArchiveStore();
-  let existingAccount = archive.getAccount(input.ownerId, uid, input.source);
-  if (!existingAccount && input.source === "manual") {
+  let existingAccount = archive.getAccount(input.ownerId, uid);
+  if (!existingAccount) {
     existingAccount = archive.upsertAccount({
       ownerId: input.ownerId,
       uid,
-      source: "manual",
+      source: input.source,
       region: input.region ?? input.zzz?.region,
       everLinked: input.linked ?? !!input.zzz,
     });
@@ -355,14 +322,19 @@ export async function createSignalLogSession(input: {
   };
   if (input.source === "official" && input.zzz) {
     try {
+      const weeklySetting = input.interaction.user.id === input.ownerId
+        ? await client.db.get<boolean>(`${input.ownerId}.gachaWeeklyArchive`)
+        : undefined;
       await syncOfficialGachaArchive({
         zzz: input.zzz, ownerId: input.ownerId,
-        enableWeekly: input.interaction.user.id === input.ownerId,
+        enableWeekly: input.interaction.user.id === input.ownerId ? weeklySetting !== false : undefined,
       });
-      if (input.interaction.user.id === input.ownerId) await client.db.set(`${input.ownerId}.gachaWeeklyArchive`, true);
+      if (input.interaction.user.id === input.ownerId && weeklySetting == null) {
+        await client.db.set(`${input.ownerId}.gachaWeeklyArchive`, true);
+      }
     } catch {
       session.stale = true;
-      if (!getGachaArchiveStore().countRecords({ ownerId: input.ownerId, uid, source: "official" })) {
+      if (!getGachaArchiveStore().countRecords({ ownerId: input.ownerId, uid })) {
         throw new Error(actionCopy.syncUnavailable);
       }
     }
@@ -386,11 +358,7 @@ export async function createSignalLogSession(input: {
     );
   }
   session.category = firstCategory(input.ownerId, uid, input.source);
-  const active = input.source === "official"
-    ? GACHA_CATEGORY_ORDER.map((category) => activeCalendarBanner(session.calendarBanners ?? [], category)).find(Boolean) ?? null
-    : null;
-  if (active) session.category = active.channelCategory;
-  session.bannerId = preferredBanner(session);
+  session.bannerId = ALL_SIGNAL_BANNERS;
   saveSession(session);
   return session;
 }
@@ -398,7 +366,7 @@ export async function createSignalLogSession(input: {
 async function resolveOfficialClient(interaction: ButtonInteraction | StringSelectMenuInteraction, session: SignalLogSession): Promise<any> {
   const locale = (await getUserLang(interaction.user.id)) || "tw";
   const tr = createTranslator(locale);
-  return getUserZZZData(interaction as any, tr, session.ownerId, locale, session.accountIndex);
+  return getUserZZZData(interaction as any, tr, session.ownerId, locale, session.accountIndex, { authMode: "optional" });
 }
 
 async function hydrateLiveSession(
@@ -439,9 +407,9 @@ export async function handleSignalLogComponent(
   const selected = interaction.isStringSelectMenu() ? interaction.values[0] : undefined;
   if (interaction.customId.startsWith("glog-category:") && GACHA_CATEGORY_ORDER.includes(selected as GachaChannelCategory)) {
     session.category = selected as GachaChannelCategory;
-    session.bannerId = preferredBanner(session); session.bannerPage = 0; session.page = 0;
+    session.bannerId = ALL_SIGNAL_BANNERS; session.bannerPage = 0; session.page = 0;
   } else if (interaction.customId.startsWith("glog-banner:")) {
-    session.bannerId = selected === "__unknown__" ? null : String(selected ?? ""); session.page = 0;
+    session.bannerId = selected === "__unknown__" ? null : String(selected ?? ALL_SIGNAL_BANNERS); session.page = 0;
   } else if (interaction.customId.startsWith("glog-banner-prev:")) {
     session.bannerPage = Math.max(0, session.bannerPage - 1);
   } else if (interaction.customId.startsWith("glog-banner-next:")) {
@@ -451,9 +419,8 @@ export async function handleSignalLogComponent(
   } else if (interaction.customId.startsWith("glog-page-next:")) {
     session.page++;
   } else if (interaction.customId.startsWith("glog-how:")) {
-    const actionCopy = signalActionText(session.locale);
     await interaction.followUp({
-      content: `${actionCopy.howIntro}\n\`\`\`powershell\nStart-Process powershell -Verb runAs -ArgumentList '-NoExit -Command \"Invoke-Expression (New-Object Net.WebClient).DownloadString(\\\"https://raw.githubusercontent.com/yeci226/ZZZ-ToS-PP/main/getSignal.ps1\\\")\"'\n\`\`\``,
+      content: "這是舊版紀錄訊息，請改用 `/調頻 匯入`。",
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -464,52 +431,10 @@ export async function handleSignalLogComponent(
 }
 
 export async function handleSignalLogImport(interaction: ModalSubmitInteraction): Promise<void> {
-  const session = sessionFrom(interaction.customId);
-  if (!session) {
-    const locale = (await getUserLang(interaction.user.id)) || "tw";
-    await interaction.reply({ content: signalActionText(locale).archiveMissing, flags: MessageFlags.Ephemeral });
-    return;
-  }
-  if (!(await validateSession(interaction, session))) return;
-  const actionCopy = signalActionText(session.locale);
-  if (session.source !== "manual" || interaction.user.id !== session.ownerId) {
-    const payload = { content: actionCopy.ownerImportOnly, flags: MessageFlags.Ephemeral } as const;
-    if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
-    else await interaction.reply(payload);
-    return;
-  }
-  const url = interaction.fields.getTextInputValue("signalUrl");
-  await interaction.deferUpdate();
-  try {
-    const result = await importManualGachaArchive({
-      ownerId: session.ownerId, uid: session.uid, url,
-      region: session.region, everLinked: session.linked,
-    });
-    session.uid = result.uid; session.category = firstCategory(session.ownerId, session.uid, "manual");
-    if (session.calendarBanners?.length) {
-      archiveCalendarMetadata(
-        getGachaArchiveStore(),
-        session.ownerId,
-        session.uid,
-        "manual",
-        session.region,
-        session.calendarBanners,
-      );
-    }
-    session.bannerId = preferredBanner(session); session.page = 0; session.bannerPage = 0; session.stale = false;
-    const payload = await buildSignalLogMessage(session);
-    await interaction.editReply({ ...payload, attachments: [] });
-    await interaction.followUp({
-      content: formatSignalAction(actionCopy.importComplete, { inserted: result.inserted, fetched: result.fetched }),
-      flags: MessageFlags.Ephemeral,
-    });
-  } catch (error: any) {
-    await interaction.followUp({
-      embeds: [new EmbedBuilder().setColor("#E76161").setTitle(actionCopy.importFailedTitle)
-        .setDescription(`\`${String(error?.message || error).replace(/authkey=[^&\s]+/gi, "authkey=[redacted]").slice(0, 800)}\``)],
-      flags: MessageFlags.Ephemeral,
-    });
-  }
+  await interaction.reply({
+    content: "這是舊版匯入視窗，請改用 `/調頻 匯入`。",
+    flags: MessageFlags.Ephemeral,
+  });
 }
 
 export function getSignalLogSession(customId: string): SignalLogSession | null {

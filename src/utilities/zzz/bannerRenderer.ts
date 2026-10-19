@@ -365,6 +365,7 @@ async function drawCard(
   locale: string | undefined,
   assets: BannerAssets,
   now: number,
+  showPrivate: boolean,
 ) {
   const alpha = schedule.state === "upcoming" ? 0.5 : 1;
   roundedPanel(ctx, x, y, COLUMN_WIDTH, height, alpha);
@@ -436,7 +437,7 @@ async function drawCard(
     ctx.fillRect(x + 8, statusY, COLUMN_WIDTH - 16, 20);
     if (assets.discountMask) ctx.drawImage(assets.discountMask, x + COLUMN_WIDTH - 268, statusY, 260, 20);
     drawDiscountCopy(ctx, schedule.side, x + 16, statusY + 15, locale);
-    if (guarantee.label) {
+    if (showPrivate && guarantee.label) {
       ctx.textAlign = "right";
       ctx.fillStyle = "rgba(255,255,255,.45)";
       ctx.font = `12px ${getZzzOfficialFont(locale)}`;
@@ -448,7 +449,7 @@ async function drawCard(
 }
 
 export async function renderOfficialBanner(input: {
-  uid: string; locale?: string; calendar: any; details?: any; showPrivate: boolean; now?: number;
+  uid?: string; locale?: string; calendar: any; details?: any; showPrivate: boolean; now?: number;
 }): Promise<Buffer> {
   const now = input.now ?? Date.now();
   const pairs = pairSchedules(input.calendar, now);
@@ -489,7 +490,8 @@ export async function renderOfficialBanner(input: {
   if (hasResources) await drawResourceRow(ctx, input.details, input.locale, 31);
   ctx.textAlign = "right"; ctx.fillStyle = "rgba(0,0,0,.58)";
   ctx.font = `12px ${getZzzOfficialNumberFont(input.locale)}`;
-  ctx.fillText(`UID ${input.uid}`, WIDTH - 18, 16); ctx.textAlign = "left";
+  if (input.uid) ctx.fillText(`UID ${input.uid}`, WIDTH - 18, 16);
+  ctx.textAlign = "left";
 
   if (!pairs.length) {
     roundedPanel(ctx, SIDE, contentStart, WIDTH - SIDE * 2, 132);
@@ -501,8 +503,8 @@ export async function renderOfficialBanner(input: {
     for (let index = 0; index < pairs.length; index += 1) {
       const pair = pairs[index];
       const rowHeight = rowHeights[index];
-      if (pair.agent) await drawCard(ctx, pair.agent, SIDE, y, rowHeight, input.locale, bannerAssets, now);
-      if (pair.weapon) await drawCard(ctx, pair.weapon, SIDE + COLUMN_WIDTH + GAP, y, rowHeight, input.locale, bannerAssets, now);
+      if (pair.agent) await drawCard(ctx, pair.agent, SIDE, y, rowHeight, input.locale, bannerAssets, now, input.showPrivate);
+      if (pair.weapon) await drawCard(ctx, pair.weapon, SIDE + COLUMN_WIDTH + GAP, y, rowHeight, input.locale, bannerAssets, now, input.showPrivate);
       y += rowHeight + GAP;
     }
   }

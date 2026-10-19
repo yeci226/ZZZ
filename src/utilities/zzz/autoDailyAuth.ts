@@ -26,7 +26,11 @@ function getErrorMessage(error: unknown): string {
 function getErrorCode(error: unknown): number | null {
   if (!error || typeof error !== "object") return null;
   const candidate = error as Record<string, unknown>;
-  for (const value of [candidate.code, candidate.retcode, candidate.error_code]) {
+  for (const value of [
+    candidate.code,
+    candidate.retcode,
+    candidate.error_code,
+  ]) {
     const number = Number(value);
     if (Number.isFinite(number)) return number;
   }
@@ -73,23 +77,27 @@ export function shouldSkipAutoDailyAccount(
 export function isExplicitAuthenticationError(error: unknown): boolean {
   const code = getErrorCode(error);
   if (code !== null && EXPLICIT_AUTH_CODES.has(code)) return true;
+  if (code === 10035) return false;
 
   const status = getHttpStatus(error);
   if (status === 401) return true;
 
   const message = getErrorMessage(error).toLowerCase();
   if (!message || /notification\s+failed/.test(message)) return false;
+  if (/geetest|captcha|驗證碼|验证码|\b10035\b/.test(message)) return false;
   if (/尚未登入|尚未登录|not logged in/.test(message)) return true;
 
-  return /(?:authentication|authorization|login|log[ -]?in|required|unauthori[sz]ed)/.test(
-    message,
-  ) &&
-    !/(?:timeout|timed out|temporar|service unavailable|http\s+5\d\d|server)/.test(
+  return (
+    (/(?:authentication|authorization|log[ -]?in)\s+(?:failed|required|expired)|unauthori[sz]ed/.test(
       message,
-    ) ||
-    /(?:cookie|token)\s*(?:is\s*)?(?:invalid|expired|missing)|(?:invalid|expired)\s+(?:cookie|token)|(?:given\s+)?uid\s*(?:is\s*)?invalid/.test(
+    ) &&
+      !/(?:timeout|timed out|temporar|service unavailable|http\s+5\d\d|server)/.test(
+        message,
+      )) ||
+    /(?:cookie|token)\s*(?:is\s*)?(?:invalid|expired|missing)|(?:invalid|expired)\s+(?:cookie|token)/.test(
       message,
-    );
+    )
+  );
 }
 
 export function isDailyAccountExpiredError(error: unknown): boolean {
@@ -97,6 +105,11 @@ export function isDailyAccountExpiredError(error: unknown): boolean {
   if (code === -100) return true;
   const message = getErrorMessage(error).toLowerCase();
   return /尚未登入|尚未登录|not logged in/.test(message);
+}
+
+/** HoYoLAB Daily cannot find a game role; this does not expire the cookie. */
+export function isDailyRoleMissingError(error: unknown): boolean {
+  return getErrorCode(error) === -10002;
 }
 
 export function shouldRestoreGeneralValidity(

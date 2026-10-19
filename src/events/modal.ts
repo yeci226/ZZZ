@@ -1,4 +1,5 @@
-﻿import { client } from "../index.js";
+﻿import { getConfig } from "../utilities/core/config.js";
+import { client } from "../index.js";
 import {
   Events,
   EmbedBuilder,
@@ -31,6 +32,8 @@ import { getLegacyAccounts, updateLegacyAccountAtIndex } from "../utilities/acco
 
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (!interaction.isModalSubmit()) return;
+  if (interaction.customId.startsWith("zcombat:")) return;
+  if ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:")) || interaction.customId.startsWith("gsim:")) return;
   const modalInteraction = interaction as ModalSubmitInteraction;
 
   const { locale, customId, fields } = modalInteraction;
@@ -51,6 +54,10 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (customId.startsWith("glog-import:")) {
     const { handleSignalLogImport } = await import("../utilities/zzz/signalLogView.js");
     await handleSignalLogImport(modalInteraction);
+  }
+  if (customId.startsWith("gacha-url-submit:")) {
+    const { handleManualGachaImportSubmit } = await import("../utilities/zzz/manualGachaImportFlow.js");
+    await handleManualGachaImportSubmit(modalInteraction);
   }
 });
 
@@ -78,17 +85,29 @@ async function finalizeMultiLogin(
     }
   }
 
+  const accounts = await getLegacyAccounts(client.db as any, interaction.user.id);
+  const existing = new Set(accounts.map(account => String(account.uid)));
+  const isDev = getConfig().DEVIDS.includes(interaction.user.id);
+  const bound: any[] = [];
   for (const role of zzzRoles) {
+    if (!existing.has(String(role.uid)) && !isDev && existing.size >= 5) continue;
     await updateAccountInfo(interaction.user.id, {
       uid: role.uid,
-      cookie: cookie,
+      cookie,
       nickname: role.nickname,
+      region: role.region,
     });
+    existing.add(String(role.uid));
+    bound.push(role);
   }
+  if (!bound.length) {
+    return interaction.editReply({ content: tr("account_LimitExceeded"), embeds: [], components: [] });
+  }
+  const welcomeName = bound.map(role => `${role.nickname}（${role.uid}）`).join("\n").slice(0, 4096);
 
-  const welcomeName = zzzRoles[0].nickname;
   const embed = new EmbedBuilder()
-    .setTitle(`綁定成功，歡迎 ${welcomeName}！`)
+    .setTitle("綁定成功")
+    .setDescription(welcomeName)
     .setColor("#F6F1F1" as any);
 
   if (interaction.deferred || interaction.replied) {
@@ -113,7 +132,7 @@ async function handleWarplog(
   _fields: any,
 ) {
   await interaction.reply({
-    content: "這是舊版調頻匯入視窗，請重新執行 `/調頻 紀錄`，切換至「手動匯入」後使用「匯入 URL」。",
+    content: "這是舊版調頻匯入視窗，請改用 `/調頻 匯入`。",
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -234,7 +253,7 @@ async function handleCookieSet(
   const cookie_token_v2 = fields.getTextInputValue("cookie_token_v2") || "";
   const account_mid_v2 = fields.getTextInputValue("account_mid_v2") || "";
 
-  const cookie = `ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}; cookie_token_v2=${cookie_token_v2}; account_mid_v2=${account_mid_v2}; account_id_v2=${account_mid_v2}; ltmid_v2=${account_mid_v2};`;
+  const cookie = `ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}; cookie_token_v2=${cookie_token_v2}; account_mid_v2=${account_mid_v2}; account_id_v2=${ltuid_v2}; ltmid_v2=${account_mid_v2};`;
   try {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const roles = await getAllGameRoles(cookie);
@@ -267,7 +286,7 @@ async function handleSetUserCookieModal(
   const cookie_token_v2 = fields.getTextInputValue("cookie_token_v2") || "";
   const account_mid_v2 = fields.getTextInputValue("account_mid_v2") || "";
 
-  const cookie = `ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}; cookie_token_v2=${cookie_token_v2}; account_mid_v2=${account_mid_v2}; account_id_v2=${account_mid_v2}; ltmid_v2=${account_mid_v2};`;
+  const cookie = `ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}; cookie_token_v2=${cookie_token_v2}; account_mid_v2=${account_mid_v2}; account_id_v2=${ltuid_v2}; ltmid_v2=${account_mid_v2};`;
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -301,7 +320,7 @@ async function handleQuickLink(
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const cookie = `ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}; cookie_token_v2=${cookie_token_v2}; account_mid_v2=${account_mid_v2}; account_id_v2=${account_mid_v2}; ltmid_v2=${account_mid_v2};`;
+  const cookie = `ltoken_v2=${ltoken_v2}; ltuid_v2=${ltuid_v2}; cookie_token_v2=${cookie_token_v2}; account_mid_v2=${account_mid_v2}; account_id_v2=${ltuid_v2}; ltmid_v2=${account_mid_v2};`;
 
   try {
     const roles = await getAllGameRoles(cookie);

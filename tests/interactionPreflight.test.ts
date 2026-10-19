@@ -23,6 +23,20 @@ function fakeInteraction(
 }
 
 describe("interaction preflight", () => {
+  it("acknowledges banner before locale and pending-login work", () => {
+    expect(getInteractionPreflight(fakeInteraction("banner"))).toEqual({
+      deferBeforeDrain: true,
+      skipPendingLoginDrain: false,
+      skipLocaleLookup: false,
+    });
+  });
+  it("acknowledges public news before account or locale work", () => {
+    expect(getInteractionPreflight(fakeInteraction("news"))).toEqual({
+      deferBeforeDrain: true,
+      skipPendingLoginDrain: true,
+      skipLocaleLookup: false,
+    });
+  });
   it("defers account web-login commands before the pending-login drain", () => {
     expect(
       getInteractionPreflight(

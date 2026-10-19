@@ -27,6 +27,10 @@ import {
 } from "./profileRolls.js";
 import { getPaperAccent } from "./profileColors.js";
 import { getFlatSuitIcon } from "./profileSuitIcons.js";
+import { profileScore } from "./combat/render.js";
+import type { DiscScore, ProfileScore } from "./combat/scoring.js";
+import { drawDiscScore, drawTotalScore } from "./discScorePresentation.js";
+import { resolveCharacterPortrait } from "./characterPortrait.js";
 
 const W = 1000;
 const H = 625;
@@ -802,16 +806,10 @@ async function choosePortrait(
   rankDependentPainting: boolean,
 ): Promise<any | null> {
   let source =
-    character.role_vertical_painting_url ||
+    resolveCharacterPortrait(character).source ||
     `https://act-webstatic.hoyoverse.com/game_record/zzz/role_vertical_painting/role_vertical_painting_${character.id}.png`;
 
-  if (!usePainting) {
-    const skin = (character.skin_list ?? []).find(
-      (entry: any) => entry.unlocked && !entry.is_original,
-    );
-    if (skin?.skin_vertical_painting_url)
-      source = skin.skin_vertical_painting_url;
-  } else {
+  if (usePainting) {
     const name =
       character.name_mi18n ?? character.full_name_mi18n ?? character.name ?? "";
     try {
@@ -1338,7 +1336,9 @@ async function drawDisc(
   font: string,
   effectiveSystemIds: ReadonlySet<number>,
   T: CharacterText,
+  discScore: DiscScore | undefined,
 ) {
+  const scoreLabel = Boolean(discScore && discScore.status !== "empty");
   ctx.fillStyle = DISC_BG;
   ctx.fillRect(x, y, width, height);
   ctx.strokeStyle = "#414749";
@@ -1400,24 +1400,27 @@ async function drawDisc(
   const slotLabel = `⓪①②③④⑤⑥`[slot] ?? String(slot);
   const enhancement = Number(disc.level ?? 0);
   const enhancementText = enhancement > 0 ? `+${enhancement}` : "";
-  ctx.font = `500 13px ${font}`;
+  ctx.font = `500 ${scoreLabel ? 9 : 13}px ${font}`;
   const slotWidth = ctx.measureText(slotLabel).width;
   const enhancementWidth = enhancementText
     ? ctx.measureText(enhancementText).width
     : 0;
   const separatorGap = enhancementText ? 8 : 0;
   const enhancementRight = x + width - 13;
-  const topX =
-    enhancementRight - slotWidth - separatorGap - enhancementWidth;
+  const topX = scoreLabel ? x + 48 : enhancementRight - slotWidth - separatorGap - enhancementWidth;
+  const topY = y + (scoreLabel ? 10 : 16);
   ctx.textAlign = "left";
   ctx.fillStyle = "#b9bdbd";
-  ctx.fillText(slotLabel, topX, y + 16);
+  ctx.fillText(slotLabel, topX, topY);
   if (enhancementText) {
     const separatorX = topX + slotWidth + 3;
     ctx.fillStyle = "#8f8174";
-    ctx.fillRect(separatorX, y + 5, 1, 12);
+    ctx.fillRect(separatorX, topY - (scoreLabel ? 8 : 11), 1, scoreLabel ? 8 : 12);
     ctx.fillStyle = ORANGE;
-    ctx.fillText(enhancementText, separatorX + 5, y + 16);
+    ctx.fillText(enhancementText, separatorX + 5, topY);
+  }
+  if (scoreLabel) {
+    drawDiscScore(ctx, discScore, x + width - 7, y + 14, "dark");
   }
 
   const validCount = String(countEffectiveRolls(disc, effectiveSystemIds));
@@ -1608,6 +1611,8 @@ async function drawDiscs(
   accentLight: string,
   font: string,
   T: CharacterText,
+  score: ProfileScore | null,
+  userLocale: string,
 ) {
   const x = 304;
   const y = 248;
@@ -1636,13 +1641,18 @@ async function drawDiscs(
     (sum, disc) => sum + countEffectiveRolls(disc, effectiveSystemIds),
     0,
   );
+  const scoreWidth = score ? drawTotalScore(ctx, score, 0, 0, font, userLocale, "dark", true) : 0;
+  const scoreSpace = scoreWidth ? scoreWidth + 18 : 0;
   ctx.font = `500 9px ${font}`;
   ctx.fillStyle = "#b9bdbd";
   ctx.textAlign = "right";
-  ctx.fillText(T.totalValidRolls, x + width - 42, y + 29);
+  ctx.fillText(T.totalValidRolls, x + width - 42 - scoreSpace, y + 29);
   ctx.font = `900 italic 21px ${NUM_FONT}`;
   ctx.fillStyle = accentLight;
-  ctx.fillText(String(total), x + width - 12, y + 31);
+  ctx.fillText(String(total), x + width - 12 - scoreSpace, y + 31);
+  if (score) {
+    drawTotalScore(ctx, score, x + width - 12 - scoreWidth, y + 29, font, userLocale, "dark");
+  }
 
   const gridX = x + 12;
   const gridY = y + 42;
@@ -1665,6 +1675,7 @@ async function drawDiscs(
       font,
       effectiveSystemIds,
       T,
+      score?.discs.find((item) => item.slot === index + 1),
     );
   }
 
@@ -1723,12 +1734,14 @@ export async function drawOfficialCharacterProfile(
   characterDataInput: any,
   usePainting = false,
   rankDependentPainting = false,
+  scoring?: ProfileScore | null,
 ): Promise<Buffer | null> {
   try {
     const character = Array.isArray(characterDataInput)
       ? characterDataInput[0]
       : characterDataInput;
     if (!character) return null;
+    const score = scoring === undefined ? profileScore(character) : scoring;
     const font = resolveProfileFont(userLocale);
     const T = getCharacterText(tr);
     const rawAccent = safeAccent(
@@ -1789,6 +1802,8 @@ export async function drawOfficialCharacterProfile(
       accentLight,
       font,
       T,
+      score,
+      userLocale,
     );
 
     ctx.font = `900 italic 8px ${NUM_FONT}`;

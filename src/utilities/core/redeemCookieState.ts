@@ -155,8 +155,34 @@ export async function clearRedeemCookieState(
   db: RedeemCookieDb,
   uid: string,
 ): Promise<void> {
-  await db.delete(key(uid, "redeemInvalid"));
-  await db.delete(key(uid, "redeemNeedsCookieUpdate"));
-  await db.delete(key(uid, "redeemLastCookieRefreshAttempt"));
-  await db.set(key(uid, REDEEM_MIGRATION_MARKER), true);
+  await withRedeemStateLock(db, uid, async () => {
+    await db.delete(key(uid, "redeemInvalid"));
+    await db.delete(key(uid, "redeemNeedsCookieUpdate"));
+    await db.delete(key(uid, "redeemLastCookieRefreshAttempt"));
+    await db.set(key(uid, REDEEM_MIGRATION_MARKER), true);
+  });
+}
+
+/** Explicit relinking replaces the credentials that old redeem failures refer to.
+ * A general-only login must not erase redemption failures. This permits a new
+ * exchange attempt; the redemption API still decides whether the token is valid.
+ */
+export async function clearRedeemCookieStateAfterLogin(
+  db: RedeemCookieDb,
+  uid: string,
+  cookie: string,
+): Promise<void> {
+  const fields = new Map(cookie.split(";").map(part => {
+    const [name, ...value] = part.trim().split("=");
+    return [name.trim(), value.join("=").trim()];
+  }));
+  const has = (name: string) => {
+    const value = fields.get(name);
+    return Boolean(value && value !== "undefined" && value !== "null");
+  };
+  const complete = (has("cookie_token_v2") && (has("account_id_v2") || has("ltuid_v2")))
+    || (has("cookie_token") && (has("account_id") || has("ltuid")));
+  if (!complete) return;
+  await migrateLegacyRedeemCookieState(db, uid);
+  await clearRedeemCookieState(db, uid);
 }

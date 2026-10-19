@@ -1,0 +1,285 @@
+{
+  "post": {
+    "game_id": 8,
+    "post_id": "46486178",
+    "f_forum_id": 0,
+    "uid": "219270333",
+    "subject": "《絕區零》3.2版本「她與她的隱秘往事」前瞻特別節目｜情報總覽 ",
+    "content": "zh-tw",
+    "cover": "",
+    "view_type": 1,
+    "created_at": 1787919305,
+    "images": [],
+    "post_status": {
+      "is_top": false,
+      "is_good": false,
+      "is_official": false,
+      "is_vote": false,
+      "is_quiz_vote": false,
+      "is_demoted": false,
+      "is_hot": false
+    },
+    "topic_ids": [
+      25010
+    ],
+    "view_status": 1,
+    "max_floor": 103,
+    "is_original": 1,
+    "republish_authorization": 2,
+    "reply_time": "2026-09-03 04:44:52",
+    "is_deleted": 0,
+    "is_interactive": false,
+    "structured_content": "[{\"insert\":\"奇蹟不會獨自出現，總是伴著飛鳥與黎明。\\n全新職業代理人「克拉蕾」即將登場！全新代理人「洛克茜」同步來襲！\\n更有全新時裝、代理人調頻復刻、全新劇情和活動玩法將在3.2版本與繩匠見面，敬請期待！ \\n\\n\"},{\"insert\":{\"image\":\"https://upload-os-bbs.hoyolab.com/upload/2026/08/28/0/72774a00e4f61e169955b4de7dc4072a_5272979454368528838.jpeg\"},\"attributes\":{\"height\":13075,\"width\":1080,\"size\":\"2150785\"}},{\"insert\":\"\\n\\n\"},{\"insert\":{\"image\":\"https://upload-os-bbs.hoyolab.com/upload/2026/08/28/0/29a4fa4444825c8c109f427ffa5dd8d9_390083317395341810.jpeg\"},\"attributes\":{\"height\":11351,\"width\":1080,\"size\":\"1871611\"}},{\"insert\":\"\\n\"}]",
+    "structured_content_rows": [],
+    "lang": "zh-tw",
+    "official_type": 3,
+    "reply_forbid": {
+      "date_type": 0,
+      "start_date": "0",
+      "cur_date": "0",
+      "level": 0
+    },
+    "video": "",
+    "contribution_id": "0",
+    "event_start_date": "0",
+    "event_end_date": "0",
+    "classification_id": "22",
+    "is_audit": false,
+    "is_multi_language": true,
+    "origin_lang": "zh-tw",
+    "sub_type": 0,
+    "reprint_source": "",
+    "can_edit": true,
+    "last_modify_time": 0,
+    "multi_language_info": {
+      "langs": [
+        "zh-cn",
+        "zh-tw",
+        "en-us",
+        "id-id",
+        "th-th",
+        "de-de",
+        "fr-fr",
+        "es-es",
+        "pt-pt",
+        "ru-ru",
+        "ko-kr",
+        "vi-vn",
+        "ja-jp",
+        "tr-tr",
+        "it-it"
+      ],
+      "future_post_id": "24263",
+      "lang_subject": {
+        "pt-pt": "Programa Especial da Versão 3.2 de Zenless Zone Zero \"Suas Histórias Secretas\" | Informações Gerais ",
+        "ko-kr": "〈젠레스 존 제로〉 3.2 버전 「그녀들의 숨겨진 과거」 특별 방송 | 정보 일람 ",
+        "vi-vn": "Chương Trình Livestream Đặc Biệt Zenless Zone Zero Phiên Bản 3.2 \"Quá Khứ Bí Ẩn Của Hai Cô Ấy\" | Tổng Quan Tình Báo ",
+        "de-de": "Sondersendung zu Version 3.2 „Ihre geheimen Geschichten“ von Zenless Zone Zero | Übersicht der Informationen ",
+        "tr-tr": "Zenless Zone Zero Version 3.2 \"Their Secret Histories\" Special Program | Intel Report ",
+        "es-es": "Programa especial de la versión 3.2 «Sus secretos» de Zenless Zone Zero | Informe general ",
+        "ja-jp": "『ゼンレスゾーンゼロ』Ver.3.2「秘密と、過去と、彼女たちと」予告番組｜情報まとめ ",
+        "it-it": "Zenless Zone Zero Version 3.2 \"Their Secret Histories\" Special Program | Intel Report ",
+        "zh-cn": "《绝区零》3.2版本「她与她的隐秘往事」前瞻特别节目丨情报总览 ",
+        "th-th": "โปรแกรมพิเศษ \"อดีตอันซ่อนเร้นของเธอทั้งสอง\" เวอร์ชัน 3.2 ของ Zenless Zone Zero | ภาพรวมข่าวกรอง ",
+        "ru-ru": "Специальный стрим версии 3.2 Zenless Zone Zero «Их тайные истории» | Общая информация ",
+        "id-id": "Acara Khusus Pra-Rilis Zenless Zone Zero V3.2 \"Kisah Rahasia Mereka\" | Ringkasan Intel ",
+        "en-us": "Zenless Zone Zero Version 3.2 \"Their Secret Histories\" Special Program | Intel Report ",
+        "zh-tw": "《絕區零》3.2版本「她與她的隱秘往事」前瞻特別節目｜情報總覽 ",
+        "fr-fr": "Programme spécial de la version 3.2 « Leurs histoires cachées » de Zenless Zone Zero 丨 Aperçu des informations "
+      },
+      "lang_content": {},
+      "lang_structured_content": {}
+    },
+    "visible_level": 1,
+    "has_cover": true,
+    "suid": "0",
+    "desc": "奇蹟不會獨自出現，總是伴著飛鳥與黎明。 全新職業代理人「克拉蕾」即將登場！全新代理人「洛克茜」同步來襲！ 更有全新時裝、代理人調頻復刻、全新劇情和活動玩法將在3.2版本與繩匠見面，敬請期待！",
+    "game_uid": "0",
+    "game_region": "",
+    "channel_id": "46"
+  },
+  "user": {
+    "uid": "219270333"
+  },
+  "image_list": [
+    {
+      "url": "https://upload-os-bbs.hoyolab.com/upload/2026/08/28/0/72774a00e4f61e169955b4de7dc4072a_5272979454368528838.jpeg",
+      "height": 13075,
+      "width": 1080,
+      "format": "JPEG",
+      "size": "2150785",
+      "spoiler": false,
+      "cuts": [
+        {
+          "ratio": 1,
+          "lt_point": {
+            "x": 0,
+            "y": 5817
+          },
+          "rb_point": {
+            "x": 1080,
+            "y": 7257
+          }
+        },
+        {
+          "ratio": 2,
+          "lt_point": {
+            "x": 0,
+            "y": 6132
+          },
+          "rb_point": {
+            "x": 1080,
+            "y": 6942
+          }
+        },
+        {
+          "ratio": 3,
+          "lt_point": {
+            "x": 0,
+            "y": 5997
+          },
+          "rb_point": {
+            "x": 1080,
+            "y": 7077
+          }
+        },
+        {
+          "ratio": 4,
+          "lt_point": {
+            "x": 0,
+            "y": 6234
+          },
+          "rb_point": {
+            "x": 1080,
+            "y": 6840
+          }
+        }
+      ],
+      "tag_info": {
+        "is_long_picture": true
+      },
+      "template_info": null,
+      "image_id": "142571243"
+    },
+    {
+      "url": "https://upload-os-bbs.hoyolab.com/upload/2026/08/28/0/29a4fa4444825c8c109f427ffa5dd8d9_390083317395341810.jpeg",
+      "height": 11351,
+      "width": 1080,
+      "format": "JPEG",
+      "size": "1871611",
+      "spoiler": false,
+      "cuts": [
+        {
+          "ratio": 4,
+          "lt_point": {
+            "x": 0,
+            "y": 4
+          },
+          "rb_point": {
+            "x": 1079,
+            "y": 611
+          }
+        },
+        {
+          "ratio": 1,
+          "lt_point": {
+            "x": 60,
+            "y": 4
+          },
+          "rb_point": {
+            "x": 1018,
+            "y": 1281
+          }
+        },
+        {
+          "ratio": 2,
+          "lt_point": {
+            "x": 0,
+            "y": 4
+          },
+          "rb_point": {
+            "x": 1079,
+            "y": 814
+          }
+        },
+        {
+          "ratio": 3,
+          "lt_point": {
+            "x": 0,
+            "y": 4
+          },
+          "rb_point": {
+            "x": 1079,
+            "y": 1084
+          }
+        }
+      ],
+      "tag_info": {
+        "is_long_picture": true
+      },
+      "template_info": null,
+      "image_id": "142571247"
+    }
+  ],
+  "cover_list": [
+    {
+      "url": "https://upload-os-bbs.hoyolab.com/upload/2026/08/28/105e72f426683c2d9f4f0d9031e7e20d_5446518112769347252.jpg",
+      "height": 675,
+      "width": 1200,
+      "format": "JPEG",
+      "size": "142089",
+      "spoiler": false,
+      "cuts": [
+        {
+          "ratio": 3,
+          "lt_point": {
+            "x": 43,
+            "y": 83
+          },
+          "rb_point": {
+            "x": 511,
+            "y": 551
+          }
+        },
+        {
+          "ratio": 4,
+          "lt_point": {
+            "x": 43,
+            "y": 83
+          },
+          "rb_point": {
+            "x": 511,
+            "y": 346
+          }
+        },
+        {
+          "ratio": 1,
+          "lt_point": {
+            "x": 43,
+            "y": 83
+          },
+          "rb_point": {
+            "x": 394,
+            "y": 551
+          }
+        },
+        {
+          "ratio": 2,
+          "lt_point": {
+            "x": 43,
+            "y": 83
+          },
+          "rb_point": {
+            "x": 511,
+            "y": 434
+          }
+        }
+      ],
+      "tag_info": {
+        "is_long_picture": false
+      },
+      "template_info": null,
+      "image_id": "0"
+    }
+  ]
+}

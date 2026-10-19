@@ -63,12 +63,12 @@ export default {
           .addFields(
             {
               name: "自動簽到",
-              value: `${daily ? daily?.time : "未開啟"}`,
+              value: `${daily && daily.enabled !== false ? daily?.time : "未開啟"}`,
               inline: false,
             },
             {
               name: "自動通知",
-              value: `${redeem ? "已開啟" : "未開啟"}`,
+              value: `${redeem && redeem.enabled !== false ? "已開啟" : "未開啟"}`,
               inline: false,
             },
             ...accountFields,

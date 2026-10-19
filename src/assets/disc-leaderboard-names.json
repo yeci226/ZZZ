@@ -1,0 +1,2193 @@
+{
+  "en": {
+    "1011": {
+      "name": "Anby",
+      "skins": {},
+      "color": "#c8e16c"
+    },
+    "1021": {
+      "name": "Nekomata",
+      "skins": {},
+      "color": "#a0351c"
+    },
+    "1031": {
+      "name": "Nicole",
+      "skins": {},
+      "color": "#e6adaa"
+    },
+    "1041": {
+      "name": "Soldier 11",
+      "skins": {},
+      "color": "#febb2e"
+    },
+    "1051": {
+      "name": "Yidhari",
+      "skins": {}
+    },
+    "1061": {
+      "name": "Corin",
+      "skins": {},
+      "color": "#c8d7bd"
+    },
+    "1071": {
+      "name": "Caesar King",
+      "skins": {}
+    },
+    "1081": {
+      "name": "Billy",
+      "skins": {},
+      "color": "#af3e3a"
+    },
+    "1091": {
+      "name": "Miyabi",
+      "skins": {},
+      "color": "#05777a"
+    },
+    "1101": {
+      "name": "Koleda",
+      "skins": {},
+      "color": "#de643d"
+    },
+    "1111": {
+      "name": "Anton",
+      "skins": {},
+      "color": "#ddc374"
+    },
+    "1121": {
+      "name": "Ben",
+      "skins": {},
+      "color": "#a68d73"
+    },
+    "1131": {
+      "name": "Soukaku",
+      "skins": {},
+      "color": "#28bdcc"
+    },
+    "1141": {
+      "name": "Lycaon",
+      "skins": {},
+      "color": "#d0d3e0"
+    },
+    "1151": {
+      "name": "Lucy",
+      "skins": {},
+      "color": "#e8cda2"
+    },
+    "1161": {
+      "name": "Lighter",
+      "skins": {}
+    },
+    "1171": {
+      "name": "Burnice",
+      "skins": {},
+      "color": "#da8837"
+    },
+    "1181": {
+      "name": "Grace",
+      "skins": {},
+      "color": "#b75339"
+    },
+    "1191": {
+      "name": "Ellen",
+      "skins": {},
+      "color": "#c9becc"
+    },
+    "1201": {
+      "name": "Harumasa",
+      "skins": {},
+      "color": "#e1c600"
+    },
+    "1211": {
+      "name": "Rina",
+      "skins": {},
+      "color": "#c4c1b1"
+    },
+    "1221": {
+      "name": "Yanagi",
+      "skins": {},
+      "color": "#d55b68"
+    },
+    "1241": {
+      "name": "Zhu Yuan",
+      "skins": {}
+    },
+    "1251": {
+      "name": "Qingyi",
+      "skins": {},
+      "color": "#28c79d"
+    },
+    "1261": {
+      "name": "Jane Doe",
+      "skins": {}
+    },
+    "1271": {
+      "name": "Seth",
+      "skins": {},
+      "color": "#136dd5"
+    },
+    "1281": {
+      "name": "Piper",
+      "skins": {},
+      "color": "#e9d892"
+    },
+    "1291": {
+      "name": "Hugo Vlad",
+      "skins": {}
+    },
+    "1301": {
+      "name": "Orphie Magnusson & \"Magus\"",
+      "skins": {}
+    },
+    "1311": {
+      "name": "Astra Yao",
+      "skins": {},
+      "color": "#D12D4E"
+    },
+    "1321": {
+      "name": "Evelyn Chevalier",
+      "skins": {}
+    },
+    "1331": {
+      "name": "Vivian",
+      "skins": {},
+      "color": "#C77DFB"
+    },
+    "1341": {
+      "name": "Zhao",
+      "skins": {},
+      "color": "#e8b6ae"
+    },
+    "1351": {
+      "name": "Pulchra",
+      "skins": {},
+      "color": "#EB721B"
+    },
+    "1361": {
+      "name": "Trigger",
+      "skins": {}
+    },
+    "1371": {
+      "name": "Yixuan",
+      "skins": {},
+      "color": "#b7986f"
+    },
+    "1381": {
+      "name": "Soldier 0 - Anby",
+      "skins": {},
+      "color": "#F7940A"
+    },
+    "1391": {
+      "name": "Ju Fufu",
+      "skins": {},
+      "color": "#e29737"
+    },
+    "1401": {
+      "name": "Alice",
+      "skins": {},
+      "color": "#debe8d"
+    },
+    "1411": {
+      "name": "Yuzuha",
+      "skins": {},
+      "color": "#b92734"
+    },
+    "1421": {
+      "name": "Pan Yinhu",
+      "skins": {},
+      "color": "#c84342"
+    },
+    "1431": {
+      "name": "Ye Shunguang",
+      "skins": {},
+      "color": "#de493e"
+    },
+    "1441": {
+      "name": "Manato",
+      "skins": {},
+      "color": "#b83a37"
+    },
+    "1451": {
+      "name": "Lucia",
+      "skins": {},
+      "color": "#25999d"
+    },
+    "1461": {
+      "name": "Seed",
+      "skins": {},
+      "color": "#aed5dd"
+    },
+    "1471": {
+      "name": "Banyue",
+      "skins": {}
+    },
+    "1481": {
+      "name": "Dialyn",
+      "skins": {},
+      "color": "#1db0af"
+    },
+    "1491": {
+      "name": "Sunna",
+      "skins": {
+        "1491": "Sunna: Dreams on Loop",
+        "3114910": "Sunna: Dreams on Loop",
+        "3114911": "Sunna: Afternoon Tea Break",
+        "3114912": "Sunna: Delusions in Business"
+      },
+      "color": "#daef94"
+    },
+    "1501": {
+      "name": "Aria",
+      "skins": {}
+    },
+    "1511": {
+      "name": "Nangong Yu",
+      "skins": {
+        "1511": "Nangong Yu: Dreamy Dancer",
+        "3115110": "Nangong Yu: Dreamy Dancer",
+        "3115111": "Nangong Yu: Rhapsody's Muse",
+        "3115112": "Nangong Yu: Heartfelt Support"
+      },
+      "color": "#9c77f2"
+    },
+    "1521": {
+      "name": "Cissia",
+      "skins": {}
+    },
+    "1531": {
+      "name": "Starlight - Billy",
+      "skins": {}
+    },
+    "1541": {
+      "name": "Promeia",
+      "skins": {}
+    },
+    "1551": {
+      "name": "Pyrois",
+      "skins": {},
+      "color": "#334acc"
+    },
+    "1561": {
+      "name": "Velina Airgid",
+      "skins": {}
+    },
+    "1571": {
+      "name": "Norma Hollowell",
+      "skins": {}
+    },
+    "1581": {
+      "name": "Remielle",
+      "skins": {
+        "1581": "Remielle: Feathered Murmurs",
+        "3115810": "Remielle: Feathered Murmurs",
+        "3115811": "Remielle: Moonlight Whispers",
+        "3115812": "Remielle: Seashade Pas Seul",
+        "3115813": "Remielle: Moonlight Whispers (Veil)"
+      },
+      "color": "#ee73a4"
+    },
+    "1591": {
+      "name": "Sigrid de L'Azur",
+      "skins": {}
+    },
+    "1611": {
+      "name": "Claret Flint",
+      "skins": {}
+    }
+  },
+  "tw": {
+    "1011": {
+      "name": "安比",
+      "skins": {
+        "1011": "安比·街頭迅影",
+        "3110110": "安比·街頭迅影"
+      },
+      "color": "#c8e16c"
+    },
+    "1021": {
+      "name": "貓又",
+      "skins": {
+        "1021": "貓又·貓的報恩",
+        "3110210": "貓又·貓的報恩"
+      },
+      "color": "#a0351c"
+    },
+    "1031": {
+      "name": "妮可",
+      "skins": {
+        "1031": "妮可·一點點俏皮",
+        "3110310": "妮可·一點點俏皮",
+        "3110311": "妮可·狡黠甜心"
+      },
+      "color": "#e6adaa"
+    },
+    "1041": {
+      "name": "「11號」",
+      "skins": {
+        "1041": "「11號」·精銳士兵",
+        "3110410": "「11號」·精銳士兵"
+      },
+      "color": "#febb2e"
+    },
+    "1051": {
+      "name": "伊德海莉",
+      "skins": {}
+    },
+    "1061": {
+      "name": "可琳",
+      "skins": {
+        "1061": "可琳·抹茶泡芙",
+        "3110610": "可琳·抹茶泡芙"
+      },
+      "color": "#c8d7bd"
+    },
+    "1071": {
+      "name": "凱撒·金",
+      "skins": {}
+    },
+    "1081": {
+      "name": "比利",
+      "skins": {
+        "1081": "比利·閃耀星徽套裝",
+        "3110810": "比利·閃耀星徽套裝"
+      },
+      "color": "#af3e3a"
+    },
+    "1091": {
+      "name": "雅",
+      "skins": {
+        "1091": "星見雅·烈露濯霜",
+        "3110910": "星見雅·烈露濯霜",
+        "3110911": "星見雅·銀庭花信"
+      },
+      "color": "#05777a"
+    },
+    "1101": {
+      "name": "珂蕾妲",
+      "skins": {
+        "1101": "珂蕾妲·赤子烈錘",
+        "3111010": "珂蕾妲·赤子烈錘"
+      },
+      "color": "#de643d"
+    },
+    "1111": {
+      "name": "安東",
+      "skins": {
+        "1111": "安東·撼地熾軸",
+        "3111110": "安東·撼地熾軸"
+      },
+      "color": "#ddc374"
+    },
+    "1121": {
+      "name": "本",
+      "skins": {
+        "1121": "本·獸王毛茸茸",
+        "3111210": "本·獸王毛茸茸"
+      },
+      "color": "#a68d73"
+    },
+    "1131": {
+      "name": "蒼角",
+      "skins": {
+        "1131": "蒼角·青藍冰舞",
+        "3111310": "蒼角·青藍冰舞"
+      },
+      "color": "#28bdcc"
+    },
+    "1141": {
+      "name": "萊卡恩",
+      "skins": {
+        "1141": "萊卡恩·蒼月夜巡",
+        "3111410": "萊卡恩·蒼月夜巡"
+      },
+      "color": "#d0d3e0"
+    },
+    "1151": {
+      "name": "露西",
+      "skins": {
+        "1151": "露西·鐵腕淑女",
+        "3111510": "露西·鐵腕淑女",
+        "3111511": "露西·公主假日"
+      },
+      "color": "#e8cda2"
+    },
+    "1161": {
+      "name": "萊特",
+      "skins": {}
+    },
+    "1171": {
+      "name": "柏妮思",
+      "skins": {
+        "1171": "柏妮思·縱燃歡宴",
+        "3111710": "柏妮思·縱燃歡宴"
+      },
+      "color": "#da8837"
+    },
+    "1181": {
+      "name": "格莉絲",
+      "skins": {
+        "1181": "格莉絲·鋼鐵的女巫",
+        "3111810": "格莉絲·鋼鐵的女巫"
+      },
+      "color": "#b75339"
+    },
+    "1191": {
+      "name": "艾蓮",
+      "skins": {
+        "1191": "艾蓮·剪刀手艾鯊鯊",
+        "3111910": "艾蓮·剪刀手艾鯊鯊",
+        "3111911": "艾蓮·從週一到週五"
+      },
+      "color": "#c9becc"
+    },
+    "1201": {
+      "name": "悠真",
+      "skins": {
+        "1201": "淺羽悠真·落弦飛羽",
+        "3112010": "淺羽悠真·落弦飛羽"
+      },
+      "color": "#e1c600"
+    },
+    "1211": {
+      "name": "麗娜",
+      "skins": {
+        "1211": "麗娜·完美女僕長",
+        "3112110": "麗娜·完美女僕長"
+      },
+      "color": "#c4c1b1"
+    },
+    "1221": {
+      "name": "柳",
+      "skins": {
+        "1221": "月城柳·月影流華",
+        "3112210": "月城柳·月影流華"
+      },
+      "color": "#d55b68"
+    },
+    "1241": {
+      "name": "朱鳶",
+      "skins": {}
+    },
+    "1251": {
+      "name": "青衣",
+      "skins": {
+        "1251": "青衣·清平樂",
+        "3112510": "青衣·清平樂"
+      },
+      "color": "#28c79d"
+    },
+    "1261": {
+      "name": "簡·杜",
+      "skins": {}
+    },
+    "1271": {
+      "name": "賽斯",
+      "skins": {
+        "1271": "賽斯·不染澄心",
+        "3112710": "賽斯·不染澄心"
+      },
+      "color": "#136dd5"
+    },
+    "1281": {
+      "name": "派派",
+      "skins": {
+        "1281": "派派·快與慢",
+        "3112810": "派派·快與慢"
+      },
+      "color": "#e9d892"
+    },
+    "1291": {
+      "name": "雨果·維拉德",
+      "skins": {}
+    },
+    "1301": {
+      "name": "奧菲絲·馬格努森&「鬼火」",
+      "skins": {}
+    },
+    "1311": {
+      "name": "耀嘉音",
+      "skins": {
+        "1311": "耀嘉音·緋紅搖滾",
+        "3113110": "耀嘉音·緋紅搖滾",
+        "3113111": "耀嘉音·水晶燈下"
+      },
+      "color": "#D12D4E"
+    },
+    "1321": {
+      "name": "伊芙琳 · 舒瓦利耶",
+      "skins": {}
+    },
+    "1331": {
+      "name": "薇薇安",
+      "skins": {
+        "1331": "薇薇安·堇色蹁躚",
+        "3113310": "薇薇安·堇色蹁躚",
+        "3113311": "薇薇安·鳶花池畔"
+      },
+      "color": "#C77DFB"
+    },
+    "1341": {
+      "name": "照",
+      "skins": {
+        "1341": "照·絨耳寒枝",
+        "3113410": "照·絨耳寒枝"
+      },
+      "color": "#e8b6ae"
+    },
+    "1351": {
+      "name": "波可娜",
+      "skins": {
+        "1351": "波可娜·倦尾棲痕",
+        "3113510": "波可娜·倦尾棲痕"
+      },
+      "color": "#EB721B"
+    },
+    "1361": {
+      "name": "「扳機」",
+      "skins": {}
+    },
+    "1371": {
+      "name": "儀玄",
+      "skins": {
+        "1371": "儀玄·觀雲同巋",
+        "3113710": "儀玄·觀雲同巋",
+        "3113711": "儀玄·墨形影蹤"
+      },
+      "color": "#b7986f"
+    },
+    "1381": {
+      "name": "零號·安比",
+      "skins": {
+        "1381": "零號·安比·銀心錫兵",
+        "3113810": "零號·安比·銀心錫兵"
+      },
+      "color": "#F7940A"
+    },
+    "1391": {
+      "name": "橘福福",
+      "skins": {
+        "1391": "橘福福·山中萌虎",
+        "3113910": "橘福福·山中萌虎"
+      },
+      "color": "#e29737"
+    },
+    "1401": {
+      "name": "愛麗絲",
+      "skins": {
+        "1401": "愛麗絲·聖星裁儀",
+        "3114010": "愛麗絲·聖星裁儀",
+        "3114011": "愛麗絲·百里香之海"
+      },
+      "color": "#debe8d"
+    },
+    "1411": {
+      "name": "柚葉",
+      "skins": {
+        "1411": "柚葉·傘下夢貉",
+        "3114110": "柚葉·傘下夢貉",
+        "3114111": "柚葉·晴空化狸"
+      },
+      "color": "#b92734"
+    },
+    "1421": {
+      "name": "潘引壺",
+      "skins": {
+        "1421": "潘引壺·食引百味",
+        "3114210": "潘引壺·食引百味",
+        "3114211": "潘引壺·饌玉烹金"
+      },
+      "color": "#c84342"
+    },
+    "1431": {
+      "name": "葉瞬光",
+      "skins": {
+        "1431": "葉瞬光·流雲照影",
+        "3114310": "葉瞬光·流雲照影",
+        "3114311": "葉瞬光·暖霞拾光"
+      },
+      "color": "#de493e"
+    },
+    "1441": {
+      "name": "真斗",
+      "skins": {
+        "1441": "狛野真斗·赤心荒魂",
+        "3114410": "狛野真斗·赤心荒魂",
+        "3114411": "狛野真斗·白心舊影"
+      },
+      "color": "#b83a37"
+    },
+    "1451": {
+      "name": "盧西婭",
+      "skins": {
+        "1451": "盧西婭·頌夜夢囈",
+        "3114510": "盧西婭·頌夜夢囈"
+      },
+      "color": "#25999d"
+    },
+    "1461": {
+      "name": "「席德」",
+      "skins": {
+        "1461": "「席德」·繁花",
+        "3114610": "「席德」·繁花"
+      },
+      "color": "#aed5dd"
+    },
+    "1471": {
+      "name": "般岳",
+      "skins": {}
+    },
+    "1481": {
+      "name": "琉音",
+      "skins": {
+        "1481": "琉音·鈴語判詞",
+        "3114810": "琉音·鈴語判詞"
+      },
+      "color": "#1db0af"
+    },
+    "1491": {
+      "name": "千夏",
+      "skins": {
+        "1491": "千夏·妄念環響",
+        "3114910": "千夏·妄念環響",
+        "3114911": "千夏·午後茶歇",
+        "3114912": "千夏·夢想營業中"
+      },
+      "color": "#daef94"
+    },
+    "1501": {
+      "name": "愛芮",
+      "skins": {}
+    },
+    "1511": {
+      "name": "南宮羽",
+      "skins": {
+        "1511": "南宮羽·綺夢領舞",
+        "3115110": "南宮羽·綺夢領舞",
+        "3115111": "南宮羽·狂想繆斯",
+        "3115112": "南宮羽·心動應援中"
+      },
+      "color": "#9c77f2"
+    },
+    "1521": {
+      "name": "希希芙",
+      "skins": {}
+    },
+    "1531": {
+      "name": "星徽·比利",
+      "skins": {}
+    },
+    "1541": {
+      "name": "普羅米婭",
+      "skins": {}
+    },
+    "1551": {
+      "name": "佩洛伊斯",
+      "skins": {
+        "1551": "佩洛伊斯·黎明鐵衛",
+        "3115510": "佩洛伊斯·黎明鐵衛"
+      },
+      "color": "#334acc"
+    },
+    "1561": {
+      "name": "維琳娜·艾嘉德",
+      "skins": {}
+    },
+    "1571": {
+      "name": "諾姆·霍洛維爾",
+      "skins": {}
+    },
+    "1581": {
+      "name": "蕾米埃爾",
+      "skins": {
+        "1581": "蕾米埃爾·空羽呢喃",
+        "3115810": "蕾米埃爾·空羽呢喃",
+        "3115811": "蕾米埃爾·月夜密語",
+        "3115812": "蕾米埃爾·影池獨舞",
+        "3115813": "蕾米埃爾·月夜密語（面紗）"
+      },
+      "color": "#ee73a4"
+    },
+    "1591": {
+      "name": "希格莉德·德拉敘爾",
+      "skins": {}
+    },
+    "1611": {
+      "name": "克拉蕾·弗林特",
+      "skins": {}
+    }
+  },
+  "cn": {
+    "1011": {
+      "name": "安比",
+      "skins": {},
+      "color": "#c8e16c"
+    },
+    "1021": {
+      "name": "猫又",
+      "skins": {},
+      "color": "#a0351c"
+    },
+    "1031": {
+      "name": "妮可",
+      "skins": {},
+      "color": "#e6adaa"
+    },
+    "1041": {
+      "name": "「11号」",
+      "skins": {},
+      "color": "#febb2e"
+    },
+    "1051": {
+      "name": "伊德海莉·墨菲",
+      "skins": {}
+    },
+    "1061": {
+      "name": "可琳",
+      "skins": {},
+      "color": "#c8d7bd"
+    },
+    "1071": {
+      "name": "凯撒·金",
+      "skins": {}
+    },
+    "1081": {
+      "name": "比利",
+      "skins": {},
+      "color": "#af3e3a"
+    },
+    "1091": {
+      "name": "雅",
+      "skins": {},
+      "color": "#05777a"
+    },
+    "1101": {
+      "name": "珂蕾妲",
+      "skins": {},
+      "color": "#de643d"
+    },
+    "1111": {
+      "name": "安东",
+      "skins": {},
+      "color": "#ddc374"
+    },
+    "1121": {
+      "name": "本",
+      "skins": {},
+      "color": "#a68d73"
+    },
+    "1131": {
+      "name": "苍角",
+      "skins": {},
+      "color": "#28bdcc"
+    },
+    "1141": {
+      "name": "莱卡恩",
+      "skins": {},
+      "color": "#d0d3e0"
+    },
+    "1151": {
+      "name": "露西",
+      "skins": {},
+      "color": "#e8cda2"
+    },
+    "1161": {
+      "name": "莱特 \n",
+      "skins": {}
+    },
+    "1171": {
+      "name": "柏妮思",
+      "skins": {},
+      "color": "#da8837"
+    },
+    "1181": {
+      "name": "格莉丝",
+      "skins": {},
+      "color": "#b75339"
+    },
+    "1191": {
+      "name": "艾莲",
+      "skins": {},
+      "color": "#c9becc"
+    },
+    "1201": {
+      "name": "悠真",
+      "skins": {},
+      "color": "#e1c600"
+    },
+    "1211": {
+      "name": "丽娜",
+      "skins": {},
+      "color": "#c4c1b1"
+    },
+    "1221": {
+      "name": "柳",
+      "skins": {},
+      "color": "#d55b68"
+    },
+    "1241": {
+      "name": "朱鸢",
+      "skins": {}
+    },
+    "1251": {
+      "name": "青衣",
+      "skins": {},
+      "color": "#28c79d"
+    },
+    "1261": {
+      "name": "简·杜",
+      "skins": {}
+    },
+    "1271": {
+      "name": "赛斯",
+      "skins": {},
+      "color": "#136dd5"
+    },
+    "1281": {
+      "name": "派派",
+      "skins": {},
+      "color": "#e9d892"
+    },
+    "1291": {
+      "name": "雨果·维拉德",
+      "skins": {}
+    },
+    "1301": {
+      "name": "奥菲丝·马格努森 & 「鬼火」",
+      "skins": {}
+    },
+    "1311": {
+      "name": "耀嘉音",
+      "skins": {},
+      "color": "#D12D4E"
+    },
+    "1321": {
+      "name": "伊芙琳·舒瓦利耶",
+      "skins": {}
+    },
+    "1331": {
+      "name": "薇薇安",
+      "skins": {},
+      "color": "#C77DFB"
+    },
+    "1341": {
+      "name": "照",
+      "skins": {},
+      "color": "#e8b6ae"
+    },
+    "1351": {
+      "name": "波可娜",
+      "skins": {},
+      "color": "#EB721B"
+    },
+    "1361": {
+      "name": "「扳机」",
+      "skins": {}
+    },
+    "1371": {
+      "name": "仪玄",
+      "skins": {},
+      "color": "#b7986f"
+    },
+    "1381": {
+      "name": "零号·安比",
+      "skins": {},
+      "color": "#F7940A"
+    },
+    "1391": {
+      "name": "橘福福",
+      "skins": {},
+      "color": "#e29737"
+    },
+    "1401": {
+      "name": "爱丽丝",
+      "skins": {},
+      "color": "#debe8d"
+    },
+    "1411": {
+      "name": "柚叶",
+      "skins": {},
+      "color": "#b92734"
+    },
+    "1421": {
+      "name": "潘引壶",
+      "skins": {},
+      "color": "#c84342"
+    },
+    "1431": {
+      "name": "叶瞬光",
+      "skins": {},
+      "color": "#de493e"
+    },
+    "1441": {
+      "name": "真斗",
+      "skins": {},
+      "color": "#b83a37"
+    },
+    "1451": {
+      "name": "卢西娅",
+      "skins": {},
+      "color": "#25999d"
+    },
+    "1461": {
+      "name": "「席德」",
+      "skins": {},
+      "color": "#aed5dd"
+    },
+    "1471": {
+      "name": "般岳",
+      "skins": {}
+    },
+    "1481": {
+      "name": "琉音",
+      "skins": {},
+      "color": "#1db0af"
+    },
+    "1491": {
+      "name": "千夏",
+      "skins": {
+        "1491": "千夏·妄念环响",
+        "3114910": "千夏·妄念环响",
+        "3114911": "千夏·午后茶歇",
+        "3114912": "千夏·梦想营业中"
+      },
+      "color": "#daef94"
+    },
+    "1501": {
+      "name": "爱芮",
+      "skins": {}
+    },
+    "1511": {
+      "name": "南宫羽",
+      "skins": {
+        "1511": "南宫羽·绮梦领舞",
+        "3115110": "南宫羽·绮梦领舞",
+        "3115111": "南宫羽·狂想缪斯",
+        "3115112": "南宫羽·心动应援中"
+      },
+      "color": "#9c77f2"
+    },
+    "1521": {
+      "name": "希希芙",
+      "skins": {}
+    },
+    "1531": {
+      "name": "星徽·比利",
+      "skins": {}
+    },
+    "1541": {
+      "name": "普罗米娅",
+      "skins": {}
+    },
+    "1551": {
+      "name": "佩洛伊斯",
+      "skins": {},
+      "color": "#334acc"
+    },
+    "1561": {
+      "name": "维琳娜·艾嘉德",
+      "skins": {}
+    },
+    "1571": {
+      "name": "诺姆·霍洛维尔",
+      "skins": {}
+    },
+    "1581": {
+      "name": "蕾米埃尔",
+      "skins": {
+        "1581": "蕾米埃尔·空羽呢喃",
+        "3115810": "蕾米埃尔·空羽呢喃",
+        "3115811": "蕾米埃尔·月夜密语",
+        "3115812": "蕾米埃尔·影池独舞",
+        "3115813": "蕾米埃尔·月夜密语（面纱）"
+      },
+      "color": "#ee73a4"
+    },
+    "1591": {
+      "name": "希格莉德·德拉叙尔",
+      "skins": {}
+    },
+    "1611": {
+      "name": "克拉蕾·弗林特",
+      "skins": {}
+    }
+  },
+  "jp": {
+    "1011": {
+      "name": "アンビー",
+      "skins": {},
+      "color": "#c8e16c"
+    },
+    "1021": {
+      "name": "猫又",
+      "skins": {},
+      "color": "#a0351c"
+    },
+    "1031": {
+      "name": "ニコ",
+      "skins": {},
+      "color": "#e6adaa"
+    },
+    "1041": {
+      "name": "「11号」",
+      "skins": {},
+      "color": "#febb2e"
+    },
+    "1051": {
+      "name": "イドリー・マーフィー",
+      "skins": {}
+    },
+    "1061": {
+      "name": "カリン",
+      "skins": {},
+      "color": "#c8d7bd"
+    },
+    "1071": {
+      "name": "キング・シーザー",
+      "skins": {}
+    },
+    "1081": {
+      "name": "ビリー",
+      "skins": {},
+      "color": "#af3e3a"
+    },
+    "1091": {
+      "name": "星見雅",
+      "skins": {},
+      "color": "#05777a"
+    },
+    "1101": {
+      "name": "クレタ",
+      "skins": {},
+      "color": "#de643d"
+    },
+    "1111": {
+      "name": "アンドー",
+      "skins": {},
+      "color": "#ddc374"
+    },
+    "1121": {
+      "name": "ベン",
+      "skins": {},
+      "color": "#a68d73"
+    },
+    "1131": {
+      "name": "蒼角",
+      "skins": {},
+      "color": "#28bdcc"
+    },
+    "1141": {
+      "name": "ライカン",
+      "skins": {},
+      "color": "#d0d3e0"
+    },
+    "1151": {
+      "name": "ルーシー",
+      "skins": {},
+      "color": "#e8cda2"
+    },
+    "1161": {
+      "name": "ライト",
+      "skins": {}
+    },
+    "1171": {
+      "name": "バーニス",
+      "skins": {},
+      "color": "#da8837"
+    },
+    "1181": {
+      "name": "グレース",
+      "skins": {},
+      "color": "#b75339"
+    },
+    "1191": {
+      "name": "エレン",
+      "skins": {},
+      "color": "#c9becc"
+    },
+    "1201": {
+      "name": "浅羽悠真",
+      "skins": {},
+      "color": "#e1c600"
+    },
+    "1211": {
+      "name": "リナ",
+      "skins": {},
+      "color": "#c4c1b1"
+    },
+    "1221": {
+      "name": "月城柳",
+      "skins": {},
+      "color": "#d55b68"
+    },
+    "1241": {
+      "name": "朱鳶",
+      "skins": {}
+    },
+    "1251": {
+      "name": "青衣",
+      "skins": {},
+      "color": "#28c79d"
+    },
+    "1261": {
+      "name": "ジェーン・ドゥ",
+      "skins": {}
+    },
+    "1271": {
+      "name": "セス",
+      "skins": {},
+      "color": "#136dd5"
+    },
+    "1281": {
+      "name": "パイパー",
+      "skins": {},
+      "color": "#e9d892"
+    },
+    "1291": {
+      "name": "ヒューゴ・ヴラド",
+      "skins": {}
+    },
+    "1301": {
+      "name": "オルペウス・マグヌッソン＆「鬼火」",
+      "skins": {}
+    },
+    "1311": {
+      "name": "アストラ",
+      "skins": {},
+      "color": "#D12D4E"
+    },
+    "1321": {
+      "name": "イヴリン・シェヴァリエ",
+      "skins": {}
+    },
+    "1331": {
+      "name": "ビビアン",
+      "skins": {},
+      "color": "#C77DFB"
+    },
+    "1341": {
+      "name": "照",
+      "skins": {},
+      "color": "#e8b6ae"
+    },
+    "1351": {
+      "name": "プルクラ",
+      "skins": {},
+      "color": "#EB721B"
+    },
+    "1361": {
+      "name": "「トリガー」",
+      "skins": {}
+    },
+    "1371": {
+      "name": "儀玄",
+      "skins": {},
+      "color": "#b7986f"
+    },
+    "1381": {
+      "name": "0号・アンビー",
+      "skins": {},
+      "color": "#F7940A"
+    },
+    "1391": {
+      "name": "橘福福",
+      "skins": {},
+      "color": "#e29737"
+    },
+    "1401": {
+      "name": "アリス",
+      "skins": {},
+      "color": "#debe8d"
+    },
+    "1411": {
+      "name": "浮波柚葉",
+      "skins": {},
+      "color": "#b92734"
+    },
+    "1421": {
+      "name": "潘引壺",
+      "skins": {},
+      "color": "#c84342"
+    },
+    "1431": {
+      "name": "葉瞬光",
+      "skins": {},
+      "color": "#de493e"
+    },
+    "1441": {
+      "name": "狛野真斗",
+      "skins": {},
+      "color": "#b83a37"
+    },
+    "1451": {
+      "name": "リュシア",
+      "skins": {},
+      "color": "#25999d"
+    },
+    "1461": {
+      "name": "「シード」",
+      "skins": {},
+      "color": "#aed5dd"
+    },
+    "1471": {
+      "name": "盤岳",
+      "skins": {}
+    },
+    "1481": {
+      "name": "ダイアリン",
+      "skins": {},
+      "color": "#1db0af"
+    },
+    "1491": {
+      "name": "千夏",
+      "skins": {
+        "1491": "千夏・「サウンドモーソースケープ」",
+        "3114910": "千夏・「サウンドモーソースケープ」",
+        "3114911": "千夏・「ティータイム」",
+        "3114912": "千夏・「モーソーお届け中」"
+      },
+      "color": "#daef94"
+    },
+    "1501": {
+      "name": "アリア",
+      "skins": {}
+    },
+    "1511": {
+      "name": "南宮羽",
+      "skins": {
+        "1511": "南宮羽・「きらめく夢のメインダンサー」",
+        "3115110": "南宮羽・「きらめく夢のメインダンサー」",
+        "3115111": "南宮羽・「ラプソディ・ミューズ」",
+        "3115112": "南宮羽・「むねキュン応援中」"
+      },
+      "color": "#9c77f2"
+    },
+    "1521": {
+      "name": "シーシィア",
+      "skins": {}
+    },
+    "1531": {
+      "name": "スターライト・ビリー・キッド",
+      "skins": {}
+    },
+    "1541": {
+      "name": "プロメイア",
+      "skins": {}
+    },
+    "1551": {
+      "name": "ピュロイス",
+      "skins": {},
+      "color": "#334acc"
+    },
+    "1561": {
+      "name": "ヴェリナ・エガード",
+      "skins": {}
+    },
+    "1571": {
+      "name": "ノルムー・ホローウェル",
+      "skins": {}
+    },
+    "1581": {
+      "name": "レミエール",
+      "skins": {
+        "1581": "レミエール・「天の羽根、甘い囀り」",
+        "3115810": "レミエール・「天の羽根、甘い囀り」",
+        "3115811": "レミエール・「月夜のささやき」",
+        "3115812": "レミエール・「シャドウ・ソリスト」",
+        "3115813": "レミエール・「月夜のささやき（ベール）」"
+      },
+      "color": "#ee73a4"
+    },
+    "1591": {
+      "name": "シグリッド・ドゥ・ラズール",
+      "skins": {}
+    },
+    "1611": {
+      "name": "クラレッタ・フリンツ",
+      "skins": {}
+    }
+  },
+  "kr": {
+    "1011": {
+      "name": "엔비",
+      "skins": {},
+      "color": "#c8e16c"
+    },
+    "1021": {
+      "name": "네코마타",
+      "skins": {},
+      "color": "#a0351c"
+    },
+    "1031": {
+      "name": "니콜",
+      "skins": {},
+      "color": "#e6adaa"
+    },
+    "1041": {
+      "name": "「11호」",
+      "skins": {},
+      "color": "#febb2e"
+    },
+    "1051": {
+      "name": "이드하리 머피",
+      "skins": {}
+    },
+    "1061": {
+      "name": "코린",
+      "skins": {},
+      "color": "#c8d7bd"
+    },
+    "1071": {
+      "name": "카이사르 킹",
+      "skins": {}
+    },
+    "1081": {
+      "name": "빌리",
+      "skins": {},
+      "color": "#af3e3a"
+    },
+    "1091": {
+      "name": "미야비",
+      "skins": {},
+      "color": "#05777a"
+    },
+    "1101": {
+      "name": "콜레다",
+      "skins": {},
+      "color": "#de643d"
+    },
+    "1111": {
+      "name": "앤톤",
+      "skins": {},
+      "color": "#ddc374"
+    },
+    "1121": {
+      "name": "벤",
+      "skins": {},
+      "color": "#a68d73"
+    },
+    "1131": {
+      "name": "소우카쿠",
+      "skins": {},
+      "color": "#28bdcc"
+    },
+    "1141": {
+      "name": "리카온",
+      "skins": {},
+      "color": "#d0d3e0"
+    },
+    "1151": {
+      "name": "루시",
+      "skins": {},
+      "color": "#e8cda2"
+    },
+    "1161": {
+      "name": "라이터",
+      "skins": {}
+    },
+    "1171": {
+      "name": "버니스",
+      "skins": {},
+      "color": "#da8837"
+    },
+    "1181": {
+      "name": "그레이스",
+      "skins": {},
+      "color": "#b75339"
+    },
+    "1191": {
+      "name": "엘렌",
+      "skins": {},
+      "color": "#c9becc"
+    },
+    "1201": {
+      "name": "하루마사",
+      "skins": {},
+      "color": "#e1c600"
+    },
+    "1211": {
+      "name": "리나",
+      "skins": {},
+      "color": "#c4c1b1"
+    },
+    "1221": {
+      "name": "야나기",
+      "skins": {},
+      "color": "#d55b68"
+    },
+    "1241": {
+      "name": "주연",
+      "skins": {}
+    },
+    "1251": {
+      "name": "청의",
+      "skins": {},
+      "color": "#28c79d"
+    },
+    "1261": {
+      "name": "제인 도",
+      "skins": {}
+    },
+    "1271": {
+      "name": "세스",
+      "skins": {},
+      "color": "#136dd5"
+    },
+    "1281": {
+      "name": "파이퍼",
+      "skins": {},
+      "color": "#e9d892"
+    },
+    "1291": {
+      "name": "휴고 블라드",
+      "skins": {}
+    },
+    "1301": {
+      "name": "오피 마그누손& 「도깨비불」",
+      "skins": {}
+    },
+    "1311": {
+      "name": "아스트라",
+      "skins": {},
+      "color": "#D12D4E"
+    },
+    "1321": {
+      "name": "이블린 슈발리에",
+      "skins": {}
+    },
+    "1331": {
+      "name": "비비안",
+      "skins": {},
+      "color": "#C77DFB"
+    },
+    "1341": {
+      "name": "자오",
+      "skins": {},
+      "color": "#e8b6ae"
+    },
+    "1351": {
+      "name": "펄크라",
+      "skins": {},
+      "color": "#EB721B"
+    },
+    "1361": {
+      "name": "「트리거」",
+      "skins": {}
+    },
+    "1371": {
+      "name": "의현",
+      "skins": {},
+      "color": "#b7986f"
+    },
+    "1381": {
+      "name": "0호·엔비",
+      "skins": {},
+      "color": "#F7940A"
+    },
+    "1391": {
+      "name": "귤복복",
+      "skins": {},
+      "color": "#e29737"
+    },
+    "1401": {
+      "name": "앨리스",
+      "skins": {},
+      "color": "#debe8d"
+    },
+    "1411": {
+      "name": "유즈하",
+      "skins": {},
+      "color": "#b92734"
+    },
+    "1421": {
+      "name": "반인호",
+      "skins": {},
+      "color": "#c84342"
+    },
+    "1431": {
+      "name": "엽빛나",
+      "skins": {},
+      "color": "#de493e"
+    },
+    "1441": {
+      "name": "마나토",
+      "skins": {},
+      "color": "#b83a37"
+    },
+    "1451": {
+      "name": "루시아",
+      "skins": {},
+      "color": "#25999d"
+    },
+    "1461": {
+      "name": "「시드」",
+      "skins": {},
+      "color": "#aed5dd"
+    },
+    "1471": {
+      "name": "반악",
+      "skins": {}
+    },
+    "1481": {
+      "name": "다이아린",
+      "skins": {},
+      "color": "#1db0af"
+    },
+    "1491": {
+      "name": "수나",
+      "skins": {
+        "1491": "수나·망념의 고리",
+        "3114910": "수나·망념의 고리",
+        "3114911": "수나·오후의 티타임",
+        "3114912": "수나·망상 영업 중"
+      },
+      "color": "#daef94"
+    },
+    "1501": {
+      "name": "아리아",
+      "skins": {}
+    },
+    "1511": {
+      "name": "남궁우",
+      "skins": {
+        "1511": "남궁우·달콤한 꿈의 메인 댄서",
+        "3115110": "남궁우·달콤한 꿈의 메인 댄서",
+        "3115111": "남궁우·광상곡의 뮤즈",
+        "3115112": "남궁우·심쿵 응원 중"
+      },
+      "color": "#9c77f2"
+    },
+    "1521": {
+      "name": "시시아",
+      "skins": {}
+    },
+    "1531": {
+      "name": "스타라이트·빌리",
+      "skins": {}
+    },
+    "1541": {
+      "name": "프로미아",
+      "skins": {}
+    },
+    "1551": {
+      "name": "피로이스",
+      "skins": {},
+      "color": "#334acc"
+    },
+    "1561": {
+      "name": "벨리나 에어기드",
+      "skins": {}
+    },
+    "1571": {
+      "name": "노르마 할로웰",
+      "skins": {}
+    },
+    "1581": {
+      "name": "레미엘",
+      "skins": {
+        "1581": "레미엘·날개의 속삭임",
+        "3115810": "레미엘·날개의 속삭임",
+        "3115811": "레미엘·달밤의 속삭임",
+        "3115812": "레미엘·그림자 위의 독무",
+        "3115813": "레미엘·달밤의 속삭임(베일)"
+      },
+      "color": "#ee73a4"
+    },
+    "1591": {
+      "name": "시그리드 드라주르",
+      "skins": {}
+    },
+    "1611": {
+      "name": "클라렛 플린트",
+      "skins": {}
+    }
+  },
+  "fr": {
+    "1011": {
+      "name": "Anby",
+      "skins": {},
+      "color": "#c8e16c"
+    },
+    "1021": {
+      "name": "Nekomata",
+      "skins": {},
+      "color": "#a0351c"
+    },
+    "1031": {
+      "name": "Nicole",
+      "skins": {},
+      "color": "#e6adaa"
+    },
+    "1041": {
+      "name": "Soldat 11",
+      "skins": {},
+      "color": "#febb2e"
+    },
+    "1051": {
+      "name": "Yidhari",
+      "skins": {}
+    },
+    "1061": {
+      "name": "Corin",
+      "skins": {},
+      "color": "#c8d7bd"
+    },
+    "1071": {
+      "name": "César King",
+      "skins": {}
+    },
+    "1081": {
+      "name": "Billy",
+      "skins": {},
+      "color": "#af3e3a"
+    },
+    "1091": {
+      "name": "Miyabi",
+      "skins": {},
+      "color": "#05777a"
+    },
+    "1101": {
+      "name": "Koleda",
+      "skins": {},
+      "color": "#de643d"
+    },
+    "1111": {
+      "name": "Anton",
+      "skins": {},
+      "color": "#ddc374"
+    },
+    "1121": {
+      "name": "Ben",
+      "skins": {},
+      "color": "#a68d73"
+    },
+    "1131": {
+      "name": "Soukaku",
+      "skins": {},
+      "color": "#28bdcc"
+    },
+    "1141": {
+      "name": "Lycaon",
+      "skins": {},
+      "color": "#d0d3e0"
+    },
+    "1151": {
+      "name": "Lucy",
+      "skins": {},
+      "color": "#e8cda2"
+    },
+    "1161": {
+      "name": "Lighter",
+      "skins": {}
+    },
+    "1171": {
+      "name": "Bernice",
+      "skins": {},
+      "color": "#da8837"
+    },
+    "1181": {
+      "name": "Grace",
+      "skins": {},
+      "color": "#b75339"
+    },
+    "1191": {
+      "name": "Ellen",
+      "skins": {},
+      "color": "#c9becc"
+    },
+    "1201": {
+      "name": "Harumasa",
+      "skins": {},
+      "color": "#e1c600"
+    },
+    "1211": {
+      "name": "Rina",
+      "skins": {},
+      "color": "#c4c1b1"
+    },
+    "1221": {
+      "name": "Yanagi",
+      "skins": {},
+      "color": "#d55b68"
+    },
+    "1241": {
+      "name": "Zhu Yuan",
+      "skins": {}
+    },
+    "1251": {
+      "name": "Qingyi",
+      "skins": {},
+      "color": "#28c79d"
+    },
+    "1261": {
+      "name": "Jane Doe",
+      "skins": {}
+    },
+    "1271": {
+      "name": "Seth",
+      "skins": {},
+      "color": "#136dd5"
+    },
+    "1281": {
+      "name": "Piper",
+      "skins": {},
+      "color": "#e9d892"
+    },
+    "1291": {
+      "name": "Hugo Vlad",
+      "skins": {}
+    },
+    "1301": {
+      "name": "Orphie Magnusson & Magus",
+      "skins": {}
+    },
+    "1311": {
+      "name": "Astra Yao",
+      "skins": {},
+      "color": "#D12D4E"
+    },
+    "1321": {
+      "name": "Évelyne Chevalier",
+      "skins": {}
+    },
+    "1331": {
+      "name": "Viviane",
+      "skins": {},
+      "color": "#C77DFB"
+    },
+    "1341": {
+      "name": "Zhao",
+      "skins": {},
+      "color": "#e8b6ae"
+    },
+    "1351": {
+      "name": "Pulchra",
+      "skins": {},
+      "color": "#EB721B"
+    },
+    "1361": {
+      "name": "Gâchette",
+      "skins": {}
+    },
+    "1371": {
+      "name": "Yixuan",
+      "skins": {},
+      "color": "#b7986f"
+    },
+    "1381": {
+      "name": "Soldat 0 - Anby",
+      "skins": {},
+      "color": "#F7940A"
+    },
+    "1391": {
+      "name": "Ju Fufu",
+      "skins": {},
+      "color": "#e29737"
+    },
+    "1401": {
+      "name": "Alice",
+      "skins": {},
+      "color": "#debe8d"
+    },
+    "1411": {
+      "name": "Yuzuha",
+      "skins": {},
+      "color": "#b92734"
+    },
+    "1421": {
+      "name": "Pan Yinhu",
+      "skins": {},
+      "color": "#c84342"
+    },
+    "1431": {
+      "name": "Ye Shunguang",
+      "skins": {},
+      "color": "#de493e"
+    },
+    "1441": {
+      "name": "Manato",
+      "skins": {},
+      "color": "#b83a37"
+    },
+    "1451": {
+      "name": "Lucia",
+      "skins": {},
+      "color": "#25999d"
+    },
+    "1461": {
+      "name": "Seed",
+      "skins": {},
+      "color": "#aed5dd"
+    },
+    "1471": {
+      "name": "Banyue",
+      "skins": {}
+    },
+    "1481": {
+      "name": "Dialyn",
+      "skins": {},
+      "color": "#1db0af"
+    },
+    "1491": {
+      "name": "Sunniva",
+      "skins": {
+        "1491": "Sunniva : Échos de l'illusion",
+        "3114910": "Sunniva : Échos de l'illusion",
+        "3114911": "Sunniva : Pause thé de l'après-midi",
+        "3114912": "Sunniva : Illusions en service"
+      },
+      "color": "#daef94"
+    },
+    "1501": {
+      "name": "Aria",
+      "skins": {}
+    },
+    "1511": {
+      "name": "Nangong Yu",
+      "skins": {
+        "1511": "Nangong Yu : Danseuse de rêve",
+        "3115110": "Nangong Yu : Danseuse de rêve",
+        "3115111": "Nangong Yu : Muse de la rhapsodie",
+        "3115112": "Nangong Yu : Encouragements sincères"
+      },
+      "color": "#9c77f2"
+    },
+    "1521": {
+      "name": "Cissia",
+      "skins": {}
+    },
+    "1531": {
+      "name": "Billy - Stellaire",
+      "skins": {}
+    },
+    "1541": {
+      "name": "Promeia",
+      "skins": {}
+    },
+    "1551": {
+      "name": "Pyroïs",
+      "skins": {},
+      "color": "#334acc"
+    },
+    "1561": {
+      "name": "Vélina Airgid",
+      "skins": {}
+    },
+    "1571": {
+      "name": "Norma Hollowell",
+      "skins": {}
+    },
+    "1581": {
+      "name": "Rémielle",
+      "skins": {
+        "1581": "Rémielle : Murmures des plumes",
+        "3115810": "Rémielle : Murmures des plumes",
+        "3115811": "Rémielle : Messes basses sous la lune",
+        "3115812": "Rémielle : Variation océane",
+        "3115813": "Rémielle : Messes basses sous la lune (Masque voilé)"
+      },
+      "color": "#ee73a4"
+    },
+    "1591": {
+      "name": "Sigrid de L'Azur",
+      "skins": {}
+    },
+    "1611": {
+      "name": "Clarette Flint",
+      "skins": {}
+    }
+  },
+  "vi": {
+    "1011": {
+      "name": "Anby",
+      "skins": {},
+      "color": "#c8e16c"
+    },
+    "1021": {
+      "name": "Nekomata",
+      "skins": {},
+      "color": "#a0351c"
+    },
+    "1031": {
+      "name": "Nicole",
+      "skins": {},
+      "color": "#e6adaa"
+    },
+    "1041": {
+      "name": "Chiến Binh 11",
+      "skins": {},
+      "color": "#febb2e"
+    },
+    "1051": {
+      "name": "Yidhari",
+      "skins": {}
+    },
+    "1061": {
+      "name": "Corin",
+      "skins": {},
+      "color": "#c8d7bd"
+    },
+    "1071": {
+      "name": "Caesar King",
+      "skins": {}
+    },
+    "1081": {
+      "name": "Billy",
+      "skins": {},
+      "color": "#af3e3a"
+    },
+    "1091": {
+      "name": "Miyabi",
+      "skins": {},
+      "color": "#05777a"
+    },
+    "1101": {
+      "name": "Koleda",
+      "skins": {},
+      "color": "#de643d"
+    },
+    "1111": {
+      "name": "Anton",
+      "skins": {},
+      "color": "#ddc374"
+    },
+    "1121": {
+      "name": "Ben",
+      "skins": {},
+      "color": "#a68d73"
+    },
+    "1131": {
+      "name": "Soukaku",
+      "skins": {},
+      "color": "#28bdcc"
+    },
+    "1141": {
+      "name": "Lycaon",
+      "skins": {},
+      "color": "#d0d3e0"
+    },
+    "1151": {
+      "name": "Lucy",
+      "skins": {},
+      "color": "#e8cda2"
+    },
+    "1161": {
+      "name": "Lighter",
+      "skins": {}
+    },
+    "1171": {
+      "name": "Burnice",
+      "skins": {},
+      "color": "#da8837"
+    },
+    "1181": {
+      "name": "Grace",
+      "skins": {},
+      "color": "#b75339"
+    },
+    "1191": {
+      "name": "Ellen",
+      "skins": {},
+      "color": "#c9becc"
+    },
+    "1201": {
+      "name": "Harumasa",
+      "skins": {},
+      "color": "#e1c600"
+    },
+    "1211": {
+      "name": "Rina",
+      "skins": {},
+      "color": "#c4c1b1"
+    },
+    "1221": {
+      "name": "Yanagi",
+      "skins": {},
+      "color": "#d55b68"
+    },
+    "1241": {
+      "name": "Zhu Yuan",
+      "skins": {}
+    },
+    "1251": {
+      "name": "Qingyi",
+      "skins": {},
+      "color": "#28c79d"
+    },
+    "1261": {
+      "name": "Jane Doe",
+      "skins": {}
+    },
+    "1271": {
+      "name": "Seth",
+      "skins": {},
+      "color": "#136dd5"
+    },
+    "1281": {
+      "name": "Piper",
+      "skins": {},
+      "color": "#e9d892"
+    },
+    "1291": {
+      "name": "Hugo Vlad",
+      "skins": {}
+    },
+    "1301": {
+      "name": "Orphie Và \"Magus\"",
+      "skins": {}
+    },
+    "1311": {
+      "name": "Astra Yao",
+      "skins": {},
+      "color": "#D12D4E"
+    },
+    "1321": {
+      "name": "Evelyn Chevalier",
+      "skins": {}
+    },
+    "1331": {
+      "name": "Vivian",
+      "skins": {},
+      "color": "#C77DFB"
+    },
+    "1341": {
+      "name": "Zhao",
+      "skins": {},
+      "color": "#e8b6ae"
+    },
+    "1351": {
+      "name": "Pulchra",
+      "skins": {},
+      "color": "#EB721B"
+    },
+    "1361": {
+      "name": "Trigger",
+      "skins": {}
+    },
+    "1371": {
+      "name": "Yixuan",
+      "skins": {},
+      "color": "#b7986f"
+    },
+    "1381": {
+      "name": "Chiến Binh 0 - Anby",
+      "skins": {},
+      "color": "#F7940A"
+    },
+    "1391": {
+      "name": "Ju Fufu",
+      "skins": {},
+      "color": "#e29737"
+    },
+    "1401": {
+      "name": "Alice",
+      "skins": {},
+      "color": "#debe8d"
+    },
+    "1411": {
+      "name": "Yuzuha",
+      "skins": {},
+      "color": "#b92734"
+    },
+    "1421": {
+      "name": "Pan Yinhu",
+      "skins": {},
+      "color": "#c84342"
+    },
+    "1431": {
+      "name": "Ye Shunguang",
+      "skins": {},
+      "color": "#de493e"
+    },
+    "1441": {
+      "name": "Manato",
+      "skins": {},
+      "color": "#b83a37"
+    },
+    "1451": {
+      "name": "Lucia",
+      "skins": {},
+      "color": "#25999d"
+    },
+    "1461": {
+      "name": "Seed",
+      "skins": {},
+      "color": "#aed5dd"
+    },
+    "1471": {
+      "name": "Banyue",
+      "skins": {}
+    },
+    "1481": {
+      "name": "Dialyn",
+      "skins": {},
+      "color": "#1db0af"
+    },
+    "1491": {
+      "name": "Sunna",
+      "skins": {
+        "1491": "Sunna - Âm Vang Vọng Niệm",
+        "3114910": "Sunna - Âm Vang Vọng Niệm",
+        "3114911": "Sunna - Buổi Tiệc Trà Chiều",
+        "3114912": "Sunna - Kinh Doanh Vọng Tưởng"
+      },
+      "color": "#daef94"
+    },
+    "1501": {
+      "name": "Aria",
+      "skins": {}
+    },
+    "1511": {
+      "name": "Nangong Yu",
+      "skins": {
+        "1511": "Nangong Yu - Vũ Điệu Mộng Mơ",
+        "3115110": "Nangong Yu - Vũ Điệu Mộng Mơ",
+        "3115111": "Nangong Yu - Muse Cuồng Tưởng",
+        "3115112": "Nangong Yu - Cổ Vũ Từ Trái Tim"
+      },
+      "color": "#9c77f2"
+    },
+    "1521": {
+      "name": "Cissia",
+      "skins": {}
+    },
+    "1531": {
+      "name": "Ánh Sao - Billy",
+      "skins": {}
+    },
+    "1541": {
+      "name": "Promeia",
+      "skins": {}
+    },
+    "1551": {
+      "name": "Pyrois",
+      "skins": {},
+      "color": "#334acc"
+    },
+    "1561": {
+      "name": "Velina Airgid",
+      "skins": {}
+    },
+    "1571": {
+      "name": "Norma Hollowell",
+      "skins": {}
+    },
+    "1581": {
+      "name": "Remielle",
+      "skins": {
+        "1581": "Remielle - Lạc Vũ Thỏ Thẻ",
+        "3115810": "Remielle - Lạc Vũ Thỏ Thẻ",
+        "3115811": "Remielle - Thì Thầm Dưới Trăng",
+        "3115812": "Remielle - Ảnh Trì Độc Vũ",
+        "3115813": "Remielle - Thì Thầm Dưới Trăng (Mạng Che Mặt)"
+      },
+      "color": "#ee73a4"
+    },
+    "1591": {
+      "name": "Sigrid de L'Azur",
+      "skins": {}
+    },
+    "1611": {
+      "name": "Claret Flint",
+      "skins": {}
+    }
+  }
+}

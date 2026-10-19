@@ -106,6 +106,6 @@ export default {
     await interaction.deferReply();
 
     const agentIds = [agent1Id, agent2Id, agent3Id].filter(Boolean) as string[];
-    handleTeamDraw(interaction, tr, zzz, agentIds, bangbooId, paintingMode, rankDependentPainting);
+    handleTeamDraw(interaction, tr, zzz, agentIds, bangbooId, paintingMode, rankDependentPainting, [], "current", interaction.user.id);
   },
 };

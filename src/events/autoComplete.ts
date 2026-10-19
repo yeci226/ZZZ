@@ -1,9 +1,12 @@
 import { client } from "../index.js";
+import { discLeaderboardChoices } from "../utilities/zzz/discLeaderboard.js";
+import { simulationBannerChoices } from "../utilities/zzz/gachaSimulationCatalog.js";
 import { Events, AutocompleteInteraction } from "discord.js";
 import { drainPendingLogins } from "../utilities/webhookLogin.js";
 import { createZzzClient, getZzzClientLanguage } from "../utilities/zzz/clientFactory.js";
 import type { ZenlessZoneZero } from "@yeci226/hoyoapi";
-import { getUserCookie, getUserUid, getUserLang } from "../utilities/utilities.js";
+import { getUserLang } from "../utilities/utilities.js";
+import { inspectAccountAccess } from "../utilities/accountAccess.js";
 import { getLegacyAccounts } from "../utilities/accountStore.js";
 import {
   formatZzzLiveScheduleChoice,
@@ -71,11 +74,9 @@ async function resolveZzzClient(
 ): Promise<ZenlessZoneZero | null> {
   const accountIndexRaw = interaction.options.getString("account");
   const accountIndex = accountIndexRaw ? parseInt(accountIndexRaw) : 0;
-  const [cookie, uid] = await Promise.all([
-    getUserCookie(userId, accountIndex),
-    getUserUid(userId, accountIndex),
-  ]);
-  if (!cookie || !uid) return null;
+  const access = await inspectAccountAccess(client.db, { ownerId: userId, accountIndex });
+  if (access.status !== "ready") return null;
+  const { cookie, uid } = access.account!;
   const userLang = localeOverride ?? (await getUserLang(userId));
   const lang = getZzzClientLanguage(userLang ?? (interaction as any).locale);
   return createZzzClient({ cookie, lang, uid } as any);
@@ -86,6 +87,18 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
   const autocompleteInteraction = interaction as AutocompleteInteraction;
   const focusedOption = autocompleteInteraction.options.getFocused(true);
   const { name: optionName, value: focusedValue } = focusedOption;
+
+  if (autocompleteInteraction.commandName === "leaderboard") {
+    const locale = await client.db.get(`${interaction.user.id}.locale`) || interaction.locale;
+    await autocompleteInteraction.respond(discLeaderboardChoices(String(focusedValue), locale)).catch(() => {});
+    return;
+  }
+
+  if (["gacha-simulate", "gacha-simulation-settings", "gacha-simulation-details"].includes(autocompleteInteraction.commandName) && optionName === "banner") {
+    try { await autocompleteInteraction.respond(simulationBannerChoices(String(focusedValue))); }
+    catch { await autocompleteInteraction.respond([]).catch(() => {}); }
+    return;
+  }
 
   if (
     optionName === "schedule" &&
@@ -154,12 +167,11 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
       });
     }
     if (autocompleteInteraction.commandName === "signal") {
-      const source = autocompleteInteraction.options.getString("source") || "official";
       const { getGachaArchiveStore } = await import("../utilities/zzz/gachaArchive.js");
       const linked = new Set(userAccounts.map((account) => String(account.uid)));
       for (const account of getGachaArchiveStore().listAccounts(targetUserId)) {
-        if (account.source !== source || linked.has(account.uid)) continue;
-        choices.push({ name: `${account.uid} - ${source === "manual" ? "手動匯入封存" : "官方封存"}`, value: `archive:${account.uid}` });
+        if (linked.has(account.uid)) continue;
+        choices.push({ name: `${account.uid} - 已匯入紀錄`, value: `archive:${account.uid}` });
       }
     }
     const query = String(focusedValue || "").toLowerCase();

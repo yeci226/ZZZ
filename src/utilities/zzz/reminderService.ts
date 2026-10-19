@@ -5,19 +5,20 @@ import { createZzzClient, getZzzClientLanguage } from "./clientFactory.js";
 import { loadOfficialNoteData } from "./officialRecordApi.js";
 import { renderOfficialNote } from "./noteRenderer.js";
 import { normalizeNoteReminderConfig, type NoteReminderConfig } from "./reminderConfig.js";
-import { evaluateNoteReminder, type ReminderTrigger } from "./reminderEvaluator.js";
+import { evaluateNoteReminder } from "./reminderEvaluator.js";
+import {
+  getPendingReminderTriggers,
+  getReminderStateKey,
+  markReminderTriggersDelivered,
+  rearmEnergyReminder,
+  type ReminderState,
+} from "./reminderState.js";
 import {
   classifyPermanentNotificationError,
   disableNotificationDestination,
   isNotificationEnabled,
   type NotificationInvalidReason,
 } from "../core/notificationDestination.js";
-
-interface ReminderState {
-  sent?: Record<string, string>;
-  energyArmed?: boolean;
-  failureCooldownUntil?: number;
-}
 
 type DeliveryResult =
   | { delivered: true }
@@ -137,7 +138,7 @@ export class NoteReminderService {
         const accounts = await getLegacyAccounts(this.client.db, userId);
         for (const account of accounts) {
           if (!account?.uid || !account?.cookie || account.invalid === true) continue;
-          const stateKey = `noteReminderState.${userId}.${account.uid}`;
+          const stateKey = getReminderStateKey(userId, String(account.uid));
           const state = ((await this.client.db.get(stateKey)) || {}) as ReminderState;
           if (Number(state.failureCooldownUntil ?? 0) > now) continue;
           try {
@@ -151,22 +152,18 @@ export class NoteReminderService {
               now,
               region: String(account.region ?? zzz.region ?? ""),
             });
-            const pending = this.pendingTriggers(evaluation.triggers, state);
-            if (!evaluation.energyCondition && state.energyArmed === false) {
-              state.energyArmed = true;
+            const pending = getPendingReminderTriggers(evaluation.triggers, state);
+            if (rearmEnergyReminder(state, evaluation.energyCondition)) {
               await this.client.db.set(stateKey, state);
             }
             if (pending.length === 0) continue;
             const pages = await renderOfficialNote({
               uid: String(account.uid), playerName: account.nickname, locale, note, calendar,
-              highlighted: pending.map((trigger) => trigger.key), now,
+              highlighted: evaluation.highlighted, attention: evaluation.attention, now,
             });
             const result = await deliverReminder(this.client, userId, config, pages);
             if (result.delivered) {
-              state.sent ??= {};
-              for (const trigger of pending) state.sent[trigger.key] = trigger.cycle;
-              if (pending.some((trigger) => trigger.key === "energy")) state.energyArmed = false;
-              delete state.failureCooldownUntil;
+              markReminderTriggersDelivered(state, pending);
               await this.client.db.set(stateKey, state);
               delivered++;
             } else if (result.permanent) {
@@ -192,13 +189,6 @@ export class NoteReminderService {
     } finally {
       this.running = false;
     }
-  }
-
-  private pendingTriggers(triggers: ReminderTrigger[], state: ReminderState): ReminderTrigger[] {
-    return triggers.filter((trigger) => {
-      if (trigger.key === "energy") return state.energyArmed !== false;
-      return state.sent?.[trigger.key] !== trigger.cycle;
-    });
   }
 }
 

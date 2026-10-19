@@ -1,3 +1,4 @@
+import { commandTipContent } from "../../../utilities/core/commandTips.js";
 import {
   AttachmentBuilder,
   ChatInputCommandInteraction,
@@ -56,6 +57,7 @@ export default {
         uid: String(zzz.uid), playerName: account?.nickname, locale, note, calendar,
       });
       await interaction.editReply({
+        content: commandTipContent(interaction, "note", locale),
         embeds: [],
         files: pages.map((buffer, index) => new AttachmentBuilder(buffer, {
           name: `zzz-note-${zzz.uid}-${index + 1}.png`,

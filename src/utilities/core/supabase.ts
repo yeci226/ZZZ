@@ -102,62 +102,27 @@ export interface PendingLoginRow {
 
 const BOT_ID = "zzz" as const;
 
-/**
- * Fetch all pending logins for this Discord user that ZZZ hasn't consumed yet
- * and haven't expired. One row per Hoyoverse login is shared across all bots
- * (HSR/ZZZ); each bot tracks its own consumption via `consumed_by_bots[]`.
- */
-export async function fetchPendingLogins(
-  discordUserId: string,
-): Promise<PendingLoginRow[]> {
-  const sb = await getClient();
-  if (!sb) return [];
-  const { data, error } = await sb
-    .from("pending_logins")
-    .select("id, discord_id, ltuid_v2, encrypted_cookies, hoyo_account, enriched, created_at, consumed_by_bots")
-    .eq("discord_id", discordUserId)
-    .gt("expires_at", new Date().toISOString())
-    .order("created_at", { ascending: true });
-  if (error) {
-    logger.error(`fetchPendingLogins: ${error.message}`);
-    return [];
-  }
-  // Filter client-side: PostgREST array-not-contains is awkward via JS client.
-  return ((data ?? []) as (PendingLoginRow & { consumed_by_bots: string[] | null })[])
-    .filter((r) => !(r.consumed_by_bots ?? []).includes(BOT_ID));
-}
 
-/**
- * Mark this bot as having consumed the row, and shorten expiry to 1h
- * (consumed rows are kept briefly for audit/debug, then pg_cron / drain
- * cleans them up).
- */
-export async function markConsumed(id: number): Promise<void> {
-  const sb = await getClient();
-  if (!sb) return;
-  // Read-modify-write: append BOT_ID to consumed_by_bots array.
-  const { data: row, error: readErr } = await sb
-    .from("pending_logins")
-    .select("consumed_by_bots")
-    .eq("id", id)
-    .single();
-  if (readErr) {
-    logger.warn(`markConsumed(${id}) read: ${readErr.message}`);
-    return;
-  }
-  const current: string[] = (row?.consumed_by_bots as string[] | null) ?? [];
-  if (current.includes(BOT_ID)) return;
-  const next = [...current, BOT_ID];
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-  const { error } = await sb
-    .from("pending_logins")
-    .update({
-      consumed_by_bots: next,
-      consumed_at: new Date().toISOString(),
-      expires_at: expiresAt,
-    })
-    .eq("id", id);
-  if (error) logger.warn(`markConsumed(${id}) write: ${error.message}`);
+export interface ClaimedLogin extends PendingLoginRow {
+  owner:string;
+  receipt:{attempts:number;roles?:Array<{uid:string;nickname:string;region?:string}>};
 }
-
+export async function claimPendingLogin(discordUserId?:string):Promise<ClaimedLogin|null> {
+  const sb=await getClient();if(!sb)return null;
+  const owner=crypto.randomUUID();
+  const {data,error}=await sb.rpc('claim_web_login',{p_bot:BOT_ID,p_owner:owner,p_user:discordUserId??null});
+  if(error)throw new Error('login_claim_failed');
+  const row=data?.[0];if(!row)return null;
+  return {...row,owner,receipt:row[`${BOT_ID}_result`]};
+}
+export async function renewPendingLogin(row:ClaimedLogin):Promise<boolean> {
+  const sb=await getClient();if(!sb)return false;
+  const {data,error}=await sb.rpc('renew_web_login',{p_bot:BOT_ID,p_id:row.id,p_owner:row.owner});
+  if(error)throw new Error('login_renew_failed');return data===true;
+}
+export async function finishPendingLogin(row:ClaimedLogin,result:unknown):Promise<boolean> {
+  const sb=await getClient();if(!sb)return false;
+  const {data,error}=await sb.rpc('finish_web_login',{p_bot:BOT_ID,p_id:row.id,p_owner:row.owner,p_result:result});
+  if(error)throw new Error('login_receipt_failed');return data===true;
+}
 export { decryptString };

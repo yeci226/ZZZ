@@ -13,7 +13,7 @@ describe("structured ZZZ gacha archive", () => {
 
   afterEach(() => store.close());
 
-  it("keeps official and manual records with the same ID isolated", () => {
+  it("deduplicates the same ID while retaining each source as provenance", () => {
     const base = {
       ownerId: "owner",
       uid: "130000001",
@@ -29,6 +29,7 @@ describe("structured ZZZ gacha archive", () => {
     expect(store.addRecords([{ ...base, source: "official" }])).toBe(1);
     expect(store.addRecords([{ ...base, source: "official" }])).toBe(0);
     expect(store.addRecords([{ ...base, source: "manual" }])).toBe(1);
+    expect(store.countRecords({ ownerId: "owner", uid: base.uid })).toBe(1);
     expect(store.countRecords({ ownerId: "owner", uid: base.uid, source: "official" })).toBe(1);
     expect(store.countRecords({ ownerId: "owner", uid: base.uid, source: "manual" })).toBe(1);
   });
@@ -56,6 +57,38 @@ describe("structured ZZZ gacha archive", () => {
       source: "official",
       gachaType: "character",
     })).toHaveLength(2);
+    expect(store.countRecords({
+      ownerId: "owner",
+      uid: "uid",
+      source: "official",
+      gachaType: "character",
+    })).toBe(2);
+  });
+
+  it("produces one priority-ordered record regardless of source import order", () => {
+    const rows = [
+      { source: "rng_moe" as const, name: "rng", bannerId: "rng:1" },
+      { source: "manual" as const, name: "URL", bannerId: "manual-banner" },
+      { source: "official" as const, name: "官方", bannerId: "official-banner" },
+    ];
+    for (const order of [rows, [...rows].reverse(), [rows[1]!, rows[2]!, rows[0]!]]) {
+      const archive = new GachaArchiveStore(":memory:");
+      for (const row of order) {
+        archive.mergeRecords([{
+          ownerId: "owner", uid: "uid", recordId: "same", itemId: "1011",
+          source: row.source, name: row.name, bannerId: row.bannerId,
+          gachaType: "2001", channelCategory: "character_up", itemType: "代理人",
+          rarity: "S", pulledAt: "2026-09-04T12:00:00.000Z",
+        }]);
+      }
+      expect(archive.listRecords({ ownerId: "owner", uid: "uid" })).toEqual([
+        expect.objectContaining({ source: "official", name: "官方", bannerId: "official-banner" }),
+      ]);
+      expect(archive.countRecords({ ownerId: "owner", uid: "uid", source: "rng_moe" })).toBe(1);
+      expect(archive.countRecords({ ownerId: "owner", uid: "uid", source: "manual" })).toBe(1);
+      expect(archive.countRecords({ ownerId: "owner", uid: "uid", source: "official" })).toBe(1);
+      archive.close();
+    }
   });
 
   it("stores raw type, category and banner without assigning unclassified records by date", () => {
@@ -390,9 +423,17 @@ describe("structured ZZZ gacha archive", () => {
         'owner', 'uid', '', 'official', 0, NULL, 'idle', NULL, NULL, NULL, NULL, 1,
         '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'
       );
+      INSERT INTO archive_accounts VALUES (
+        'owner', 'uid', '', 'manual', 0, NULL, 'idle', NULL, NULL, NULL, NULL, 0,
+        '2026-01-02T00:00:00.000Z', '2026-01-02T00:00:00.000Z'
+      );
       INSERT INTO gacha_records VALUES (
         'owner', 'uid', 'official', 'character', 'record-1', 'item-1',
         '舊資料', '角色', 'S', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'
+      );
+      INSERT INTO gacha_records VALUES (
+        'owner', 'uid', 'manual', 'character', 'record-1', 'item-1',
+        '較低優先資料', '角色', 'S', '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z'
       );
     `);
     legacy.close();
@@ -401,6 +442,10 @@ describe("structured ZZZ gacha archive", () => {
     expect(migrated.listRecords({ ownerId: "owner", uid: "uid", source: "official" })[0]).toMatchObject({
       recordId: "record-1", name: "舊資料", channelCategory: "character_up", bannerId: null, isUp: null,
     });
+    expect(migrated.countRecords({ ownerId: "owner", uid: "uid" })).toBe(1);
+    expect(migrated.countRecords({ ownerId: "owner", uid: "uid", source: "manual" })).toBe(1);
+    expect(migrated.listAccounts("owner")).toHaveLength(1);
+    expect(migrated.listAccounts("owner")[0]?.sources).toEqual(expect.arrayContaining(["official", "manual"]));
     migrated.close();
     rmSync(directory, { recursive: true, force: true });
   });

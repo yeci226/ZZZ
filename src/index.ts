@@ -4,9 +4,14 @@ loadConfig();
 import "./utilities/index.js";
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 import { getInfo } from "discord-hybrid-sharding";
+import { installMessageSubtext } from "./utilities/core/messageSubtext.js";
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
+  ],
   partials: [
     Partials.Channel,
     Partials.Message,
@@ -21,6 +26,8 @@ const client = new Client({
   shards: getInfo().SHARD_LIST,
   shardCount: getInfo().TOTAL_SHARDS,
 });
+
+installMessageSubtext(client.rest);
 
 export { client };
 

@@ -1,504 +1,299 @@
 import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
-  EmbedBuilder,
   PermissionsBitField,
   MessageFlags,
-  LocalizationMap,
   Client,
+  ChannelType,
 } from "discord.js";
 import { QuickDB } from "quick.db";
 import {
-  disableNotificationDestination,
-  enableNotificationDestination,
-} from "../../../utilities/core/notificationDestination.js";
+  ADMIN_NOTIFICATION_FEATURES,
+  manageAdminNotifications,
+  type AdminNotificationFeature,
+} from "../../../utilities/core/adminNotifications.js";
 import {
   validateNotificationChannel,
   validateNotificationChannelForUser,
 } from "../../../utilities/core/notificationValidation.js";
 
-const createEmbed = (
-  title: string,
-  thumbnail: string,
-  color: string,
-  description: string = "",
-) => {
-  const embed = new EmbedBuilder().setConfig(color, thumbnail).setTitle(title);
-  if (description) embed.setDescription(description);
+import { createTranslator } from "../../../utilities/core/i18n.js";
 
-  return embed;
-};
-
-const handleRemove = async (
-  interaction: ChatInputCommandInteraction,
-  tr: any,
-  db: QuickDB,
-) => {
-  const user = interaction.options.getUser("user");
-  const userid = user ? user.id : interaction.options.getString("userid");
-  const feature = interaction.options.getString("feature")!;
-  const datas: Record<string, any> = (await db.get(feature)) || {};
-  const data = Object.keys(datas);
-
-  if (!userid) {
-    return interaction.reply({
-      embeds: [createEmbed(tr("admin_RemoveFail"), "sob", "#E76161")],
-      flags: MessageFlags.Ephemeral,
-    });
-  }
-
-  if (user?.bot) {
-    return interaction.reply({
-      embeds: [
-        createEmbed(
-          tr("admin_RemoveFail"),
-          "sob",
-          "#E76161",
-          "不能選擇機器人帳號。",
-        ),
-      ],
-      flags: MessageFlags.Ephemeral,
-    });
-  }
-
-  if (!data.includes(userid)) {
-    return interaction.reply({
-      embeds: [
-        createEmbed(
-          tr("admin_RemoveFail"),
-          "sob",
-          "#E76161",
-          tr("admin_UserNotSet", { user: `<@${userid}>` }),
-        ),
-      ],
-      flags: MessageFlags.Ephemeral,
-    });
-  }
-
-  const userData = datas[userid];
-  if (
-    !interaction.guild!.channels.cache.some(
-      (channel) => channel.id === userData.channelId,
-    )
-  ) {
-    return interaction.reply({
-      embeds: [
-        createEmbed(
-          tr("admin_RemoveFail"),
-          "sob",
-          "#E76161",
-          tr("admin_RemoveFailUserOtherServer", {
-            user: `<@${userid}>`,
-          }),
-        ),
-      ],
-      flags: MessageFlags.Ephemeral,
-    });
-  }
-
-  interaction.reply({
-    embeds: [
-      createEmbed(
-        tr("admin_RemoveSuccess"),
-        "wiggle",
-        "#F6F1F1",
-        tr("admin_RemoveSuccessMessage", {
-          user: `<@${userid}>`,
-          channel: `<#${userData.channelId}>`,
-        }),
-      ),
-    ],
-    flags: MessageFlags.Ephemeral,
-  });
-  await disableNotificationDestination(
-    db as any,
-    feature as "autoDaily" | "autoRedeem" | "noteReminder",
-    userid,
-    userData,
-    "missing_target",
-  );
-};
-
-const fetchData = async (db: QuickDB, keywords: string[]) => {
-  const [autoDailyData, autoRedeemData, noteReminderData] = await Promise.all([
-    db.get("autoDaily"),
-    db.get("autoRedeem"),
-    db.get("noteReminder"),
-  ]);
-
-  return {
-    autoDaily: autoDailyData || {},
-    autoRedeem: autoRedeemData || {},
-    noteReminder: noteReminderData || {},
-  };
-};
-
-const findMatchedUsers = (datas: any, channelsCache: any) => {
-  const serverChannelIds = channelsCache.map((channel: any) => channel.id);
-  const dataKeys = Object.keys(datas);
-
-  return [...new Set(dataKeys.reduce((acc: string[], keyword: string) => {
-    const matchedUsers = Object.keys(datas[keyword] || {}).filter((userId) =>
-      serverChannelIds.includes(datas[keyword][userId].channelId),
-    );
-    return acc.concat(matchedUsers);
-  }, []))];
-};
-
-const updateUsersChannel = async (
-  datas: any,
-  matchUsers: string[],
-  keywords: string[],
-  channelId: string,
-  guildId: string,
-  db: QuickDB,
-) => {
-  for (const userId of matchUsers) {
-    for (const keyword of keywords) {
-      const userData = datas[keyword as keyof typeof datas]?.[userId];
-      if (userData) {
-        const next = enableNotificationDestination(userData, {
-          notifyType: "channel",
-          channelId,
-          guildId,
-        });
-        await db.set(`${keyword}.${userId}`, next);
-      }
-    }
-  }
-};
-
-const handleMove = async (
-  interaction: ChatInputCommandInteraction,
-  tr: any,
-  db: QuickDB,
-) => {
-  const channel = interaction.options.getChannel("channel")!;
-  const feature = interaction.options.getString("feature");
-  const validation = validateNotificationChannel(interaction, channel as any);
-  if (!validation.ok) {
-    return interaction.reply({
-      embeds: [
-        createEmbed(
-          tr("admin_MoveFail"),
-          "sob",
-          "#E76161",
-          tr("admin_MoveNoPermission", {
-            channel: `<#${channel.id}>`,
-          }),
-        ),
-      ],
-      flags: MessageFlags.Ephemeral,
-    });
-  }
-
-  {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-    const keywords =
-      feature === "all"
-        ? ["autoDaily", "autoRedeem", "noteReminder"]
-        : [feature!];
-    const datas = await fetchData(db, keywords);
-
-    const matchUsers = findMatchedUsers(
-      datas,
-      interaction.guild!.channels.cache,
-    );
-
-    if (matchUsers.length === 0) {
-      return interaction.editReply({
-        embeds: [
-          createEmbed(
-            tr("admin_MoveFail"),
-            "sob",
-            "#E76161",
-            tr("admin_MoveNoUser"),
-          ),
-        ],
-      });
-    }
-
-    const eligible: string[] = [];
-    const inaccessible: string[] = [];
-    let removedMembers = 0;
-    for (const userId of matchUsers) {
-      const member = await interaction.guild!.members.fetch(userId).catch(() => null);
-      if (!member || member.user.bot) {
-        for (const keyword of keywords) {
-          const config = datas[keyword as keyof typeof datas]?.[userId];
-          if (config) {
-            await disableNotificationDestination(
-              db as any,
-              keyword as "autoDaily" | "autoRedeem" | "noteReminder",
-              userId,
-              config,
-              member?.user.bot ? "missing_target" : "unknown_member",
-            );
-          }
-        }
-        removedMembers++;
-        continue;
-      }
-      const targetValidation = validateNotificationChannelForUser(
-        channel as any,
-        member,
-        interaction.guild!.members.me!,
-      );
-      if (targetValidation.ok) eligible.push(userId);
-      else inaccessible.push(userId);
-    }
-
-    if (!eligible.length) {
-      const detail = inaccessible.length
-        ? `目標使用者無法查看或發送訊息至 <#${channel.id}>。`
-        : "沒有可移動的有效通知設定。";
-      return interaction.editReply({
-        embeds: [createEmbed(tr("admin_MoveFail"), "sob", "#E76161", detail)],
-      });
-    }
-
-    await updateUsersChannel(
-      datas,
-      eligible,
-      keywords,
-      channel.id,
-      interaction.guildId!,
-      db,
-    );
-
-    interaction.editReply({
-      embeds: [
-        createEmbed(
-          tr("admin_MoveSuccess"),
-          "wiggle",
-          "#F6F1F1",
-        tr("admin_MoveSuccessMessage", {
-            count: eligible.length,
-            channel: `<#${channel.id}>`,
-          }) + (inaccessible.length || removedMembers
-            ? `\n未移動 ${inaccessible.length} 位無權限使用者；停用 ${removedMembers} 位已離開或無效的使用者。`
-            : ""),
-        ),
-      ],
-    });
-  }
-};
+const choiceLocales = [
+  ["zh-TW", "tw"],
+  ["zh-CN", "cn"],
+  ["ja", "jp"],
+  ["ko", "kr"],
+  ["fr", "fr"],
+  ["vi", "vi"],
+] as const;
+const choices = ADMIN_NOTIFICATION_FEATURES.map((f) => ({
+  name: f.name,
+  value: f.value,
+  name_localizations: Object.fromEntries(
+    choiceLocales.map(([locale, lang]) => [
+      locale,
+      createTranslator(lang)(`admin_Feature_${f.value}`),
+    ]),
+  ),
+}));
+const channelTypes = [
+  ChannelType.GuildText,
+  ChannelType.GuildAnnouncement,
+  ChannelType.PublicThread,
+  ChannelType.PrivateThread,
+  ChannelType.AnnouncementThread,
+] as const;
 
 export default {
   data: new SlashCommandBuilder()
     .setName("admin")
-    .setDescription("Server administrator settings")
+    .setDescription("Manage this server's notification destinations")
     .setNameLocalizations({
       "zh-TW": "管理員",
       vi: "quảntrịviên",
       fr: "administrateur",
-    } as LocalizationMap)
-    .setDescriptionLocalizations({
-      "zh-TW": "伺服器管理員的設定",
-      vi: "Cài đặt admin máy chủ",
-      fr: "Paramètre de l'administrateur",
-    } as LocalizationMap)
-    .addSubcommand((subcommand) =>
-      subcommand
+    })
+    .setDescriptionLocalizations({ "zh-TW": "管理本伺服器的通知目的地" })
+    .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageGuild)
+    .setDMPermission(false)
+    .addSubcommand((sub) =>
+      sub
         .setName("remove")
-        .setDescription(
-          "Remove notifications from a user's messages in a channel",
-        )
         .setNameLocalizations({
           "zh-TW": "刪除",
           vi: "tuỳchọn",
           fr: "supprimer",
-        } as LocalizationMap)
+        })
+        .setDescription(
+          "Disable channel notifications; automatic tasks keep running",
+        )
         .setDescriptionLocalizations({
-          "zh-TW": "刪除使用者在頻道中的訊息通知",
-          vi: "Xoá thông báo tin nhắn của người dùng (Ping) khỏi kênh",
-          fr: "Désactiver la notification des utilisateurs dans ce canal",
-        } as LocalizationMap)
-        .addStringOption((option) =>
-          option
+          "zh-TW": "停用頻道通知，自動功能繼續執行",
+        })
+        .addStringOption((o) =>
+          o
             .setName("feature")
-            .setDescription("Select the features you want to remove user from")
-            .setNameLocalizations({
-              "zh-TW": "功能",
-              vi: "chứcnăng",
-              fr: "fonctionnalité",
-            } as LocalizationMap)
-            .setDescriptionLocalizations({
-              "zh-TW": "選擇要刪除使用者的功能",
-              vi: "Tuỳ chọn xoá chức năng người dùng",
-              fr: "Sélectionnez la fonction à supprimer",
-            } as LocalizationMap)
+            .setDescription("Notification type")
+            .setNameLocalizations({ "zh-TW": "功能" })
             .setRequired(true)
-            .addChoices(
-              {
-                name: "autodaily",
-                name_localizations: {
-                  "zh-TW": "自動簽到",
-                  vi: "Điểm danh tự động",
-                  fr: "Signé automatique",
-                },
-                value: "autoDaily",
-              },
-              {
-                name: "autoredeem",
-                name_localizations: {
-                  "zh-TW": "自動兌換",
-                  vi: "Đổi code tự động",
-                  fr: "Racheté automatique",
-                },
-                value: "autoRedeem",
-              },
-              {
-                name: "note reminder",
-                name_localizations: { "zh-TW": "即時便箋提醒" },
-                value: "noteReminder",
-              },
-            ),
+            .addChoices(...choices),
         )
-        .addUserOption((option) =>
-          option
+        .addUserOption((o) =>
+          o
             .setName("user")
-            .setDescription("Select user to remove")
-            .setNameLocalizations({
-              "zh-TW": "使用者",
-              vi: "ngườidùng",
-              fr: "utilisateur",
-            } as LocalizationMap)
-            .setDescriptionLocalizations({
-              "zh-TW": "選擇要刪除的使用者",
-              vi: "Tuỳ chọn xoá người dùng",
-              fr: "Sélectionnez l'utilisateur à supprimer",
-            } as LocalizationMap)
-            .setRequired(false),
+            .setDescription("User for personal notifications")
+            .setNameLocalizations({ "zh-TW": "使用者" }),
         )
-        .addStringOption((option) =>
-          option
+        .addStringOption((o) =>
+          o
             .setName("userid")
-            .setDescription("Enter the user ID you want to delete")
-            .setNameLocalizations({
-              "zh-TW": "使用者id",
-              vi: "idngườidùng",
-              fr: "iddelutilisateur",
-            } as LocalizationMap)
-            .setDescriptionLocalizations({
-              "zh-TW": "輸入要刪除的使用者ID",
-              vi: "Nhập ID người dùng bạn muốn xoá",
-              fr: "Entrez l'ID de l'utilisateur à supprimer",
-            } as LocalizationMap)
-            .setRequired(false),
+            .setDescription("User ID for personal notifications")
+            .setNameLocalizations({ "zh-TW": "使用者id" }),
+        )
+        .addChannelOption((o) =>
+          o
+            .setName("source")
+            .setDescription("Source channel (required for news)")
+            .setNameLocalizations({ "zh-TW": "來源頻道" })
+            .addChannelTypes(...channelTypes),
         ),
     )
-    .addSubcommand((subcommand) =>
-      subcommand
+    .addSubcommand((sub) =>
+      sub
         .setName("move")
-        .setDescription("Change the channel for message notifications")
         .setNameLocalizations({
           "zh-TW": "移動",
           vi: "dichuyển",
           fr: "transfert",
-        } as LocalizationMap)
-        .setDescriptionLocalizations({
-          "zh-TW": "更改訊息通知的頻道",
-          vi: "Đổi kênh nhận thông báo tin nhắn",
-          fr: "Modifier le canal pour les notifications de message",
-        } as LocalizationMap)
-        .addStringOption((option) =>
-          option
+        })
+        .setDescription("Move channel notifications within this server")
+        .setDescriptionLocalizations({ "zh-TW": "移動本伺服器的頻道通知" })
+        .addStringOption((o) =>
+          o
             .setName("feature")
-            .setDescription("Select features to move")
-            .setNameLocalizations({
-              "zh-TW": "功能",
-              vi: "chứcnăng",
-              fr: "fonction",
-            } as LocalizationMap)
-            .setDescriptionLocalizations({
-              "zh-TW": "選擇移動的功能",
-              vi: "Tuỳ chọn chức năng di chuyển",
-              fr: "Sélectionnez la fonction de transfert",
-            } as LocalizationMap)
+            .setDescription("Notification type")
+            .setNameLocalizations({ "zh-TW": "功能" })
             .setRequired(true)
             .addChoices(
               {
-                name: "all",
-                name_localizations: {
-                  "zh-TW": "全部",
-                  vi: "Tất cả",
-                  fr: "Tout",
-                },
+                name: "All",
                 value: "all",
+                name_localizations: { "zh-TW": "全部" },
               },
-              {
-                name: "autodaily",
-                name_localizations: {
-                  "zh-TW": "自動簽到",
-                  vi: "Điểm danh tự động",
-                  fr: "Signé automatique",
-                },
-                value: "autoDaily",
-              },
-              {
-                name: "autoredeem",
-                name_localizations: {
-                  "zh-TW": "自動兌換",
-                  vi: "Đổi code tự động",
-                  fr: "Racheté automatique",
-                },
-                value: "autoRedeem",
-              },
-              {
-                name: "note reminder",
-                name_localizations: { "zh-TW": "即時便箋提醒" },
-                value: "noteReminder",
-              },
+              ...choices,
             ),
         )
-        .addChannelOption((option) =>
-          option
+        .addChannelOption((o) =>
+          o
             .setName("channel")
-            .setDescription("Select channel to remove")
-            .setNameLocalizations({
-              "zh-TW": "頻道",
-              vi: "kênh",
-              fr: "canal",
-            } as LocalizationMap)
-            .setDescriptionLocalizations({
-              "zh-TW": "選擇要移動至哪個頻道",
-              vi: "Chọn kênh sẽ chuyển đến",
-              fr: "Choisissez le canal à déplacer",
-            } as LocalizationMap)
-            .setRequired(true),
+            .setDescription("Destination channel")
+            .setNameLocalizations({ "zh-TW": "頻道" })
+            .setRequired(true)
+            .addChannelTypes(...channelTypes),
+        )
+        .addChannelOption((o) =>
+          o
+            .setName("source")
+            .setDescription("Source channel (required to include news)")
+            .setNameLocalizations({ "zh-TW": "來源頻道" })
+            .addChannelTypes(...channelTypes),
         ),
     ),
 
   async execute(
     client: Client,
     interaction: ChatInputCommandInteraction,
-    args: any[],
+    _args: any[],
     tr: any,
     db: QuickDB,
-    emoji: any,
+    _emoji: any,
   ) {
+    const reply = (key: string) =>
+      interaction.reply({ content: tr(key), flags: MessageFlags.Ephemeral });
     if (
-      !interaction.member ||
-      !(interaction.member.permissions as Readonly<PermissionsBitField>).has(
-        PermissionsBitField.Flags.ManageGuild,
+      !interaction.guild ||
+      !interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)
+    )
+      return reply("admin_NoPermission");
+    const action = interaction.options.getSubcommand() as "remove" | "move";
+    const feature = interaction.options.getString("feature", true) as
+      AdminNotificationFeature | "all";
+    if (
+      !["remove", "move"].includes(action) ||
+      (feature !== "all" &&
+        !ADMIN_NOTIFICATION_FEATURES.some((f) => f.value === feature)) ||
+      (action === "remove" && feature === "all")
+    )
+      return reply("admin_ManageInvalid");
+    const user = interaction.options.getUser("user");
+    const userId =
+      user?.id || interaction.options.getString("userid") || undefined;
+    const source = interaction.options.getChannel("source");
+    const target = interaction.options.getChannel("channel");
+    if (feature === "news" && (!source || userId))
+      return reply("admin_ManageNewsSource");
+    if (
+      action === "remove" &&
+      feature !== "news" &&
+      (!userId || !/^\d{17,20}$/.test(userId) || user?.bot)
+    )
+      return reply("admin_ManageUser");
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const guild = interaction.guild;
+    try {
+      if (source) {
+        const sourceChannel = await guild.channels.fetch(source.id, {
+          force: true,
+        });
+        if (!sourceChannel || sourceChannel.guildId !== guild.id)
+          return interaction.editReply({ content: tr("admin_ManageInvalid") });
+      }
+      const channel =
+        action === "move" && target
+          ? await guild.channels.fetch(target.id, { force: true })
+          : null;
+      await guild.members.fetchMe({ force: true });
+      if (
+        action === "move" &&
+        (!channel || !validateNotificationChannel(interaction, channel).ok)
       )
-    ) {
-      return interaction.reply({
-        embeds: [createEmbed(tr("admin_NoPermission"), "sob", "#E76161")],
-        flags: MessageFlags.Ephemeral,
+        return interaction.editReply({
+          content: tr("admin_ManagePermissions"),
+        });
+      // Initialize only stores selected by this operation.
+      let mimo:
+        | typeof import("../../../utilities/mimo/runtime.js").getMimoStore
+        | undefined;
+      let news:
+        | typeof import("../../../utilities/news/runtime.js").getNewsRuntime
+        | undefined;
+      if (feature === "autoMimo" || feature === "all")
+        mimo = (await import("../../../utilities/mimo/runtime.js"))
+          .getMimoStore;
+      if ((feature === "news" || feature === "all") && source)
+        news = (await import("../../../utilities/news/runtime.js"))
+          .getNewsRuntime;
+      const results = await manageAdminNotifications(
+        {
+          action,
+          feature,
+          guildId: guild.id,
+          sourceChannelId: source?.id,
+          targetChannelId: target?.id,
+          userId: feature === "news" ? undefined : userId,
+        },
+        {
+          db,
+          mimo: () => mimo!(db),
+          news: () => news!(client, "zzz").store,
+          channelGuild: async (id) =>
+            (await guild.channels.fetch(id, { force: true }))?.guildId ?? null,
+          canMove: async (owner, subscription) => {
+            if (!channel) return false;
+            if (subscription) {
+              const { validateNewsDestination } =
+                await import("../../../utilities/news/wizard.js");
+              try {
+                await validateNewsDestination(client, interaction, {
+                  ...subscription,
+                  id: `channel:${channel.id}`,
+                  channelId: channel.id,
+                });
+                return true;
+              } catch (error) {
+                if (
+                  error instanceof Error &&
+                  ["invalid", "forbidden"].includes(error.message)
+                )
+                  return false;
+                throw error;
+              }
+            }
+            if (!owner) return false;
+            const member = await guild.members.fetch({
+              user: owner,
+              force: true,
+            });
+            return (
+              !member.user.bot &&
+              validateNotificationChannelForUser(
+                channel,
+                member,
+                guild.members.me!,
+              ).ok
+            );
+          },
+        },
+      );
+      const lines = ADMIN_NOTIFICATION_FEATURES.flatMap((f) => {
+        const rows = results.filter((r) => r.feature === f.value);
+        if (!rows.length) return [];
+        const counts = ["success", "skipped", "conflict", "failed"]
+          .map(
+            (outcome) =>
+              `${tr(`admin_Manage_${outcome}`)} ${rows.filter((r) => r.outcome === outcome).length}`,
+          )
+          .join(" · ");
+        const reasons = [
+          ...new Set(
+            rows.flatMap((r) =>
+              r.reason ? [tr(`admin_Manage_${r.reason}`)] : [],
+            ),
+          ),
+        ];
+        return [
+          `**${tr(`admin_Feature_${f.value}`)}**：${counts}${reasons.length ? `\n${reasons.join(" / ")}` : ""}`,
+        ];
       });
-    }
-
-    const cmd = interaction.options.getSubcommand();
-    switch (cmd) {
-      case "remove":
-        await handleRemove(interaction, tr, db);
-        break;
-      case "move":
-        await handleMove(interaction, tr, db);
-        break;
+      return interaction.editReply({
+        embeds: [
+          { title: tr("admin_ManageDone"), description: lines.join("\n\n") },
+        ],
+        allowedMentions: { parse: [] },
+      });
+    } catch {
+      return interaction.editReply({ content: tr("admin_Manage_unavailable") });
     }
   },
 };

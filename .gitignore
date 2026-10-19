@@ -22,3 +22,28 @@ src/assets/images/zzz/*
 data/*.sqlite
 data/*.sqlite-shm
 data/*.sqlite-wal
+
+# Generated preview media (keep rendering scripts and source assets visible).
+/previews/**/*.png
+/previews/**/*.jpg
+/previews/**/*.jpeg
+/previews/**/*.webp
+/previews/**/*.gif
+/previews/**/*.mp4
+/previews/**/*.webm
+/previews/**/*.mov
+/previews/**/*.nut
+/previews/**/*.wav
+/previews/**/*.mp3
+/previews/**/*.zip
+/previews/**/*.tar.gz
+/previews/**/*.log
+/previews/**/__pycache__/
+
+# Rebuildable upload copies and content-addressed rendering blobs.
+/previews/bahamut-gacha-20260924/cache/
+/previews/bahamut-gacha-20260924/cloudflare/
+/previews/gacha-render-test/**/.gif-blobs/
+
+# Rendered gacha simulation animations (multi-GB; uploaded to R2, not source)
+/src/assets/gacha-simulation/

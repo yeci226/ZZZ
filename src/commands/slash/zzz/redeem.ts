@@ -1,3 +1,8 @@
+import { commandTipContent } from "../../../utilities/core/commandTips.js";
+import { automationText } from "../../../utilities/settings/automationCopy.js";
+import { getUserLang as getCardLocale } from "../../../utilities/utilities.js";
+import { uiText } from "../../../utilities/settings/presentation.js";
+import { recordedRedeemCodes, recordManualRedeem, classifyRedeem, safeRedeemMessage } from "../../../utilities/core/redeemEngine.js";
 import {
   SlashCommandBuilder,
   EmbedBuilder,
@@ -5,6 +10,7 @@ import {
   LocalizationMap,
   Client,
   ChatInputCommandInteraction,
+  escapeMarkdown,
 } from "discord.js";
 import {
   failedReply,
@@ -16,19 +22,17 @@ import {
 } from "../../../utilities/utilities.js";
 import Logger from "../../../utilities/core/logger.js";
 import { QuickDB } from "quick.db";
-import { getLegacyAccountAtIndex, getLegacyAccounts } from "../../../utilities/accountStore.js";
+import { getLegacyAccountAtIndex } from "../../../utilities/accountStore.js";
+import { blockExpiredAccount } from "../../../utilities/accountAccess.js";
+import { resolveZzzRegion } from "../../../utilities/zzz/region.js";
 
 async function redeemCodeDirect(
   uid: string,
   cookie: string,
-  code: string
+  code: string,
+  accountRegion?: unknown,
 ): Promise<{ retcode: number; message: string }> {
-  let region = "prod_gf_sg";
-  if (uid.startsWith("5")) region = "prod_gf_us";
-  else if (uid.startsWith("6")) region = "prod_gf_eu";
-  else if (uid.startsWith("7")) region = "prod_gf_sg";
-  else if (uid.startsWith("8")) region = "prod_gf_sg";
-  else if (uid.startsWith("13")) region = "prod_gf_jp";
+  const region = resolveZzzRegion(uid, accountRegion);
 
   const url =
     "https://public-operation-nap.hoyoverse.com/common/apicdkey/api/webExchangeCdkeyRisk";
@@ -55,7 +59,7 @@ async function redeemCodeDirect(
   return { retcode: result.retcode ?? -1, message: result.message ?? "" };
 }
 
-import { buildZZZRedeemCard } from "../../../utilities/canvas/redeemCard.js";
+import { buildZZZRedeemCards, redeemSummaryText, type ZZZRedeemCardPayload } from "../../../utilities/canvas/redeemCard.js";
 import { getFirstRedeemRewardIcon } from "../../../utilities/zzz/redeemLayout.js";
 
 
@@ -64,13 +68,6 @@ type ManualRedeemStatus =
   | "already_claimed"
   | "invalid"
   | "failed";
-
-function hasValidRedeemToken(cookie: string): boolean {
-  return Boolean(
-    cookie.match(/(?:^|;\s*)cookie_token_v2=([^;]+)/)?.[1]?.trim() ||
-    cookie.match(/(?:^|;\s*)cookie_token=([^;]+)/)?.[1]?.trim()
-  );
-}
 
 function toManualRedeemStatus(status?: string): ManualRedeemStatus {
   switch (status) {
@@ -96,10 +93,13 @@ async function editManualRedeemCard(
       rewards?: string[] | string;
       rewardIcons?: string[];
       status: ManualRedeemStatus;
+      message?: string;
     }>;
   },
 ): Promise<void> {
-  const buffer = await buildZZZRedeemCard({
+  const locale = (await getCardLocale(interaction.user.id)) || "en";
+  const payload: ZZZRedeemCardPayload = {
+    locale, source: "manual",
     accounts: [
       {
         title: "兌換結果",
@@ -108,16 +108,23 @@ async function editManualRedeemCard(
         codes: data.codes,
       },
     ],
-  });
-
+  };
+  const buffers = await buildZZZRedeemCards(payload).catch(() => []);
+  const fallback = redeemSummaryText(payload);
+  const content = data.codes.some(code => code.status === "success" || code.status === "already_claimed")
+    ? commandTipContent(interaction, "codes", locale, buffers.length ? uiText(locale, "result") : fallback.slice(0, 1700))
+    : buffers.length ? uiText(locale, "result") : fallback.slice(0, 1700);
+  const failures = data.codes.filter(code => code.status === "failed" && code.message)
+    .map(code => `${escapeMarkdown(code.code)}: ${escapeMarkdown(safeRedeemMessage(code.message))}`).join("\n");
   await interaction.editReply({
     embeds: [],
-    files: [
-      {
-        attachment: buffer,
-        name: "redeem-zzz.png",
-      },
-    ],
+    content: [content, failures].filter(Boolean).join("\n\n").slice(0, 1950),
+    allowedMentions: { parse: [] },
+    attachments: [],
+    files: buffers.length ? [{ attachment: buffers[0], name: "redeem-zzz-1.png" }] : [{ attachment: Buffer.from(fallback), name: "redeem-results.txt" }],
+  });
+  for (let i = 1; i < buffers.length; i++) await interaction.followUp({
+    flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] }, files: [{ attachment: buffers[i], name: `redeem-zzz-${i + 1}.png` }],
   });
 }
 
@@ -254,92 +261,6 @@ export default {
             } as LocalizationMap)
             .setRequired(false),
         ),
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("autoredeem")
-        .setDescription(
-          "Automatic when theres available codes, messages will be sent wherever command used!",
-        )
-        .setNameLocalizations({
-          "zh-TW": "自動兌換",
-          vi: "tựđộngđổithưởng",
-          fr: "rachetéautomatique",
-        } as LocalizationMap)
-        .setDescriptionLocalizations({
-          "zh-TW": "自動兌換代碼，訊息會在使用指令的地方自動發送！",
-          vi: "Bot sẽ trả lời tự động ngay dưới câu hỏi!",
-          fr: "Racheté automatique activée, des notifications seront envoyées là où cette commande a été utilisée",
-        } as LocalizationMap)
-        .addStringOption((option) =>
-          option
-            .setName("enable")
-            .setDescription("...")
-            .setNameLocalizations({
-              "zh-TW": "開啟",
-              vi: "bật",
-              fr: "activée",
-            } as LocalizationMap)
-            .setRequired(true)
-            .addChoices(
-              {
-                name: "On",
-                name_localizations: {
-                  "zh-TW": "開啟",
-                  vi: "Bật",
-                  fr: "Activée",
-                },
-                value: "on",
-              },
-              {
-                name: "Off",
-                name_localizations: {
-                  "zh-TW": "關閉",
-                  vi: "Tắt",
-                  fr: "Désactivé",
-                },
-                value: "off",
-              },
-            ),
-        )
-        .addStringOption((option) =>
-          option
-            .setName("tag")
-            .setDescription(
-              "Whether mark in the automatic redeem, turn on this also turn on the automatic redeem",
-            )
-            .setNameLocalizations({
-              "zh-TW": "標註",
-              vi: "thôngbáo",
-              fr: "mentionner",
-            } as LocalizationMap)
-            .setDescriptionLocalizations({
-              "zh-TW": "是否在自動兌換中標註，開啟這個也相當於開啟了自動兌換",
-              vi: "Chọn Bật sẽ tự động kích hoạt chế độ nhận code tự động nếu bạn chưa kích hoạt.",
-              fr: "Mentionner dans le racheté automatique, activer cela activera également le racheté automatique",
-            } as LocalizationMap)
-            .setRequired(false)
-            .addChoices(
-              {
-                name: "On",
-                name_localizations: {
-                  "zh-TW": "開啟",
-                  vi: "Bật",
-                  fr: "Activée",
-                },
-                value: "true",
-              },
-              {
-                name: "Off",
-                name_localizations: {
-                  "zh-TW": "關閉",
-                  vi: "Tắt",
-                  fr: "Désactivé",
-                },
-                value: "false",
-              },
-            ),
-        ),
     ),
   async execute(
     client: Client,
@@ -350,6 +271,12 @@ export default {
   ) {
     const subcommand = interaction.options.getSubcommand();
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const hintLocale = (await getCardLocale(interaction.user.id)) || interaction.locale;
+    const hint = commandTipContent(interaction, "codes", hintLocale);
+
+    if (!["list", "redeem", "redeemall"].includes(subcommand)) {
+      return interaction.editReply({ content: automationText(hintLocale, "hintRedeem") });
+    }
 
     if (subcommand == "list") {
       const accountIndex = parseInt(
@@ -360,9 +287,10 @@ export default {
       }
       const codes = await getRedeemCodes();
       const uid = await getUserUid(interaction.user.id, accountIndex);
-      const userRedeemedCodes = (await db.get(`${uid}.redeemedCodes`)) || [];
+      const userRedeemedCodes = await recordedRedeemCodes(db, String(uid));
 
       interaction.editReply({
+        content: hint,
         embeds: [
           new EmbedBuilder()
             .setTimestamp()
@@ -399,13 +327,14 @@ export default {
       const uid = await getUserUid(targetUser.id, accountIndex);
       const codes = await getRedeemCodes();
       let userRedeemedCodes: string[] =
-        (await db.get(`${uid}.redeemedCodes`)) || [];
+        await recordedRedeemCodes(db, String(uid));
       const noRedeemedCodes = codes.filter(
         (code: any) => !userRedeemedCodes.includes(code.code),
       );
 
       if (!noRedeemedCodes || noRedeemedCodes.length === 0) {
         return interaction.editReply({
+          content: hint,
           embeds: [
             new EmbedBuilder()
               .setConfig("#A2CDB0", "wiggle")
@@ -414,14 +343,19 @@ export default {
         });
       }
 
+      // No authentication is needed when every code is already recorded.
+      if (await blockExpiredAccount(interaction, db, { ownerId: targetUser.id, accountIndex, account: redeemAllAccount, scope: "redeem" })) return;
+
       for (let i = 0; i < noRedeemedCodes.length; i++) {
         const code = noRedeemedCodes[i];
         try {
           await interaction.editReply({
+            content: "",
             embeds: [createProgressEmbed(noRedeemedCodes, i, tr)],
           });
 
-          const res = await redeemCodeDirect(uid || "", redeemAllCookie, code.code);
+          const res = await redeemCodeDirect(uid || "", redeemAllCookie, code.code, redeemAllAccount?.region);
+          recordManualRedeem(db, String(uid), code.code, res);
           const result = await handleRedeemResult(
             code.code,
             res,
@@ -434,17 +368,10 @@ export default {
           await new Promise((resolve) => setTimeout(resolve, 3000));
         } catch (e: any) {
           code.status = "failed";
-          code.message = e.message;
+          code.message = safeRedeemMessage(e.message);
         }
       }
 
-      // Batch save redeemed codes
-      if (userRedeemedCodes.length > 0) {
-        await db.set(
-          `${uid}.redeemedCodes`,
-          Array.from(new Set(userRedeemedCodes)),
-        );
-      }
 
       // Update cookie after successful redeemall (mirrors redeem subcommand behavior)
       try {
@@ -475,6 +402,7 @@ export default {
         0
       ) {
         return interaction.editReply({
+          content: hint,
           embeds: [
             new EmbedBuilder()
               .setColor(getRandomColor() as any)
@@ -492,9 +420,10 @@ export default {
             ? { rewards: code.rewards }
             : {}),
           ...(rewardIcon
-            ? { rewardIcons: [rewardIcon] }
+            ? { rewardIcons: code.rewardIcons || [rewardIcon] }
             : {}),
           status: toManualRedeemStatus(code.status),
+          message: code.message,
         };
       });
 
@@ -541,12 +470,14 @@ export default {
         accountIndex,
       );
 
+      if (await blockExpiredAccount(interaction, db, { ownerId: targetUser.id, accountIndex, account: userAccount, scope: "redeem" })) return;
+
       if (!userAccount?.cookie) {
         return failedReply(interaction, tr("error_NoAccount"));
       }
 
       let userRedeemedCodes: string[] =
-        (await db.get(`${uid}.redeemedCodes`)) || [];
+        await recordedRedeemCodes(db, String(uid));
 
       let matchedCode: any;
 
@@ -565,27 +496,16 @@ export default {
           uid,
           userAccount.cookie,
           code,
+          userAccount.region,
         );
 
-        const result = await handleRedeemResult(
+        recordManualRedeem(db, String(uid), code, res);
+      const result = await handleRedeemResult(
           code,
           res,
           userRedeemedCodes,
           tr,
         );
-
-        // handleRedeemResult 會更新 array，
-        // 這裡統一持久化成功 / 已兌換 / 無效結果。
-        if (result.status !== "failed") {
-          userRedeemedCodes = Array.from(
-            new Set(userRedeemedCodes),
-          );
-
-          await db.set(
-            `${uid}.redeemedCodes`,
-            userRedeemedCodes,
-          );
-        }
 
         // 成功時保留原本 Cookie 更新行為
         if (result.status === "success") {
@@ -628,11 +548,12 @@ export default {
                 ? { rewards: matchedCode.rewards }
                 : {}),
               ...(rewardIcon
-                ? { rewardIcons: [rewardIcon] }
+                ? { rewardIcons: matchedCode?.rewardIcons || [rewardIcon] }
                 : {}),
               status: toManualRedeemStatus(
                 result.status,
               ),
+              message: result.message,
             },
           ],
         });
@@ -649,57 +570,8 @@ export default {
                 e?.message ||
                 tr("redeem_Failed"),
               status: "failed",
+              message: safeRedeemMessage(e?.message) || tr("redeem_Failed"),
             },
-          ],
-        });
-      }
-    } else if (subcommand == "autoredeem") {
-       const userAccount = await getLegacyAccounts(db as any, interaction.user.id);
-      if (!userAccount || userAccount.length === 0) {
-        return failedReply(interaction, 'No account found.');
-      }
-      if (
-        !userAccount.some((account: any) =>
-          hasValidRedeemToken(account?.cookie || ""),
-        )
-      ) {
-        return failedReply(interaction, tr("redeem_NoCookie"));
-      }
-
-      const enable = interaction.options.getString("enable");
-      const tag = interaction.options.getString("tag") || false;
-
-      if (enable == "on") {
-        await db.set(`autoRedeem.${interaction.user.id}`, {
-          channelId: interaction.channelId,
-          guildId: interaction.guildId,
-          tag: tag || false,
-          notificationEnabled: true,
-        });
-
-        return interaction.editReply({
-          embeds: [
-            new EmbedBuilder()
-              .setConfig("#A2CDB0", "smirk")
-              .setTitle(tr("autoRedeem_On"))
-              .setDescription(
-                tr("autoRedeem_Tag", {
-                  z:
-                    tag === "true"
-                      ? "`" + tr("True") + "`"
-                      : "`" + tr("False") + "`",
-                }),
-              ),
-          ],
-        });
-      } else {
-        await db.delete(`autoRedeem.${interaction.user.id}`);
-        return interaction.editReply({
-          embeds: [
-            new EmbedBuilder()
-              .setConfig("#E76161", "smirk")
-              .setColor("#E76161")
-              .setTitle(tr("autoRedeem_Off")),
           ],
         });
       }
@@ -716,32 +588,30 @@ async function handleRedeemResult(
   let status = "failed";
   let message = "";
 
-  switch (true) {
-    case res.retcode === 0:
-    case res.message === "OK":
+  switch (classifyRedeem(res)) {
+    case "success":
+
       status = "success";
       message = tr("redeem_Success");
       break;
-    case res.retcode === -2017:
-    case res.retcode === -2018:
+    case "already":
       status = "already";
       message = tr("redeem_Already");
       break;
-    case res.retcode === -2001:
-    case res.retcode === -2006:
+    case "invalid":
       status = "invalid";
       message = tr("redeem_Invalid");
       break;
-    case res.retcode === -1071:
+    case "auth":
       throw new Error(tr("redeem_CookieTokenInvalid"));
-    case res.retcode === -1048:
+    case "retry":
       throw new Error(tr("redeem_SystemBusy"));
     default:
       status = "failed";
-      message = tr("redeem_Failed");
+      message = `${safeRedeemMessage(res.message) || tr("redeem_Failed")} (${res.retcode ?? "unknown"})`;
   }
 
-  if (status !== "failed" && !userRedeemedCodes.includes(code)) {
+  if ((status === "success" || status === "already") && !userRedeemedCodes.includes(code)) {
     userRedeemedCodes.push(code);
   }
 

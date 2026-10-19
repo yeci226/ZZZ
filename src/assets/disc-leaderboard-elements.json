@@ -1,0 +1,241 @@
+{
+  "sources": [
+    "https://wiki.hoyolab.com/pc/zzz/aggregate/8",
+    "https://sg-act-public-api.hoyolab.com/event/nap_cultivate_tool/user/batch_avatar_detail_v2"
+  ],
+  "updatedAt": "2026-10-03T05:24:35.493Z",
+  "agents": {
+    "1011": {
+      "elementType": 203
+    },
+    "1021": {
+      "elementType": 200
+    },
+    "1031": {
+      "elementType": 205,
+      "wikiEntryId": "20"
+    },
+    "1041": {
+      "elementType": 201,
+      "wikiEntryId": "22"
+    },
+    "1051": {
+      "elementType": 202,
+      "wikiEntryId": "909"
+    },
+    "1061": {
+      "elementType": 200,
+      "wikiEntryId": "23"
+    },
+    "1071": {
+      "elementType": 200,
+      "wikiEntryId": "381"
+    },
+    "1081": {
+      "elementType": 200
+    },
+    "1091": {
+      "elementType": 202,
+      "wikiEntryId": "537"
+    },
+    "1101": {
+      "elementType": 201,
+      "wikiEntryId": "26"
+    },
+    "1111": {
+      "elementType": 203,
+      "wikiEntryId": "24"
+    },
+    "1121": {
+      "elementType": 201,
+      "wikiEntryId": "25"
+    },
+    "1131": {
+      "elementType": 202,
+      "wikiEntryId": "89"
+    },
+    "1141": {
+      "elementType": 202,
+      "wikiEntryId": "28"
+    },
+    "1151": {
+      "elementType": 201,
+      "wikiEntryId": "125"
+    },
+    "1161": {
+      "elementType": 201,
+      "wikiEntryId": "530"
+    },
+    "1171": {
+      "elementType": 201,
+      "wikiEntryId": "382"
+    },
+    "1181": {
+      "elementType": 203,
+      "wikiEntryId": "27"
+    },
+    "1191": {
+      "elementType": 202,
+      "wikiEntryId": "29"
+    },
+    "1201": {
+      "elementType": 203,
+      "wikiEntryId": "538"
+    },
+    "1211": {
+      "elementType": 203,
+      "wikiEntryId": "30"
+    },
+    "1221": {
+      "elementType": 203,
+      "wikiEntryId": "529"
+    },
+    "1241": {
+      "elementType": 205,
+      "wikiEntryId": "31"
+    },
+    "1251": {
+      "elementType": 203,
+      "wikiEntryId": "350"
+    },
+    "1261": {
+      "elementType": 200,
+      "wikiEntryId": "368"
+    },
+    "1271": {
+      "elementType": 203,
+      "wikiEntryId": "369"
+    },
+    "1281": {
+      "elementType": 200,
+      "wikiEntryId": "126"
+    },
+    "1291": {
+      "elementType": 202,
+      "wikiEntryId": "707"
+    },
+    "1301": {
+      "elementType": 201,
+      "wikiEntryId": "902"
+    },
+    "1311": {
+      "elementType": 205,
+      "wikiEntryId": "588"
+    },
+    "1321": {
+      "elementType": 201,
+      "wikiEntryId": "589"
+    },
+    "1331": {
+      "elementType": 205,
+      "wikiEntryId": "626"
+    },
+    "1341": {
+      "elementType": 202,
+      "wikiEntryId": "960"
+    },
+    "1351": {
+      "elementType": 200,
+      "wikiEntryId": "619"
+    },
+    "1361": {
+      "elementType": 203,
+      "wikiEntryId": "620"
+    },
+    "1371": {
+      "elementType": 205,
+      "wikiEntryId": "752"
+    },
+    "1381": {
+      "elementType": 203,
+      "wikiEntryId": "618"
+    },
+    "1391": {
+      "elementType": 201,
+      "wikiEntryId": "750"
+    },
+    "1401": {
+      "elementType": 200,
+      "wikiEntryId": "838"
+    },
+    "1411": {
+      "elementType": 200,
+      "wikiEntryId": "837"
+    },
+    "1421": {
+      "elementType": 200,
+      "wikiEntryId": "751"
+    },
+    "1431": {
+      "elementType": 200,
+      "wikiEntryId": "961"
+    },
+    "1441": {
+      "elementType": 201,
+      "wikiEntryId": "908"
+    },
+    "1451": {
+      "elementType": 205,
+      "wikiEntryId": "907"
+    },
+    "1461": {
+      "elementType": 203,
+      "wikiEntryId": "901"
+    },
+    "1471": {
+      "elementType": 201,
+      "wikiEntryId": "934"
+    },
+    "1481": {
+      "elementType": 200,
+      "wikiEntryId": "932"
+    },
+    "1491": {
+      "elementType": 200,
+      "wikiEntryId": "995"
+    },
+    "1501": {
+      "elementType": 205,
+      "wikiEntryId": "998"
+    },
+    "1511": {
+      "elementType": 205,
+      "wikiEntryId": "1038"
+    },
+    "1521": {
+      "elementType": 203,
+      "wikiEntryId": "1039"
+    },
+    "1531": {
+      "elementType": 200,
+      "wikiEntryId": "1073"
+    },
+    "1541": {
+      "elementType": 202,
+      "wikiEntryId": "1072"
+    },
+    "1551": {
+      "elementType": 205,
+      "wikiEntryId": "1082"
+    },
+    "1561": {
+      "elementType": 204,
+      "wikiEntryId": "1084"
+    },
+    "1571": {
+      "elementType": 201,
+      "wikiEntryId": "1085"
+    },
+    "1581": {
+      "elementType": 300
+    },
+    "1591": {
+      "elementType": 202,
+      "wikiEntryId": "1113"
+    },
+    "1611": {
+      "elementType": 203,
+      "wikiEntryId": "1185"
+    }
+  }
+}

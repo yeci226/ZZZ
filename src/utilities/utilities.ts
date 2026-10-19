@@ -1,3 +1,5 @@
+import { getAccountGameRoles } from "./gameRoles.js";
+import { normalizeCodes } from "./core/redeemEngine.js";
 import { client } from "../index.js";
 import axios from "axios";
 import crypto from "crypto";
@@ -9,6 +11,7 @@ import {
 } from "discord.js";
 import Logger from "./core/logger.js";
 import { stripEphemeralFlagForEdit } from "./shared/index.js";
+import { getInteractiveAccountAccess, notifyExpiredAccount } from "./accountAccess.js";
 import { LanguageEnum, HoyoAPIError, Hoyolab } from "@yeci226/hoyoapi";
 import {
   createZzzClient,
@@ -27,6 +30,7 @@ import {
 } from "./accountStore.js";
 import {
   clearRedeemCookieState,
+  clearRedeemCookieStateAfterLogin,
   migrateLegacyRedeemCookieState,
   setRedeemCookieInvalid,
   setRedeemNeedsCookieUpdate,
@@ -133,44 +137,18 @@ export async function getRedeemCodes() {
     return _redeemCodesCache.data;
   }
 
-  const sources = ["https://hoyo-codes.seria.moe/codes?game=nap"];
-
-  const allCodes = new Set<string>();
-  const results: any[] = [];
-
-  for (const url of sources) {
-    try {
-      const res = await axios
-        .get(url, { timeout: 5000 })
-        .then((response) => response.data);
-      if (url.includes("seria.moe")) {
-        res.codes?.forEach((c: any) => {
-          if (!allCodes.has(c.code)) {
-            allCodes.add(c.code);
-            results.push(c);
-          }
-        });
-      } else if (url.includes("ennead.cc")) {
-        res.active?.forEach((c: any) => {
-          if (!allCodes.has(c.code)) {
-            allCodes.add(c.code);
-            results.push({
-              code: c.code,
-              rewards: c.rewards,
-              source: "ennead",
-            });
-          }
-        });
-      }
-    } catch (error) {
-      new Logger("Utilities").error(
-        `獲取禮包碼失敗 (${url}): ${(error as any).message}`,
-      );
-    }
+  const saved = _redeemCodesCache || await client.db.get("redeemCodesCacheV2");
+  try {
+    const { data } = await axios.get("https://hoyo-codes.seria.moe/codes?game=nap", { timeout: 10000 });
+    const codes = normalizeCodes(data.codes);
+    _redeemCodesCache = { data: codes, timestamp: Date.now() };
+    await client.db.set("redeemCodesCacheV2", _redeemCodesCache);
+    return codes;
+  } catch (error) {
+    new Logger("Utilities").error("兌換碼來源暫時無法使用，保留最後有效清單");
+    if (saved) return normalizeCodes(saved.data);
+    throw error;
   }
-
-  _redeemCodesCache = { data: results, timestamp: Date.now() };
-  return results;
 }
 
 export function secondsToHms(d: number | string, tr: (key: string) => string) {
@@ -322,11 +300,13 @@ export async function getUserHoyolabData(
   userLang?: string,
   accountIndex = 0,
 ) {
-  const [cookie, uid] = await Promise.all([
-    getUserCookie(userId, accountIndex),
-    getUserUid(userId, accountIndex),
-  ]);
+  const access = await getInteractiveAccountAccess(interaction, client.db, { ownerId: userId, accountIndex });
   if (!userLang) userLang = await getUserLang(userId);
+  if (access.status === "expired") {
+    await notifyExpiredAccount(interaction, { ownerId: userId, accountIndex, locale: userLang });
+    return null;
+  }
+  const { cookie, uid } = access.account ?? {};
 
   const getLanguage = (locale: any) =>
     languageMapping[locale as keyof typeof languageMapping] ||
@@ -342,7 +322,7 @@ export async function getUserHoyolabData(
       (item: any) => item.game_id === 8,
     );
 
-    return filteredData[0];
+    return filteredData.find((item: any) => String(item.game_role_id) === String(uid)) ?? null;
   } catch (error) {
     const isHoyoAPIError = error instanceof HoyoAPIError;
     const errorCode = isHoyoAPIError ? error.code : error;
@@ -549,11 +529,16 @@ export async function getUserZZZData(
   userId: string,
   userLang?: string,
   accountIndex = 0,
+  options: { authMode?: "required" | "optional" } = {},
 ) {
-  const [cookie, uid] = await Promise.all([
-    getUserCookie(userId, accountIndex),
-    getUserUid(userId, accountIndex),
-  ]);
+  const access = await getInteractiveAccountAccess(interaction, client.db, { ownerId: userId, accountIndex });
+  if (options.authMode === "optional" && access.status !== "ready") return;
+  if (access.status === "expired") {
+    await notifyExpiredAccount(interaction, { ownerId: userId, accountIndex,
+      locale: userLang || (await getUserLang(interaction.user.id)) || interaction.locale });
+    return;
+  }
+  const { cookie, uid } = access.account ?? {};
   if (!cookie || !uid) {
     replyOrfollowUp(interaction, {
       embeds: [
@@ -868,26 +853,7 @@ global.replyOrfollowUp = async function (
 };
 
 export async function getAllGameRoles(cookie: string) {
-  const hoyolab = new Hoyolab({
-    cookie: cookie,
-  } as any);
-
-  const gameRecord = await hoyolab.gameRecordCard();
-  if (!gameRecord || !Array.isArray(gameRecord)) {
-    throw new Error("無法獲取遊戲紀錄卡或資料格式不正確");
-  }
-
-  // 過濾出有角色的遊戲
-  return (gameRecord as any[])
-    .filter((item: any) => item.has_role)
-    .map((item: any) => ({
-      uid: item.game_role_id,
-      nickname: item.nickname,
-      gameName: item.game_name,
-      gameId: item.game_id,
-      region: item.region,
-      level: item.level,
-    }));
+  return getAccountGameRoles(cookie, 8);
 }
 
 export async function getUserGameUid(cookie: string, game_id = 8) {
@@ -1101,21 +1067,22 @@ export async function autoRefreshCookie(
 
 export async function updateAccountInfo(
   userId: string,
-  { uid, cookie, nickname }: { uid: string; cookie: string; nickname?: string },
+  { uid, cookie, nickname, region }: { uid: string; cookie: string; nickname?: string; region?: string },
 ): Promise<void> {
   const ltuid = extractLtuidFromCookie(cookie) ?? fallbackBucketKey(cookie);
   await upsertHoyolab(client.db, userId, { ltuid_v2: ltuid, cookie });
   await upsertCharacter(client.db, userId, ltuid, {
     uid: String(uid),
     nickname: nickname ?? null,
-    region: null,
+    region: region ?? null,
     lastUpdate: new Date().toISOString(),
     invalid: false,
   });
 
-  // A newly saved general Cookie restores only general daily/profile validity.
-  // Legacy shared redeem evidence is migrated before the ambiguous key is cleared.
+  // Explicit account linking restores general access and permits redemption
+  // with newly supplied redeem credentials. Background refreshes stay scoped.
   await applyScopedCookieRefreshSuccess(userId, uid, "general");
+  await clearRedeemCookieStateAfterLogin(client.db, String(uid), cookie);
   await client.db.delete(`${uid}.lastCookieRefresh`);
 
   new Logger("Utilities").info(

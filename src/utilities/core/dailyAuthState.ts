@@ -20,6 +20,15 @@ export function getDailyAuthAccountKey(cookie: string, uid: string): string {
   return match?.[1] || `uid:${uid}`;
 }
 
+/** Daily eligibility is separate from cookie validity; keep IDs in a literal key. */
+export function getDailyMissingRoleKey(
+  userId: string,
+  cookie: string,
+  uid: string,
+): string {
+  return `dailyMissingRole:${userId}:${getDailyAuthAccountKey(cookie, uid)}`;
+}
+
 export function classifyInvalidScopes(
   generalInvalid: boolean,
   redeemInvalid: boolean,

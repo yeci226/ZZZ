@@ -26,3 +26,14 @@ describe("development-only command loading", () => {
     expect(shouldLoadCommand({}, "production")).toBe(true);
   });
 });
+
+describe("commands moved to settings", () => {
+  it.each(["automimo", "reminder", "locale"])("never registers a stale compiled %s module", name => {
+    for (const env of ["dev", "production", undefined]) {
+      expect(shouldLoadCommand({ data: { name } }, env)).toBe(false);
+    }
+  });
+  it.each(["settings", "daily", "codes"])("continues registering %s", name => {
+    expect(shouldLoadCommand({ data: { name } }, "production")).toBe(true);
+  });
+});

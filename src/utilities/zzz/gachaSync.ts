@@ -1,4 +1,5 @@
 import axios from "axios";
+import { cacheSimulationCalendar } from "./gachaSimulationCatalog.js";
 
 import {
   GachaArchiveRecord,
@@ -352,6 +353,7 @@ export async function syncOfficialGachaArchive(options: {
   const region = String(options.zzz.region ?? "");
   archive.upsertAccount({ ownerId: options.ownerId, uid, region, source: "official", everLinked: true });
   archive.restoreLinked(options.ownerId, uid, region);
+  if (options.enableWeekly === false) archive.setWeeklyEnabled(options.ownerId, uid, false);
 
   let inserted = 0;
   let fetched = 0;
@@ -364,6 +366,7 @@ export async function syncOfficialGachaArchive(options: {
 
     try {
       const calendar = await requestZzzRecordApi<any>(options.zzz, "gacha_calendar");
+      try { cacheSimulationCalendar(calendarBannerMetadata(calendar)); } catch (error) { console.error("[gacha-simulate] Calendar cache refresh failed", error); }
       archiveCalendarMetadata(
         archive,
         options.ownerId,
@@ -378,29 +381,45 @@ export async function syncOfficialGachaArchive(options: {
 
     for (const gachaType of types) {
       let endId = "";
+      const confirmedBoundary = archive.getOfficialSyncBoundary(options.ownerId, uid, gachaType);
+      let newestRecordId = "";
+      let traversalComplete = false;
       while (true) {
         const data = await requestZzzRecordApi<any>(options.zzz, "gacha_record", {
           gacha_type: gachaType,
           end_id: endId || undefined,
         });
         const page = Array.isArray(data?.gacha_item_list) ? data.gacha_item_list : [];
-        if (page.length === 0) break;
+        if (page.length === 0) {
+          traversalComplete = true;
+          break;
+        }
+        newestRecordId ||= recordIdOf(page[0]);
+        const reachedConfirmedBoundary = !!confirmedBoundary
+          && page.some((item: any) => recordIdOf(item) === confirmedBoundary);
         fetched += page.length;
-        const pageInserted = archive.addRecords(
+        const merged = archive.mergeRecords(
           page.filter((item: any) => recordIdOf(item))
             .map((item: any) => toOfficialRecord(item, options.ownerId, uid, gachaType)),
         );
-        inserted += pageInserted;
+        inserted += merged.inserted;
 
-        // Pages are newest first. Encountering any stored record means all
-        // following pages are already archived, so this remains incremental.
-        if (!data?.has_more || pageInserted < page.length) break;
+        // Only a boundary written after a completed official traversal may
+        // stop pagination. Records imported from URLs/rng.moe are not a safe
+        // indication that all older official pages were archived.
+        if (!data?.has_more || reachedConfirmedBoundary) {
+          traversalComplete = true;
+          break;
+        }
         const nextId = recordIdOf(page[page.length - 1]);
-        if (!nextId || nextId === endId) break;
+        if (!nextId || nextId === endId) throw new Error("官方調頻紀錄分頁停滯，未更新同步邊界");
         endId = nextId;
         if ((options.pageDelayMs ?? 250) > 0) {
           await new Promise((resolve) => setTimeout(resolve, options.pageDelayMs ?? 250));
         }
+      }
+      if (newestRecordId && traversalComplete) {
+        archive.setOfficialSyncBoundary(options.ownerId, uid, gachaType, newestRecordId);
       }
     }
     archive.classifyUnresolvedBannerRecords({ ownerId: options.ownerId, uid, source: "official" });
@@ -408,7 +427,7 @@ export async function syncOfficialGachaArchive(options: {
       ownerId: options.ownerId, uid, source: "official", region,
     });
     archive.recordSyncSuccess(options.ownerId, uid, "official");
-    if (options.enableWeekly) archive.setWeeklyEnabled(options.ownerId, uid, true);
+    if (options.enableWeekly === true) archive.setWeeklyEnabled(options.ownerId, uid, true);
     return { inserted, fetched, uid, source: "official" };
   } catch (error) {
     archive.recordSyncFailure(options.ownerId, uid, "official", error);
@@ -508,8 +527,8 @@ export async function importManualGachaArchive(options: {
           rarity: String(item.rank_type ?? ""),
           pulledAt: manualRecordTime(item.time),
         }));
-        const pageInserted = archive.addRecords(pageRecords);
-        inserted += pageInserted;
+        const merged = archive.mergeRecords(pageRecords);
+        inserted += merged.inserted;
         for (const record of pageRecords) {
           if (!record.bannerId) continue;
           archive.upsertBanner({
@@ -518,7 +537,7 @@ export async function importManualGachaArchive(options: {
             name: "", version: "", startAt: null, endAt: null, upItems: [],
           });
         }
-        if (pageInserted < page.length) break;
+        if (merged.sourceAdded < page.length) break;
         const nextId = recordIdOf(page[page.length - 1]);
         if (!nextId || nextId === endId) break;
         endId = nextId;

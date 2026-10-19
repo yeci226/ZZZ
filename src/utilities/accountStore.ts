@@ -113,6 +113,7 @@ function nowIso() {
 interface GachaArchiveBindingStore {
 	markOrphaned(userId: string, uid: string): number;
 	restoreLinked(userId: string, uid: string, region?: string): number;
+	getAccount?(userId: string, uid: string): { sources?: string[] } | null;
 	upsertAccount(input: {
 		ownerId: string;
 		uid: string;
@@ -128,15 +129,16 @@ export function applyGachaArchiveBinding(
 	userId: string,
 	uid: string,
 	region: string,
-	weeklyEnabled: boolean,
+	weeklyEnabled: boolean | undefined,
 	archive: GachaArchiveBindingStore,
-): void {
+): boolean {
 	if (operation === "orphan") {
 		archive.markOrphaned(userId, uid);
-		return;
+		return false;
 	}
+	const waitingRngImport = archive.getAccount?.(userId, uid)?.sources?.includes("rng_moe") === true;
 	archive.restoreLinked(userId, uid, region);
-	if (!weeklyEnabled) return;
+	if (weeklyEnabled !== true && !(weeklyEnabled === undefined && waitingRngImport)) return false;
 	archive.upsertAccount({
 		ownerId: userId,
 		uid,
@@ -145,6 +147,7 @@ export function applyGachaArchiveBinding(
 		everLinked: true,
 	});
 	archive.setWeeklyEnabled(userId, uid, true);
+	return true;
 }
 
 async function updateGachaArchiveBinding(
@@ -158,17 +161,29 @@ async function updateGachaArchiveBinding(
 	// temporarily unavailable. Archive lifecycle is best-effort here and is
 	// also reconciled by the scheduled archive job.
 	if (process.env.NODE_ENV === "test") return;
+	if (operation === "orphan") {
+		try {
+			// Multiple bindings of the same UID must not remove its remaining valid binding.
+			const remaining = await getLegacyAccounts(db, userId);
+			if (!remaining.some(account => String(account.uid) === String(uid))) {
+				const { getDiscLeaderboardStore } = await import("./zzz/discLeaderboardStore.js");
+				getDiscLeaderboardStore().unlink(userId, String(uid));
+			}
+		} catch { console.warn("[disc-leaderboard] unlink cleanup failed"); }
+	}
 	try {
 		const { getGachaArchiveStore } = await import("./zzz/gachaArchive.js");
 		const archive = getGachaArchiveStore();
-		applyGachaArchiveBinding(
+		const setting = await db.get<boolean>(`${userId}.gachaWeeklyArchive`);
+		const enabled = applyGachaArchiveBinding(
 			operation,
 			userId,
 			uid,
 			region,
-			(await db.get<boolean>(`${userId}.gachaWeeklyArchive`)) === true,
+			setting ?? undefined,
 			archive,
 		);
+		if (enabled && setting == null) await db.set(`${userId}.gachaWeeklyArchive`, true);
 	} catch {
 		// Never make unlink/relink fail because archive maintenance failed.
 	}

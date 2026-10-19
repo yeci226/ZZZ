@@ -1,32 +1,15 @@
-/**
- * Web-login finalizer (ZZZ).
- *
- * `drainPendingLogins` pulls unconsumed rows from Supabase (queued by the
- * web-login Next.js app) and routes each row to one of three paths:
- *
- *   1. `bindFromEnriched` — row has `enriched` payload AND a card for ZZZ
- *      (game_id = 8). Fast path: no Hoyolab API call. Writes a rich
- *      Character row with level/cover/stats from the card.
- *
- *   2. `bindHoyolabOnly` — row has `enriched` but no ZZZ card. Stores the
- *      Hoyolab record (with cookie) and zero characters. No DM. No counted
- *      slot against the 5-account limit.
- *
- *   3. `bindCookieToUser` — legacy fallback for rows without `enriched`.
- *      Calls `getAllGameRoles`.
- */
+import { processLoginQueue, startLoginQueue, type LoginRole, type LoginResult, type BindOptions } from './loginQueue.js';
+/** Resolve every server role on login; record cards only supply display metadata. */
 import { client } from "../index.js";
 import Logger from "./core/logger.js";
 import { getAllGameRoles, updateAccountInfo, encryptCredential } from "./utilities.js";
 import { upsertHoyolab, upsertCharacter, getLegacyAccounts, type Character } from "./accountStore.js";
 import { getConfig } from "./core/config.js";
 import {
-  fetchPendingLogins,
-  markConsumed,
-  decryptString,
   type EnrichedGameCard,
 } from "./core/supabase.js";
 import { exchangeStokenForCookies } from "./zzz/login.js";
+import { clearRedeemCookieStateAfterLogin } from "./core/redeemCookieState.js";
 
 const logger = new Logger("WebLogin");
 
@@ -60,7 +43,9 @@ function extractStokenFields(
 export interface BindResult {
   ok: boolean;
   message: string;
-  bound?: Array<{ uid: string; nickname: string }>;
+  bound?: LoginRole[];
+  skipped?: LoginRole[];
+  code?: string;
 }
 
 async function isDevUser(discordUserId: string): Promise<boolean> {
@@ -82,6 +67,7 @@ export async function bindCookieToUser(
   discordUserId: string,
   cookieStr: string,
   hoyolabIcon?: string,
+  options: BindOptions = {},
 ): Promise<BindResult> {
   logger.info(`[bind] start user=${discordUserId} cookieLen=${cookieStr?.length ?? 0}`);
   if (!discordUserId || !cookieStr) {
@@ -151,40 +137,46 @@ export async function bindCookieToUser(
   const existing = await getLegacyAccounts(client.db as any, discordUserId);
   const existingUids = new Set(existing.map((a: any) => String(a.uid)));
 
-  const bound: Array<{ uid: string; nickname: string }> = [];
+  const bound: LoginRole[] = [...(options.alreadyBound ?? [])];
+  const skipped: LoginRole[] = [];
   for (const role of zzzRoles) {
     const uidStr = String(role.uid);
+    if(bound.some(r=>r.uid===uidStr)) continue;
     const isUpdate = existingUids.has(uidStr);
     if (!isUpdate && !isDev) {
       const current = await getLegacyAccounts(client.db as any, discordUserId);
       if (current.length >= 5) {
-        logger.warn(`[bind] account cap reached, skipping uid=${uidStr}`);
+        skipped.push({uid:uidStr,nickname:role.nickname,region:role.region,error:"account_limit"});
         continue;
       }
     }
     try {
+      options.assertLease?.();
       await updateAccountInfo(discordUserId, {
         uid: role.uid,
         cookie: apiCookie,
         nickname: role.nickname,
+        region: role.region,
       });
       logger.info(`[bind] updateAccountInfo OK uid=${uidStr} (${isUpdate ? "update" : "new"})`);
     } catch (e: any) {
       logger.error(`[bind] updateAccountInfo FAILED uid=${uidStr}: ${e?.message ?? e}`);
-      throw e;
+      skipped.push({uid:uidStr,nickname:role.nickname,region:role.region,error:"save_failed"});
+      continue;
     }
-    bound.push({ uid: uidStr, nickname: role.nickname });
+    bound.push({ uid: uidStr, nickname: role.nickname, region:role.region });
   }
 
   if (bound.length === 0) {
-    return { ok: false, message: "account cap reached, no accounts bound" };
+    return { ok:false,message:"no accounts bound",bound,skipped,code:skipped.every(r=>r.error==="account_limit")?"account_limit":"sync_error" };
   }
 
   // Patch stoken/ltmid_v2 onto the Hoyolab record so autoRefreshCookie can use it.
   const stokenPatch = extractStokenFields(apiCookie);
   const ltuid_v2 = parseCookieMap(apiCookie)["ltuid_v2"] ?? parseCookieMap(apiCookie)["account_id_v2"];
-  if (stokenPatch && ltuid_v2) {
+  if (ltuid_v2 && (stokenPatch || hoyolabIcon !== undefined)) {
     try {
+      options.assertLease?.();
       await upsertHoyolab(client.db as any, discordUserId, {
         ltuid_v2,
         cookie: apiCookie,
@@ -193,14 +185,15 @@ export async function bindCookieToUser(
       });
       logger.info(`[bind] stoken stored for ltuid=${ltuid_v2}`);
     } catch (e: any) {
-      logger.warn(`[bind] stoken patch failed: ${e?.message ?? e}`);
+      logger.warn("[bind] credential save failed");
+      return {ok:false,message:"credential save failed",bound,skipped,code:"sync_error"};
     }
   }
 
   logger.success(`[bind] DONE user=${discordUserId} bound=${bound.length}`);
   await notifyBound(discordUserId, bound);
 
-  return { ok: true, message: `bound ${bound.length} account(s)`, bound };
+  return { ok: true, message: `bound ${bound.length} account(s)`, bound, skipped, code:skipped.length?(skipped.every(r=>r.error==="account_limit")?"account_limit":"sync_error"):undefined };
 }
 
 export const handleWebhookLogin = bindCookieToUser;
@@ -252,6 +245,7 @@ export async function bindFromEnriched(
     ...(hoyolabIcon !== undefined ? { hoyolabIcon } : {}),
   });
   await upsertCharacter(client.db as any, discordUserId, ltuid_v2, character);
+  await clearRedeemCookieStateAfterLogin(client.db, uidStr, cookieStr);
   logger.info(`[bindFromEnriched] OK uid=${uidStr} new=${isNew}`);
 
   const bound = [{ uid: uidStr, nickname: card.nickname }];
@@ -277,76 +271,29 @@ export async function bindHoyolabOnly(
   // No character row, no DM, no slot consumed.
 }
 
-export async function drainPendingLogins(
-  discordUserId: string,
-): Promise<Array<{ uid: string; nickname: string }>> {
-  logger.info(`[drain] start user=${discordUserId}`);
-  let rows: Awaited<ReturnType<typeof fetchPendingLogins>>;
-  try {
-    rows = await fetchPendingLogins(discordUserId);
-  } catch (e: any) {
-    logger.warn(`[drain] fetchPendingLogins FAILED user=${discordUserId}: ${e?.message ?? e}`);
-    return [];
+
+async function processRow(row: Parameters<Parameters<typeof processLoginQueue>[0]>[0], cookie:string, options:BindOptions):Promise<LoginResult> {
+  const icon=typeof row.hoyo_account?.avatar_url==='string'?row.hoyo_account.avatar_url:undefined;
+  const res=await bindCookieToUser(row.discord_id,cookie,icon,options);
+  if(!res.ok && res.message==='no ZZZ characters found on this Hoyolab account') {
+    options.assertLease?.(); await bindHoyolabOnly(row.discord_id,row.ltuid_v2,cookie);
+    return {status:'no_roles',roles:[]};
   }
-  logger.info(`[drain] fetched rows=${rows.length} user=${discordUserId}`);
-  if (rows.length === 0) return [];
-
-  const allBound: Array<{ uid: string; nickname: string }> = [];
-  for (const row of rows) {
-    logger.info(`[drain] processing row id=${row.id} ltuid=${row.ltuid_v2}`);
-    let cookieStr: string;
-    try {
-      cookieStr = decryptString(row.encrypted_cookies);
-    } catch (e: any) {
-      logger.error(`[drain] decrypt FAILED row=${row.id}: ${e?.message ?? e}`);
-      await markConsumed(row.id);
-      continue;
-    }
-
-    const enriched = row.enriched;
-    const card = enriched?.cards.find((c) => c.game_id === ZZZ_GAME_ID) ?? null;
-    const hoyolabIcon =
-      typeof (row.hoyo_account as any)?.avatar_url === "string"
-        ? (row.hoyo_account as any).avatar_url
-        : undefined;
-
-    let bindOk = false;
-    try {
-      if (card && enriched) {
-        logger.info(`[drain] route=enriched row=${row.id}`);
-        const res = await bindFromEnriched(
-          discordUserId,
-          row.ltuid_v2,
-          cookieStr,
-          card,
-          enriched.fetched_at,
-          hoyolabIcon,
-        );
-        if (res.ok && res.bound) allBound.push(...res.bound);
-        bindOk = res.ok;
-      } else if (enriched) {
-        logger.info(`[drain] route=hoyolabOnly row=${row.id} (no ZZZ card in enriched)`);
-        await bindHoyolabOnly(discordUserId, row.ltuid_v2, cookieStr);
-        bindOk = true;
-      } else {
-        logger.info(`[drain] route=legacy row=${row.id} (no enriched payload)`);
-        const res = await bindCookieToUser(discordUserId, cookieStr, hoyolabIcon);
-        if (res.ok && res.bound) allBound.push(...res.bound);
-        bindOk = res.ok;
-      }
-    } catch (e: any) {
-      logger.error(`[drain] bind FAILED row=${row.id}: ${e?.message ?? e}`);
-      bindOk = false;
-    }
-    if (bindOk) {
-      await markConsumed(row.id);
-      logger.info(`[drain] markConsumed row=${row.id}`);
-    } else {
-      logger.warn(
-        `[drain] keeping row=${row.id} as pending (bind failed, will retry next drain)`,
-      );
-    }
+  const roles=res.bound??[];
+  // Display metadata is optional; authentication and all server roles are authoritative.
+  for(const card of row.enriched?.cards??[]) {
+    if(card.game_id!==8||!roles.some(r=>r.uid===String(card.game_role_id)))continue;
+    options.assertLease?.();
+    try { await upsertCharacter(client.db as any,row.discord_id,row.ltuid_v2,{
+      uid:String(card.game_role_id),nickname:card.nickname,region:card.region,lastUpdate:new Date().toISOString(),invalid:false,
+      level:card.level,region_name:card.region_name,stats:(card.data??[]).slice(0,4),enrichedAt:row.enriched!.fetched_at,
+      ...(card.logo?{logo:card.logo}:{}),...(card.game_name?{game_name:card.game_name}:{}),
+      ...(card.background_image_v2||card.background_image?{cover:card.background_image_v2||card.background_image}:{})
+    }); } catch { logger.warn('[WebLogin] optional display metadata unavailable'); }
   }
-  logger.info(`[drain] done user=${discordUserId} totalBound=${allBound.length}`);
-  return allBound;
+  return {status:res.ok&&!res.skipped?.length?'success':roles.length?'partial':'failed',roles,skipped:res.skipped,code:res.code??(!res.ok?'sync_error':undefined)};
 }
+export async function drainPendingLogins(discordUserId:string):Promise<LoginRole[]> {
+  try{return await processLoginQueue(processRow,discordUserId);}catch{return [];}
+}
+export function startWebLoginSync(){startLoginQueue(processRow);}

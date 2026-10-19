@@ -1,8 +1,12 @@
 import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { DISC_SUBSTAT_STYLE } from "./profileDiscEnhancement.js";
 import { drawFormalCharacterProfile } from "./profileCharacterFormal.js";
+import { discScoringReleased } from "./combat/scoringRelease.js";
+import { getScoringStore } from "./combat/scoringStore.js";
+import { profileScore } from "./combat/render.js";
 
 const CARD_WIDTH = 1000;
-const BASE_CARD_HEIGHT = 625;
+const BASE_CARD_HEIGHT = 625 + DISC_SUBSTAT_STYLE.cardExtraHeight;
 const STACK_GAP = 18;
 const PAPER = "#f7f1e8";
 const SEPARATOR = "rgba(23,23,25,0.24)";
@@ -21,9 +25,11 @@ export async function drawFormalCharacterProfileStack(
   const selected = characters.filter(Boolean).slice(0, 3);
   if (selected.length === 0) return null;
 
+  const scoringSnapshot = discScoringReleased() ? getScoringStore().snapshot() : null;
   const cards = await Promise.all(
     selected.map((character) =>
-      drawFormalCharacterProfile(tr, userLocale, uid, character),
+      drawFormalCharacterProfile(tr, userLocale, uid, character,
+        scoringSnapshot ? profileScore(character, "auto", scoringSnapshot) : null),
     ),
   );
   if (cards.some((card) => !card)) return null;

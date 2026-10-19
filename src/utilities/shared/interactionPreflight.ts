@@ -26,6 +26,11 @@ export function getInteractionPreflight(
   interaction: CommandInteractionLike,
 ): InteractionPreflight {
   const commandName = interaction.commandName ?? "";
+  if (commandName === "leaderboard") return { deferBeforeDrain: true, skipPendingLoginDrain: true, skipLocaleLookup: true };
+  // Fixed animation samples have no account dependency; ACK before locale/database work.
+  if (["gacha-preview", "gacha-simulate", "gacha-simulation-settings", "gacha-simulation-details"].includes(commandName)) return { deferBeforeDrain: true, skipPendingLoginDrain: true, skipLocaleLookup: true };
+  // Public news does not depend on pending account logins. ACK before DB work.
+  if (commandName === "news") return { deferBeforeDrain: true, skipPendingLoginDrain: true, skipLocaleLookup: false };
   const isAccountCookieModal =
     commandName === "account" &&
     interaction.options?.getString?.("options") === "SetUserCookie";
@@ -36,7 +41,7 @@ export function getInteractionPreflight(
   const skipPendingLoginDrain = isAccountCookieModal || isSignalLogModal;
 
   return {
-    deferBeforeDrain: commandName === "account" && !skipPendingLoginDrain,
+    deferBeforeDrain: ["account", "banner", "automimo", "setup"].includes(commandName) && !skipPendingLoginDrain,
     skipPendingLoginDrain,
     skipLocaleLookup: skipPendingLoginDrain,
   };

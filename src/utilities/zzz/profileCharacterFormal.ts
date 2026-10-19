@@ -14,12 +14,21 @@ import {
 import { getFlatSuitIcon } from "./profileSuitIcons.js";
 import { ensureZzzCanvasFonts, getZzzCanvasFont } from "./canvasFonts.js";
 import { getPaperAccent } from "./profileColors.js";
-import { formatDriveDiscEnhancement } from "./profileRolls.js";
+import { DISC_SUBSTAT_STYLE, discEnhancementCount, getDiscSubstatLayout } from "./profileDiscEnhancement.js";
+import { profileScore } from "./combat/render.js";
+import { drawDiscScore, drawTotalScore } from "./discScorePresentation.js";
+import type { ProfileScore } from "./combat/scoring.js";
+
+import {
+  FORMAL_ART_PLACEMENT,
+  FORMAL_FACE_THRESHOLDS,
+  identifyFormalArt,
+  resolveFormalCharacterLayout,
+  type FormalArtIdentity,
+} from "./profileCharacterLayout.js";
 
 const W = 1000;
-const H = 625;
-const RIGHT_FACE_THRESHOLD = 0.62;
-const LEFT_FACE_THRESHOLD = 0.38;
+const H = 625 + DISC_SUBSTAT_STYLE.cardExtraHeight;
 const ASSET_ROOT = path.resolve("src", "assets");
 const NUM_FONT = "Nunito";
 
@@ -30,7 +39,6 @@ const C = {
   accent: "#de493e",
   muted: "#817a75",
 };
-const DRIVE_DISC_ENHANCEMENT = "#f08a34";
 
 const PROPERTY_ICON: Record<number, string> = {
   1: "hp",
@@ -88,16 +96,6 @@ const GENERAL_SYSTEM_ID: Record<number, number> = {
   10: 305,
   11: 232,
   12: 315,
-};
-
-/** The six QA renders were reviewed with these fixed face positions. */
-const REVIEWED_FACE_X: Record<string, number> = {
-  "1251": 0.5,
-  "1121": 0.42,
-  "1311": 0.47,
-  "1421": 0.7,
-  "1331": 0.33,
-  "1061": 0.65,
 };
 
 let numericFontRegistered = false;
@@ -389,71 +387,6 @@ function valueOf(property: any): string {
   return String(property?.final ?? property?.base ?? "");
 }
 
-function sideForFaceX(faceX: number): "left" | "center" | "right" {
-  if (faceX > RIGHT_FACE_THRESHOLD) return "right";
-  if (faceX < LEFT_FACE_THRESHOLD) return "left";
-  return "center";
-}
-
-function estimateFaceXFromImage(image: any): number {
-  const sampleWidth = 160;
-  const sampleHeight = 67;
-  const sample = createCanvas(sampleWidth, sampleHeight);
-  const sampleContext = sample.getContext("2d");
-  sampleContext.clearRect(0, 0, sampleWidth, sampleHeight);
-  sampleContext.drawImage(image, 0, 0, sampleWidth, sampleHeight);
-  const pixels = sampleContext.getImageData(0, 0, sampleWidth, sampleHeight).data;
-  let weightedX = 0;
-  let weightTotal = 0;
-
-  for (let y = 0; y < sampleHeight; y += 1) {
-    for (let x = 0; x < sampleWidth; x += 1) {
-      const index = (y * sampleWidth + x) * 4;
-      const alpha = pixels[index + 3]! / 255;
-      if (alpha < 0.35) continue;
-      const red = pixels[index]!;
-      const green = pixels[index + 1]!;
-      const blue = pixels[index + 2]!;
-      const maximum = Math.max(red, green, blue);
-      const minimum = Math.min(red, green, blue);
-      const saturation = maximum ? (maximum - minimum) / maximum : 0;
-      const luminance = (red + green + blue) / 3;
-      const warmSkin = red > green * 1.02 && green > blue * 0.98 && red > 70;
-      const paleSkin = luminance > 178 && saturation < 0.2;
-      let weight = warmSkin ? 1.2 : paleSkin ? 0.12 : 0;
-      if (y > sampleHeight * 0.75) weight *= 0.35;
-      if (x < sampleWidth * 0.04 || x > sampleWidth * 0.96) weight *= 0.5;
-      weight *= alpha;
-      weightedX += x * weight;
-      weightTotal += weight;
-    }
-  }
-
-  if (weightTotal < 4) return 0.5;
-  return Math.max(0, Math.min(1, weightedX / weightTotal / sampleWidth));
-}
-
-function resolveFacePosition(
-  character: any,
-  image: any,
-): { faceX: number; side: "left" | "center" | "right"; source: string } {
-  const id = String(character?.id ?? "");
-  const payloadX = Number(
-    character?.faceX ??
-      character?.face_x ??
-      character?.face_position?.x ??
-      REVIEWED_FACE_X[id],
-  );
-  const faceX = Number.isFinite(payloadX)
-    ? Math.max(0, Math.min(1, payloadX))
-    : estimateFaceXFromImage(image);
-  return {
-    faceX,
-    side: sideForFaceX(faceX),
-    source: REVIEWED_FACE_X[id] !== undefined ? "reviewed-m6" : "alpha-heuristic",
-  };
-}
-
 async function loadAny(source?: string | null): Promise<any | null> {
   if (!source) return null;
   try {
@@ -521,6 +454,7 @@ async function loadFormalCharacterArt(character: any): Promise<{
   image: any | null;
   source: string | null;
   preferred: string | null;
+  identity: FormalArtIdentity | null;
 }> {
   const candidates = formalCharacterArtCandidates(character);
   const preferred = candidates[0] ?? null;
@@ -528,7 +462,7 @@ async function loadFormalCharacterArt(character: any): Promise<{
   for (const source of candidates.slice(0, 1)) {
     if (source.startsWith("/") && !fs.existsSync(source)) continue;
     const image = await loadAny(source);
-    if (image) return { image, source, preferred };
+    if (image) return { image, source, preferred, identity: identifyFormalArt(source, "local-m6") };
   }
 
   // A missing hand-reviewed cutout must fall back to the official Wiki M6
@@ -536,7 +470,7 @@ async function loadFormalCharacterArt(character: any): Promise<{
   const wikiM6 = await getWikiM6Painting(character);
   if (wikiM6) {
     const image = await loadAny(wikiM6);
-    if (image) return { image, source: wikiM6, preferred };
+    if (image) return { image, source: wikiM6, preferred, identity: identifyFormalArt(wikiM6, "wiki") };
   }
 
   // Keep the portrait only as an emergency availability fallback when an
@@ -544,9 +478,9 @@ async function loadFormalCharacterArt(character: any): Promise<{
   for (const source of candidates.slice(1)) {
     if (source.startsWith("/") && !fs.existsSync(source)) continue;
     const image = await loadAny(source);
-    if (image) return { image, source, preferred };
+    if (image) return { image, source, preferred, identity: identifyFormalArt(source, "portrait") };
   }
-  return { image: null, source: null, preferred };
+  return { image: null, source: null, preferred, identity: null };
 }
 
 function discSlotData(character: any): any[] {
@@ -601,6 +535,7 @@ export async function drawFormalCharacterProfile(
   userLocale: string,
   _uid: string,
   characterDataInput: any,
+  scoring?: ProfileScore | null,
 ): Promise<Buffer | null> {
   try {
     ensureFormalFonts();
@@ -608,10 +543,11 @@ export async function drawFormalCharacterProfile(
       ? characterDataInput[0]
       : characterDataInput;
     if (!character) return null;
+    const score = scoring === undefined ? profileScore(character) : scoring;
 
     const characterArt = await loadFormalCharacterArt(character);
     const cutout = characterArt.image;
-    if (!cutout) {
+    if (!cutout || !characterArt.identity) {
       console.error(
         `[formal profile] missing character art for character ${String(character.id)}`,
       );
@@ -629,8 +565,8 @@ export async function drawFormalCharacterProfile(
     );
     const accent = rawAccent;
     const paperAccent = getPaperAccent(rawAccent);
-    const face = resolveFacePosition(character, cutout);
-    const mirrored = face.side === "right";
+    const layout = resolveFormalCharacterLayout(character, cutout, characterArt.identity);
+    const mirrored = layout.infoSide === "left";
     const names = effectivePropertyNames(character);
     const ids = effectiveSystemIds(character);
     const font = getZzzCanvasFont(userLocale);
@@ -687,7 +623,7 @@ export async function drawFormalCharacterProfile(
     const extraPropertyRows = propertyRows - basePropertyRows;
     const lowerShift = extraPropertyRows * propertyRowHeight;
     const metadataStageBottom = 451 + lowerShift;
-    const artDrawWidth = 1080;
+    const artDrawWidth = FORMAL_ART_PLACEMENT.width;
     const artDrawHeight =
       artDrawWidth * (Number(cutout.height) / Math.max(1, Number(cutout.width)));
     // Wiki paintings are usually taller than the reviewed 2080×870 cutouts.
@@ -751,14 +687,14 @@ export async function drawFormalCharacterProfile(
       0,
       cutout.width,
       cutout.height,
-      -80,
+      FORMAL_ART_PLACEMENT.x,
       0,
       artDrawWidth,
       artDrawHeight,
     );
     ctx.restore();
 
-    const moduleX = mirrored ? 15 : 690;
+    const moduleX = layout.moduleX;
     const moduleW = 295;
     const moduleInnerX = moduleX + 14;
     const colX = [moduleInnerX, moduleInnerX + 150];
@@ -983,6 +919,7 @@ export async function drawFormalCharacterProfile(
     const gap = 10;
     const x0 = 25;
     const discY = 474 + lowerShift;
+    let totalValidRolls = 0;
     for (let index = 0; index < discs.length; index += 1) {
       const disc = discs[index];
       const x = x0 + index * (cellW + gap);
@@ -1009,6 +946,7 @@ export async function drawFormalCharacterProfile(
       }
 
       if (disc) {
+        drawDiscScore(ctx, score?.discs.find((item) => item.slot === index + 1), x + cellW - 2, discY + 7, "paper");
         const main = disc.main_properties?.[0];
         if (main) {
           const active = isGeneralEffective(main, names, ids);
@@ -1033,65 +971,28 @@ export async function drawFormalCharacterProfile(
           const property = subs[subIndex];
           if (!property) continue;
           const active = isSubEffective(property, ids);
-          const column = subIndex % 2;
-          const row = Math.floor(subIndex / 2);
-          const subShift = index >= 1 ? 8 : 0;
-          const sx = x + column * 75 + subShift;
-          const sy = discY + 82 + row * 28;
+          if (active) totalValidRolls += 1 + discEnhancementCount(property.add);
+          const layout = getDiscSubstatLayout(x, discY, subIndex, property.add);
           drawIcon(
             ctx,
             await propertyIcon(property, active ? paperAccent : C.ink),
-            sx + 1,
-            sy,
+            layout.icon.x,
+            layout.icon.y,
             18,
           );
-          const baseText = String(property.base ?? "");
-          const enhancementText = formatDriveDiscEnhancement(property.add);
-          const cellRight = sx + 73;
-          const enhancementWidth = enhancementText
-            ? (() => {
-                ctx.font = numericFont(10);
-                return ctx.measureText(enhancementText).width;
-              })()
-            : 0;
-          const baseRight = enhancementText
-            ? cellRight - enhancementWidth - 6
-            : cellRight;
-          const baseMaxWidth = Math.max(18, baseRight - (sx + 24));
-          let baseFontSize = 14.5;
-          while (baseFontSize > 9) {
-            ctx.font = numericFont(baseFontSize);
-            if (ctx.measureText(baseText).width <= baseMaxWidth) break;
-            baseFontSize -= 0.5;
-          }
           numericText(
             ctx,
-            baseText,
-            sx + 24,
-            sy + 15,
-            baseFontSize,
+            String(property.base ?? ""),
+            layout.value.x,
+            layout.value.y,
+            DISC_SUBSTAT_STYLE.fontSize,
             readable(active ? paperAccent : C.ink),
           );
-          if (enhancementText) {
-            const separatorX = baseRight + 2;
-            line(
-              ctx,
-              separatorX,
-              sy + 4,
-              separatorX,
-              sy + 16,
-              "rgba(23,23,25,0.28)",
-              1,
-            );
-            numericText(
-              ctx,
-              enhancementText,
-              cellRight,
-              sy + 14,
-              10,
-              DRIVE_DISC_ENHANCEMENT,
-              "right",
-            );
+          ctx.fillStyle = DISC_SUBSTAT_STYLE.dotColor;
+          for (const dot of layout.dots) {
+            ctx.beginPath();
+            ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
+            ctx.fill();
           }
         }
       } else {
@@ -1113,10 +1014,45 @@ export async function drawFormalCharacterProfile(
           x + cellW + 5,
           discY - 6,
           x + cellW + 5,
-          canvasHeight - 9,
+          canvasHeight - 30,
           "rgba(23,23,25,0.13)",
           1,
         );
+      }
+    }
+
+    const footerY = canvasHeight - 11;
+    const totalLabel = tr("profileCharacter_TotalValidRolls") || "總有效詞條數";
+    text(ctx, totalLabel, x0, footerY, 12, C.ink, font, 600);
+    const totalLabelWidth = ctx.measureText(totalLabel).width;
+    numericText(ctx, totalValidRolls, x0 + totalLabelWidth + 8, footerY, 16, paperAccent);
+    const scoreX = x0 + totalLabelWidth + 8 + ctx.measureText(String(totalValidRolls)).width + 18;
+    let scoreRight = W - x0;
+
+    const hasSubstats = discs.some((disc) =>
+      (disc?.properties ?? []).slice(0, 4).some(Boolean),
+    );
+    if (hasSubstats) {
+      const legend = tr("profileCharacter_EnhancementDotLegend") || "＝副屬性強化一次";
+      text(ctx, legend, W - x0, footerY, 11, "#625b55", font, 400, "right");
+      const legendWidth = ctx.measureText(legend).width;
+      scoreRight = W - x0 - legendWidth - 24;
+      ctx.fillStyle = DISC_SUBSTAT_STYLE.dotColor;
+      ctx.beginPath();
+      ctx.arc(W - x0 - legendWidth - 9, footerY - 4, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (score) {
+      const scoreWidth = drawTotalScore(ctx, score, 0, 0, font, userLocale, "paper", true);
+      if (scoreWidth <= scoreRight - scoreX) {
+        drawTotalScore(ctx, score, scoreX, footerY, font, userLocale, "paper");
+      } else {
+        ctx.save();
+        ctx.translate(scoreX, footerY);
+        ctx.scale(Math.max(1, scoreRight - scoreX) / scoreWidth, 1);
+        drawTotalScore(ctx, score, 0, 0, font, userLocale, "paper");
+        ctx.restore();
       }
     }
 
@@ -1128,7 +1064,4 @@ export async function drawFormalCharacterProfile(
 }
 
 export const FORMAL_PROFILE_DIMENSIONS = { width: W, height: H } as const;
-export const FORMAL_PROFILE_FACE_THRESHOLDS = {
-  left: LEFT_FACE_THRESHOLD,
-  right: RIGHT_FACE_THRESHOLD,
-} as const;
+export const FORMAL_PROFILE_FACE_THRESHOLDS = FORMAL_FACE_THRESHOLDS;

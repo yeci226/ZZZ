@@ -106,6 +106,65 @@ describe("危局強襲戰絕境置頂長條版面", () => {
     ).toBe(1946);
   });
 
+  it.each([
+    [1, "0.01%"],
+    [91, "0.91%"],
+    [100, "1.00%"],
+    [101, "1.01%"],
+    [1701, "17.01%"],
+    [10000, "100.00%"],
+  ])("摘要排名 %s 以百分之一百分點繪製為 %s", async (raw, expected) => {
+    const prototype = Object.getPrototypeOf(createCanvas(1, 1).getContext("2d"));
+    const fillText = jest.spyOn(prototype, "fillText");
+    try {
+      await drawDeadlyCombinedImage(tr, "tw", {
+        ...payload,
+        total_score: 186833,
+        rank_percent: raw,
+        hard_rank_percent: 1701,
+        abstract_info: {
+          list: [
+            { nest_type: "General", rank: raw },
+            { nest_type: "Hard", rank: 1701 },
+          ],
+        },
+        hard_list: [battle("絕境大首領", 32065)],
+      });
+      const percentages = fillText.mock.calls
+        .map(([text]) => text)
+        .filter((text) => /^\d+\.\d{2}%$/.test(String(text)));
+
+      expect(percentages).toEqual(["17.01%", expected]);
+    } finally {
+      fillText.mockRestore();
+    }
+  });
+
+  it.each([
+    { rank_percent: 91 },
+    { brief: { rank_percent: "91" } },
+    { hard_rank_percent: 91 },
+    {},
+  ])("沒有摘要時，詳細資料排名只換算一次：%j", async (hardRank) => {
+    const prototype = Object.getPrototypeOf(createCanvas(1, 1).getContext("2d"));
+    const fillText = jest.spyOn(prototype, "fillText");
+    try {
+      await drawDeadlyCombinedImage(tr, "tw", {
+        ...payload,
+        rank_percent: 91,
+        hard_rank_percent: 91,
+        hard_list: [{ ...battle("絕境大首領", 32065), ...hardRank }],
+      });
+      const percentages = fillText.mock.calls
+        .map(([text]) => text)
+        .filter((text) => /^\d+\.\d{2}%$/.test(String(text)));
+
+      expect(percentages).toEqual(["0.91%", "0.91%"]);
+    } finally {
+      fillText.mockRestore();
+    }
+  });
+
   it("使用 HoYoLAB 官方 72×72 絕境紅星素材", async () => {
     const hardStar = await loadImage(
       "./src/assets/images/icons/deadly/star_hard.png",

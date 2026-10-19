@@ -202,4 +202,20 @@ describe("official banner renderer mapping", () => {
     });
     expect(withPity.equals(withoutPity)).toBe(true);
   });
+
+  it("hides account-specific first-S status in public images while preserving the public guarantee description", async () => {
+    const render = (showPrivate: boolean, triggered: boolean) => renderOfficialBanner({
+      locale: "tw", showPrivate, now: NOW,
+      calendar: { avatar_gacha_schedule_list: [schedule({
+        gacha_type: "GACHA_TYPE_CHARACTER_RETURN", sup_lock_show: triggered,
+      })] },
+    });
+    const publicWithout = await render(false, false);
+    const publicWith = await render(false, true);
+    const privateWithout = await render(true, false);
+    const privateWith = await render(true, true);
+    expect(publicWithout.equals(publicWith)).toBe(true);
+    expect(privateWithout.equals(privateWith)).toBe(false);
+    expect(publicWithout.equals(privateWithout)).toBe(false);
+  });
 });
