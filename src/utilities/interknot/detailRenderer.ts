@@ -78,6 +78,13 @@ export async function renderDetail(
   };
 }
 
+/** Floors shown on a comment page, measured without drawing (for the report modal). */
+export function commentPageFloors(comments: DetailComment[], commentPage: number, locale: string): number[] {
+  const pages = paginateComments(createCanvas(1, 1).getContext("2d"), { comments, locale });
+  const page = pages[Math.min(Math.max(0, commentPage), pages.length - 1)];
+  return page.flatMap((b) => ("floor" in b ? [b.floor] : []));
+}
+
 async function drawHeader(ctx: SKRSContext2D, i: DetailInput): Promise<void> {
   await drawAvatar(ctx, i.author.avatarId, 338, 230, 76);
   ctx.textAlign = "left";
@@ -173,7 +180,7 @@ function drawText(ctx: SKRSContext2D, i: DetailInput, x: number, w: number, px: 
   return truncated;
 }
 
-function paginateComments(ctx: SKRSContext2D, i: DetailInput): Block[][] {
+function paginateComments(ctx: SKRSContext2D, i: Pick<DetailInput, "comments" | "locale">): Block[][] {
   ctx.font = font(i.locale, 18);
   const blocks: Block[] = i.comments.map((c) => {
     const lines = wrapLines(ctx, c.body, COMMENT.textW, COMMENT.maxLines);
