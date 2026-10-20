@@ -52,12 +52,22 @@ export function displayAuthor(
 }
 
 const tagTitle = (ctx: ViewCtx, p: Pick<Post, "tag" | "title">) => `[${ctx.tr(`interknot_Tag_${p.tag}`)}]${p.title}`;
-const clip = (s: string, n: number) => ([...s].length > n ? [...s].slice(0, n - 1).join("") + "…" : s);
+// Discord measures limits in UTF-16 units, so cut by .length while keeping whole code points.
+const clip = (s: string, n: number) => {
+  if (s.length <= n) return s;
+  let out = "";
+  for (const ch of s) {
+    if (out.length + ch.length > n - 1) break;
+    out += ch;
+  }
+  return out + "…";
+};
 const button = (id: string, label: string, style = ButtonStyle.Secondary) =>
   new ButtonBuilder().setCustomId(id).setLabel(label).setStyle(style);
 const row = (...c: (ButtonBuilder | StringSelectMenuBuilder)[]) => new ActionRowBuilder<any>().addComponents(...c);
 const payload = (files: AttachmentBuilder[], components: ActionRowBuilder<any>[], content?: string): MessagePayload => ({
-  ...(content === undefined ? {} : { content }),
+  // Always set content so editing over the setup screen clears its intro text.
+  content: content ?? "",
   embeds: [],
   files,
   components,

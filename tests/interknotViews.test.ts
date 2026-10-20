@@ -67,6 +67,11 @@ describe("feed message", () => {
     expect(payload.files).toHaveLength(1);
   });
 
+  it("clears leftover setup text when the feed replaces the setup screen", async () => {
+    expect((await buildFeedMessage(ctx, s)).content).toBe("");
+    expect((await buildDetailMessage(ctx, { ...s, postId: post }))!.content).toBe("");
+  });
+
   it("shows the setup screen when the viewer has no profile", async () => {
     const payload = await buildFeedMessage({ ...ctx, viewerId: "nobody" }, s);
     expect(labels(json(payload))).toContain(tr("interknot_CreateAccount"));
@@ -144,5 +149,22 @@ describe("OP tag anonymity", () => {
     expect(detailComments(ctx, post(true), [comment("author", false)])[0].isOp).toBe(false);
     expect(detailComments(ctx, post(false), [comment("author", true)])[0].isOp).toBe(false);
     expect(detailComments(ctx, post(false), [comment("other", false)])[0].isOp).toBe(false);
+  });
+});
+
+describe("select labels with emoji", () => {
+  // Discord limits are UTF-16 lengths; each emoji here is 2 units.
+  const long = "👍🎉" + "A".repeat(150);
+  it("builds the detail view when the viewer's own comment is long and has emoji", async () => {
+    store.addComment(post, "viewer", long, false, t);
+    const rows = json((await buildDetailMessage(ctx, { ...s, postId: post }))!);
+    const options = flat(rows).flatMap((c) => c.options ?? []);
+    expect(options.length).toBeGreaterThan(0);
+    expect(options.every((o) => o.label.length <= 100)).toBe(true);
+  });
+  it("builds the feed when a title is long and has emoji", async () => {
+    store.createPost({ authorId: "author", guildId: "g1", tag: "灌水", title: "🎉".repeat(30), body: long, coverHash: null, anonymous: false }, t + 3);
+    const options = flat(json(await buildFeedMessage(ctx, s))).flatMap((c) => c.options ?? []);
+    expect(options.every((o) => o.label.length <= 100 && (o.description ?? "").length <= 100)).toBe(true);
   });
 });
