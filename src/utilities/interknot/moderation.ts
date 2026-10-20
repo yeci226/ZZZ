@@ -77,8 +77,9 @@ async function dmDevelopers(client: Client, message: Parameters<import("discord.
     getDeveloperIds().map(async (id) => {
       try {
         await (await client.users.fetch(id)).send(message);
-      } catch {
-        console.warn("[interknot] developer DM failed");
+      } catch (error: any) {
+        // Code and message only, never the request payload.
+        console.warn("[interknot] developer DM failed", error?.code ?? "", String(error?.message ?? error).slice(0, 300));
       }
     }),
   );
