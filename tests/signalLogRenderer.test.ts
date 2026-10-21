@@ -171,15 +171,14 @@ describe("paper-style signal log overview", () => {
     await expect(renderSignalLog({ ...shared, source: "manual", category: "weapon_up" })).resolves.toBeInstanceOf(Buffer);
   });
 
-  it("shrinks the banner when no hero art resolves", async () => {
+  it("keeps the banner the same height with or without hero art", async () => {
     const banner = {
       name: "", version: "3.1", channelCategory: "character_up" as const,
       upItems: [{ id: "1091", name: "雅", icon: "", rarity: "S" as const, itemType: "character" as const }],
     };
     const withArt = await loadImage(await renderSignalLog({ ...shared, source: "manual", banner }));
     const withoutArt = await loadImage(await renderSignalLog({ ...shared, source: "manual" }));
-    const { heroHeight, compactHeroHeight } = __signalLogRendererInternals.overviewMetrics;
-    expect(withArt.height - withoutArt.height).toBe((heroHeight - compactHeroHeight) * 2);
+    expect(withArt.height).toBe(withoutArt.height);
   });
 
   it("lays out ten S records per page in two columns", async () => {

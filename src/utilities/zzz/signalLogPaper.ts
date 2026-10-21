@@ -367,8 +367,8 @@ function sItemArt(kind: GtCardKind, id: string): Promise<Image | null> {
   return bangbooArt(id);
 }
 
-/** Banner height without art: just the title and the account card. */
-export const COMPACT_HERO_HEIGHT = 120;
+/** One banner height for every page, with or without art. */
+export const HERO_HEIGHT = 120;
 
 function heroTitle(input: SignalLogRenderInput): string {
   const upNames = bannerUpItems(input).slice(0, 3).map((item) => item.name).filter(Boolean).join("／");
@@ -380,10 +380,9 @@ function heroTitle(input: SignalLogRenderInput): string {
 export async function drawHeroBanner(
   ctx: SKRSContext2D,
   input: SignalLogRenderInput,
-  height: number,
   subtitle: string,
-  art: Image | null,
 ): Promise<void> {
+  const height = HERO_HEIGHT;
   const accent = signalAccent(input);
   const copy = signalText(input.locale);
   ctx.fillStyle = PAPER.paperBright;
@@ -400,6 +399,7 @@ export async function drawHeroBanner(
   ctx.fill();
   ctx.restore();
 
+  const art = await resolveHeroArt(input);
   if (art) {
     ctx.save();
     ctx.beginPath();
@@ -408,8 +408,8 @@ export async function drawHeroBanner(
     if (art.width > art.height * 1.2) {
       // Wide agent portraits: fill the width and keep the face band in view.
       const drawHeight = WIDTH * art.height / art.width;
-      // Short banners only fit the eyes, so lift the portrait further.
-      ctx.drawImage(art, 0, -drawHeight * (height >= 240 ? .1 : .3), WIDTH, drawHeight);
+      // The short banner only fits the eyes, so lift the portrait.
+      ctx.drawImage(art, 0, -drawHeight * .3, WIDTH, drawHeight);
     } else {
       const size = height * 1.15;
       ctx.drawImage(art, WIDTH * .58 - size / 2, (height - size) / 2, size, size);
@@ -422,7 +422,7 @@ export async function drawHeroBanner(
   ctx.fillStyle = fade;
   ctx.fillRect(0, height * .5, WIDTH, height * .5);
 
-  const titleSize = height >= 240 ? 46 : 36;
+  const titleSize = 36;
   const title = wrappedName(ctx, heroTitle(input), WIDTH * .55, titleSize, 1, 22);
   const titleY = height - 30 - titleSize * .55;
   ctx.font = `bold ${title.size}px ${getZzzOfficialFont(input.locale)}`;
