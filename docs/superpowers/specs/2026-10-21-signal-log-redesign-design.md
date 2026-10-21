@@ -60,7 +60,8 @@
 | 音擎池（`weapon_up`/`weapon_return`） | UP 音擎 `src/assets/images/icons/gacha/weapon-big/{id}.webp` |
 | 邦布池 | `input.headerItem`（最新 S 邦布）的邦布圖 |
 | 常駐池 | 最近一次 S 角色的立繪（同上路徑） |
-| 以上都沒有或檔案不存在 | 純紙底加 accent 斜切色塊，不放圖 |
+| 上列來源缺席或檔案不存在（任何池型，含「全部紀錄」沒有 UP 資料時） | 最近一次 S 角色的立繪 |
+| 以上都沒有 | 純紙底加 accent 斜切色塊，不放圖 |
 
 ### 總覽 view（由上到下）
 
@@ -89,7 +90,7 @@
 
 ## 資料
 
-### `buildPityCycles(summary: GachaSummary): PityCycle[]`
+### `buildPityCycles(summary: GachaSummary, pityEstimated?: boolean): PityCycle[]`
 
 ```ts
 interface PityCycle {
