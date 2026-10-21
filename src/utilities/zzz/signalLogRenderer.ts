@@ -24,13 +24,28 @@ import {
 } from "./zeroPageBackground.js";
 import { normalizeZzzLocale } from "./canvasFonts.js";
 import { signalCategoryText, signalText } from "./recordText.js";
+import {
+  bannerUpItems,
+  coverPlacement,
+  drawWrappedName,
+  fitWithFont,
+  fittedNumberSize,
+  formatDate,
+  gtCardKind,
+  gtCardSource,
+  IMAGE_DIR,
+  itemIcon,
+  prepareGtCard,
+  remoteImage,
+  text,
+  wrapNameLines,
+  wrappedName,
+  type WrappedName,
+} from "./signalLogPaper.js";
 
 const WIDTH = 1044;
 const OUTPUT_SCALE = 2;
-const IMAGE_DIR = join(".", "src", "assets", "images");
 const ASSET_DIR = join(".", "src", "assets", "images", "zzz", "official-record");
-const OFFICIAL_CDN = "https://act-webstatic.hoyoverse.com/game_record/zzzv2";
-const remoteImageCache = new Map<string, Promise<Image | null>>();
 const RECORD_GRID_X = 48;
 const RECORD_GRID_WIDTH = 948;
 const RECORD_GRID_Y = 251;
@@ -97,105 +112,6 @@ function rr(ctx: SKRSContext2D, x: number, y: number, width: number, height: num
   ctx.closePath();
 }
 
-function fit(ctx: SKRSContext2D, value: unknown, width: number): string {
-  const original = String(value ?? "");
-  if (ctx.measureText(original).width <= width) return original;
-  let result = original;
-  while (result.length > 1 && ctx.measureText(`${result}…`).width > width) result = result.slice(0, -1);
-  return `${result}…`;
-}
-
-function text(
-  ctx: SKRSContext2D,
-  value: unknown,
-  x: number,
-  y: number,
-  size: number,
-  color = "#f3f3f3",
-  align: CanvasTextAlign = "left",
-  numberFont = false,
-): void {
-  ctx.font = `${size}px ${numberFont ? getZzzOfficialNumberFont("tw") : getZzzOfficialFont("tw")}`;
-  ctx.fillStyle = color;
-  ctx.textAlign = align;
-  ctx.textBaseline = "middle";
-  ctx.fillText(String(value ?? ""), x, y);
-}
-
-function fitWithFont(ctx: SKRSContext2D, value: string, width: number, size: number): string {
-  ctx.font = `${size}px ${getZzzOfficialFont("tw")}`;
-  return fit(ctx, value, width);
-}
-
-function fittedNumberSize(
-  ctx: SKRSContext2D,
-  value: unknown,
-  maxWidth: number,
-  preferredSize: number,
-): number {
-  const label = String(value ?? "");
-  for (let size = preferredSize; size >= 10; size--) {
-    ctx.font = `${size}px ${getZzzOfficialNumberFont("tw")}`;
-    if (ctx.measureText(label).width <= maxWidth) return size;
-  }
-  return 10;
-}
-
-interface WrappedName {
-  lines: string[];
-  size: number;
-  lineHeight: number;
-}
-
-function wrapNameLines(ctx: SKRSContext2D, value: unknown, width: number, size: number): string[] {
-  const source = String(value ?? "").trim();
-  if (!source) return [""];
-  ctx.font = `${size}px ${getZzzOfficialFont("tw")}`;
-  const lines: string[] = [];
-  let line = "";
-  for (const character of Array.from(source)) {
-    const candidate = `${line}${character}`;
-    if (line && ctx.measureText(candidate).width > width) {
-      lines.push(line.trimEnd());
-      line = character.trimStart();
-    } else {
-      line = candidate;
-    }
-  }
-  if (line || !lines.length) lines.push(line.trimEnd());
-  return lines;
-}
-
-function wrappedName(
-  ctx: SKRSContext2D,
-  value: unknown,
-  width: number,
-  preferredSize: number,
-  maxLines: number,
-  minimumSize: number,
-): WrappedName {
-  for (let size = preferredSize; size >= minimumSize; size -= 1) {
-    const lines = wrapNameLines(ctx, value, width, size);
-    if (lines.length <= maxLines || size === minimumSize) {
-      return { lines, size, lineHeight: Math.ceil(size * 1.25) };
-    }
-  }
-  return { lines: [String(value ?? "")], size: minimumSize, lineHeight: Math.ceil(minimumSize * 1.25) };
-}
-
-function drawWrappedName(
-  ctx: SKRSContext2D,
-  layout: WrappedName,
-  x: number,
-  firstBaseline: number,
-  color = "#f0f1f0",
-  align: CanvasTextAlign = "center",
-): void {
-  layout.lines.forEach((line, index) => {
-    text(ctx, line, x, firstBaseline + index * layout.lineHeight, layout.size, color, align);
-  });
-}
-
 function createScaledCanvas(height: number) {
   const canvas = createCanvas(WIDTH * OUTPUT_SCALE, height * OUTPUT_SCALE);
   const ctx = canvas.getContext("2d");
@@ -203,49 +119,6 @@ function createScaledCanvas(height: number) {
   ctx.imageSmoothingQuality = "high";
   ctx.scale(OUTPUT_SCALE, OUTPUT_SCALE);
   return { canvas, ctx };
-}
-
-function itemIcon(record: AnalyzedGachaRecord): string {
-  const id = Number(record.itemId);
-  if (!Number.isFinite(id) || id <= 0) return "";
-  if (id < 10000) return `${OFFICIAL_CDN}/role_square_avatar/role_square_avatar_${record.itemId}.png`;
-  if (id < 50000) return `${OFFICIAL_CDN}/weapon_square_avatar/weapon_square_avatar_${record.itemId}.png`;
-  return `${OFFICIAL_CDN}/bangboo_square_avatar/bangboo_square_avatar_${record.itemId}.png`;
-}
-
-async function remoteImage(url: string): Promise<Image | null> {
-  if (!url) return null;
-  const cached = remoteImageCache.get(url);
-  if (cached) return cached;
-  const request = (async () => {
-    try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(4_000) });
-      if (!response.ok) return null;
-      return await loadImage(Buffer.from(await response.arrayBuffer()));
-    } catch {
-      return null;
-    }
-  })();
-  remoteImageCache.set(url, request);
-  return request;
-}
-
-function bannerUpItems(input: SignalLogRenderInput) {
-  if (input.category === "bangboo") {
-    if (input.headerItem) return [input.headerItem];
-    const latest = input.summary.sRecords.find((record) =>
-      gtCardKind(record.itemType, String(record.itemId ?? "")) === "bangboo");
-    return latest ? [{
-      id: String(latest.itemId ?? ""),
-      name: latest.name,
-      itemType: "bangboo" as const,
-      rarity: "S" as const,
-      icon: "",
-    }] : [];
-  }
-  const items = input.banner?.upItems ?? [];
-  const sItems = items.filter((item) => item.rarity !== undefined && normalizeRank(item.rarity) === "S");
-  return sItems.length ? sItems : items.slice(0, 1);
 }
 
 async function officialItemImage(input: {
@@ -281,120 +154,6 @@ async function officialItemImage(input: {
   return remoteImage(itemIcon(record));
 }
 
-interface GtCardSourceItem {
-  id: string;
-  itemType: string;
-  rarity: GtCardRank;
-  icon?: string;
-  elementType?: number;
-  subElementType?: number;
-  profession?: string | number;
-}
-
-function gtCardKind(itemType: string, itemId: string): GtCardKind {
-  const type = itemType.toLowerCase();
-  if (type.includes("weapon") || type.includes("音擎")) return "weapon";
-  if (type.includes("bangboo") || type.includes("邦布")) return "bangboo";
-  if (type.includes("character") || type.includes("代理人") || type.includes("角色")) return "character";
-  const numeric = Number(itemId);
-  if (Number.isFinite(numeric)) {
-    if (numeric < 10_000) return "character";
-    if (numeric < 50_000) return "weapon";
-    return "bangboo";
-  }
-  return "unknown";
-}
-
-async function loadSquareItemImage(item: GtCardSourceItem): Promise<Image | null> {
-  const kind = gtCardKind(item.itemType, item.id);
-  if (kind === "weapon") {
-    const source = await resolveGachaWeaponIcon(item.id);
-    if (source) {
-      const image = /^https?:\/\//i.test(source)
-        ? await remoteImage(source)
-        : await safeGtCardImage(source);
-      if (image) return image;
-    }
-  } else if (kind === "bangboo") {
-    const source = await resolveGachaBangbooIcon(item.id);
-    if (source) {
-      const image = /^https?:\/\//i.test(source)
-        ? await remoteImage(source)
-        : await safeGtCardImage(source);
-      if (image) return image;
-    }
-  }
-  if (item.icon) {
-    const direct = /^https?:\/\//i.test(item.icon)
-      ? await remoteImage(item.icon)
-      : await safeGtCardImage(item.icon);
-    if (direct) return direct;
-  }
-  const local = kind === "character"
-    ? join(IMAGE_DIR, "zzz", "paintings", `role_square_avatar_${item.id}.png`)
-    : "";
-  if (local && existsSync(local)) {
-    const image = await safeGtCardImage(local);
-    if (image) return image;
-  }
-  return remoteImage(itemIcon({ itemId: item.id, itemType: item.itemType } as AnalyzedGachaRecord));
-}
-
-function gtCardSource(
-  input: SignalLogRenderInput,
-  value: GtCardSourceItem,
-): GtCardSourceItem {
-  const metadata = input.banner?.upItems.find((item) => String(item.id) === value.id);
-  return {
-    ...value,
-    icon: metadata?.icon || value.icon,
-    elementType: metadata?.elementType ?? value.elementType,
-    subElementType: metadata?.subElementType ?? value.subElementType,
-    profession: metadata?.profession ?? value.profession,
-  };
-}
-
-async function prepareGtCard(
-  input: SignalLogRenderInput,
-  value: GtCardSourceItem,
-) {
-  const source = gtCardSource(input, value);
-  const item: GtCardItem = {
-    id: source.id,
-    rarity: source.rarity,
-    elementType: source.elementType,
-    subElementType: source.subElementType,
-    profession: source.profession,
-  };
-  const [art, metadata] = await Promise.all([
-    loadSquareItemImage(source),
-    loadGtCardMetadataImages(item),
-  ]);
-  return {
-    item,
-    kind: gtCardKind(source.itemType, source.id),
-    images: { art, ...metadata },
-  };
-}
-
-function coverPlacement(
-  imageWidth: number,
-  imageHeight: number,
-  width: number,
-  height: number,
-) {
-  if (!(imageWidth > 0) || !(imageHeight > 0)) return null;
-  const scale = Math.max(width / imageWidth, height / imageHeight);
-  const drawWidth = imageWidth * scale;
-  const drawHeight = imageHeight * scale;
-  return {
-    x: (width - drawWidth) / 2,
-    y: (height - drawHeight) / 2,
-    width: drawWidth,
-    height: drawHeight,
-  };
-}
-
 function drawCircleItem(ctx: SKRSContext2D, image: Image | null, x: number, y: number, radius: number, placeholder = "S"): void {
   ctx.save();
   ctx.beginPath();
@@ -422,17 +181,6 @@ function drawCircleItem(ctx: SKRSContext2D, image: Image | null, x: number, y: n
   ctx.lineWidth = 2;
   ctx.stroke();
   if (!image) text(ctx, placeholder, x, y + 1, Math.max(14, radius * .65), "#242523", "center", true);
-}
-
-function formatDate(value?: string | null, withTime = true, locale?: string): string {
-  if (!value) return signalText(locale).notSynced;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  const intlLocale: Record<string, string> = { tw: "zh-TW", cn: "zh-CN", jp: "ja-JP", kr: "ko-KR", fr: "fr-FR", vi: "vi-VN", en: "en-US" };
-  return new Intl.DateTimeFormat(intlLocale[normalizeZzzLocale(locale)] ?? "en-US", {
-    timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit",
-    ...(withTime ? { hour: "2-digit", minute: "2-digit", hour12: false } : {}),
-  }).format(date);
 }
 
 function ticketEntry(details: any, matcher: (type: string) => boolean): any | undefined {

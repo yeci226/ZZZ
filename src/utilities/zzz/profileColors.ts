@@ -56,3 +56,24 @@ export function getPaperAccent(rawAccent: string): string {
     Math.round(source[2] * 0.1),
   ]);
 }
+
+// Same fallback as the formal profile palette accent.
+const DEFAULT_ACCENT = "#de493e";
+
+/** Role painting color when valid, otherwise the element color. */
+export function safeAccent(raw: unknown, elementType: number): string {
+  const value = typeof raw === "string" ? raw.trim() : "";
+  if (/^#[0-9a-f]{6}$/iu.test(value) && value.toLowerCase() !== "#000000") {
+    return value;
+  }
+  return (
+    {
+      200: "#b6b8bc",
+      201: "#bd4f37",
+      202: "#05777a",
+      203: "#c99821",
+      204: "#177f91",
+      205: "#8d55bb",
+    } as Record<number, string>
+  )[elementType] ?? DEFAULT_ACCENT;
+}

@@ -13,7 +13,7 @@ import {
 } from "./autoDownloadIcons.js";
 import { getFlatSuitIcon } from "./profileSuitIcons.js";
 import { ensureZzzCanvasFonts, getZzzCanvasFont } from "./canvasFonts.js";
-import { getPaperAccent } from "./profileColors.js";
+import { getPaperAccent, safeAccent } from "./profileColors.js";
 import { DISC_SUBSTAT_STYLE, discEnhancementCount, getDiscSubstatLayout } from "./profileDiscEnhancement.js";
 import { profileScore } from "./combat/render.js";
 import { drawDiscScore, drawTotalScore } from "./discScorePresentation.js";
@@ -292,23 +292,6 @@ function rgbaFromHex(hex: string, alpha: number, factor = 0.55): string {
   const green = Math.round(((number >> 8) & 255) * factor);
   const blue = Math.round((number & 255) * factor);
   return `rgba(${red},${green},${blue},${alpha})`;
-}
-
-function safeAccent(raw: unknown, elementType: number): string {
-  const value = typeof raw === "string" ? raw.trim() : "";
-  if (/^#[0-9a-f]{6}$/iu.test(value) && value.toLowerCase() !== "#000000") {
-    return value;
-  }
-  return (
-    {
-      200: "#b6b8bc",
-      201: "#bd4f37",
-      202: "#05777a",
-      203: "#c99821",
-      204: "#177f91",
-      205: "#8d55bb",
-    } as Record<number, string>
-  )[elementType] ?? C.accent;
 }
 
 function normalizePropertyName(value: unknown): string {
