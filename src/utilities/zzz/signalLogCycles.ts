@@ -6,6 +6,7 @@ import { buildPityCycles, type PityCycle } from "./signalLogCycleData.js";
 import { drawTopBadge, hasTopBadge, loadTopIcon, pageLabel } from "./signalLogOverview.js";
 import { SIGNAL_LOG_PAGE_SIZE, signalLogPageCount } from "./signalLogPagination.js";
 import {
+  COMPACT_HERO_HEIGHT,
   createScaledCanvas,
   drawGlassCard,
   drawHeroBanner,
@@ -14,6 +15,7 @@ import {
   PAPER,
   prepareGtCard,
   progressColor,
+  resolveHeroArt,
   signalAccent,
   text,
   WIDTH,
@@ -86,15 +88,17 @@ export async function renderSignalCycles(input: SignalLogRenderInput): Promise<B
   const all = buildPityCycles(input.summary, input.pityEstimated, input.openCycleIsLive);
   const cycles = all.slice(input.page * SIGNAL_LOG_PAGE_SIZE, (input.page + 1) * SIGNAL_LOG_PAGE_SIZE);
   const listHeight = cycles.length ? cycles.length * (ROW_HEIGHT + ROW_GAP) - ROW_GAP : EMPTY_HEIGHT;
-  const height = HERO_HEIGHT + GAP + SECTION_HEIGHT + listHeight + FOOTER_HEIGHT;
+  const art = await resolveHeroArt(input);
+  const heroHeight = art ? HERO_HEIGHT : COMPACT_HERO_HEIGHT;
+  const height = heroHeight + GAP + SECTION_HEIGHT + listHeight + FOOTER_HEIGHT;
   const { canvas, ctx } = createScaledCanvas(height);
   const copy = signalText(input.locale);
   const accent = signalAccent(input);
   const hard = input.summary.hardPity;
   drawPaper(ctx, height);
-  await drawHeroBanner(ctx, input, HERO_HEIGHT, copy.viewRecords);
+  await drawHeroBanner(ctx, input, heroHeight, copy.viewRecords, art);
 
-  let y = HERO_HEIGHT + GAP;
+  let y = heroHeight + GAP;
   ctx.font = `bold 22px ${getZzzOfficialFont(input.locale)}`;
   ctx.fillStyle = PAPER.ink;
   ctx.textAlign = "left";

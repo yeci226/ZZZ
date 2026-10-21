@@ -13,10 +13,10 @@ import {
   WIDTH,
 } from "../src/utilities/zzz/signalLogPaper.js";
 
-function sRecord(itemId: string): AnalyzedGachaRecord {
+function sRecord(itemId: string, itemType = "代理人"): AnalyzedGachaRecord {
   return {
     ownerId: "owner", uid: "uid", source: "official", gachaType: "2", recordId: itemId,
-    itemId, name: itemId, itemType: "代理人", rarity: "S", pulledAt: "2026-01-01T00:00:00.000Z",
+    itemId, name: itemId, itemType, rarity: "S", pulledAt: "2026-01-01T00:00:00.000Z",
     rank: "S", pityPosition: 50, pullsSincePreviousUp: null, isUp: true, guaranteeResult: null,
   };
 }
@@ -73,6 +73,14 @@ describe("signal log paper primitives", () => {
 
   it("falls back to the newest S agent when the UP portrait file is missing", async () => {
     expect(await resolveHeroArt(input({ up: "9999", sRecords: [sRecord("1091")] }))).not.toBeNull();
+  });
+
+  it("skips S agents without a portrait and uses the next newest one", async () => {
+    expect(await resolveHeroArt(input({ category: "character_up", sRecords: [sRecord("9991"), sRecord("1091")] }))).not.toBeNull();
+  });
+
+  it("falls back to a W-Engine S's art when the channel has no banner", async () => {
+    expect(await resolveHeroArt(input({ category: "weapon_up", sRecords: [sRecord("14109", "音擎")] }))).not.toBeNull();
   });
 
   it("returns null when nothing resolves", async () => {

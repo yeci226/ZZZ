@@ -7,6 +7,7 @@ import { drawGtCard, loadGtCardAssets, type GtCardAssets } from "./gtCardRendere
 import { signalCategoryText, signalText } from "./recordText.js";
 import { SIGNAL_LOG_PAGE_SIZE, signalLogPageCount } from "./signalLogPagination.js";
 import {
+  COMPACT_HERO_HEIGHT,
   createScaledCanvas,
   drawGlassCard,
   drawHeroBanner,
@@ -19,6 +20,7 @@ import {
   PAPER,
   prepareGtCard,
   progressColor,
+  resolveHeroArt,
   remoteImage,
   signalAccent,
   text,
@@ -299,7 +301,9 @@ function gridHeight(count: number): number {
 export async function renderSignalOverview(input: SignalLogRenderInput): Promise<Buffer> {
   const records = input.summary.sRecords.slice(input.page * SIGNAL_LOG_PAGE_SIZE, (input.page + 1) * SIGNAL_LOG_PAGE_SIZE);
   const resources = hasResourceRow(input);
-  const height = HERO_HEIGHT + GAP
+  const art = await resolveHeroArt(input);
+  const heroHeight = art ? HERO_HEIGHT : COMPACT_HERO_HEIGHT;
+  const height = heroHeight + GAP
     + (resources ? RESOURCE_ROW_HEIGHT + GAP : 0)
     + STAT_HEIGHT + GAP
     + SECTION_HEIGHT
@@ -309,8 +313,8 @@ export async function renderSignalOverview(input: SignalLogRenderInput): Promise
   const cardAssets = await loadGtCardAssets();
   drawPaper(ctx, height);
   const subtitle = [input.banner?.version, signalCategoryText(input.locale, input.category)].filter(Boolean).join(" · ");
-  await drawHeroBanner(ctx, input, HERO_HEIGHT, subtitle);
-  let y = HERO_HEIGHT + GAP;
+  await drawHeroBanner(ctx, input, heroHeight, subtitle, art);
+  let y = heroHeight + GAP;
   if (resources) {
     await drawResourceRow(ctx, input, y);
     y += RESOURCE_ROW_HEIGHT + GAP;
@@ -325,4 +329,4 @@ export async function renderSignalOverview(input: SignalLogRenderInput): Promise
   return canvas.toBuffer("image/png");
 }
 
-export const overviewMetrics = { resourceRowHeight: RESOURCE_ROW_HEIGHT + GAP };
+export const overviewMetrics = { resourceRowHeight: RESOURCE_ROW_HEIGHT + GAP, heroHeight: HERO_HEIGHT, compactHeroHeight: COMPACT_HERO_HEIGHT };

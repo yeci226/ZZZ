@@ -348,17 +348,27 @@ export async function resolveHeroArt(input: SignalLogRenderInput): Promise<Image
   const up = bannerUpItems(input)[0];
   const id = String(up?.id ?? "");
   let art: Image | null = null;
-  if (id && (input.category === "character_up" || input.category === "character_return")) {
-    art = await localImage(join(PORTRAIT_DIR, `${id}.png`));
-  } else if (id && (input.category === "weapon_up" || input.category === "weapon_return")) {
-    art = await localImage(join(IMAGE_DIR, "icons", "gacha", "weapon-big", `${id}.webp`));
-  } else if (id && input.category === "bangboo") {
-    art = await bangbooArt(id);
-  }
+  if (input.category === "character_up" || input.category === "character_return") art = await sItemArt("character", id);
+  else if (input.category === "weapon_up" || input.category === "weapon_return") art = await sItemArt("weapon", id);
+  else if (input.category === "bangboo") art = await sItemArt("bangboo", id);
   if (art) return art;
-  const agent = input.summary.sRecords.find((record) => gtCardKind(record.itemType, record.itemId) === "character");
-  return agent ? localImage(join(PORTRAIT_DIR, `${agent.itemId}.png`)) : null;
+  // Newest S with art first: new agents can lack a portrait asset.
+  for (const record of input.summary.sRecords) {
+    art = await sItemArt(gtCardKind(record.itemType, record.itemId), String(record.itemId ?? ""));
+    if (art) return art;
+  }
+  return null;
 }
+
+function sItemArt(kind: GtCardKind, id: string): Promise<Image | null> {
+  if (!id) return Promise.resolve(null);
+  if (kind === "character") return localImage(join(PORTRAIT_DIR, `${id}.png`));
+  if (kind === "weapon") return localImage(join(IMAGE_DIR, "icons", "gacha", "weapon-big", `${id}.webp`));
+  return bangbooArt(id);
+}
+
+/** Banner height without art: just the title and the account card. */
+export const COMPACT_HERO_HEIGHT = 120;
 
 function heroTitle(input: SignalLogRenderInput): string {
   const upNames = bannerUpItems(input).slice(0, 3).map((item) => item.name).filter(Boolean).join("／");
@@ -372,6 +382,7 @@ export async function drawHeroBanner(
   input: SignalLogRenderInput,
   height: number,
   subtitle: string,
+  art: Image | null,
 ): Promise<void> {
   const accent = signalAccent(input);
   const copy = signalText(input.locale);
@@ -389,7 +400,6 @@ export async function drawHeroBanner(
   ctx.fill();
   ctx.restore();
 
-  const art = await resolveHeroArt(input);
   if (art) {
     ctx.save();
     ctx.beginPath();
