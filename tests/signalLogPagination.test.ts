@@ -1,6 +1,10 @@
+import type { AnalyzedGachaRecord, GachaRank, GachaSummary } from "../src/utilities/zzz/gachaAnalysis.js";
 import {
+  normalizeSignalLogView,
   paginateSignalBannerChoices,
   paginateSignalBannerChoicesWithPinned,
+  signalLogPageCount,
+  switchSignalLogView,
 } from "../src/utilities/zzz/signalLogPagination.js";
 
 describe("signal log banner pagination", () => {
@@ -30,5 +34,43 @@ describe("signal log banner pagination", () => {
     expect(second.items).toEqual([all, ...choices.slice(24, 48)]);
     expect(first.items).toHaveLength(25);
     expect(first.pages).toBe(3);
+  });
+});
+
+function summaryOf(oldestFirst: GachaRank[]): GachaSummary {
+  const records = oldestFirst.map((rank, index) => ({ rank, recordId: String(index) }) as AnalyzedGachaRecord).reverse();
+  return {
+    total: records.length, averageS: null, averageUp: null, winRate: null,
+    currentPity: null, hardPity: 90, nextGuaranteed: null,
+    sRecords: records.filter((record) => record.rank === "S"), records,
+  };
+}
+
+describe("signal log view pages", () => {
+  const sThenOpen = (sCount: number) => summaryOf([
+    ...Array.from({ length: sCount }, () => ["B", "S"] as GachaRank[]).flat(), "B", "B", "B",
+  ]);
+
+  it("counts overview pages from S records and cycle pages from pity cycles", () => {
+    expect(signalLogPageCount(sThenOpen(11), "overview")).toBe(2);
+    expect(signalLogPageCount(sThenOpen(11), "records")).toBe(2);
+    expect(signalLogPageCount(sThenOpen(10), "overview")).toBe(1);
+    expect(signalLogPageCount(sThenOpen(10), "records")).toBe(2);
+  });
+
+  it("never returns fewer than one page", () => {
+    expect(signalLogPageCount(summaryOf([]), "overview")).toBe(1);
+    expect(signalLogPageCount(summaryOf([]), "records")).toBe(1);
+  });
+
+  it("switches view and resets the page to zero", () => {
+    expect(switchSignalLogView("overview")).toEqual({ view: "records", page: 0 });
+    expect(switchSignalLogView("records")).toEqual({ view: "overview", page: 0 });
+  });
+
+  it("normalizes unknown persisted views to overview", () => {
+    expect(normalizeSignalLogView("records")).toBe("records");
+    expect(normalizeSignalLogView("grid")).toBe("overview");
+    expect(normalizeSignalLogView(null)).toBe("overview");
   });
 });
