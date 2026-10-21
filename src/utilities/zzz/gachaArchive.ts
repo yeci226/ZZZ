@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { normalizeSignalLogView, type SignalLogView } from "./signalLogPagination.js";
 
 export type GachaArchiveSource = "official" | "manual" | "rng_moe";
 export type GachaChannelCategory =
@@ -116,6 +117,7 @@ export interface PersistedSignalLogSession {
   bannerPage: number;
   page: number;
   stale: boolean;
+  view?: SignalLogView;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -295,6 +297,7 @@ export class GachaArchiveStore {
         banner_page INTEGER NOT NULL DEFAULT 0,
         page INTEGER NOT NULL DEFAULT 0,
         stale INTEGER NOT NULL DEFAULT 0,
+        view TEXT NOT NULL DEFAULT 'overview',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (owner_id, uid)
@@ -304,6 +307,9 @@ export class GachaArchiveStore {
       CREATE INDEX IF NOT EXISTS idx_signal_log_sessions_account
         ON signal_log_sessions(owner_id, uid, source);
     `);
+    if (!this.tableColumns("signal_log_sessions").has("view")) {
+      this.db.exec("ALTER TABLE signal_log_sessions ADD COLUMN view TEXT NOT NULL DEFAULT 'overview'");
+    }
     const names = this.tableColumns("gacha_records");
     if (!names.has("channel_category")) {
       this.db.exec("ALTER TABLE gacha_records ADD COLUMN channel_category TEXT NOT NULL DEFAULT 'unknown'");
@@ -840,8 +846,8 @@ export class GachaArchiveStore {
       INSERT INTO signal_log_sessions (
         token, invoker_id, owner_id, account_index, uid, player_name, locale,
         linked, region, source, category, banner_id, banner_page, page, stale,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        view, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(token) DO UPDATE SET
         invoker_id = excluded.invoker_id,
         owner_id = excluded.owner_id,
@@ -857,6 +863,7 @@ export class GachaArchiveStore {
         banner_page = excluded.banner_page,
         page = excluded.page,
         stale = excluded.stale,
+        view = excluded.view,
         updated_at = excluded.updated_at
     `).run(
       input.token,
@@ -874,6 +881,7 @@ export class GachaArchiveStore {
       input.bannerPage,
       input.page,
       input.stale ? 1 : 0,
+      normalizeSignalLogView(input.view),
       input.createdAt ?? now,
       now,
     );
@@ -900,6 +908,7 @@ export class GachaArchiveStore {
       bannerPage: Math.max(0, Number(row.banner_page) || 0),
       page: Math.max(0, Number(row.page) || 0),
       stale: bool(row.stale),
+      view: normalizeSignalLogView(row.view),
       createdAt: String(row.created_at ?? ""),
       updatedAt: String(row.updated_at ?? ""),
     };

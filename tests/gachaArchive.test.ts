@@ -198,6 +198,44 @@ describe("structured ZZZ gacha archive", () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
+  it("persists the signal log view and defaults legacy rows to overview", () => {
+    const session = {
+      token: "view-token", invokerId: "viewer", ownerId: "owner", accountIndex: 0,
+      uid: "uid", playerName: "", locale: "tw", linked: false, region: "",
+      source: "official" as const, category: "character_up" as const, bannerId: null,
+      bannerPage: 0, page: 0, stale: false,
+    };
+    store.upsertAccount({ ownerId: "owner", uid: "uid", source: "official" });
+    store.saveSignalLogSession({ ...session, view: "records" });
+    expect(store.getSignalLogSession("view-token")?.view).toBe("records");
+    store.saveSignalLogSession(session);
+    expect(store.getSignalLogSession("view-token")?.view).toBe("overview");
+    (store as any).db.prepare("UPDATE signal_log_sessions SET view = 'bogus'").run();
+    expect(store.getSignalLogSession("view-token")?.view).toBe("overview");
+  });
+
+  it("adds the view column to an existing signal_log_sessions table", () => {
+    const directory = mkdtempSync(join(tmpdir(), "zzz-gacha-view-"));
+    const path = join(directory, "archive.sqlite");
+    const first = new GachaArchiveStore(path);
+    first.upsertAccount({ ownerId: "owner", uid: "uid", source: "official" });
+    first.saveSignalLogSession({
+      token: "legacy-token", invokerId: "viewer", ownerId: "owner", accountIndex: 0,
+      uid: "uid", playerName: "", locale: "tw", linked: false, region: "",
+      source: "official", category: "character_up", bannerId: null,
+      bannerPage: 0, page: 0, stale: false, view: "records",
+    });
+    first.close();
+    const raw = new Database(path);
+    raw.exec("ALTER TABLE signal_log_sessions DROP COLUMN view");
+    raw.close();
+
+    const second = new GachaArchiveStore(path);
+    expect(second.getSignalLogSession("legacy-token")?.view).toBe("overview");
+    second.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
   it("normalizes legacy zero banner IDs when reopening an archive", () => {
     const directory = mkdtempSync(join(tmpdir(), "zzz-gacha-zero-banner-"));
     const path = join(directory, "archive.sqlite");
