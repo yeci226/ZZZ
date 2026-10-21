@@ -154,6 +154,13 @@ describe("paper-style signal log overview", () => {
     expect(labels(1)).toHaveLength(4);
   });
 
+  it("badges only UP S-ranks with TOP", () => {
+    const { hasTopBadge } = __signalLogRendererInternals;
+    expect(hasTopBadge({ isUp: true } as any)).toBe(true);
+    expect(hasTopBadge({ isUp: false } as any)).toBe(false);
+    expect(hasTopBadge({ isUp: null } as any)).toBe(false);
+  });
+
   it("shows a dash for UP-only stats in the standard pool", () => {
     const label = signalText("tw").averageUp;
     const entries = __signalLogRendererInternals.statsEntries({ ...emptySummary(), averageUp: 60 }, "standard", "tw");

@@ -3,7 +3,7 @@ import { getZzzOfficialFont } from "./canvasFonts.js";
 import { drawGtCard, loadGtCardAssets } from "./gtCardRenderer.js";
 import { signalText } from "./recordText.js";
 import { buildPityCycles, type PityCycle } from "./signalLogCycleData.js";
-import { drawLostTag, pageLabel } from "./signalLogOverview.js";
+import { drawTopBadge, hasTopBadge, loadTopIcon, pageLabel } from "./signalLogOverview.js";
 import { SIGNAL_LOG_PAGE_SIZE, signalLogPageCount } from "./signalLogPagination.js";
 import {
   createScaledCanvas,
@@ -30,7 +30,7 @@ const EMPTY_HEIGHT = 120;
 const FOOTER_HEIGHT = 44;
 const CONTENT_WIDTH = WIDTH - MARGIN * 2;
 const TRACK_X = 72;
-const TRACK_RIGHT = 120;
+const TRACK_RIGHT = 160;
 const TRACK_HEIGHT = 24;
 
 export type CycleCell = "s" | "a" | "b" | "current" | "empty";
@@ -108,9 +108,12 @@ export async function renderSignalCycles(input: SignalLogRenderInput): Promise<B
     text(ctx, copy.noRecords, WIDTH / 2, y + EMPTY_HEIGHT / 2, 20, PAPER.muted, "center");
   } else {
     const cardAssets = await loadGtCardAssets();
-    const cards = await Promise.all(cycles.map((cycle) => cycle.sRecord
-      ? prepareGtCard(input, { id: String(cycle.sRecord.itemId ?? ""), itemType: cycle.sRecord.itemType, rarity: "S" })
-      : null));
+    const [cards, top] = await Promise.all([
+      Promise.all(cycles.map((cycle) => cycle.sRecord
+        ? prepareGtCard(input, { id: String(cycle.sRecord.itemId ?? ""), itemType: cycle.sRecord.itemType, rarity: "S" })
+        : null)),
+      loadTopIcon(),
+    ]);
     const trackWidth = CONTENT_WIDTH - TRACK_X - TRACK_RIGHT;
     const cellWidth = trackWidth / hard;
     cycles.forEach((cycle, index) => {
@@ -127,9 +130,9 @@ export async function renderSignalCycles(input: SignalLogRenderInput): Promise<B
       });
       const label = `${cycle.partial ? "~" : ""}${cycle.length}`;
       const color = cycle.sRecord ? progressColor(cycle.length, hard) : accent;
-      const numberRight = MARGIN + CONTENT_WIDTH - 52;
+      const numberRight = MARGIN + CONTENT_WIDTH - 82;
       numberText(ctx, label, numberRight, rowY + ROW_HEIGHT / 2 + 2, 28, color, "right");
-      if (cycle.lost) drawLostTag(ctx, numberRight + 8, rowY + ROW_HEIGHT / 2, input.locale);
+      if (cycle.sRecord && hasTopBadge(cycle.sRecord)) drawTopBadge(ctx, top, numberRight + 8, rowY + ROW_HEIGHT / 2);
     });
   }
 

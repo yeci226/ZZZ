@@ -129,19 +129,25 @@ export function pageLabel(locale: string | undefined, page: number, pages: numbe
   return signalText(locale).pageOf.replace("{page}", String(page + 1)).replace("{pages}", String(pages));
 }
 
-export function drawLostTag(ctx: SKRSContext2D, x: number, y: number, locale?: string): number {
-  const label = signalText(locale).lost;
-  ctx.font = `bold 12px ${getZzzOfficialFont(locale)}`;
-  const width = ctx.measureText(label).width + 10;
-  ctx.beginPath();
-  ctx.roundRect(x, y - 9, width, 18, 3);
-  ctx.fillStyle = PAPER.lost;
-  ctx.fill();
-  ctx.fillStyle = "#fff";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.fillText(label, x + 5, y + 1);
-  return width;
+export function hasTopBadge(record: Pick<AnalyzedGachaRecord, "isUp">): boolean {
+  return record.isUp === true;
+}
+
+let topIcon: Promise<Image> | null = null;
+export function loadTopIcon(): Promise<Image> {
+  topIcon ??= loadImage(join(ASSET_DIR, "icon-top.140345aa.png"));
+  return topIcon;
+}
+
+const TOP_HEIGHT = 18;
+
+export function topBadgeWidth(top: Image): number {
+  return top.width * TOP_HEIGHT / top.height;
+}
+
+/** Draws the TOP icon left-aligned at x, vertically centred on y. */
+export function drawTopBadge(ctx: SKRSContext2D, top: Image, x: number, y: number): void {
+  ctx.drawImage(top, x, y - TOP_HEIGHT / 2, topBadgeWidth(top), TOP_HEIGHT);
 }
 
 function drawBar(ctx: SKRSContext2D, x: number, y: number, width: number, value: number | null, max: number, color: string): void {
@@ -254,9 +260,12 @@ async function drawSRecordGrid(
     text(ctx, input.banner ? copy.noSForBanner : copy.noS, WIDTH / 2, y + EMPTY_HEIGHT / 2, 20, PAPER.muted, "center");
     return;
   }
-  const cards = await Promise.all(records.map((record) => prepareGtCard(input, {
-    id: String(record.itemId ?? ""), itemType: record.itemType, rarity: record.rank,
-  })));
+  const [cards, top] = await Promise.all([
+    Promise.all(records.map((record) => prepareGtCard(input, {
+      id: String(record.itemId ?? ""), itemType: record.itemType, rarity: record.rank,
+    }))),
+    loadTopIcon(),
+  ]);
   const width = (CONTENT_WIDTH - ROW_GAP) / 2;
   const hard = input.summary.hardPity;
   records.forEach((record, index) => {
@@ -267,14 +276,16 @@ async function drawSRecordGrid(
     drawGtCard(ctx, card.item, card.kind, x + 10, rowY + 10, 56, card.images, cardAssets);
     const nameX = x + 78;
     const numberWidth = 70;
-    const nameMax = width - (nameX - x) - numberWidth - 40;
+    const badge = hasTopBadge(record);
+    const reserved = badge ? topBadgeWidth(top) + 8 : 0;
+    const nameMax = width - (nameX - x) - numberWidth - 40 - reserved;
     const name = fitWithFont(ctx, record.name, nameMax, 18);
     ctx.font = `bold 18px ${getZzzOfficialFont(input.locale)}`;
     ctx.fillStyle = PAPER.ink;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(name, nameX, rowY + 28);
-    if (record.isUp === false) drawLostTag(ctx, nameX + ctx.measureText(name).width + 8, rowY + 28, input.locale);
+    if (badge) drawTopBadge(ctx, top, nameX + ctx.measureText(name).width + 8, rowY + 28);
     const color = progressColor(record.pityPosition, hard);
     drawBar(ctx, nameX, rowY + 50, width - (nameX - x) - numberWidth - 14, record.pityPosition, hard, color);
     numberText(ctx, record.pityPosition === null ? "?" : record.pityPosition, x + width - 14, rowY + ROW_HEIGHT / 2 + 2, 32, color, "right");

@@ -1,7 +1,7 @@
 import type { GachaArchiveBanner, GachaArchiveSource, GachaChannelCategory } from "./gachaArchive.js";
 import type { GachaSummary } from "./gachaAnalysis.js";
 import { cycleTrackCells, renderSignalCycles } from "./signalLogCycles.js";
-import { overviewMetrics, overviewStatCards, renderSignalOverview, sItemCounts, statsEntries } from "./signalLogOverview.js";
+import { overviewMetrics, overviewStatCards, hasTopBadge, renderSignalOverview, sItemCounts, statsEntries } from "./signalLogOverview.js";
 import type { SignalLogView } from "./signalLogPagination.js";
 import {
   bannerUpItems,
@@ -53,5 +53,6 @@ export const __signalLogRendererInternals = {
   overviewStatCards,
   overviewMetrics,
   cycleTrackCells,
+  hasTopBadge,
   outputScale: OUTPUT_SCALE,
 };
