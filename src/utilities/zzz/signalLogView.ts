@@ -36,7 +36,12 @@ import {
 } from "./gachaSync.js";
 import { requestZzzRecordApi } from "./officialRecordApi.js";
 import { renderSignalLog } from "./signalLogRenderer.js";
-import { paginateSignalBannerChoicesWithPinned } from "./signalLogPagination.js";
+import {
+  paginateSignalBannerChoicesWithPinned,
+  signalLogPageCount,
+  switchSignalLogView,
+  type SignalLogView,
+} from "./signalLogPagination.js";
 import { signalCategoryText, signalText } from "./recordText.js";
 import { signalActionText } from "./signalActionText.js";
 
@@ -55,6 +60,7 @@ export interface SignalLogSession {
   bannerId: string | null;
   bannerPage: number;
   page: number;
+  view: SignalLogView;
   details?: any;
   calendarBanners?: GachaCalendarBanner[];
   stale: boolean;
@@ -83,7 +89,7 @@ function sessionFrom(customId: string): SignalLogSession | null {
   }
   const cached = sessions.get(token);
   if (cached) return cached;
-  const session: SignalLogSession = { ...persisted };
+  const session: SignalLogSession = { ...persisted, view: persisted.view ?? "overview" };
   sessions.set(token, session);
   return session;
 }
@@ -209,6 +215,9 @@ function controls(session: SignalLogSession, pageCount: number): ActionRowBuilde
       .setStyle(ButtonStyle.Secondary).setDisabled(session.page <= 0),
     new ButtonBuilder().setCustomId(`glog-page-next:${token}`).setLabel(copy.next)
       .setStyle(ButtonStyle.Secondary).setDisabled(session.page >= pageCount - 1),
+    new ButtonBuilder().setCustomId(`glog-view:${token}`)
+      .setLabel(session.view === "overview" ? copy.viewRecords : copy.overview)
+      .setStyle(ButtonStyle.Primary),
   ));
   return rows.slice(0, 5);
 }
@@ -244,9 +253,8 @@ export async function buildSignalLogMessage(session: SignalLogSession) {
     livePity: live.pity, liveGuaranteed: live.guaranteed,
   });
   const latestBangboo = session.category === "bangboo" ? latestBangbooSRecord(timeline) : null;
-  const total = summary.sRecords.length;
-  const pageSize = 10;
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const pityEstimated = live.pity === null && summary.currentPity !== null;
+  const pageCount = signalLogPageCount(summary, session.view, pityEstimated);
   session.page = Math.min(Math.max(0, session.page), pageCount - 1);
   const renderedBanner = displayBanner(session, banner);
   const image = await renderSignalLog({
@@ -264,8 +272,8 @@ export async function buildSignalLogMessage(session: SignalLogSession) {
       itemType: "bangboo",
       rarity: "S",
     } : undefined,
-    summary, view: "overview", page: session.page, details: session.details,
-    pityEstimated: live.pity === null && summary.currentPity !== null,
+    summary, view: session.view, page: session.page, details: session.details,
+    pityEstimated,
   });
   saveSession(session);
   return {
@@ -318,7 +326,7 @@ export async function createSignalLogSession(input: {
     linked: input.linked ?? !!input.zzz,
     region: String(input.region ?? input.zzz?.region ?? ""),
     category: firstCategory(input.ownerId, uid, input.source), bannerId: null,
-    bannerPage: 0, page: 0, stale: false,
+    bannerPage: 0, page: 0, view: "overview", stale: false,
   };
   if (input.source === "official" && input.zzz) {
     try {
@@ -418,6 +426,8 @@ export async function handleSignalLogComponent(
     session.page = Math.max(0, session.page - 1);
   } else if (interaction.customId.startsWith("glog-page-next:")) {
     session.page++;
+  } else if (interaction.customId.startsWith("glog-view:")) {
+    Object.assign(session, switchSignalLogView(session.view));
   } else if (interaction.customId.startsWith("glog-how:")) {
     await interaction.followUp({
       content: "這是舊版紀錄訊息，請改用 `/調頻 匯入`。",
