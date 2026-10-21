@@ -440,7 +440,7 @@ export async function drawHeroBanner(
   fade.addColorStop(0, "rgba(251,247,240,0)");
   fade.addColorStop(1, "rgba(251,247,240,.88)");
   ctx.fillStyle = fade;
-  ctx.fillRect(0, height * .5, WIDTH * .62, height * .5);
+  ctx.fillRect(0, height * .5, WIDTH, height * .5);
 
   const titleSize = height >= 240 ? 46 : 36;
   const title = wrappedName(ctx, heroTitle(input), WIDTH * .55, titleSize, 1, 22);

@@ -2,6 +2,7 @@ import { createCanvas, loadImage } from "@napi-rs/canvas";
 import type { GachaSummary } from "../src/utilities/zzz/gachaAnalysis.js";
 import { getZzzOfficialNumberFont } from "../src/utilities/zzz/canvasFonts.js";
 import { renderSignalLog, __signalLogRendererInternals } from "../src/utilities/zzz/signalLogRenderer.js";
+import { signalText } from "../src/utilities/zzz/recordText.js";
 
 function emptySummary(): GachaSummary {
   return {
@@ -12,21 +13,6 @@ function emptySummary(): GachaSummary {
 }
 
 describe("official-style signal log renderer", () => {
-  it("renders official overview with a resource section and manual overview without one", async () => {
-    const shared = {
-      uid: "130000001", playerName: "繩匠", archivedAt: "2026-09-04T00:00:00.000Z",
-      category: "character_up" as const, bannerLabel: "3.1 測試卡池",
-      summary: emptySummary(), view: "overview" as const, page: 0,
-    };
-    const official = await loadImage(await renderSignalLog({ ...shared, source: "official", details: { tickets: [] } }));
-    const manual = await loadImage(await renderSignalLog({ ...shared, source: "manual" }));
-
-    expect(__signalLogRendererInternals.outputScale).toBe(2);
-    expect(official.width).toBe(2088);
-    expect(manual.width).toBe(2088);
-    expect(official.height - manual.height).toBe(140);
-  });
-
   it("renders a 20-record S/A/B page as a large 5×4 grid across all supported card kinds", async () => {
     const summary = emptySummary();
     summary.total = 20;
@@ -60,18 +46,6 @@ describe("official-style signal log renderer", () => {
     expect(__signalLogRendererInternals.recordCardPlacement(4)).toEqual({ column: 4, row: 0, x: 830, y: 251 });
     expect(__signalLogRendererInternals.recordCardPlacement(5)).toEqual({ column: 0, row: 1, x: 62, y: 445 });
     expect(__signalLogRendererInternals.recordCardPlacement(19)).toEqual({ column: 4, row: 3, x: 830, y: 833 });
-  });
-
-  it("aligns S-record cards, names and progress bars with the current-pity row", () => {
-    expect(__signalLogRendererInternals.overviewMetrics).toEqual({
-      currentItemCenterX: 97,
-      sRecordCardX: 59,
-      contentX: 145,
-      progressWidth: 685,
-      officialInfoPanelHeight: 154,
-      officialInfoBlockHeight: 170,
-      officialInfoDividerY: 77,
-    });
   });
 
   it("shrinks oversized information values instead of letting them reach a divider", () => {
@@ -194,50 +168,6 @@ describe("official-style signal log renderer", () => {
     expect(items[1].profession).toBeUndefined();
   });
 
-  it("omits the current-pity strip after the first overview page", async () => {
-    const summary = emptySummary();
-    summary.currentPity = 20;
-    summary.sRecords = Array.from({ length: 20 }, (_, index) => ({
-      ownerId: "owner", uid: "uid", source: "manual" as const,
-      gachaType: "2", channelCategory: "character_up" as const, bannerId: "banner",
-      recordId: String(index), itemId: "", name: `S 紀錄 ${index}`,
-      itemType: "代理人", rarity: "S", pulledAt: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString(),
-      rank: "S" as const, pityPosition: 40, pullsSincePreviousUp: null,
-      isUp: false, guaranteeResult: "lost" as const,
-    }));
-    const shared = {
-      source: "manual" as const, uid: "uid", category: "character_up" as const,
-      bannerLabel: "測試卡池", summary, view: "overview" as const,
-    };
-    const first = await loadImage(await renderSignalLog({ ...shared, page: 0 }));
-    const second = await loadImage(await renderSignalLog({ ...shared, page: 1 }));
-    expect(first.height - second.height).toBe(188);
-  });
-
-  it("uses the shared header for missing and multiple UP items", async () => {
-    const shared = {
-      source: "manual" as const, uid: "130000001", category: "character_up" as const,
-      playerName: "這是一個很長的繩匠名稱用於測試截斷", archivedAt: "2026-09-04T00:00:00.000Z",
-      bannerLabel: "一個很長的卡池名稱用於測試新版標題截斷行為",
-      summary: emptySummary(), view: "overview" as const, page: 0, stale: true,
-    };
-    const missing = await loadImage(await renderSignalLog(shared));
-    const multiple = await loadImage(await renderSignalLog({
-      ...shared,
-      banner: {
-        name: "雙代理人頻道", version: "3.1", channelCategory: "character_up",
-        upItems: [
-          { id: "1091", name: "星見雅", icon: "", rarity: "S", itemType: "character" },
-          { id: "1021", name: "貓又", icon: "", rarity: "S", itemType: "character" },
-        ],
-      },
-    }));
-
-    expect(missing.width).toBe(2088);
-    expect(multiple.width).toBe(2088);
-    expect(multiple.height).toBe(missing.height);
-  });
-
   it("uses the supplied newest S-rank Bangboo as the single header item", () => {
     const summary = emptySummary();
     summary.sRecords = [{
@@ -259,5 +189,78 @@ describe("official-style signal log renderer", () => {
     expect(__signalLogRendererInternals.bannerUpItems({
       ...input, headerItem: undefined, summary: emptySummary(),
     })).toEqual([]);
+  });
+});
+
+function sRecords(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    ownerId: "owner", uid: "uid", source: "manual" as const,
+    gachaType: "2", channelCategory: "character_up" as const, bannerId: "banner",
+    recordId: String(index), itemId: index % 2 ? "1021" : "1091", name: index % 2 ? "貓又" : "星見雅",
+    itemType: "代理人", rarity: "S", pulledAt: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString(),
+    rank: "S" as const, pityPosition: 40 + index, pullsSincePreviousUp: null,
+    isUp: index % 2 === 0, guaranteeResult: null,
+  }));
+}
+
+describe("paper-style signal log overview", () => {
+  const shared = {
+    uid: "130000001", playerName: "繩匠", archivedAt: "2026-09-04T00:00:00.000Z",
+    category: "character_up" as const, bannerLabel: "3.1 測試卡池",
+    summary: emptySummary(), view: "overview" as const, page: 0,
+  };
+
+  it("adds a resource row only for official archives with ticket data", async () => {
+    const tickets = [{ ticket_type: "TICKET_TYPE_POLYCHROME", ticket_cnt: 8240 }];
+    const official = await loadImage(await renderSignalLog({ ...shared, source: "official", details: { tickets } }));
+    const noTickets = await loadImage(await renderSignalLog({ ...shared, source: "official", details: { tickets: [] } }));
+    const manual = await loadImage(await renderSignalLog({ ...shared, source: "manual" }));
+    const { resourceRowHeight } = __signalLogRendererInternals.overviewMetrics;
+    expect(official.width).toBe(2000);
+    expect(official.height - manual.height).toBe(resourceRowHeight * 2);
+    expect(noTickets.height).toBe(manual.height);
+  });
+
+  it("shows the current pity card only on the first page", () => {
+    const summary = { ...emptySummary(), currentPity: 20, sRecords: sRecords(12) };
+    const labels = (page: number) => __signalLogRendererInternals.overviewStatCards({
+      ...shared, locale: "tw", source: "manual", summary, page,
+    }).map(([label]) => label);
+    expect(labels(0)).toContain(signalText("tw").currentPity);
+    expect(labels(1)).not.toContain(signalText("tw").currentPity);
+    expect(labels(1)).toHaveLength(4);
+  });
+
+  it("shows a dash for UP-only stats in the standard pool", () => {
+    const label = signalText("tw").averageUp;
+    const entries = __signalLogRendererInternals.statsEntries({ ...emptySummary(), averageUp: 60 }, "standard", "tw");
+    expect(entries.find(([entry]) => entry === label)?.[1]).toBe("—");
+  });
+
+  it("renders without throwing when no hero art resolves", async () => {
+    await expect(renderSignalLog({ ...shared, source: "manual", category: "weapon_up" })).resolves.toBeInstanceOf(Buffer);
+  });
+
+  it("renders an empty-state overview taller than the banner", async () => {
+    const image = await loadImage(await renderSignalLog({ ...shared, source: "manual" }));
+    expect(image.height).toBeGreaterThan(300 * 2);
+  });
+
+  it("lays out ten S records per page in two columns", async () => {
+    const summary = { ...emptySummary(), sRecords: sRecords(12) };
+    const first = await loadImage(await renderSignalLog({ ...shared, source: "manual", summary, page: 0 }));
+    const second = await loadImage(await renderSignalLog({ ...shared, source: "manual", summary, page: 1 }));
+    expect(first.height).toBeGreaterThan(second.height);
+  }, 15_000);
+
+  it("keeps long titles and player names from changing the banner height", async () => {
+    const long = {
+      ...shared, source: "manual" as const, stale: true,
+      playerName: "這是一個很長的繩匠名稱用於測試截斷",
+      bannerLabel: "一個很長的卡池名稱用於測試新版標題截斷行為",
+    };
+    const plain = await loadImage(await renderSignalLog({ ...shared, source: "manual" }));
+    const stretched = await loadImage(await renderSignalLog(long));
+    expect(stretched.height).toBe(plain.height);
   });
 });

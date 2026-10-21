@@ -2,28 +2,24 @@ import { createCanvas, loadImage, type Image, type SKRSContext2D } from "@napi-r
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { GachaArchiveBanner, GachaArchiveSource, GachaChannelCategory } from "./gachaArchive.js";
-import { normalizeRank, type AnalyzedGachaRecord, type GachaSummary } from "./gachaAnalysis.js";
-import { getZzzOfficialFont, getZzzOfficialNumberFont } from "./canvasFonts.js";
+import type { AnalyzedGachaRecord, GachaSummary } from "./gachaAnalysis.js";
+import { getZzzOfficialNumberFont } from "./canvasFonts.js";
 import { resolveGachaWeaponIcon } from "./gachaWeaponIcons.js";
 import { resolveGachaBangbooIcon } from "./gachaBangbooIcons.js";
 import {
   drawGtCard,
   GT_CARD_COMPACT_SIZE,
   loadGtCardAssets,
-  loadGtCardMetadataImages,
   safeGtCardImage,
   type GtCardAssets,
-  type GtCardItem,
-  type GtCardKind,
-  type GtCardRank,
 } from "./gtCardRenderer.js";
 import {
   drawZeroPageBackground,
   loadZeroPageBackground,
   type ZeroPageBackgroundAssets,
 } from "./zeroPageBackground.js";
-import { normalizeZzzLocale } from "./canvasFonts.js";
 import { signalCategoryText, signalText } from "./recordText.js";
+import { overviewMetrics, overviewStatCards, renderSignalOverview, sItemCounts, statsEntries, ticketValue } from "./signalLogOverview.js";
 import {
   bannerUpItems,
   coverPlacement,
@@ -66,10 +62,6 @@ const RECORD_PULL_NUMBER_STYLE = {
   insetX: 7,
   centerY: 18,
 } as const;
-const OFFICIAL_INFO_PANEL_HEIGHT = 154;
-const OFFICIAL_INFO_BLOCK_HEIGHT = 170;
-const OFFICIAL_INFO_ROW_STEP = 72;
-const OFFICIAL_INFO_DIVIDER_Y = 77;
 const RECORD_GRID_START_X = RECORD_GRID_X
   + (RECORD_GRID_WIDTH - (RECORD_GRID_COLUMNS * RECORD_CARD_SIZE
     + (RECORD_GRID_COLUMNS - 1) * RECORD_CARD_GAP)) / 2;
@@ -183,15 +175,6 @@ function drawCircleItem(ctx: SKRSContext2D, image: Image | null, x: number, y: n
   if (!image) text(ctx, placeholder, x, y + 1, Math.max(14, radius * .65), "#242523", "center", true);
 }
 
-function ticketEntry(details: any, matcher: (type: string) => boolean): any | undefined {
-  const tickets = Array.isArray(details?.tickets) ? details.tickets : [];
-  return tickets.find((item: any) => matcher(String(item?.ticket_type ?? "").toUpperCase()));
-}
-
-function ticketValue(details: any, matcher: (type: string) => boolean): number {
-  return Number(ticketEntry(details, matcher)?.ticket_cnt ?? 0);
-}
-
 function drawImagePanel(ctx: SKRSContext2D, image: Image, x: number, y: number, width: number, height: number, overlay = "rgba(5,6,6,.20)"): void {
   ctx.save();
   rr(ctx, x, y, width, height, 17);
@@ -220,10 +203,6 @@ function drawFlatPanel(ctx: SKRSContext2D, x: number, y: number, width: number, 
     ctx.fillStyle = "#f1d547";
     ctx.fillRect(x + 15, y, Math.min(150, width * .28), 3);
   }
-}
-
-function displayValue(amount: number | null, suffix = ""): string {
-  return amount === null ? "—" : `${amount}${suffix}`;
 }
 
 function resultLabel(record: AnalyzedGachaRecord): string {
@@ -295,294 +274,6 @@ async function drawHeader(ctx: SKRSContext2D, input: SignalLogRenderInput, asset
     ? `${copy.syncFailed} · ${copy.updatedAt} ${formatDate(input.archivedAt, true, input.locale)}`
     : `${copy.updatedAt} ${formatDate(input.archivedAt, true, input.locale)}`;
   text(ctx, fitWithFont(ctx, update, 218, 14), 976, 116, 14, input.stale ? "#ff9a72" : "#858987", "right");
-}
-
-function statsEntries(summary: GachaSummary, category: GachaChannelCategory, locale?: string): Array<[string, string, boolean]> {
-  const copy = signalText(locale);
-  const limited = ["character_up", "character_return", "weapon_up", "weapon_return"].includes(category);
-  return [
-    [copy.total, String(summary.total), false],
-    [copy.averageS, displayValue(summary.averageS), false],
-    [copy.averageUp, limited ? displayValue(summary.averageUp) : "—", limited],
-    [copy.winRate, limited ? displayValue(summary.winRate, "%") : "—", limited],
-  ];
-}
-
-async function drawOfficialOverviewInfo(
-  ctx: SKRSContext2D,
-  input: SignalLogRenderInput,
-  assets: RendererAssets,
-  y: number,
-): Promise<number> {
-  const copy = signalText(input.locale);
-  const panelWidth = 464;
-  const panelHeight = OFFICIAL_INFO_PANEL_HEIGHT;
-  drawFlatPanel(ctx, 48, y, panelWidth, panelHeight, true);
-  drawFlatPanel(ctx, 532, y, panelWidth, panelHeight);
-  const entries: Array<[string, number]> = [
-    [copy.polychrome, ticketValue(input.details, (type) => type.endsWith("POLYCHROME"))],
-    [copy.encrypted, ticketValue(input.details, (type) => type.endsWith("ENCRYPTED_MASTER_TAPE"))],
-    [copy.original, ticketValue(input.details, (type) => type.endsWith("MASTER_TAPE") && !type.includes("ENCRYPTED"))],
-    [copy.boopon, ticketValue(input.details, (type) => type.endsWith("BOOPON"))],
-  ];
-  if (!input.details || !Array.isArray(input.details.tickets)) {
-    text(ctx, copy.liveResources, 72, y + 38, 16, "#d6d8d6");
-    text(ctx, copy.unavailable, 72, y + 79, 26, "#929593");
-  } else {
-    const matchers = [
-      (type: string) => type.endsWith("POLYCHROME"),
-      (type: string) => type.endsWith("ENCRYPTED_MASTER_TAPE"),
-      (type: string) => type.endsWith("MASTER_TAPE") && !type.includes("ENCRYPTED"),
-      (type: string) => type.endsWith("BOOPON"),
-    ];
-    const apiIcons = await Promise.all(matchers.map(async (matcher) => {
-      const ticket = ticketEntry(input.details, matcher);
-      const url = String(ticket?.icon ?? ticket?.icon_url ?? ticket?.item_icon ?? "");
-      return url ? remoteImage(url) : null;
-    }));
-    entries.forEach(([name, amount], index) => {
-      const column = index % 2;
-      const row = Math.floor(index / 2);
-      const cellX = 66 + column * 222;
-      const cellY = y + 10 + row * OFFICIAL_INFO_ROW_STEP;
-      ctx.drawImage(apiIcons[index] ?? assets.resources[index]!, cellX, cellY + 3, 38, 38);
-      text(ctx, name, cellX + 48, cellY + 15, 15, "#aeb1af");
-      const amountLabel = amount.toLocaleString("zh-TW");
-      const amountRight = column === 0 ? 268 : 492;
-      text(ctx, amountLabel, cellX + 48, cellY + 43,
-        fittedNumberSize(ctx, amountLabel, amountRight - (cellX + 48), 30),
-        "#f5f5f5", "left", true);
-    });
-    ctx.fillStyle = "rgba(255,255,255,.10)";
-    ctx.fillRect(280, y + 14, 1, 126);
-    ctx.fillRect(66, y + OFFICIAL_INFO_DIVIDER_Y, 424, 1);
-  }
-
-  const stats = statsEntries(input.summary, input.category, input.locale);
-  stats.forEach(([label, amount, highlighted], index) => {
-    const column = index % 2;
-    const row = Math.floor(index / 2);
-    const cellX = 556 + column * 220;
-    const cellY = y + 10 + row * OFFICIAL_INFO_ROW_STEP;
-    text(ctx, label, cellX, cellY + 15, 15, "#aeb1af");
-    const amountRight = column === 0 ? 752 : 976;
-    text(ctx, amount, cellX, cellY + 45,
-      fittedNumberSize(ctx, amount, amountRight - cellX, 32),
-      highlighted ? "#ffde00" : "#f4f4f4", "left", true);
-  });
-  ctx.fillStyle = "rgba(255,255,255,.10)";
-  ctx.fillRect(764, y + 14, 1, 126);
-  ctx.fillRect(556, y + OFFICIAL_INFO_DIVIDER_Y, 416, 1);
-  return y + OFFICIAL_INFO_BLOCK_HEIGHT;
-}
-
-function drawManualOverviewInfo(ctx: SKRSContext2D, input: SignalLogRenderInput, y: number): number {
-  drawFlatPanel(ctx, 48, y, 948, 84, true);
-  statsEntries(input.summary, input.category, input.locale).forEach(([label, amount, highlighted], index) => {
-    const x = 72 + index * 237;
-    text(ctx, label, x, y + 25, 15, "#aeb1af");
-    text(ctx, amount, x, y + 58, 32, highlighted ? "#ffde00" : "#f4f4f4", "left", true);
-    if (index < 3) {
-      ctx.fillStyle = "rgba(255,255,255,.12)";
-      ctx.fillRect(x + 211, y + 17, 1, 50);
-    }
-  });
-  return y + 100;
-}
-
-async function drawOverviewInfo(
-  ctx: SKRSContext2D,
-  input: SignalLogRenderInput,
-  assets: RendererAssets,
-  y: number,
-): Promise<number> {
-  return input.source === "official"
-    ? drawOfficialOverviewInfo(ctx, input, assets, y)
-    : drawManualOverviewInfo(ctx, input, y);
-}
-
-function drawCurrentPity(ctx: SKRSContext2D, input: SignalLogRenderInput, y: number): number {
-  const copy = signalText(input.locale);
-  drawFlatPanel(ctx, 48, y, 948, 84);
-  drawCircleItem(ctx, null, 97, y + 42, 32, "?");
-  text(ctx, copy.currentPity, 145, y + 29, 26);
-  if (input.pityEstimated) text(ctx, copy.estimated, 318, y + 29, 12, "#929593");
-  const pity = input.summary.currentPity;
-  const hard = input.summary.hardPity;
-  const pityColor = progressColor(pity, hard);
-  text(ctx, `/ ${hard}`, 968, y + 42, 22, "#929593", "right", true);
-  text(ctx, pity === null ? "?" : String(pity), 902, y + 42, 40, pityColor, "right", true);
-  const barX = 145, barY = y + 64, barW = 685, barH = 8;
-  rr(ctx, barX, barY, barW, barH, 12);
-  ctx.fillStyle = "#303331";
-  ctx.fill();
-  if (pity !== null) {
-    rr(ctx, barX, barY, Math.max(8, Math.min(barW, pity / hard * barW)), barH, 12);
-    ctx.fillStyle = pityColor;
-    ctx.fill();
-  }
-  return y + 94;
-}
-
-interface SItemCount {
-  id: string;
-  name: string;
-  itemType: string;
-  icon: string;
-  count: number;
-  isUp: boolean;
-  elementType?: number;
-  subElementType?: number;
-  profession?: string | number;
-}
-
-function sItemCounts(input: SignalLogRenderInput): SItemCount[] {
-  const bannerItems = new Map((input.banner?.upItems ?? []).map((item) => [String(item.id), item]));
-  const counts = new Map<string, SItemCount>();
-  for (const record of input.summary.sRecords) {
-    const id = String(record.itemId ?? "");
-    const key = id || `name:${record.name}`;
-    const existing = counts.get(key);
-    if (existing) {
-      existing.count++;
-      existing.isUp ||= record.isUp === true;
-      continue;
-    }
-    const bannerItem = bannerItems.get(id);
-    counts.set(key, {
-      id,
-      name: record.name,
-      itemType: record.itemType,
-      icon: bannerItem?.icon ?? "",
-      count: 1,
-      isUp: record.isUp === true,
-      elementType: bannerItem?.elementType,
-      subElementType: bannerItem?.subElementType,
-      profession: bannerItem?.profession,
-    });
-  }
-  return [...counts.values()].sort((left, right) =>
-    Number(right.isUp) - Number(left.isUp)
-    || right.count - left.count
-    || left.name.localeCompare(right.name, "zh-Hant"));
-}
-
-function sSummaryHeight(input: SignalLogRenderInput): number {
-  const visible = sItemCounts(input).slice(input.page * 10, input.page * 10 + 10).length;
-  if (!visible) return input.page === 0 ? 104 : 0;
-  return 70 + Math.ceil(visible / 5) * 96 + 16;
-}
-
-async function drawSItemSummary(
-  ctx: SKRSContext2D,
-  input: SignalLogRenderInput,
-  assets: RendererAssets,
-  y: number,
-): Promise<number> {
-  const copy = signalText(input.locale);
-  const items = sItemCounts(input).slice(input.page * 10, input.page * 10 + 10);
-  if (!items.length && input.page > 0) return y;
-  const rows = Math.ceil(items.length / 5);
-  const height = items.length ? 70 + rows * 96 : 88;
-  drawFlatPanel(ctx, 48, y, 948, height, true);
-  text(ctx, copy.periodS, 72, y + 35, 28, "#f1f2f1");
-  if (!items.length) {
-    text(ctx, copy.noS, 966, y + 35, 17, "#8e918f", "right");
-    return y + height + 16;
-  }
-  const cards = await Promise.all(items.map((item) => prepareGtCard(input, {
-    id: item.id,
-    itemType: item.itemType,
-    rarity: "S",
-    icon: item.icon,
-    elementType: item.elementType,
-    subElementType: item.subElementType,
-    profession: item.profession,
-  })));
-  items.forEach((item, index) => {
-    const column = index % 5;
-    const row = Math.floor(index / 5);
-    const rowCount = Math.min(5, items.length - row * 5);
-    const rowWidth = rowCount * 188;
-    const x = 48 + (948 - rowWidth) / 2 + column * 188;
-    const centerY = y + 100 + row * 96;
-    const card = cards[index]!;
-    drawGtCard(ctx, card.item, card.kind, x, centerY - 38, GT_CARD_COMPACT_SIZE, card.images, assets.gtCard);
-    const nameLayout = wrappedName(ctx, item.name, 98, 18, 2, 12);
-    const nameFirstBaseline = nameLayout.lines.length === 1
-      ? centerY - 17
-      : centerY - 27;
-    drawWrappedName(ctx, nameLayout, x + 84, nameFirstBaseline, "#e7e8e6", "left");
-    text(ctx, `×${item.count}`, x + 84, centerY + 18, 28, item.isUp ? "#f1d547" : "#b9bcba", "left", true);
-  });
-  return y + height + 16;
-}
-
-async function drawSRecords(ctx: SKRSContext2D, input: SignalLogRenderInput, records: AnalyzedGachaRecord[], assets: RendererAssets, y: number): Promise<number> {
-  const copy = signalText(input.locale);
-  text(ctx, copy.sRecords, 48, y + 26, 31);
-  text(ctx, `${copy.page} ${input.page + 1} · ${copy.perPage10}`, 996, y + 26, 17, "#929593", "right");
-  y += 53;
-  if (input.page === 0) y = drawCurrentPity(ctx, input, y);
-  if (!records.length) {
-    drawFlatPanel(ctx, 48, y, 948, 120);
-    text(ctx, copy.noSForBanner, 522, y + 60, 24, "#9a9d9b", "center");
-    return y + 138;
-  }
-  const cards = await Promise.all(records.map((record) => prepareGtCard(input, {
-    id: String(record.itemId ?? ""),
-    itemType: record.itemType,
-    rarity: record.rank,
-  })));
-  records.forEach((record, index) => {
-    const x = 48, cardY = y + index * 94;
-    drawFlatPanel(ctx, x, cardY, 948, 84, false);
-    const card = cards[index]!;
-    drawGtCard(ctx, card.item, card.kind, 97 - GT_CARD_COMPACT_SIZE / 2, cardY + 4, GT_CARD_COMPACT_SIZE, card.images, assets.gtCard);
-    const nameX = 145;
-    const nameLayout = wrappedName(ctx, record.name, 218, 24, 2, 12);
-    const nameFirstBaseline = nameLayout.lines.length === 1
-      ? cardY + 29
-      : cardY + 19;
-    drawWrappedName(ctx, nameLayout, nameX, nameFirstBaseline, "#f3f3f3", "left");
-    if (record.isUp === true) {
-      ctx.font = `${nameLayout.size}px ${getZzzOfficialFont("tw")}`;
-      const widestLine = Math.max(...nameLayout.lines.map((line) => ctx.measureText(line).width));
-      ctx.drawImage(assets.topIcon, Math.min(401, nameX + 8 + widestLine), cardY + 18, 68, 19);
-    }
-    const count = record.pityPosition;
-    const countColor = progressColor(count, input.summary.hardPity);
-    text(ctx, `/ ${input.summary.hardPity}`, x + 920, cardY + 42, 22, "#929593", "right", true);
-    text(ctx, count === null ? "?" : String(count), x + 854, cardY + 42, 40, countColor, "right", true);
-    const barX = nameX, barY = cardY + 64, barW = 685;
-    rr(ctx, barX, barY, barW, 8, 5);
-    ctx.fillStyle = "#343735";
-    ctx.fill();
-    if (count !== null) {
-      rr(ctx, barX, barY, Math.max(8, Math.min(barW, count / input.summary.hardPity * barW)), 8, 5);
-      ctx.fillStyle = countColor;
-      ctx.fill();
-    }
-  });
-  return y + records.length * 94;
-}
-
-async function renderOverview(input: SignalLogRenderInput): Promise<Buffer> {
-  const records = input.summary.sRecords.slice(input.page * 10, input.page * 10 + 10);
-  const infoHeight = input.source === "official" ? OFFICIAL_INFO_BLOCK_HEIGHT : 100;
-  const summaryHeight = sSummaryHeight(input);
-  const pityHeight = input.page === 0 ? 94 : 0;
-  const listHeight = records.length ? records.length * 94 : 138;
-  const height = 168 + infoHeight + summaryHeight + 53 + pityHeight + listHeight + 48;
-  const { canvas, ctx } = createScaledCanvas(height);
-  const assets = await loadAssets();
-  drawBase(ctx, height, assets);
-  await drawHeader(ctx, input, assets);
-  let y = 168;
-  y = await drawOverviewInfo(ctx, input, assets, y);
-  y = await drawSItemSummary(ctx, input, assets, y);
-  await drawSRecords(ctx, input, records, assets, y);
-  return canvas.toBuffer("image/png");
 }
 
 function drawRecordPullNumber(
@@ -689,7 +380,7 @@ async function renderRecords(input: SignalLogRenderInput): Promise<Buffer> {
 }
 
 export async function renderSignalLog(input: SignalLogRenderInput): Promise<Buffer> {
-  return input.view === "records" ? renderRecords(input) : renderOverview(input);
+  return input.view === "records" ? renderRecords(input) : renderSignalOverview(input);
 }
 
 export const __signalLogRendererInternals = {
@@ -710,15 +401,10 @@ export const __signalLogRendererInternals = {
   wrapNameLines,
   fittedNumberSize,
   outputScale: OUTPUT_SCALE,
-  overviewMetrics: {
-    currentItemCenterX: 97,
-    sRecordCardX: 97 - GT_CARD_COMPACT_SIZE / 2,
-    contentX: 145,
-    progressWidth: 685,
-    officialInfoPanelHeight: OFFICIAL_INFO_PANEL_HEIGHT,
-    officialInfoBlockHeight: OFFICIAL_INFO_BLOCK_HEIGHT,
-    officialInfoDividerY: OFFICIAL_INFO_DIVIDER_Y,
-  },
+  overviewMetrics,
+  overviewStatCards,
+  statsEntries,
+
   recordGridMetrics: {
     cardSize: RECORD_CARD_SIZE,
     columns: RECORD_GRID_COLUMNS,
