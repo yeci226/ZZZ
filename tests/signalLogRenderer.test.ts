@@ -13,41 +13,6 @@ function emptySummary(): GachaSummary {
 }
 
 describe("official-style signal log renderer", () => {
-  it("renders a 20-record S/A/B page as a large 5×4 grid across all supported card kinds", async () => {
-    const summary = emptySummary();
-    summary.total = 20;
-    const itemTypes = ["代理人", "音擎", "邦布", ""];
-    summary.records = Array.from({ length: 20 }, (_, index) => ({
-      ownerId: "owner", uid: "uid", source: "manual" as const,
-      gachaType: "1", channelCategory: "standard" as const, bannerId: null,
-      recordId: String(index), itemId: "", name: `紀錄 ${index}`,
-      itemType: itemTypes[index % itemTypes.length]!, rarity: index === 0 ? "4" : index === 1 ? "3" : "2",
-      pulledAt: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString(),
-      rank: index === 0 ? "S" as const : index === 1 ? "A" as const : "B" as const,
-      pityPosition: index === 0 ? null : index,
-      pullsSincePreviousUp: null, isUp: null, guaranteeResult: null,
-    }));
-
-    const image = await loadImage(await renderSignalLog({
-      source: "manual", uid: "uid", category: "standard", bannerLabel: "未分類",
-      summary, view: "records", page: 0,
-    }));
-    expect(image.width).toBe(2088);
-    expect(image.height).toBe(2150);
-  }, 15_000);
-
-  it("places large record cards left-to-right across five columns before starting a new row", () => {
-    expect(__signalLogRendererInternals.recordGridMetrics).toEqual({
-      cardSize: 152, columns: 5, gap: 40,
-      nameWidth: 184, nameSize: 14, nameLineHeight: 18,
-      startX: 62, startY: 251,
-    });
-    expect(__signalLogRendererInternals.recordCardPlacement(0)).toEqual({ column: 0, row: 0, x: 62, y: 251 });
-    expect(__signalLogRendererInternals.recordCardPlacement(4)).toEqual({ column: 4, row: 0, x: 830, y: 251 });
-    expect(__signalLogRendererInternals.recordCardPlacement(5)).toEqual({ column: 0, row: 1, x: 62, y: 445 });
-    expect(__signalLogRendererInternals.recordCardPlacement(19)).toEqual({ column: 4, row: 3, x: 830, y: 833 });
-  });
-
   it("shrinks oversized information values instead of letting them reach a divider", () => {
     const ctx = createCanvas(400, 100).getContext("2d");
     const value = "999,999,999,999,999";
@@ -57,46 +22,10 @@ describe("official-style signal log renderer", () => {
     expect(ctx.measureText(value).width).toBeLessThanOrEqual(154);
   });
 
-  it("wraps complete item names without ellipses and grows only the affected record row", () => {
-    const longName = "「電磁暴」超長完整音擎名稱用來驗證換行不省略";
-    const regular = __signalLogRendererInternals.recordGridLayout(Array(5).fill("測試音擎"));
-    const wrapped = __signalLogRendererInternals.recordGridLayout([
-      longName, "測試音擎", "測試音擎", "測試音擎", "測試音擎",
-    ]);
-    const lines = wrapped.placements[0].name.lines;
-
-    expect(lines.length).toBeGreaterThan(1);
-    expect(lines.join("")).toBe(longName);
-    expect(lines.join("")).not.toContain("…");
-    expect(wrapped.rowHeights[0]).toBeGreaterThan(regular.rowHeights[0]);
-    expect(wrapped.height).toBeGreaterThan(regular.height);
-  });
-
-  it("keeps an empty compact-record page tall enough for its empty-state message", async () => {
-    const image = await loadImage(await renderSignalLog({
-      source: "manual", uid: "uid", category: "standard", bannerLabel: "未分類",
-      summary: emptySummary(), view: "records", page: 0,
-    }));
-
-    expect(image.width).toBe(2088);
-    expect(image.height).toBe(986);
-  });
-
-  it("maps official item URLs and hides unavailable values instead of inventing them", () => {
+  it("maps official item URLs and cover placements", () => {
     const url = __signalLogRendererInternals.itemIcon({ itemId: "1021" } as any);
     expect(url).toContain("role_square_avatar_1021.png");
     expect(__signalLogRendererInternals.itemIcon({ itemId: "" } as any)).toBe("");
-    expect(__signalLogRendererInternals.resultLabel({ isUp: null, guaranteeResult: "unknown" } as any)).toBe("無法判定");
-    expect(__signalLogRendererInternals.recordPullLabel(39)).toBe("39");
-    expect(__signalLogRendererInternals.recordPullLabel(null)).toBe("?");
-    expect(__signalLogRendererInternals.recordPullNumberStyle).toEqual({
-      fontSize: 20,
-      lineWidth: 5,
-      fill: "#fff",
-      stroke: "rgba(0,0,0,.92)",
-      insetX: 7,
-      centerY: 18,
-    });
     expect(__signalLogRendererInternals.coverPlacement(100, 200, 76, 76)).toEqual({
       x: 0, y: -38, width: 76, height: 152,
     });
@@ -262,5 +191,48 @@ describe("paper-style signal log overview", () => {
     const plain = await loadImage(await renderSignalLog({ ...shared, source: "manual" }));
     const stretched = await loadImage(await renderSignalLog(long));
     expect(stretched.height).toBe(plain.height);
+  });
+});
+
+describe("pity cycle view", () => {
+  const { cycleTrackCells } = __signalLogRendererInternals;
+  const sRecord = sRecords(1)[0]!;
+
+  it("maps a cycle onto exactly hardPity track cells", () => {
+    const cells = cycleTrackCells({ length: 5, aPositions: [3], sRecord, lost: false, partial: false }, 80);
+    expect(cells).toHaveLength(80);
+    expect(cells.slice(0, 6)).toEqual(["b", "b", "a", "b", "s", "empty"]);
+  });
+
+  it("marks in-progress cells as current", () => {
+    expect(cycleTrackCells({ length: 2, aPositions: [], sRecord: null, lost: false, partial: false }, 90).slice(0, 3))
+      .toEqual(["current", "current", "empty"]);
+  });
+
+  it("clamps cycles longer than hardPity without overflowing", () => {
+    const cells = cycleTrackCells({ length: 95, aPositions: [], sRecord, lost: false, partial: true }, 90);
+    expect(cells).toHaveLength(90);
+    expect(cells.at(-1)).toBe("s");
+  });
+
+  it("renders ten cycles per page at the expected width", async () => {
+    const records = sRecords(12).map((record) => ({ ...record, pityPosition: 1 }));
+    const summary = { ...emptySummary(), sRecords: records, records };
+    const shared = {
+      source: "manual" as const, uid: "uid", category: "character_up" as const, bannerLabel: "測試",
+      summary, view: "records" as const,
+    };
+    const first = await loadImage(await renderSignalLog({ ...shared, page: 0 }));
+    const second = await loadImage(await renderSignalLog({ ...shared, page: 1 }));
+    expect(first.width).toBe(2000);
+    expect(first.height).toBeGreaterThan(second.height);
+  }, 15_000);
+
+  it("renders an empty cycle page and an overlong cycle without throwing", async () => {
+    const shared = { source: "manual" as const, uid: "uid", category: "character_up" as const, bannerLabel: "測試", page: 0, view: "records" as const };
+    await expect(renderSignalLog({ ...shared, summary: emptySummary() })).resolves.toBeInstanceOf(Buffer);
+    const overlong = [{ ...sRecord, pityPosition: 95 }];
+    await expect(renderSignalLog({ ...shared, summary: { ...emptySummary(), sRecords: overlong, records: overlong } }))
+      .resolves.toBeInstanceOf(Buffer);
   });
 });

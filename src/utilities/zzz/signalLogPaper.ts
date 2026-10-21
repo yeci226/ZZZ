@@ -429,7 +429,8 @@ export async function drawHeroBanner(
     if (art.width > art.height * 1.2) {
       // Wide agent portraits: fill the width and keep the face band in view.
       const drawHeight = WIDTH * art.height / art.width;
-      ctx.drawImage(art, 0, -drawHeight * .1, WIDTH, drawHeight);
+      // Short banners only fit the eyes, so lift the portrait further.
+      ctx.drawImage(art, 0, -drawHeight * (height >= 240 ? .1 : .3), WIDTH, drawHeight);
     } else {
       const size = height * 1.15;
       ctx.drawImage(art, WIDTH * .58 - size / 2, (height - size) / 2, size, size);
