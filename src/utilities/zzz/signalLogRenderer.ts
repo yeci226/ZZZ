@@ -5,7 +5,6 @@ import { overviewMetrics, overviewStatCards, renderSignalOverview, sItemCounts, 
 import type { SignalLogView } from "./signalLogPagination.js";
 import {
   bannerUpItems,
-  coverPlacement,
   fittedNumberSize,
   gtCardKind,
   gtCardSource,
@@ -47,7 +46,6 @@ export const __signalLogRendererInternals = {
   bannerUpItems,
   gtCardKind,
   gtCardSource,
-  coverPlacement,
   fittedNumberSize,
   statsEntries,
   overviewStatCards,

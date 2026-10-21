@@ -22,16 +22,10 @@ describe("official-style signal log renderer", () => {
     expect(ctx.measureText(value).width).toBeLessThanOrEqual(154);
   });
 
-  it("maps official item URLs and cover placements", () => {
+  it("maps official item URLs", () => {
     const url = __signalLogRendererInternals.itemIcon({ itemId: "1021" } as any);
     expect(url).toContain("role_square_avatar_1021.png");
     expect(__signalLogRendererInternals.itemIcon({ itemId: "" } as any)).toBe("");
-    expect(__signalLogRendererInternals.coverPlacement(100, 200, 76, 76)).toEqual({
-      x: 0, y: -38, width: 76, height: 152,
-    });
-    expect(__signalLogRendererInternals.coverPlacement(200, 100, 76, 76)).toEqual({
-      x: -38, y: 0, width: 152, height: 76,
-    });
   });
 
   it("selects the correct shared GtCard kind without inventing unknown metadata", () => {

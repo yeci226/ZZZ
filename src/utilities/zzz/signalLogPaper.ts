@@ -136,13 +136,13 @@ export function fittedNumberSize(
   return 10;
 }
 
-export interface WrappedName {
+interface WrappedName {
   lines: string[];
   size: number;
   lineHeight: number;
 }
 
-export function wrapNameLines(ctx: SKRSContext2D, value: unknown, width: number, size: number): string[] {
+function wrapNameLines(ctx: SKRSContext2D, value: unknown, width: number, size: number): string[] {
   const source = String(value ?? "").trim();
   if (!source) return [""];
   ctx.font = `${size}px ${getZzzOfficialFont("tw")}`;
@@ -161,7 +161,7 @@ export function wrapNameLines(ctx: SKRSContext2D, value: unknown, width: number,
   return lines;
 }
 
-export function wrappedName(
+function wrappedName(
   ctx: SKRSContext2D,
   value: unknown,
   width: number,
@@ -176,19 +176,6 @@ export function wrappedName(
     }
   }
   return { lines: [String(value ?? "")], size: minimumSize, lineHeight: Math.ceil(minimumSize * 1.25) };
-}
-
-export function drawWrappedName(
-  ctx: SKRSContext2D,
-  layout: WrappedName,
-  x: number,
-  firstBaseline: number,
-  color = "#f0f1f0",
-  align: CanvasTextAlign = "center",
-): void {
-  layout.lines.forEach((line, index) => {
-    text(ctx, line, x, firstBaseline + index * layout.lineHeight, layout.size, color, align);
-  });
 }
 
 export function itemIcon(record: AnalyzedGachaRecord): string {
@@ -234,7 +221,7 @@ export function bannerUpItems(input: SignalLogRenderInput) {
   return sItems.length ? sItems : items.slice(0, 1);
 }
 
-export interface GtCardSourceItem {
+interface GtCardSourceItem {
   id: string;
   itemType: string;
   rarity: GtCardRank;
@@ -258,7 +245,7 @@ export function gtCardKind(itemType: string, itemId: string): GtCardKind {
   return "unknown";
 }
 
-export async function loadSquareItemImage(item: GtCardSourceItem): Promise<Image | null> {
+async function loadSquareItemImage(item: GtCardSourceItem): Promise<Image | null> {
   const kind = gtCardKind(item.itemType, item.id);
   if (kind === "weapon") {
     const source = await resolveGachaWeaponIcon(item.id);
@@ -330,25 +317,7 @@ export async function prepareGtCard(
   };
 }
 
-export function coverPlacement(
-  imageWidth: number,
-  imageHeight: number,
-  width: number,
-  height: number,
-) {
-  if (!(imageWidth > 0) || !(imageHeight > 0)) return null;
-  const scale = Math.max(width / imageWidth, height / imageHeight);
-  const drawWidth = imageWidth * scale;
-  const drawHeight = imageHeight * scale;
-  return {
-    x: (width - drawWidth) / 2,
-    y: (height - drawHeight) / 2,
-    width: drawWidth,
-    height: drawHeight,
-  };
-}
-
-export function formatDate(value?: string | null, withTime = true, locale?: string): string {
+function formatDate(value?: string | null, withTime = true, locale?: string): string {
   if (!value) return signalText(locale).notSynced;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
@@ -391,7 +360,7 @@ export async function resolveHeroArt(input: SignalLogRenderInput): Promise<Image
   return agent ? localImage(join(PORTRAIT_DIR, `${agent.itemId}.png`)) : null;
 }
 
-export function heroTitle(input: SignalLogRenderInput): string {
+function heroTitle(input: SignalLogRenderInput): string {
   const upNames = bannerUpItems(input).slice(0, 3).map((item) => item.name).filter(Boolean).join("／");
   const categoryLabel = signalCategoryText(input.locale, input.category);
   const genericName = input.banner?.name && !categoryLabel.includes(input.banner.name) ? input.banner.name : "";

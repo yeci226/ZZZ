@@ -62,7 +62,7 @@ export async function renderSignalPreviews() {
       }],
     },
   };
-  const [officialOverview, manualOverview, records] = await Promise.all([
+  const [officialOverview, manualOverview, cycles] = await Promise.all([
     renderSignalLog({ ...common, source: "official", summary: official, view: "overview", page: 0,
       details: { tickets: [
         { ticket_type: "TICKET_TYPE_POLYCHROME", ticket_cnt: 8240 },
@@ -73,7 +73,7 @@ export async function renderSignalPreviews() {
     renderSignalLog({ ...common, source: "manual", summary: manual, view: "overview", page: 0, pityEstimated: true }),
     renderSignalLog({ ...common, source: "official", summary: official, view: "records", page: 0 }),
   ]);
-  return { officialOverview, manualOverview, records };
+  return { officialOverview, manualOverview, cycles };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -81,5 +81,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const previews = await renderSignalPreviews();
   writeFileSync(join(output, "官方限定總覽.png"), previews.officialOverview);
   writeFileSync(join(output, "手動匯入總覽.png"), previews.manualOverview);
-  writeFileSync(join(output, "完整紀錄20格.png"), previews.records);
+  writeFileSync(join(output, "保底週期.png"), previews.cycles);
 }

@@ -51,7 +51,7 @@ describe("ZZZ official static visual baselines", () => {
 
   it("keeps both Signal Log layouts below 2%", async () => {
     const overview = "signal-log-design/官方限定總覽.png";
-    const records = "signal-log-design/完整紀錄20格.png";
+    const records = "signal-log-design/保底週期.png";
     await expect(
       pixelDifferenceRatio(
         readFileSync(join(actualRoot, overview)),

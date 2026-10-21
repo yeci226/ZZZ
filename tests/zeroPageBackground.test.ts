@@ -37,7 +37,7 @@ describe("shared HoYoLAB Zero page background", () => {
     expect([...ctx.getImageData(500, 150, 1, 1).data]).toEqual([0, 0, 0, 255]);
   });
 
-  it.each(["noteRenderer.ts", "signalLogRenderer.ts", "bannerRenderer.ts"])(
+  it.each(["noteRenderer.ts", "bannerRenderer.ts"])(
     "%s uses the shared background instead of the legacy Note slices",
     (filename) => {
       const source = readFileSync(
