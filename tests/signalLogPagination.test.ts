@@ -58,6 +58,10 @@ describe("signal log view pages", () => {
     expect(signalLogPageCount(sThenOpen(10), "records")).toBe(2);
   });
 
+  it("does not count an open cycle that is not the channel's live pity", () => {
+    expect(signalLogPageCount(sThenOpen(10), "records", false, false)).toBe(1);
+  });
+
   it("never returns fewer than one page", () => {
     expect(signalLogPageCount(summaryOf([]), "overview")).toBe(1);
     expect(signalLogPageCount(summaryOf([]), "records")).toBe(1);

@@ -29,8 +29,8 @@ export function paginateSignalBannerChoicesWithPinned(
   return { ...pagination, items: [pinned, ...pagination.items] };
 }
 
-export function signalLogPageCount(summary: GachaSummary, view: SignalLogView, pityEstimated?: boolean): number {
-  const items = view === "records" ? buildPityCycles(summary, pityEstimated).length : summary.sRecords.length;
+export function signalLogPageCount(summary: GachaSummary, view: SignalLogView, pityEstimated?: boolean, openIsLive?: boolean): number {
+  const items = view === "records" ? buildPityCycles(summary, pityEstimated, openIsLive).length : summary.sRecords.length;
   return Math.max(1, Math.ceil(items / SIGNAL_LOG_PAGE_SIZE));
 }
 

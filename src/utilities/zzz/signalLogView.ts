@@ -254,7 +254,9 @@ export async function buildSignalLogMessage(session: SignalLogSession) {
   });
   const latestBangboo = session.category === "bangboo" ? latestBangbooSRecord(timeline) : null;
   const pityEstimated = live.pity === null && summary.currentPity !== null;
-  const pageCount = signalLogPageCount(summary, session.view, pityEstimated);
+  // Only the channel's newest pulls are still waiting for an S.
+  const openCycleIsLive = !summary.records.length || summary.records[0]!.recordId === timeline.at(-1)?.recordId;
+  const pageCount = signalLogPageCount(summary, session.view, pityEstimated, openCycleIsLive);
   session.page = Math.min(Math.max(0, session.page), pageCount - 1);
   const renderedBanner = displayBanner(session, banner);
   const image = await renderSignalLog({
@@ -273,7 +275,7 @@ export async function buildSignalLogMessage(session: SignalLogSession) {
       rarity: "S",
     } : undefined,
     summary, view: session.view, page: session.page, details: session.details,
-    pityEstimated,
+    pityEstimated, openCycleIsLive,
   });
   saveSession(session);
   return {

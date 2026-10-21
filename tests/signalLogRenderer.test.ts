@@ -193,18 +193,23 @@ describe("pity cycle view", () => {
   const sRecord = sRecords(1)[0]!;
 
   it("maps a cycle onto exactly hardPity track cells", () => {
-    const cells = cycleTrackCells({ length: 5, aPositions: [3], sRecord, lost: false, partial: false }, 80);
+    const cells = cycleTrackCells({ length: 5, aPositions: [3], sRecord, lost: false, partial: false, unknownPulls: 0 }, 80);
     expect(cells).toHaveLength(80);
     expect(cells.slice(0, 6)).toEqual(["b", "b", "a", "b", "s", "empty"]);
   });
 
+  it("leaves pulls before the archive empty instead of drawing them as B", () => {
+    expect(cycleTrackCells({ length: 5, aPositions: [4], sRecord, lost: false, partial: true, unknownPulls: 2 }, 90).slice(0, 6))
+      .toEqual(["empty", "empty", "b", "a", "s", "empty"]);
+  });
+
   it("marks in-progress cells as current", () => {
-    expect(cycleTrackCells({ length: 2, aPositions: [], sRecord: null, lost: false, partial: false }, 90).slice(0, 3))
+    expect(cycleTrackCells({ length: 2, aPositions: [], sRecord: null, lost: false, partial: false, unknownPulls: 0 }, 90).slice(0, 3))
       .toEqual(["current", "current", "empty"]);
   });
 
   it("clamps cycles longer than hardPity without overflowing", () => {
-    const cells = cycleTrackCells({ length: 95, aPositions: [], sRecord, lost: false, partial: true }, 90);
+    const cells = cycleTrackCells({ length: 95, aPositions: [], sRecord, lost: false, partial: true, unknownPulls: 0 }, 90);
     expect(cells).toHaveLength(90);
     expect(cells.at(-1)).toBe("s");
   });

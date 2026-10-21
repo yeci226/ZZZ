@@ -41,7 +41,7 @@ export function cycleTrackCells(cycle: PityCycle, hardPity: number): CycleCell[]
   const aPositions = new Set(cycle.aPositions);
   return Array.from({ length: hardPity }, (_, index) => {
     const pull = index + 1;
-    if (pull > filled) return "empty";
+    if (pull > filled || pull <= cycle.unknownPulls) return "empty";
     if (!cycle.sRecord) return "current";
     if (pull === filled) return "s";
     return aPositions.has(pull) ? "a" : "b";
@@ -83,7 +83,7 @@ function drawOpenSlot(ctx: SKRSContext2D, x: number, y: number, size: number, ac
 }
 
 export async function renderSignalCycles(input: SignalLogRenderInput): Promise<Buffer> {
-  const all = buildPityCycles(input.summary, input.pityEstimated);
+  const all = buildPityCycles(input.summary, input.pityEstimated, input.openCycleIsLive);
   const cycles = all.slice(input.page * SIGNAL_LOG_PAGE_SIZE, (input.page + 1) * SIGNAL_LOG_PAGE_SIZE);
   const listHeight = cycles.length ? cycles.length * (ROW_HEIGHT + ROW_GAP) - ROW_GAP : EMPTY_HEIGHT;
   const height = HERO_HEIGHT + GAP + SECTION_HEIGHT + listHeight + FOOTER_HEIGHT;
@@ -133,7 +133,7 @@ export async function renderSignalCycles(input: SignalLogRenderInput): Promise<B
     });
   }
 
-  const pages = signalLogPageCount(input.summary, "records", input.pityEstimated);
+  const pages = signalLogPageCount(input.summary, "records", input.pityEstimated, input.openCycleIsLive);
   text(ctx, pageLabel(input.locale, input.page, pages), WIDTH - MARGIN - 8, height - FOOTER_HEIGHT / 2, 13, PAPER.muted, "right");
   return canvas.toBuffer("image/png");
 }

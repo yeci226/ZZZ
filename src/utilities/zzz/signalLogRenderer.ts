@@ -34,6 +34,8 @@ export interface SignalLogRenderInput {
   page: number;
   details?: any;
   pityEstimated?: boolean;
+  /** False when a past-banner filter ends before the channel's newest pull. Defaults to true. */
+  openCycleIsLive?: boolean;
 }
 
 export async function renderSignalLog(input: SignalLogRenderInput): Promise<Buffer> {

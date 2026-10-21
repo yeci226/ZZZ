@@ -66,4 +66,20 @@ describe("buildPityCycles", () => {
   it("returns an empty list for an empty summary", () => {
     expect(buildPityCycles(summary([]))).toEqual([]);
   });
+
+  it("shifts A positions past pulls that happened before the first archived record", () => {
+    const [cycle] = buildPityCycles(summary([rec("B"), rec("A"), rec("S", { pityPosition: 40 })]));
+    expect(cycle).toMatchObject({ length: 40, aPositions: [39], unknownPulls: 37, partial: true });
+  });
+
+  it("drops the open cycle when the filtered records do not reach the channel's newest pull", () => {
+    const records = summary([rec("B"), rec("S", { pityPosition: 2 }), rec("B"), rec("A")]);
+    expect(buildPityCycles(records, false, false).map((cycle) => cycle.sRecord?.rank)).toEqual(["S"]);
+    expect(buildPityCycles(records, false, true)[0]!.sRecord).toBeNull();
+  });
+
+  it("marks the oldest cycle partial when its pity position is unknown", () => {
+    const [cycle] = buildPityCycles(summary([rec("B"), rec("S", { pityPosition: null })]));
+    expect(cycle).toMatchObject({ length: 2, partial: true });
+  });
 });
