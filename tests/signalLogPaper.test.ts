@@ -30,7 +30,7 @@ function input(options: {
 }): SignalLogRenderInput {
   const sRecords = options.sRecords ?? [];
   const summary: GachaSummary = {
-    total: sRecords.length, averageS: null, averageUp: null, winRate: null,
+    total: sRecords.length, averageS: null, averageUp: null, winRate: null, upWins: 0, upEligible: 0, averageUpCost: null,
     currentPity: null, hardPity: 90, nextGuaranteed: null, sRecords, records: sRecords,
   };
   return {

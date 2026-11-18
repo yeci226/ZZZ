@@ -25,6 +25,16 @@ function record(index: number, input: Partial<GachaArchiveRecord> = {}): GachaAr
   };
 }
 
+function limitedFixture(sPositions: number[], isUp: Array<boolean | null>): GachaArchiveRecord[] {
+  const last = Math.max(...sPositions);
+  return Array.from({ length: last }, (_, i) => {
+    const slot = sPositions.indexOf(i + 1);
+    return slot === -1
+      ? record(i + 1)
+      : record(i + 1, { rarity: "S", itemId: String(9000 + i), isUp: isUp[slot] });
+  });
+}
+
 describe("ZZZ gacha analysis", () => {
   it("averages known S/UP pity positions and excludes unknown outcomes", () => {
     const records = [
@@ -198,5 +208,21 @@ describe("ZZZ gacha analysis", () => {
 
     expect(latestBangbooSRecord(records)?.itemId).toBe("54023");
     expect(latestBangbooSRecord(records.filter((item) => item.rarity !== "S"))).toBeNull();
+  });
+
+  it("counts UP wins and the average cost per UP including lost pulls", () => {
+    // Exclusive channel; S-ranks land on pulls 80 (UP), 150 (lost), 230 (UP), 250 (UP).
+    const summary = analyzeGachaRecords({ records: limitedFixture([80, 150, 230, 250], [true, false, true, true]), category: "character_up" });
+    expect(summary.upWins).toBe(3);
+    expect(summary.upEligible).toBe(4);
+    // The first UP has no previous UP; the rest are 230-80=150 and 250-230=20.
+    expect(summary.averageUpCost).toBe(85);
+  });
+
+  it("leaves UP statistics empty for channels without an UP concept", () => {
+    const summary = analyzeGachaRecords({ records: limitedFixture([80], [null]), category: "standard" });
+    expect(summary.upWins).toBe(0);
+    expect(summary.upEligible).toBe(0);
+    expect(summary.averageUpCost).toBeNull();
   });
 });

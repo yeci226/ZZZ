@@ -40,7 +40,7 @@ describe("signal log banner pagination", () => {
 function summaryOf(oldestFirst: GachaRank[]): GachaSummary {
   const records = oldestFirst.map((rank, index) => ({ rank, recordId: String(index) }) as AnalyzedGachaRecord).reverse();
   return {
-    total: records.length, averageS: null, averageUp: null, winRate: null,
+    total: records.length, averageS: null, averageUp: null, winRate: null, upWins: 0, upEligible: 0, averageUpCost: null,
     currentPity: null, hardPity: 90, nextGuaranteed: null,
     sRecords: records.filter((record) => record.rank === "S"), records,
   };

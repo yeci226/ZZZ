@@ -18,7 +18,7 @@ function rec(rank: GachaRank, extra: Partial<AnalyzedGachaRecord> = {}): Analyze
 function summary(oldestFirst: AnalyzedGachaRecord[], extra: Partial<GachaSummary> = {}): GachaSummary {
   const records = oldestFirst.slice().reverse();
   return {
-    total: records.length, averageS: null, averageUp: null, winRate: null,
+    total: records.length, averageS: null, averageUp: null, winRate: null, upWins: 0, upEligible: 0, averageUpCost: null,
     currentPity: null, hardPity: 90, nextGuaranteed: null,
     sRecords: records.filter((record) => record.rank === "S"), records,
     ...extra,

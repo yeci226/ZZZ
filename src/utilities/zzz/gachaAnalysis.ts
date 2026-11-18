@@ -19,6 +19,9 @@ export interface GachaSummary {
   averageS: number | null;
   averageUp: number | null;
   winRate: number | null;
+  upWins: number;
+  upEligible: number;
+  averageUpCost: number | null;
   currentPity: number | null;
   hardPity: number;
   nextGuaranteed: boolean | null;
@@ -178,11 +181,21 @@ export function analyzeGachaRecords(input: {
   const eligible = selectedS.filter((record) => record.isUp === true || record.isUp === false);
   const wins = eligible.filter((record) => record.isUp === true).length;
 
+  const limited = limitedCategory(input.category);
+  const upCosts = selectedS
+    .filter((record) => record.isUp === true && record.pullsSincePreviousUp !== null)
+    .map((record) => record.pullsSincePreviousUp as number);
+
   return {
     total: selected.length,
     averageS: mean(completedS),
     averageUp: limitedCategory(input.category) ? mean(completedUp) : null,
     winRate: limitedCategory(input.category) && eligible.length ? Math.round((wins / eligible.length) * 1000) / 10 : null,
+    upWins: limited ? wins : 0,
+    upEligible: limited ? eligible.length : 0,
+    averageUpCost: limited && upCosts.length
+      ? Math.round(upCosts.reduce((sum, value) => sum + value, 0) / upCosts.length)
+      : null,
     currentPity: input.livePity !== undefined && input.livePity !== null ? input.livePity : pityKnown ? pity : null,
     hardPity: hardPityFor(input.category),
     nextGuaranteed: input.liveGuaranteed !== undefined && input.liveGuaranteed !== null ? input.liveGuaranteed : nextGuaranteed,

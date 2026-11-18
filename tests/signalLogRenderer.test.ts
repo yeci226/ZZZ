@@ -6,7 +6,7 @@ import { signalText } from "../src/utilities/zzz/recordText.js";
 
 function emptySummary(): GachaSummary {
   return {
-    total: 0, averageS: null, averageUp: null, winRate: null,
+    total: 0, averageS: null, averageUp: null, winRate: null, upWins: 0, upEligible: 0, averageUpCost: null,
     currentPity: null, hardPity: 90, nextGuaranteed: null,
     sRecords: [], records: [],
   };
