@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import type { GachaStatCategory, GachaStatIndex, GachaStatPool } from "./gachaStatApi.js";
 import { normalizeSignalLogView, type SignalLogView } from "./signalLogPagination.js";
 
 export type GachaArchiveSource = "official" | "manual" | "rng_moe";
@@ -277,6 +278,29 @@ export class GachaArchiveStore {
         newest_record_id TEXT NOT NULL,
         completed_at TEXT NOT NULL,
         PRIMARY KEY (owner_id, uid, gacha_type),
+        FOREIGN KEY (owner_id, uid)
+          REFERENCES archive_accounts(owner_id, uid) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS official_stat_index (
+        owner_id TEXT NOT NULL,
+        uid TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        fetched_at TEXT NOT NULL,
+        PRIMARY KEY (owner_id, uid),
+        FOREIGN KEY (owner_id, uid)
+          REFERENCES archive_accounts(owner_id, uid) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS official_stat_pools (
+        owner_id TEXT NOT NULL,
+        uid TEXT NOT NULL,
+        category TEXT NOT NULL,
+        version TEXT NOT NULL,
+        final INTEGER NOT NULL,
+        payload TEXT NOT NULL,
+        fetched_at TEXT NOT NULL,
+        PRIMARY KEY (owner_id, uid, category, version),
         FOREIGN KEY (owner_id, uid)
           REFERENCES archive_accounts(owner_id, uid) ON DELETE CASCADE
       );
@@ -1072,6 +1096,50 @@ export class GachaArchiveStore {
     `).run(iso(now)).changes;
   }
 
+  saveOfficialStatIndex(ownerId: string, uid: string, index: GachaStatIndex): void {
+    this.db.prepare(`
+      INSERT INTO official_stat_index (owner_id, uid, payload, fetched_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT(owner_id, uid) DO UPDATE SET payload = excluded.payload, fetched_at = excluded.fetched_at
+    `).run(ownerId, uid, JSON.stringify(index), iso());
+  }
+
+  getOfficialStatIndex(ownerId: string, uid: string): { index: GachaStatIndex; fetchedAt: string } | null {
+    const row = this.db.prepare("SELECT payload, fetched_at FROM official_stat_index WHERE owner_id = ? AND uid = ?")
+      .get(ownerId, uid) as { payload: string; fetched_at: string } | undefined;
+    return row ? { index: JSON.parse(row.payload) as GachaStatIndex, fetchedAt: row.fetched_at } : null;
+  }
+
+  saveOfficialStatPools(
+    ownerId: string,
+    uid: string,
+    category: GachaStatCategory,
+    version: string,
+    pools: GachaStatPool[],
+    final: boolean,
+  ): void {
+    this.db.prepare(`
+      INSERT INTO official_stat_pools (owner_id, uid, category, version, final, payload, fetched_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(owner_id, uid, category, version) DO UPDATE SET
+        final = excluded.final, payload = excluded.payload, fetched_at = excluded.fetched_at
+    `).run(ownerId, uid, category, version, final ? 1 : 0, JSON.stringify(pools), iso());
+  }
+
+  listOfficialStatPools(
+    ownerId: string,
+    uid: string,
+  ): Array<{ category: GachaStatCategory; version: string; final: boolean; pools: GachaStatPool[] }> {
+    const rows = this.db.prepare(`SELECT category, version, final, payload FROM official_stat_pools
+      WHERE owner_id = ? AND uid = ? ORDER BY category, version`)
+      .all(ownerId, uid) as Array<{ category: string; version: string; final: number; payload: string }>;
+    return rows.map((row) => ({
+      category: row.category as GachaStatCategory,
+      version: row.version,
+      final: row.final === 1,
+      pools: JSON.parse(row.payload) as GachaStatPool[],
+    }));
+  }
+
   clear(ownerId: string, uid: string, source?: GachaArchiveSource): number {
     if (source) {
       const transaction = this.db.transaction(() => {
@@ -1083,6 +1151,10 @@ export class GachaArchiveStore {
         )`).run(ownerId, uid);
         this.db.prepare("DELETE FROM gacha_banners WHERE owner_id = ? AND uid = ? AND source = ?")
           .run(ownerId, uid, source);
+        if (source === "official") {
+          this.db.prepare("DELETE FROM official_stat_index WHERE owner_id = ? AND uid = ?").run(ownerId, uid);
+          this.db.prepare("DELETE FROM official_stat_pools WHERE owner_id = ? AND uid = ?").run(ownerId, uid);
+        }
         const accountSourceRemoved = this.db.prepare(
           "DELETE FROM archive_account_sources WHERE owner_id = ? AND uid = ? AND source = ?",
         ).run(ownerId, uid, source).changes;

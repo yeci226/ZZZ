@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GachaArchiveStore } from "../src/utilities/zzz/gachaArchive.js";
+import type { GachaStatIndex, GachaStatPool } from "../src/utilities/zzz/gachaStatApi.js";
 
 describe("structured ZZZ gacha archive", () => {
   let store: GachaArchiveStore;
@@ -486,5 +487,44 @@ describe("structured ZZZ gacha archive", () => {
     expect(migrated.listAccounts("owner")[0]?.sources).toEqual(expect.arrayContaining(["official", "manual"]));
     migrated.close();
     rmSync(directory, { recursive: true, force: true });
+  });
+
+  describe("official statistics storage", () => {
+    const sampleIndex = (total: number): GachaStatIndex => ({
+      totalCount: total, totalS: 5, currentVersion: "3.3",
+      tickets: { monochrome: 0, polychrome: 0, encrypted: 0, original: 0, boopon: 0 },
+      types: [],
+    });
+    const pool = (version: string, sort: number): GachaStatPool => ({ category: "character_up", version, state: "ended", startTs: 0, endTs: 0, upItems: [],
+      records: [{ itemId: "1581", name: "", icon: "", itemType: "ItemType_Avatar", rarity: "S", isUp: true, upTag: "UP_TAG_NONE", count: 30, sort, recordTime: 1785292496 }] });
+    beforeEach(() => { store.upsertAccount({ ownerId: "owner", uid: "1300000001", source: "official", region: "prod_gf_jp" }); });
+    it("round-trips the index and replaces it on the next save", () => {
+      expect(store.getOfficialStatIndex("owner", "1300000001")).toBeNull();
+      store.saveOfficialStatIndex("owner", "1300000001", sampleIndex(300));
+      store.saveOfficialStatIndex("owner", "1300000001", sampleIndex(310));
+      expect(store.getOfficialStatIndex("owner", "1300000001")!.index.totalCount).toBe(310);
+    });
+    it("keeps one row per channel and version, so saving twice does not duplicate", () => {
+      store.saveOfficialStatPools("owner", "1300000001", "character_up", "3.1", [pool("3.1", 204)], true);
+      store.saveOfficialStatPools("owner", "1300000001", "character_up", "3.1", [pool("3.1", 204)], true);
+      store.saveOfficialStatPools("owner", "1300000001", "character_up", "3.3", [], false);
+      expect(store.listOfficialStatPools("owner", "1300000001").map((row) => [row.version, row.final, row.pools.length]))
+        .toEqual(expect.arrayContaining([["3.1", true, 1], ["3.3", false, 0]]));
+      expect(store.listOfficialStatPools("owner", "1300000001")).toHaveLength(2);
+    });
+    it("removes statistics when the official archive or the account is cleared", () => {
+      store.saveOfficialStatIndex("owner", "1300000001", sampleIndex(300));
+      store.saveOfficialStatPools("owner", "1300000001", "character_up", "3.1", [pool("3.1", 204)], true);
+      store.clear("owner", "1300000001", "official");
+      expect(store.getOfficialStatIndex("owner", "1300000001")).toBeNull();
+      expect(store.listOfficialStatPools("owner", "1300000001")).toEqual([]);
+    });
+    it("removes statistics when the whole account is cleared", () => {
+      store.saveOfficialStatIndex("owner", "1300000001", sampleIndex(300));
+      store.saveOfficialStatPools("owner", "1300000001", "character_up", "3.1", [pool("3.1", 204)], true);
+      store.clear("owner", "1300000001");
+      expect(store.getOfficialStatIndex("owner", "1300000001")).toBeNull();
+      expect(store.listOfficialStatPools("owner", "1300000001")).toEqual([]);
+    });
   });
 });
