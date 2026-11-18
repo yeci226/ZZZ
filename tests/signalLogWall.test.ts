@@ -30,8 +30,8 @@ const standardChannel: SignalChannelModel = { ...emptyChannel("standard"), hasRe
 describe("statusTiles", () => {
   it("shows four tiles on limited channels and three elsewhere", () => {
     expect(statusTiles(limitedChannel, "tw").map((tile) => [tile.label, tile.value, tile.unit]))
-      .toEqual([["總抽數", "300", ""], ["平均出 S", "70", "抽"], ["UP / S", "3/4", ""], ["每個 UP 平均", "100", "抽"]]);
-    expect(statusTiles(standardChannel, "tw").map((tile) => tile.label)).toEqual(["總抽數", "平均出 S", "S 數量"]);
+      .toEqual([["總抽數", "300", ""], ["S 級平均抽數", "70", "抽"], ["UP / S", "3/4", ""], ["UP 平均抽數", "100", "抽"]]);
+    expect(statusTiles(standardChannel, "tw").map((tile) => tile.label)).toEqual(["總抽數", "S 級平均抽數", "S 數量"]);
     expect(statusTiles({ ...limitedChannel, sCount: 0, upCount: 0, averageS: null, averageUpCost: null }, "tw").map((tile) => tile.value))
       .toEqual(["300", "—", "0/0", "—"]);
   });
@@ -74,7 +74,7 @@ describe("channel footer parts", () => {
 
   it("joins the records-since month with the page label", () => {
     expect(channelFooterParts({ ...base, firstRecordAt: "2025-06-12T08:00:00.000Z" }))
-      .toEqual({ since: "紀錄自 2025/06", page: "第 1 / 2 頁", stale: false });
+      .toEqual({ since: "紀錄起始：2025/06", page: "第 1 / 2 頁", stale: false });
   });
 
   it("leaves out records-since when there is no first record date", () => {

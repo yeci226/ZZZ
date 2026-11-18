@@ -39,9 +39,9 @@ describe("ZZZ Note and Signal Log localization", () => {
   });
 
   it("uses the fixed Traditional Chinese copy", () => {
-    expect(signalText("tw").viewVersions).toBe("依版本");
-    expect(signalText("tw").viewWall).toBe("S 牆");
-    expect(signalText("tw").sCountOf).toBe("{n} 個 S");
+    expect(signalText("tw").viewVersions).toBe("版本紀錄");
+    expect(signalText("tw").viewWall).toBe("S 級一覽");
+    expect(signalText("tw").sCountOf).toBe("S 級 {n} 個");
   });
 
   it("normalizes Discord and API locale aliases", () => {

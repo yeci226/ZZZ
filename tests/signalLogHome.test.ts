@@ -61,8 +61,8 @@ describe("signal log home", () => {
 
   it("builds the totals line with the pull unit and S count", () => {
     const channel = { ...emptyChannel("character_up"), total: 2434, sCount: 45 };
-    expect(channelTotalsLabel(channel, "tw")).toEqual({ total: "2,434", rest: "抽 · 45 個 S" });
-    expect(channelTotalsLabel(channel, "en")).toEqual({ total: "2,434", rest: "pulls · 45 S" });
+    expect(channelTotalsLabel(channel, "tw")).toEqual({ total: "2,434", rest: "抽 · S 級 45 個" });
+    expect(channelTotalsLabel(channel, "en")).toEqual({ total: "2,434", rest: "pulls · S-Rank: 45" });
   });
 
   it("reports a single page for home", () => {

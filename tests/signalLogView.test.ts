@@ -138,9 +138,9 @@ describe("controls", () => {
     expect(rows).toHaveLength(1);
     const options = (rows[0] as any).components[0].options;
     expect(options.map((option: any) => option.value)).toEqual([HOME_CATEGORY_VALUE, ...CATEGORIES]);
-    expect(options[1].description).toBe("20/90 · 小保底");
+    expect(options[1].description).toBe("20/90 · 尚未保底");
     expect(options[2].description).toBe("尚無紀錄");
-    expect(options[3].description).toBe("78/80 · 大保底");
+    expect(options[3].description).toBe("78/80 · UP 保底");
     expect(options[5].description).toBe("—/90");
     expect(options[0].default).toBe(true);
   });

@@ -61,11 +61,11 @@ describe("segment text", () => {
   });
 
   it("summarises segments", () => {
-    expect(segmentSummary(seg("3.1", 4), true, "tw")).toBe("4 個 S · 3 UP");
-    expect(segmentSummary(seg("3.1", 4), false, "tw")).toBe("4 個 S");
-    expect(segmentSummary(seg("3.2", 0), true, "tw")).toBe("沒出 S");
-    expect(segmentSummary(seg("3.0", 2, { pulls: 120 }), true, "tw")).toBe("120 抽 · 2 個 S · 2 UP");
-    expect(segmentSummary(seg("3.2", 0, { pulls: 40 }), true, "tw")).toBe("40 抽 · 沒出 S");
+    expect(segmentSummary(seg("3.1", 4), true, "tw")).toBe("S 級 4 個 · UP 3 個");
+    expect(segmentSummary(seg("3.1", 4), false, "tw")).toBe("S 級 4 個");
+    expect(segmentSummary(seg("3.2", 0), true, "tw")).toBe("未獲得 S 級");
+    expect(segmentSummary(seg("3.0", 2, { pulls: 120 }), true, "tw")).toBe("120 抽 · S 級 2 個 · UP 2 個");
+    expect(segmentSummary(seg("3.2", 0, { pulls: 40 }), true, "tw")).toBe("40 抽 · 未獲得 S 級");
   });
 });
 
