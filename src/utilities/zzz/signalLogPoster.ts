@@ -1,4 +1,4 @@
-import { loadImage, type Image, type SKRSContext2D } from "@napi-rs/canvas";
+import { createCanvas, loadImage, type Image, type SKRSContext2D } from "@napi-rs/canvas";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { GachaArchiveBanner } from "./gachaArchive.js";
@@ -22,6 +22,7 @@ export type PosterArt = {
   type: "full" | "wide" | "icon" | "none";
   image: Image | null;
   crop?: [number, number, number, number];
+  path?: string;
 };
 
 export interface PosterSubject {
@@ -119,8 +120,9 @@ async function tryLoad(path: string): Promise<Image | null> {
 export async function loadPosterArt(subject: PosterSubject): Promise<PosterArt> {
   if (subject.agentId) {
     const dir = process.env.ZZZ_AGENT_ART_DIR || join(IMAGE_DIR, "agents");
-    const full = await tryLoad(join(dir, `${subject.agentId}.webp`));
-    if (full) return { type: "full", image: full };
+    const fullPath = join(dir, `${subject.agentId}.webp`);
+    const full = await tryLoad(fullPath);
+    if (full) return { type: "full", image: full, path: fullPath };
     const wide = await tryLoad(join(PORTRAIT_DIR, `${subject.agentId}.png`));
     if (wide) return { type: "wide", image: wide, crop: catalogCrop(subject.agentId) };
   }
@@ -147,12 +149,58 @@ function stripes(ctx: SKRSContext2D, top: number, height: number): void {
   ctx.restore();
 }
 
+const ALPHA_MIN = 60;
+const FOCUS_SAMPLE_HEIGHT = 160;
+const focusCache = new Map<string, number>();
+
+/** Horizontal position (0..1) of the figure's head: median x of the opaque pixels in the top fifth of its bounding box. */
+export function posterFocusX(image: Image): number {
+  const h = FOCUS_SAMPLE_HEIGHT;
+  const w = Math.max(1, Math.round(image.width * h / image.height));
+  const canvas = createCanvas(w, h);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0, w, h);
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const opaque = (x: number, y: number) => data[(y * w + x) * 4 + 3]! > ALPHA_MIN;
+  let first = -1;
+  let last = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (opaque(x, y)) { if (first < 0) first = y; last = y; break; }
+    }
+  }
+  if (first < 0) return 0.5;
+  const band = Math.max(4, Math.round(0.2 * (last - first + 1)));
+  const xs: number[] = [];
+  for (let y = first; y < Math.min(h, first + band); y++) {
+    for (let x = 0; x < w; x++) if (opaque(x, y)) xs.push(x);
+  }
+  if (!xs.length) return 0.5;
+  xs.sort((a, b) => a - b);
+  return xs[Math.floor(xs.length / 2)]! / w;
+}
+
+/** Left offset that centres the art's focus in the panel while still covering it horizontally. */
+export function posterArtOffset(panelWidth: number, artWidth: number, focus: number): number {
+  if (artWidth < panelWidth) return (panelWidth - artWidth) / 2;
+  return Math.min(0, Math.max(panelWidth - artWidth, panelWidth / 2 - focus * artWidth));
+}
+
+function cachedFocus(art: PosterArt): number {
+  if (!art.image) return 0.5;
+  const cached = art.path ? focusCache.get(art.path) : undefined;
+  if (cached !== undefined) return cached;
+  const focus = posterFocusX(art.image);
+  if (art.path) focusCache.set(art.path, focus);
+  return focus;
+}
+
 function drawArt(ctx: SKRSContext2D, art: PosterArt, height: number, accent: string): void {
   const edge = POSTER_WIDTH + 12;
   if (art.type === "full" && art.image) {
     const artHeight = Math.max(height * 1.28, 900);
     const artWidth = artHeight * art.image.width / art.image.height;
-    ctx.drawImage(art.image, POSTER_WIDTH / 2 - artWidth / 2, 6, artWidth, artHeight);
+    ctx.drawImage(art.image, posterArtOffset(POSTER_WIDTH, artWidth, cachedFocus(art)), 6, artWidth, artHeight);
   } else if (art.type === "wide" && art.image) {
     const [cx, cy, cw, ch] = art.crop ?? DEFAULT_CROP;
     const band = Math.min(height * .5, 420);

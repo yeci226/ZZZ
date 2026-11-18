@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { GachaStatCategory } from "../src/utilities/zzz/gachaStatApi.js";
 import { createScaledCanvas } from "../src/utilities/zzz/signalLogPaper.js";
-import { drawPoster, loadPosterArt, posterTitleLines, resolvePosterSubject, type PosterSubject } from "../src/utilities/zzz/signalLogPoster.js";
+import { drawPoster, loadPosterArt, posterArtOffset, posterFocusX, posterTitleLines, resolvePosterSubject, type PosterSubject } from "../src/utilities/zzz/signalLogPoster.js";
 import { emptyChannel, type SignalItemKind, type SignalLogModel, type SignalSEntry } from "../src/utilities/zzz/signalLogModel.js";
 
 const CATEGORIES: GachaStatCategory[] = ["character_up", "character_return", "weapon_up", "weapon_return", "standard", "bangboo"];
@@ -139,5 +139,39 @@ describe("posterTitleLines", () => {
     expect(lines).toHaveLength(2);
     for (const line of lines) expect(measure("en", line, size)).toBeLessThanOrEqual(224);
     expect(lines[1]!.endsWith("…")).toBe(true);
+  });
+});
+
+describe("poster focus", () => {
+  async function figure(blocks: Array<[number, number, number, number]>) {
+    const canvas = createCanvas(400, 800);
+    const c = canvas.getContext("2d");
+    c.fillStyle = "#ff0000";
+    for (const [x, y, w, h] of blocks) c.fillRect(x, y, w, h);
+    return loadImage(canvas.toBuffer("image/png"));
+  }
+
+  it("follows the head block rather than the body", async () => {
+    const focus = posterFocusX(await figure([[300, 20, 60, 60], [100, 200, 200, 500]]));
+    expect(focus).toBeGreaterThan(0.75);
+    expect(focus).toBeLessThan(0.9);
+  });
+
+  it("returns 0.5 for a fully transparent image", async () => {
+    expect(posterFocusX(await figure([]))).toBe(0.5);
+  });
+
+  it("finds the face on real art", async () => {
+    expect(posterFocusX(await loadImage(join("src", "assets", "images", "agents", "1641.webp")))).toBeLessThan(0.45);
+    const focus = posterFocusX(await loadImage(join("src", "assets", "images", "agents", "1091.webp")));
+    expect(focus).toBeGreaterThanOrEqual(0.4);
+    expect(focus).toBeLessThanOrEqual(0.65);
+  });
+
+  it("clamps the art offset so it still covers the panel", () => {
+    expect(posterArtOffset(264, 800, 0.5)).toBe(-268);
+    expect(posterArtOffset(264, 800, 0.1)).toBe(0);
+    expect(posterArtOffset(264, 800, 0.95)).toBe(264 - 800);
+    expect(posterArtOffset(264, 200, 0.5)).toBe(32);
   });
 });
