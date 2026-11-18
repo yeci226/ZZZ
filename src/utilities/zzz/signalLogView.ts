@@ -1,12 +1,7 @@
 import { randomBytes } from "node:crypto";
 import {
-  ActionRowBuilder,
   AttachmentBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder,
   MessageFlags,
-  StringSelectMenuBuilder,
   type ButtonInteraction,
   type ChatInputCommandInteraction,
   type ModalSubmitInteraction,
@@ -17,60 +12,46 @@ import { getUserLang, getUserZZZData } from "../utilities.js";
 import { createTranslator } from "../core/i18n.js";
 import {
   getGachaArchiveStore,
-  type GachaArchiveBanner,
   type GachaArchiveSource,
   type GachaChannelCategory,
 } from "./gachaArchive.js";
-import {
-  analyzeGachaRecords,
-  GACHA_CATEGORY_ORDER,
-  latestBangbooSRecord,
-  readLiveGachaState,
-} from "./gachaAnalysis.js";
+import { analyzeGachaRecords, GACHA_CATEGORY_ORDER, readLiveGachaState } from "./gachaAnalysis.js";
 import { canViewPrivateGacha } from "./gachaPrivacy.js";
 import {
   archiveCalendarMetadata,
   calendarBannerMetadata,
   syncOfficialGachaArchive,
-  type GachaCalendarBanner,
 } from "./gachaSync.js";
 import { requestZzzRecordApi } from "./officialRecordApi.js";
-import { renderSignalLog } from "./signalLogRenderer.js";
-import {
-  paginateSignalBannerChoicesWithPinned,
-  legacyToggleView,
-  signalLogPageCount,
-  toLegacySignalLogView,
-  type SignalLogView,
-} from "./signalLogPagination.js";
-import { signalCategoryText, signalText } from "./recordText.js";
+import { renderSignalLogImage, signalLogImagePageCount, type SignalLogImageInput } from "./signalLogRenderer.js";
+import { signalText } from "./recordText.js";
+import { normalizeSignalLogView } from "./signalLogPagination.js";
 import { signalActionText } from "./signalActionText.js";
+import {
+  ALL_SIGNAL_BANNERS,
+  applySignalLogAction,
+  bannerLabel,
+  bannersFor,
+  buildSignalLogModel,
+  refreshOfficialStats,
+  signalLogControls,
+  statCategoryOf,
+  type SignalLogSession,
+} from "./signalLogSession.js";
 
-export interface SignalLogSession {
-  token: string;
-  invokerId: string;
-  ownerId: string;
-  accountIndex: number;
-  uid: string;
-  playerName: string;
-  locale: string;
-  linked: boolean;
-  region: string;
-  source: GachaArchiveSource;
-  category: GachaChannelCategory;
-  bannerId: string | null;
-  bannerPage: number;
-  page: number;
-  view: SignalLogView;
-  details?: any;
-  calendarBanners?: GachaCalendarBanner[];
-  stale: boolean;
-}
+export {
+  ALL_SIGNAL_BANNERS,
+  HOME_CATEGORY_VALUE,
+  applySignalLogAction,
+  buildSignalLogModel,
+  refreshOfficialStats,
+  signalLogControls,
+  type SignalLogSession,
+} from "./signalLogSession.js";
 
 type SignalCommandInteraction = ChatInputCommandInteraction | ButtonInteraction;
 
 const sessions = new Map<string, SignalLogSession>();
-export const ALL_SIGNAL_BANNERS = "__all__";
 
 function saveSession(session: SignalLogSession): void {
   sessions.set(session.token, session);
@@ -90,7 +71,7 @@ function sessionFrom(customId: string): SignalLogSession | null {
   }
   const cached = sessions.get(token);
   if (cached) return cached;
-  const session: SignalLogSession = { ...persisted, view: persisted.view ?? "wall" };
+  const session: SignalLogSession = { ...persisted, view: normalizeSignalLogView(persisted.view) };
   sessions.set(token, session);
   return session;
 }
@@ -101,48 +82,6 @@ function hasRecords(ownerId: string, uid: string, source: GachaArchiveSource, ca
 
 function firstCategory(ownerId: string, uid: string, source: GachaArchiveSource): GachaChannelCategory {
   return GACHA_CATEGORY_ORDER.find((category) => hasRecords(ownerId, uid, source, category)) ?? "character_up";
-}
-
-function bannersFor(session: SignalLogSession): GachaArchiveBanner[] {
-  const archive = getGachaArchiveStore();
-  const metadata = archive.listBanners({
-    ownerId: session.ownerId, uid: session.uid, channelCategory: session.category,
-  });
-  const known = new Set(metadata.map((banner) => banner.bannerId));
-  const records = archive.listTimeline({
-    ownerId: session.ownerId, uid: session.uid, channelCategory: session.category,
-  });
-  for (const record of [...records].reverse()) {
-    if (!record.bannerId || known.has(record.bannerId)) continue;
-    known.add(record.bannerId);
-    metadata.push({
-      ownerId: session.ownerId, uid: session.uid, source: session.source,
-      bannerId: record.bannerId, channelCategory: session.category,
-      name: "", version: "", startAt: record.pulledAt, endAt: null, upItems: [],
-    });
-  }
-  return metadata.sort((left, right) => String(right.startAt ?? "").localeCompare(String(left.startAt ?? "")));
-}
-
-function hasUnclassified(session: SignalLogSession): boolean {
-  return getGachaArchiveStore().countRecords({
-    ownerId: session.ownerId, uid: session.uid,
-    channelCategory: session.category, bannerId: null,
-  }) > 0;
-}
-
-function bannerLabel(banner: GachaArchiveBanner | undefined, bannerId: string | null, locale?: string): string {
-  const copy = signalText(locale);
-  if (bannerId === null) return copy.unclassified;
-  if (!banner) return `${copy.banner} ${bannerId.slice(-8)}`;
-  const name = banner.name || banner.upItems.map((item) => item.name).filter(Boolean).join("／");
-  const prefix = banner.version ? `${banner.version} ` : "";
-  return `${prefix}${name || `${copy.banner} ${banner.bannerId.slice(-8)}`}`;
-}
-
-function displayBanner(session: SignalLogSession, selected?: GachaArchiveBanner): GachaArchiveBanner | undefined {
-  if (session.bannerId === ALL_SIGNAL_BANNERS) return undefined;
-  return selected;
 }
 
 async function validateSession(
@@ -173,56 +112,6 @@ async function validateSession(
   return true;
 }
 
-function controls(session: SignalLogSession, pageCount: number): ActionRowBuilder<any>[] {
-  const token = session.token;
-  const copy = signalText(session.locale);
-  const rows: ActionRowBuilder<any>[] = [];
-  rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-    new StringSelectMenuBuilder().setCustomId(`glog-category:${token}`).setPlaceholder(copy.categoryPlaceholder)
-      .addOptions(GACHA_CATEGORY_ORDER.map((category) => ({
-        label: signalCategoryText(session.locale, category), value: category, default: session.category === category,
-      }))),
-  ));
-  const banners = bannersFor(session);
-  const bannerChoices = [
-    ...banners.map((banner) => ({ label: bannerLabel(banner, banner.bannerId, session.locale).slice(0, 100), value: banner.bannerId })),
-    ...(hasUnclassified(session) ? [{ label: copy.unclassified, value: "__unknown__" }] : []),
-  ];
-  if (bannerChoices.length) {
-    const pagination = paginateSignalBannerChoicesWithPinned(
-      bannerChoices,
-      session.bannerPage,
-      { label: copy.allRecords, value: ALL_SIGNAL_BANNERS },
-    );
-    session.bannerPage = pagination.page;
-    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-      new StringSelectMenuBuilder().setCustomId(`glog-banner:${token}`).setPlaceholder(copy.bannerPlaceholder)
-        .addOptions(pagination.items.map((choice) => ({
-          ...choice, default: choice.value === (session.bannerId ?? "__unknown__"),
-        }))),
-    ));
-  }
-  const bannerPages = paginateSignalBannerChoicesWithPinned(
-    bannerChoices,
-    session.bannerPage,
-    { label: copy.allRecords, value: ALL_SIGNAL_BANNERS },
-  ).pages;
-  rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`glog-banner-prev:${token}`).setLabel(copy.newer)
-      .setStyle(ButtonStyle.Secondary).setDisabled(session.bannerPage <= 0),
-    new ButtonBuilder().setCustomId(`glog-banner-next:${token}`).setLabel(copy.older)
-      .setStyle(ButtonStyle.Secondary).setDisabled(session.bannerPage >= bannerPages - 1),
-    new ButtonBuilder().setCustomId(`glog-page-prev:${token}`).setLabel(copy.previous)
-      .setStyle(ButtonStyle.Secondary).setDisabled(session.page <= 0),
-    new ButtonBuilder().setCustomId(`glog-page-next:${token}`).setLabel(copy.next)
-      .setStyle(ButtonStyle.Secondary).setDisabled(session.page >= pageCount - 1),
-    new ButtonBuilder().setCustomId(`glog-view:${token}`)
-      .setLabel(session.view === "cycles" ? copy.overview : copy.viewRecords)
-      .setStyle(ButtonStyle.Primary),
-  ));
-  return rows.slice(0, 5);
-}
-
 export async function buildSignalLogMessage(session: SignalLogSession) {
   const archive = getGachaArchiveStore();
   const account = archive.getAccount(session.ownerId, session.uid);
@@ -240,49 +129,48 @@ export async function buildSignalLogMessage(session: SignalLogSession) {
   archive.classifyUnresolvedUpRecords({
     ownerId: session.ownerId, uid: session.uid, source: session.source, region,
   });
-  const banner = session.bannerId === ALL_SIGNAL_BANNERS
-    ? undefined
-    : bannersFor(session).find((item) => item.bannerId === session.bannerId);
-  const timeline = archive.listTimeline({
-    ownerId: session.ownerId, uid: session.uid, channelCategory: session.category,
+  const copy = signalText(session.locale);
+  const details = session.source === "official" ? session.details : undefined;
+  const { model, officialFetchedAt } = buildSignalLogModel({
+    archive, ownerId: session.ownerId, uid: session.uid, details, unclassifiedLabel: copy.unclassified,
   });
-  const live = session.source === "official" ? readLiveGachaState(session.details, session.category) : { pity: null, guaranteed: null };
-  const summary = analyzeGachaRecords({
-    records: timeline,
-    category: session.category,
-    bannerId: session.bannerId === ALL_SIGNAL_BANNERS ? undefined : session.bannerId,
-    livePity: live.pity, liveGuaranteed: live.guaranteed,
-  });
-  const latestBangboo = session.category === "bangboo" ? latestBangbooSRecord(timeline) : null;
-  const pityEstimated = live.pity === null && summary.currentPity !== null;
-  // Only the channel's newest pulls are still waiting for an S.
-  const openCycleIsLive = !summary.records.length || summary.records[0]!.recordId === timeline.at(-1)?.recordId;
-  const pageCount = signalLogPageCount(summary, toLegacySignalLogView(session.view), pityEstimated, openCycleIsLive);
+  const category = statCategoryOf(session);
+  let cycles: SignalLogImageInput["cycles"];
+  if (session.view === "cycles") {
+    const allBanners = session.bannerId === ALL_SIGNAL_BANNERS;
+    const banner = allBanners ? undefined : bannersFor(session).find((item) => item.bannerId === session.bannerId);
+    const timeline = archive.listTimeline({
+      ownerId: session.ownerId, uid: session.uid, channelCategory: session.category,
+    });
+    const live = session.source === "official" ? readLiveGachaState(session.details, session.category) : { pity: null, guaranteed: null };
+    const summary = analyzeGachaRecords({
+      records: timeline,
+      category: session.category,
+      bannerId: allBanners ? undefined : session.bannerId,
+      livePity: live.pity, liveGuaranteed: live.guaranteed,
+    });
+    cycles = {
+      summary,
+      pityEstimated: live.pity === null && summary.currentPity !== null,
+      // Only the channel's newest pulls are still waiting for an S.
+      openCycleIsLive: !summary.records.length || summary.records[0]!.recordId === timeline.at(-1)?.recordId,
+      bannerLabel: allBanners ? null : bannerLabel(banner, session.bannerId, session.locale),
+      banner,
+    };
+  }
+  const pageCount = signalLogImagePageCount({ view: session.view, category, model, cycles });
   session.page = Math.min(Math.max(0, session.page), pageCount - 1);
-  const renderedBanner = displayBanner(session, banner);
-  const image = await renderSignalLog({
-    locale: session.locale,
-    source: session.source, uid: session.uid, playerName: session.playerName,
-    archivedAt: account?.lastSyncedAt, stale: session.stale || account?.syncStatus === "failed",
-    category: session.category,
-    bannerLabel: session.bannerId === ALL_SIGNAL_BANNERS
-      ? signalText(session.locale).allRecords
-      : bannerLabel(banner, session.bannerId, session.locale),
-    banner: renderedBanner,
-    headerItem: latestBangboo ? {
-      id: latestBangboo.itemId,
-      name: latestBangboo.name,
-      itemType: "bangboo",
-      rarity: "S",
-    } : undefined,
-    summary, view: toLegacySignalLogView(session.view), page: session.page, details: session.details,
-    pityEstimated, openCycleIsLive,
+  const image = await renderSignalLogImage({
+    locale: session.locale, uid: session.uid, playerName: session.playerName,
+    archivedAt: officialFetchedAt ?? account?.lastSyncedAt,
+    stale: session.stale || account?.syncStatus === "failed",
+    view: session.view, page: session.page, category, model, cycles,
   });
   saveSession(session);
   return {
     embeds: [],
     files: [new AttachmentBuilder(image, { name: `zzz-signal-${session.uid}-${session.source}.png` })],
-    components: controls(session, pageCount),
+    components: signalLogControls(session, model, pageCount),
   };
 }
 
@@ -329,7 +217,7 @@ export async function createSignalLogSession(input: {
     linked: input.linked ?? !!input.zzz,
     region: String(input.region ?? input.zzz?.region ?? ""),
     category: firstCategory(input.ownerId, uid, input.source), bannerId: null,
-    bannerPage: 0, page: 0, view: "wall", stale: false,
+    bannerPage: 0, page: 0, view: "home", stale: false,
   };
   if (input.source === "official" && input.zzz) {
     try {
@@ -348,6 +236,9 @@ export async function createSignalLogSession(input: {
       if (!getGachaArchiveStore().countRecords({ ownerId: input.ownerId, uid })) {
         throw new Error(actionCopy.syncUnavailable);
       }
+    }
+    if (await refreshOfficialStats({ zzz: input.zzz, ownerId: input.ownerId, uid, archive }) === "failed") {
+      session.stale = true;
     }
     try { session.details = await requestZzzRecordApi(input.zzz, "cur_gacha_detail"); } catch { session.stale = true; }
   }
@@ -416,28 +307,14 @@ export async function handleSignalLogComponent(
   if (!(await validateSession(interaction, session))) return;
   await hydrateLiveSession(interaction, session);
   const selected = interaction.isStringSelectMenu() ? interaction.values[0] : undefined;
-  if (interaction.customId.startsWith("glog-category:") && GACHA_CATEGORY_ORDER.includes(selected as GachaChannelCategory)) {
-    session.category = selected as GachaChannelCategory;
-    session.bannerId = ALL_SIGNAL_BANNERS; session.bannerPage = 0; session.page = 0;
-  } else if (interaction.customId.startsWith("glog-banner:")) {
-    session.bannerId = selected === "__unknown__" ? null : String(selected ?? ALL_SIGNAL_BANNERS); session.page = 0;
-  } else if (interaction.customId.startsWith("glog-banner-prev:")) {
-    session.bannerPage = Math.max(0, session.bannerPage - 1);
-  } else if (interaction.customId.startsWith("glog-banner-next:")) {
-    session.bannerPage++; 
-  } else if (interaction.customId.startsWith("glog-page-prev:")) {
-    session.page = Math.max(0, session.page - 1);
-  } else if (interaction.customId.startsWith("glog-page-next:")) {
-    session.page++;
-  } else if (interaction.customId.startsWith("glog-view:")) {
-    Object.assign(session, { view: legacyToggleView(session.view), page: 0 });
-  } else if (interaction.customId.startsWith("glog-how:")) {
+  if (interaction.customId.startsWith("glog-how:")) {
     await interaction.followUp({
       content: "這是舊版紀錄訊息，請改用 `/調頻 匯入`。",
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
+  applySignalLogAction(session, interaction.customId, selected);
   if (!(await validateSession(interaction, session))) return;
   const payload = await buildSignalLogMessage(session);
   await interaction.editReply({ ...payload, attachments: [] });
