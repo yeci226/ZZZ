@@ -1,0 +1,244 @@
+import { loadImage, type Image, type SKRSContext2D } from "@napi-rs/canvas";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import type { GachaArchiveBanner } from "./gachaArchive.js";
+import type { GachaStatCategory } from "./gachaStatApi.js";
+import { getPaperAccent, safeAccent } from "./profileColors.js";
+import {
+  fitLocaleText,
+  gtCardKind,
+  IMAGE_DIR,
+  localeText,
+  numberText,
+  PAPER,
+  POSTER_WIDTH,
+  prepareSCard,
+} from "./signalLogPaper.js";
+import type { SignalLogView } from "./signalLogPagination.js";
+import { isLimitedCategory, type SignalItemKind, type SignalLogModel, type SignalSEntry } from "./signalLogModel.js";
+
+export type PosterArt = {
+  type: "full" | "wide" | "icon" | "none";
+  image: Image | null;
+  crop?: [number, number, number, number];
+};
+
+export interface PosterSubject {
+  agentId: string | null;
+  iconItem: { id: string; kind: SignalItemKind } | null;
+  accent: string;
+}
+
+const DEFAULT_CROP: [number, number, number, number] = [.3, .1, .4, .6];
+const PORTRAIT_DIR = join("src", "assets", "gacha-simulation", "ui", "characters");
+const CATALOG_PATH = join("src", "assets", "gacha-simulation", "catalog.json");
+
+let signatureAgents: Record<string, string> | undefined;
+let agentElements: Record<string, { elementType?: number }> | undefined;
+let catalogItems: Record<string, { crop?: unknown }> | null | undefined;
+
+function readJson(path: string): any {
+  try { return JSON.parse(readFileSync(path, "utf8")); } catch { return null; }
+}
+
+function signatureAgentOf(weaponId: string): string | null {
+  signatureAgents ??= readJson(join("src", "assets", "signature-weapons.json")) ?? {};
+  return signatureAgents![weaponId] ?? null;
+}
+
+function elementOf(agentId: string): number | undefined {
+  agentElements ??= readJson(join("src", "assets", "disc-leaderboard-elements.json"))?.agents ?? {};
+  const value = agentElements![agentId]?.elementType;
+  return typeof value === "number" ? value : undefined;
+}
+
+function catalogCrop(agentId: string): [number, number, number, number] {
+  if (catalogItems === undefined) catalogItems = readJson(CATALOG_PATH)?.items ?? null;
+  const crop = catalogItems?.[agentId]?.crop;
+  return Array.isArray(crop) && crop.length === 4 && crop.every((value) => typeof value === "number")
+    ? (crop as [number, number, number, number])
+    : DEFAULT_CROP;
+}
+
+type BannerItems = Pick<GachaArchiveBanner, "upItems">;
+
+function subjectOf(id: string, kind: SignalItemKind, banner?: BannerItems): PosterSubject {
+  const resolvedKind = kind === "unknown" ? gtCardKind("", id) : kind;
+  let agentId: string | null = null;
+  if (resolvedKind === "character") agentId = id;
+  else if (resolvedKind === "weapon") agentId = signatureAgentOf(id);
+  const iconItem = resolvedKind === "character" ? null : { id, kind: resolvedKind };
+  let accent: string = PAPER.defaultAccent;
+  if (agentId) {
+    const elementType = banner?.upItems.find((item) => String(item.id) === agentId)?.elementType ?? elementOf(agentId);
+    if (elementType !== undefined) accent = getPaperAccent(safeAccent(undefined, elementType));
+  }
+  return { agentId, iconItem, accent };
+}
+
+const NONE: PosterSubject = { agentId: null, iconItem: null, accent: PAPER.defaultAccent };
+
+function newestEntry(model: SignalLogModel): SignalSEntry | null {
+  const all = Object.values(model.channels).flatMap((channel) => channel.entries);
+  const time = (entry: SignalSEntry) => (entry.pulledAt ? Date.parse(entry.pulledAt) : Number.NaN);
+  const newest = (list: SignalSEntry[]) =>
+    list.reduce<SignalSEntry | null>((best, entry) => {
+      if (best === null) return entry;
+      const a = time(entry);
+      const b = time(best);
+      return !Number.isNaN(a) && (Number.isNaN(b) || a > b) ? entry : best;
+    }, null);
+  return newest(all.filter((entry) => entry.kind === "character")) ?? newest(all.filter((entry) => entry.kind === "weapon"));
+}
+
+export function resolvePosterSubject(input: {
+  view: SignalLogView;
+  model: SignalLogModel;
+  category: GachaStatCategory;
+  banner?: Pick<GachaArchiveBanner, "upItems">;
+}): PosterSubject {
+  if (input.view === "home") {
+    const entry = newestEntry(input.model);
+    return entry ? subjectOf(entry.itemId, entry.kind) : NONE;
+  }
+  if (input.view === "cycles" && input.banner) {
+    const up = input.banner.upItems.find((item) => item.rarity === "S");
+    if (up) return subjectOf(String(up.id), up.itemType ?? gtCardKind("", String(up.id)), input.banner);
+  }
+  const channel = input.model.channels[input.category];
+  const entries = channel?.entries ?? [];
+  const entry = isLimitedCategory(input.category) ? entries.find((item) => item.isUp === true) ?? entries[0] : entries[0];
+  return entry ? subjectOf(entry.itemId, entry.kind, input.banner) : NONE;
+}
+
+async function tryLoad(path: string): Promise<Image | null> {
+  try { return await loadImage(path); } catch { return null; }
+}
+
+export async function loadPosterArt(subject: PosterSubject): Promise<PosterArt> {
+  if (subject.agentId) {
+    const dir = process.env.ZZZ_AGENT_ART_DIR || join(IMAGE_DIR, "agents");
+    const full = await tryLoad(join(dir, `${subject.agentId}.webp`));
+    if (full) return { type: "full", image: full };
+    const wide = await tryLoad(join(PORTRAIT_DIR, `${subject.agentId}.png`));
+    if (wide) return { type: "wide", image: wide, crop: catalogCrop(subject.agentId) };
+  }
+  if (subject.iconItem) {
+    try {
+      const card = await prepareSCard({ itemId: subject.iconItem.id, kind: subject.iconItem.kind });
+      if (card.images.art) return { type: "icon", image: card.images.art };
+    } catch { /* fall through */ }
+  }
+  return { type: "none", image: null };
+}
+
+function stripes(ctx: SKRSContext2D, top: number, height: number): void {
+  ctx.save();
+  ctx.globalAlpha = .14;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 3;
+  for (let x = -height; x < POSTER_WIDTH + 20; x += 26) {
+    ctx.beginPath();
+    ctx.moveTo(x, top + height);
+    ctx.lineTo(x + height, top);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawArt(ctx: SKRSContext2D, art: PosterArt, height: number, accent: string): void {
+  const edge = POSTER_WIDTH + 12;
+  if (art.type === "full" && art.image) {
+    const artHeight = Math.max(height * 1.28, 900);
+    const artWidth = artHeight * art.image.width / art.image.height;
+    ctx.drawImage(art.image, POSTER_WIDTH / 2 - artWidth / 2, 6, artWidth, artHeight);
+  } else if (art.type === "wide" && art.image) {
+    const [cx, cy, cw, ch] = art.crop ?? DEFAULT_CROP;
+    const band = Math.min(height * .5, 420);
+    const scale = band / (art.image.height * Math.min(1, ch + .3));
+    const faceX = (cx + cw / 2) * art.image.width * scale;
+    const faceY = (cy + ch / 2) * art.image.height * scale;
+    ctx.drawImage(art.image, POSTER_WIDTH / 2 - faceX, band * .46 - faceY, art.image.width * scale, art.image.height * scale);
+    const blend = ctx.createLinearGradient(0, band * .55, 0, band * 1.05);
+    blend.addColorStop(0, "rgba(0,0,0,0)");
+    blend.addColorStop(1, accent);
+    ctx.fillStyle = blend;
+    ctx.fillRect(0, band * .55, edge, band * .5 + 2);
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, band * 1.05, edge, height);
+    stripes(ctx, band * 1.05, height - band * 1.05);
+  } else if (art.type === "icon" && art.image) {
+    const size = POSTER_WIDTH * 1.02;
+    ctx.save();
+    ctx.translate(POSTER_WIDTH / 2 - 4, height * .36);
+    ctx.rotate(-.12);
+    ctx.shadowColor = "rgba(0,0,0,.35)";
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 12;
+    ctx.drawImage(art.image, -size / 2, -size / 2, size, size);
+    ctx.restore();
+  }
+}
+
+export async function drawPoster(
+  ctx: SKRSContext2D,
+  height: number,
+  input: { subject: PosterSubject; title: string; chip: string; playerName: string; uid: string; locale?: string },
+): Promise<void> {
+  const { accent } = input.subject;
+  const edge = POSTER_WIDTH + 12;
+  const art = await loadPosterArt(input.subject);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(edge, 0);
+  ctx.lineTo(POSTER_WIDTH - 12, height);
+  ctx.lineTo(0, height);
+  ctx.closePath();
+  ctx.clip();
+  ctx.fillStyle = accent;
+  ctx.fillRect(0, 0, edge, height);
+  stripes(ctx, 0, height);
+  drawArt(ctx, art, height, accent);
+  const fade = ctx.createLinearGradient(0, height - 300, 0, height);
+  fade.addColorStop(0, "rgba(12,14,16,0)");
+  fade.addColorStop(.75, "rgba(12,14,16,.86)");
+  fade.addColorStop(1, "rgba(12,14,16,.94)");
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, height - 300, edge, 300);
+  ctx.restore();
+
+  // slanted ink edge
+  ctx.beginPath();
+  ctx.moveTo(edge, 0);
+  ctx.lineTo(POSTER_WIDTH + 19, 0);
+  ctx.lineTo(POSTER_WIDTH - 5, height);
+  ctx.lineTo(POSTER_WIDTH - 12, height);
+  ctx.closePath();
+  ctx.fillStyle = PAPER.ink;
+  ctx.fill();
+
+  const textWidth = POSTER_WIDTH - 40;
+  // chip: white pill sized to the fitted text, kept inside the slanted edge
+  const chipSize = 15;
+  const chipPad = chipSize * .7;
+  const chip = fitLocaleText(ctx, input.locale, input.chip, chipSize, true, textWidth - chipPad * 2);
+  const chipHeight = chipSize * 1.9;
+  const chipY = height - 152;
+  ctx.beginPath();
+  ctx.roundRect(20, chipY - chipHeight / 2, chip.width + chipPad * 2, chipHeight, chipHeight / 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  localeText(ctx, input.locale, input.chip, 20 + chipPad, chipY + 1, chipSize, accent, { bold: true, maxWidth: textWidth - chipPad * 2 });
+
+  ctx.save();
+  ctx.transform(1, 0, -.1, 1, 0, 0);
+  localeText(ctx, input.locale, input.title, 20 + (height - 104) * .1, height - 104, 46, "#ffffff", { bold: true, maxWidth: textWidth });
+  ctx.restore();
+
+  ctx.fillStyle = "rgba(255,255,255,.35)";
+  ctx.fillRect(20, height - 70, POSTER_WIDTH - 70, 1);
+  localeText(ctx, input.locale, input.playerName, 20, height - 48, 17, "#ffffff", { bold: true, maxWidth: textWidth });
+  numberText(ctx, `UID ${input.uid}`, 20, height - 25, 14, "rgba(255,255,255,.78)");
+}

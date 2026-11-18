@@ -69,11 +69,103 @@ export function drawGlassCard(
   ctx.stroke();
 }
 
-/** Same thresholds as the dark renderer, with tones that stay readable on paper. */
-export function progressColor(position: number | null, hardPity: number): string {
+export const POSTER_WIDTH = 264;
+export const CONTENT_X = 284;
+export const CONTENT_WIDTH = 700;
+export const PAGE_MARGIN = 16;
+export const MIN_IMAGE_HEIGHT = 560;
+export const MAX_IMAGE_HEIGHT = 1100;
+
+/** Pity tone by position / hardPity; the same scale is used by every view. */
+export function pityTone(position: number | null, hardPity: number): string {
   if (position === null) return PAPER.muted;
   const ratio = position / hardPity;
-  return ratio >= .84 ? "#d9473b" : ratio >= .58 ? "#d99a1e" : "#3e9c7c";
+  return ratio >= .84 ? "#d9473b" : ratio >= .58 ? "#c9870f" : "#2f8f6f";
+}
+
+export function progressColor(position: number | null, hardPity: number): string {
+  return pityTone(position, hardPity);
+}
+
+/** Yellow "UP" tag whose right edge sits at `right`. */
+export function drawUpTag(ctx: SKRSContext2D, right: number, top: number, size: number): void {
+  ctx.font = `${size}px ${NUMBER_FONT}`;
+  const width = ctx.measureText("UP").width + size * .8;
+  const height = size * 1.35;
+  ctx.beginPath();
+  ctx.roundRect(right - width, top, width, height, 5);
+  ctx.fillStyle = "#ffd21f";
+  ctx.fill();
+  ctx.strokeStyle = PAPER.ink;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  numberText(ctx, "UP", right - width / 2, top + height / 2 + 1, size, PAPER.ink, "center");
+}
+
+/** Rounded colour block with a white pity number. */
+export function drawPityPill(
+  ctx: SKRSContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  label: string,
+  color: string,
+): void {
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, height / 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  numberText(ctx, label, x + width / 2, y + height / 2 + 1, height * .74, "#ffffff", "center");
+}
+
+export interface FittedLocaleText { font: string; text: string; width: number }
+
+/** Shrink down to 70% of `size`, then truncate with an ellipsis; measured in the drawing font. */
+export function fitLocaleText(
+  ctx: SKRSContext2D,
+  locale: string | undefined,
+  value: unknown,
+  size: number,
+  bold = false,
+  maxWidth?: number,
+): FittedLocaleText {
+  const family = getZzzOfficialFont(locale);
+  const original = String(value ?? "");
+  const fontAt = (px: number) => `${bold ? "bold " : ""}${px}px ${family}`;
+  ctx.font = fontAt(size);
+  let width = ctx.measureText(original).width;
+  if (maxWidth === undefined || width <= maxWidth) return { font: fontAt(size), text: original, width };
+  const floor = Math.max(1, Math.floor(size * .7));
+  for (let px = size - 1; px >= floor; px--) {
+    ctx.font = fontAt(px);
+    width = ctx.measureText(original).width;
+    if (width <= maxWidth) return { font: fontAt(px), text: original, width };
+  }
+  const chars = Array.from(original);
+  while (chars.length > 1 && ctx.measureText(`${chars.join("")}…`).width > maxWidth) chars.pop();
+  const truncated = `${chars.join("")}…`;
+  return { font: fontAt(floor), text: truncated, width: ctx.measureText(truncated).width };
+}
+
+/** Draws text in the locale's official font and returns the drawn width. */
+export function localeText(
+  ctx: SKRSContext2D,
+  locale: string | undefined,
+  value: unknown,
+  x: number,
+  y: number,
+  size: number,
+  color: string,
+  options: { align?: CanvasTextAlign; bold?: boolean; maxWidth?: number } = {},
+): number {
+  const fitted = fitLocaleText(ctx, locale, value, size, options.bold, options.maxWidth);
+  ctx.font = fitted.font;
+  ctx.fillStyle = color;
+  ctx.textAlign = options.align ?? "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(fitted.text, x, y);
+  return fitted.width;
 }
 
 export function numberText(
@@ -315,6 +407,12 @@ export async function prepareGtCard(
     kind: gtCardKind(source.itemType, source.id),
     images: { art, ...metadata },
   };
+}
+
+/** Square-art card source for one S entry (no banner metadata). */
+export function prepareSCard(entry: { itemId: string; kind: string }) {
+  const itemType = entry.kind === "character" || entry.kind === "weapon" || entry.kind === "bangboo" ? entry.kind : "";
+  return prepareGtCard({} as SignalLogRenderInput, { id: entry.itemId, itemType, rarity: "S" });
 }
 
 function formatDate(value?: string | null, withTime = true, locale?: string): string {
