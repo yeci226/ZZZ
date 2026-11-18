@@ -6,6 +6,7 @@ import { wallPageCount, type LegacySignalLogView, type SignalLogView } from "./s
 import type { GachaStatCategory } from "./gachaStatApi.js";
 import type { SignalLogModel } from "./signalLogModel.js";
 import { renderSignalHome } from "./signalLogHome.js";
+import { renderSignalVersions, paginateSegments } from "./signalLogVersions.js";
 import { renderSignalWall } from "./signalLogWall.js";
 import {
   bannerUpItems,
@@ -83,13 +84,15 @@ export interface SignalLogImageInput {
 export async function renderSignalLogImage(input: SignalLogImageInput): Promise<Buffer> {
   if (input.view === "home") return renderSignalHome(input);
   if (input.view === "wall") return renderSignalWall(input);
+  if (input.view === "versions") return renderSignalVersions(input);
   throw new Error("view not implemented");
 }
 
 export function signalLogImagePageCount(
   input: Pick<SignalLogImageInput, "view" | "category" | "model" | "cycles">,
 ): number {
-  if (input.view !== "wall") return 1;
   const channel = input.model.channels[input.category];
+  if (input.view === "versions") return paginateSegments(channel.segments).length;
+  if (input.view !== "wall") return 1;
   return wallPageCount(channel.entries.length, channel.currentPity !== null);
 }
