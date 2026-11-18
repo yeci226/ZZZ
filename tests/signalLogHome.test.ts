@@ -1,7 +1,7 @@
 import { loadImage } from "@napi-rs/canvas";
 import type { GachaStatCategory } from "../src/utilities/zzz/gachaStatApi.js";
 import { emptyChannel, type SignalLogModel, type SignalSEntry } from "../src/utilities/zzz/signalLogModel.js";
-import { homeHeight, ticketCells } from "../src/utilities/zzz/signalLogHome.js";
+import { channelTotalsLabel, homeHeight, ticketCells } from "../src/utilities/zzz/signalLogHome.js";
 import { renderSignalLogImage, signalLogImagePageCount } from "../src/utilities/zzz/signalLogRenderer.js";
 
 const CATEGORIES: GachaStatCategory[] = ["character_up", "character_return", "weapon_up", "weapon_return", "standard", "bangboo"];
@@ -56,6 +56,12 @@ describe("signal log home", () => {
       expect(image.height).toBeGreaterThanOrEqual(1120);
       expect(image.height).toBeLessThanOrEqual(2200);
     }
+  });
+
+  it("builds the totals line with the pull unit and S count", () => {
+    const channel = { ...emptyChannel("character_up"), total: 2434, sCount: 45 };
+    expect(channelTotalsLabel(channel, "tw")).toEqual({ total: "2,434", rest: "抽 · 45 個 S" });
+    expect(channelTotalsLabel(channel, "en")).toEqual({ total: "2,434", rest: "pulls · 45 S" });
   });
 
   it("reports a single page for home", () => {

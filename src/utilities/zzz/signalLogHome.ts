@@ -69,6 +69,15 @@ export function ticketCells(tickets: SignalTickets, locale?: string): Array<{ la
   return ticketDefs(tickets, locale).map(({ label, value }) => ({ label, value }));
 }
 
+/** Totals line under a channel name: the total (number font) and the rest (locale font). */
+export function channelTotalsLabel(channel: SignalChannelModel, locale?: string): { total: string; rest: string } {
+  const copy = signalText(locale);
+  return {
+    total: channel.total.toLocaleString("en-US"),
+    rest: `${copy.pullUnit} · ${copy.sCountOf.replace("{n}", String(channel.sCount))}`,
+  };
+}
+
 async function tryImage(path: string): Promise<Image | null> {
   try { return await loadImage(path); } catch { return null; }
 }
@@ -167,10 +176,10 @@ async function drawChannelRow(
   }
   drawGlassCard(ctx, left, y, CONTENT_WIDTH, FULL_ROW, { radius: 12 });
   localeText(ctx, locale, name, left + 18, y + 31, 22, PAPER.ink, { bold: true, maxWidth: 150 });
-  const total = channel.total.toLocaleString("en-US");
-  const totalWidth = numberWidth(ctx, total, 17);
-  numberText(ctx, total, left + 18, y + 66, 17, PAPER.muted);
-  localeText(ctx, locale, copy.sCountOf.replace("{n}", String(channel.sCount)), left + 24 + totalWidth, y + 67, 13, PAPER.muted, { maxWidth: 138 - totalWidth });
+  const label = channelTotalsLabel(channel, locale);
+  const totalWidth = numberWidth(ctx, label.total, 17);
+  numberText(ctx, label.total, left + 18, y + 66, 17, PAPER.muted);
+  localeText(ctx, locale, label.rest, left + 24 + totalWidth, y + 67, 13, PAPER.muted, { maxWidth: 148 - totalWidth });
 
   const px = left + 172;
   const pity = channel.currentPity;
