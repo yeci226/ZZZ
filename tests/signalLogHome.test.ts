@@ -1,7 +1,8 @@
-import { loadImage } from "@napi-rs/canvas";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
 import type { GachaStatCategory } from "../src/utilities/zzz/gachaStatApi.js";
 import { emptyChannel, type SignalLogModel, type SignalSEntry } from "../src/utilities/zzz/signalLogModel.js";
-import { channelTotalsLabel, homeHeight, ticketCells } from "../src/utilities/zzz/signalLogHome.js";
+import { channelTotalsLabel, homeHeight, ticketCells, ticketNumberSize, ticketTextWidth } from "../src/utilities/zzz/signalLogHome.js";
+import { NUMBER_FONT } from "../src/utilities/zzz/signalLogPaper.js";
 import { renderSignalLogImage, signalLogImagePageCount } from "../src/utilities/zzz/signalLogRenderer.js";
 
 const CATEGORIES: GachaStatCategory[] = ["character_up", "character_return", "weapon_up", "weapon_return", "standard", "bangboo"];
@@ -66,5 +67,17 @@ describe("signal log home", () => {
 
   it("reports a single page for home", () => {
     expect(signalLogImagePageCount({ view: "home", category: "character_up", model: fourActiveWithTickets })).toBe(1);
+  });
+
+  it("shrinks ticket numbers to fit their cell and keeps short ones at full size", () => {
+    const ctx = createCanvas(10, 10).getContext("2d");
+    const available = ticketTextWidth((700 - 164 - 9) / 5, true);
+    expect(available).toBeGreaterThan(40);
+    const size = ticketNumberSize(ctx, "24,761", available, 19);
+    expect(size).toBeLessThan(19);
+    expect(size).toBeGreaterThanOrEqual(12);
+    ctx.font = `${size}px ${NUMBER_FONT}`;
+    expect(ctx.measureText("24,761").width).toBeLessThanOrEqual(available);
+    expect(ticketNumberSize(ctx, "7", available, 19)).toBe(19);
   });
 });

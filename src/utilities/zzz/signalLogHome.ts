@@ -128,6 +128,25 @@ function drawGuaranteeTag(ctx: SKRSContext2D, locale: string | undefined, value:
   localeText(ctx, locale, value, left + width / 2, centerY + 1, size, filled ? "#ffffff" : PAPER.muted, { align: "center", bold: true });
 }
 
+const TICKET_ICON_INSET = 44;
+const TICKET_TEXT_INSET = 12;
+const TICKET_RIGHT_PAD = 8;
+const TICKET_NUMBER_SIZE = 19;
+const TICKET_NUMBER_FLOOR = 12;
+
+/** Width available to a ticket cell's label and number, keeping clear of the next divider. */
+export function ticketTextWidth(cellWidth: number, hasIcon: boolean): number {
+  return cellWidth - (hasIcon ? TICKET_ICON_INSET : TICKET_TEXT_INSET) - TICKET_RIGHT_PAD;
+}
+
+/** Largest size from `preferredSize` down to 12px whose number fits `maxWidth` (12px if none does). */
+export function ticketNumberSize(ctx: SKRSContext2D, value: string, maxWidth: number, preferredSize: number): number {
+  for (let size = preferredSize; size > TICKET_NUMBER_FLOOR; size--) {
+    if (numberWidth(ctx, value, size) <= maxWidth) return size;
+  }
+  return TICKET_NUMBER_FLOOR;
+}
+
 async function drawTicketRow(
   ctx: SKRSContext2D, tickets: SignalTickets, locale: string | undefined, accent: string, y: number,
 ): Promise<void> {
@@ -140,10 +159,11 @@ async function drawTicketRow(
   cells.forEach((item, index) => {
     const x = CONTENT_X + index * cell;
     const icon = icons[item.key];
-    const textX = icon ? x + 44 : x + 12;
+    const textX = icon ? x + TICKET_ICON_INSET : x + TICKET_TEXT_INSET;
+    const textWidth = ticketTextWidth(cell, !!icon);
     if (icon) ctx.drawImage(icon, x + 10, y + (TICKET_HEIGHT - 28) / 2, 28, 28);
-    localeText(ctx, locale, item.label, textX, y + 22, 12, PAPER.muted, { maxWidth: x + cell - 6 - textX });
-    numberText(ctx, item.value, textX, y + 46, 19, PAPER.ink);
+    localeText(ctx, locale, item.label, textX, y + 22, 12, PAPER.muted, { maxWidth: textWidth });
+    numberText(ctx, item.value, textX, y + 46, ticketNumberSize(ctx, item.value, textWidth, TICKET_NUMBER_SIZE), PAPER.ink);
     if (index) {
       ctx.fillStyle = PAPER.line;
       ctx.fillRect(x, y + 14, 1, TICKET_HEIGHT - 28);
