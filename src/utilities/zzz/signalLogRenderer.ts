@@ -2,7 +2,10 @@ import type { GachaArchiveBanner, GachaArchiveSource, GachaChannelCategory } fro
 import type { GachaSummary } from "./gachaAnalysis.js";
 import { cycleTrackCells, renderSignalCycles } from "./signalLogCycles.js";
 import { overviewMetrics, overviewStatCards, hasTopBadge, renderSignalOverview, sItemCounts, statsEntries } from "./signalLogOverview.js";
-import type { LegacySignalLogView } from "./signalLogPagination.js";
+import { wallPageCount, type LegacySignalLogView, type SignalLogView } from "./signalLogPagination.js";
+import type { GachaStatCategory } from "./gachaStatApi.js";
+import type { SignalLogModel } from "./signalLogModel.js";
+import { renderSignalWall } from "./signalLogWall.js";
 import {
   bannerUpItems,
   fittedNumberSize,
@@ -56,3 +59,35 @@ export const __signalLogRendererInternals = {
   hasTopBadge,
   outputScale: OUTPUT_SCALE,
 };
+
+export interface SignalLogImageInput {
+  locale?: string;
+  uid: string;
+  playerName?: string | null;
+  archivedAt?: string | null;
+  stale?: boolean;
+  view: SignalLogView;
+  page: number;
+  category: GachaStatCategory;
+  model: SignalLogModel;
+  cycles?: {
+    summary: GachaSummary;
+    pityEstimated: boolean;
+    openCycleIsLive: boolean;
+    bannerLabel: string | null;
+    banner?: Pick<GachaArchiveBanner, "name" | "version" | "upItems">;
+  };
+}
+
+export async function renderSignalLogImage(input: SignalLogImageInput): Promise<Buffer> {
+  if (input.view === "wall") return renderSignalWall(input);
+  throw new Error("view not implemented");
+}
+
+export function signalLogImagePageCount(
+  input: Pick<SignalLogImageInput, "view" | "category" | "model" | "cycles">,
+): number {
+  if (input.view !== "wall") return 1;
+  const channel = input.model.channels[input.category];
+  return wallPageCount(channel.entries.length, channel.currentPity !== null);
+}
