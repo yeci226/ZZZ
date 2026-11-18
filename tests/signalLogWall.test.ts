@@ -65,6 +65,6 @@ describe("wall", () => {
   });
 
   it("rejects views that are not built yet", async () => {
-    await expect(renderSignalLogImage({ uid: "1", view: "home", page: 0, category: "character_up", model: modelWith(0, { currentPity: null }) })).rejects.toThrow("view not implemented");
+    await expect(renderSignalLogImage({ uid: "1", view: "versions", page: 0, category: "character_up", model: modelWith(0, { currentPity: null }) })).rejects.toThrow("view not implemented");
   });
 });
