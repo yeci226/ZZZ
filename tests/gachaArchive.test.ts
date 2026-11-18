@@ -207,12 +207,14 @@ describe("structured ZZZ gacha archive", () => {
       bannerPage: 0, page: 0, stale: false,
     };
     store.upsertAccount({ ownerId: "owner", uid: "uid", source: "official" });
-    store.saveSignalLogSession({ ...session, view: "records" });
-    expect(store.getSignalLogSession("view-token")?.view).toBe("records");
+    store.saveSignalLogSession({ ...session, view: "versions" });
+    expect(store.getSignalLogSession("view-token")?.view).toBe("versions");
     store.saveSignalLogSession(session);
-    expect(store.getSignalLogSession("view-token")?.view).toBe("overview");
+    expect(store.getSignalLogSession("view-token")?.view).toBe("wall");
+    (store as any).db.prepare("UPDATE signal_log_sessions SET view = 'overview'").run();
+    expect(store.getSignalLogSession("view-token")?.view).toBe("wall");
     (store as any).db.prepare("UPDATE signal_log_sessions SET view = 'bogus'").run();
-    expect(store.getSignalLogSession("view-token")?.view).toBe("overview");
+    expect(store.getSignalLogSession("view-token")?.view).toBe("home");
   });
 
   it("adds the view column to an existing signal_log_sessions table", () => {
@@ -224,7 +226,7 @@ describe("structured ZZZ gacha archive", () => {
       token: "legacy-token", invokerId: "viewer", ownerId: "owner", accountIndex: 0,
       uid: "uid", playerName: "", locale: "tw", linked: false, region: "",
       source: "official", category: "character_up", bannerId: null,
-      bannerPage: 0, page: 0, stale: false, view: "records",
+      bannerPage: 0, page: 0, stale: false, view: "cycles",
     });
     first.close();
     const raw = new Database(path);
@@ -232,7 +234,7 @@ describe("structured ZZZ gacha archive", () => {
     raw.close();
 
     const second = new GachaArchiveStore(path);
-    expect(second.getSignalLogSession("legacy-token")?.view).toBe("overview");
+    expect(second.getSignalLogSession("legacy-token")?.view).toBe("wall");
     second.close();
     rmSync(directory, { recursive: true, force: true });
   });

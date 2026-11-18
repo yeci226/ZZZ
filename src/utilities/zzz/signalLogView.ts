@@ -38,8 +38,9 @@ import { requestZzzRecordApi } from "./officialRecordApi.js";
 import { renderSignalLog } from "./signalLogRenderer.js";
 import {
   paginateSignalBannerChoicesWithPinned,
+  legacyToggleView,
   signalLogPageCount,
-  switchSignalLogView,
+  toLegacySignalLogView,
   type SignalLogView,
 } from "./signalLogPagination.js";
 import { signalCategoryText, signalText } from "./recordText.js";
@@ -89,7 +90,7 @@ function sessionFrom(customId: string): SignalLogSession | null {
   }
   const cached = sessions.get(token);
   if (cached) return cached;
-  const session: SignalLogSession = { ...persisted, view: persisted.view ?? "overview" };
+  const session: SignalLogSession = { ...persisted, view: persisted.view ?? "wall" };
   sessions.set(token, session);
   return session;
 }
@@ -216,7 +217,7 @@ function controls(session: SignalLogSession, pageCount: number): ActionRowBuilde
     new ButtonBuilder().setCustomId(`glog-page-next:${token}`).setLabel(copy.next)
       .setStyle(ButtonStyle.Secondary).setDisabled(session.page >= pageCount - 1),
     new ButtonBuilder().setCustomId(`glog-view:${token}`)
-      .setLabel(session.view === "overview" ? copy.viewRecords : copy.overview)
+      .setLabel(session.view === "cycles" ? copy.overview : copy.viewRecords)
       .setStyle(ButtonStyle.Primary),
   ));
   return rows.slice(0, 5);
@@ -256,7 +257,7 @@ export async function buildSignalLogMessage(session: SignalLogSession) {
   const pityEstimated = live.pity === null && summary.currentPity !== null;
   // Only the channel's newest pulls are still waiting for an S.
   const openCycleIsLive = !summary.records.length || summary.records[0]!.recordId === timeline.at(-1)?.recordId;
-  const pageCount = signalLogPageCount(summary, session.view, pityEstimated, openCycleIsLive);
+  const pageCount = signalLogPageCount(summary, toLegacySignalLogView(session.view), pityEstimated, openCycleIsLive);
   session.page = Math.min(Math.max(0, session.page), pageCount - 1);
   const renderedBanner = displayBanner(session, banner);
   const image = await renderSignalLog({
@@ -274,7 +275,7 @@ export async function buildSignalLogMessage(session: SignalLogSession) {
       itemType: "bangboo",
       rarity: "S",
     } : undefined,
-    summary, view: session.view, page: session.page, details: session.details,
+    summary, view: toLegacySignalLogView(session.view), page: session.page, details: session.details,
     pityEstimated, openCycleIsLive,
   });
   saveSession(session);
@@ -328,7 +329,7 @@ export async function createSignalLogSession(input: {
     linked: input.linked ?? !!input.zzz,
     region: String(input.region ?? input.zzz?.region ?? ""),
     category: firstCategory(input.ownerId, uid, input.source), bannerId: null,
-    bannerPage: 0, page: 0, view: "overview", stale: false,
+    bannerPage: 0, page: 0, view: "wall", stale: false,
   };
   if (input.source === "official" && input.zzz) {
     try {
@@ -429,7 +430,7 @@ export async function handleSignalLogComponent(
   } else if (interaction.customId.startsWith("glog-page-next:")) {
     session.page++;
   } else if (interaction.customId.startsWith("glog-view:")) {
-    Object.assign(session, switchSignalLogView(session.view));
+    Object.assign(session, { view: legacyToggleView(session.view), page: 0 });
   } else if (interaction.customId.startsWith("glog-how:")) {
     await interaction.followUp({
       content: "這是舊版紀錄訊息，請改用 `/調頻 匯入`。",

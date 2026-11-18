@@ -2,7 +2,7 @@ import type { GachaArchiveBanner, GachaArchiveSource, GachaChannelCategory } fro
 import type { GachaSummary } from "./gachaAnalysis.js";
 import { cycleTrackCells, renderSignalCycles } from "./signalLogCycles.js";
 import { overviewMetrics, overviewStatCards, hasTopBadge, renderSignalOverview, sItemCounts, statsEntries } from "./signalLogOverview.js";
-import type { SignalLogView } from "./signalLogPagination.js";
+import type { LegacySignalLogView } from "./signalLogPagination.js";
 import {
   bannerUpItems,
   fittedNumberSize,
@@ -30,7 +30,7 @@ export interface SignalLogRenderInput {
     icon?: string;
   };
   summary: GachaSummary;
-  view: SignalLogView;
+  view: LegacySignalLogView;
   page: number;
   details?: any;
   pityEstimated?: boolean;

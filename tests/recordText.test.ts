@@ -13,6 +13,37 @@ describe("ZZZ Note and Signal Log localization", () => {
     expect(categories.every((category) => signalCategoryText(locale, category).length > 0)).toBe(true);
   });
 
+  const newKeys = [
+    "homeTitle", "allChannels", "monochrome", "pullsAvailable", "pullUnit", "sCountOf", "sCount", "toHardPity",
+    "smallGuarantee", "upOverS", "averageUpCost", "averageSShort", "pityNow", "viewWall", "viewVersions",
+    "newestFirst", "recordsSince", "ongoing", "noSInVersion", "continued", "upCountOf", "homeOption",
+  ] as const;
+
+  it.each(locales)("provides every poster key in %s", (locale) => {
+    const text = signalText(locale) as unknown as Record<string, unknown>;
+    for (const key of newKeys) {
+      expect(typeof text[key]).toBe("string");
+      expect((text[key] as string).length).toBeGreaterThan(0);
+    }
+    expect(text.toHardPity).toContain("{n}");
+    expect(text.sCountOf).toContain("{n}");
+    expect(text.recordsSince).toContain("{date}");
+    expect(text.upCountOf).toContain("{n}");
+  });
+
+  it.each(locales.filter((locale) => locale !== "en"))("translates poster copy for %s", (locale) => {
+    const text = signalText(locale) as unknown as Record<string, string>;
+    const english = signalText("en") as unknown as Record<string, string>;
+    expect(text.viewWall).not.toBe(english.viewWall);
+    expect(text.homeTitle).not.toBe(english.homeTitle);
+  });
+
+  it("uses the fixed Traditional Chinese copy", () => {
+    expect(signalText("tw").viewVersions).toBe("依版本");
+    expect(signalText("tw").viewWall).toBe("S 牆");
+    expect(signalText("tw").sCountOf).toBe("{n} 個 S");
+  });
+
   it("normalizes Discord and API locale aliases", () => {
     expect(noteText("zh-TW").title).toBe(noteText("tw").title);
     expect(noteText("zh-CN").title).toBe(noteText("cn").title);

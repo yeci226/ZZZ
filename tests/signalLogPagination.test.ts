@@ -1,6 +1,9 @@
 import type { AnalyzedGachaRecord, GachaRank, GachaSummary } from "../src/utilities/zzz/gachaAnalysis.js";
 import {
+  legacyToggleView,
   normalizeSignalLogView,
+  toLegacySignalLogView,
+  wallPageCount,
   paginateSignalBannerChoices,
   paginateSignalBannerChoicesWithPinned,
   signalLogPageCount,
@@ -72,9 +75,22 @@ describe("signal log view pages", () => {
     expect(switchSignalLogView("records")).toEqual({ view: "overview", page: 0 });
   });
 
-  it("normalizes unknown persisted views to overview", () => {
-    expect(normalizeSignalLogView("records")).toBe("records");
-    expect(normalizeSignalLogView("grid")).toBe("overview");
-    expect(normalizeSignalLogView(null)).toBe("overview");
+  it("maps stored and unknown view values", () => {
+    expect(["overview", "records", "home", "wall", "versions", "cycles", "", null, "x"].map(normalizeSignalLogView))
+      .toEqual(["wall", "cycles", "home", "wall", "versions", "cycles", "home", "home", "home"]);
+  });
+
+  it("keeps old toggle buttons working between the wall and pity cycles", () => {
+    expect(["wall", "cycles", "home", "versions"].map((view) => legacyToggleView(view as any))).toEqual(["cycles", "wall", "cycles", "cycles"]);
+  });
+
+  it("counts wall pages with the live pity cell taking one slot on the first page", () => {
+    expect([[0, true], [34, true], [35, true], [35, false], [36, false], [0, false]].map(([s, live]) => wallPageCount(s as number, live as boolean)))
+      .toEqual([1, 1, 2, 1, 2, 1]);
+  });
+
+  it("converts new views to the legacy two-view renderer", () => {
+    expect(["home", "wall", "versions", "cycles"].map((view) => toLegacySignalLogView(view as any)))
+      .toEqual(["overview", "overview", "overview", "records"]);
   });
 });

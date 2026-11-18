@@ -905,7 +905,7 @@ export class GachaArchiveStore {
       input.bannerPage,
       input.page,
       input.stale ? 1 : 0,
-      normalizeSignalLogView(input.view),
+      normalizeSignalLogView(input.view ?? "wall"),
       input.createdAt ?? now,
       now,
     );

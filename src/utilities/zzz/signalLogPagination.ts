@@ -1,8 +1,12 @@
 import type { GachaSummary } from "./gachaAnalysis.js";
 import { buildPityCycles } from "./signalLogCycleData.js";
 
-export type SignalLogView = "overview" | "records";
+export type SignalLogView = "home" | "wall" | "versions" | "cycles";
+/** The two-view model the old renderer understands; removed with it. */
+export type LegacySignalLogView = "overview" | "records";
 export const SIGNAL_LOG_PAGE_SIZE = 10;
+export const WALL_PAGE_SIZE = 35;
+export const CYCLE_PAGE_SIZE = 10;
 
 export interface SignalBannerChoice {
   label: string;
@@ -29,15 +33,30 @@ export function paginateSignalBannerChoicesWithPinned(
   return { ...pagination, items: [pinned, ...pagination.items] };
 }
 
-export function signalLogPageCount(summary: GachaSummary, view: SignalLogView, pityEstimated?: boolean, openIsLive?: boolean): number {
+export function signalLogPageCount(summary: GachaSummary, view: LegacySignalLogView, pityEstimated?: boolean, openIsLive?: boolean): number {
   const items = view === "records" ? buildPityCycles(summary, pityEstimated, openIsLive).length : summary.sRecords.length;
   return Math.max(1, Math.ceil(items / SIGNAL_LOG_PAGE_SIZE));
 }
 
-export function switchSignalLogView(view: SignalLogView): { view: SignalLogView; page: 0 } {
+export function switchSignalLogView(view: LegacySignalLogView): { view: LegacySignalLogView; page: 0 } {
   return { view: view === "overview" ? "records" : "overview", page: 0 };
 }
 
+export function toLegacySignalLogView(view: SignalLogView): LegacySignalLogView {
+  return view === "cycles" ? "records" : "overview";
+}
+
 export function normalizeSignalLogView(value: unknown): SignalLogView {
-  return value === "records" ? "records" : "overview";
+  if (value === "overview") return "wall";
+  if (value === "records") return "cycles";
+  return value === "home" || value === "wall" || value === "versions" || value === "cycles" ? value : "home";
+}
+
+export function legacyToggleView(view: SignalLogView): SignalLogView {
+  return view === "cycles" ? "wall" : "cycles";
+}
+
+/** The live pity cell takes one slot on the first wall page. */
+export function wallPageCount(sCount: number, hasLiveCell: boolean): number {
+  return Math.max(1, Math.ceil((Math.max(0, sCount) + (hasLiveCell ? 1 : 0)) / WALL_PAGE_SIZE));
 }
