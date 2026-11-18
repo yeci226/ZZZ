@@ -1,8 +1,8 @@
 import type { GachaArchiveBanner, GachaArchiveSource, GachaChannelCategory } from "./gachaArchive.js";
 import type { GachaSummary } from "./gachaAnalysis.js";
-import { cycleTrackCells, renderSignalCycles } from "./signalLogCycles.js";
+import { cycleTrackCells, posterPityCycles, renderSignalCycles, renderSignalCyclesPoster } from "./signalLogCycles.js";
 import { overviewMetrics, overviewStatCards, hasTopBadge, renderSignalOverview, sItemCounts, statsEntries } from "./signalLogOverview.js";
-import { wallPageCount, type LegacySignalLogView, type SignalLogView } from "./signalLogPagination.js";
+import { CYCLE_PAGE_SIZE, wallPageCount, type LegacySignalLogView, type SignalLogView } from "./signalLogPagination.js";
 import type { GachaStatCategory } from "./gachaStatApi.js";
 import type { SignalLogModel } from "./signalLogModel.js";
 import { renderSignalHome } from "./signalLogHome.js";
@@ -85,7 +85,8 @@ export async function renderSignalLogImage(input: SignalLogImageInput): Promise<
   if (input.view === "home") return renderSignalHome(input);
   if (input.view === "wall") return renderSignalWall(input);
   if (input.view === "versions") return renderSignalVersions(input);
-  throw new Error("view not implemented");
+  if (!input.cycles) throw new Error("cycles input missing");
+  return renderSignalCyclesPoster(input);
 }
 
 export function signalLogImagePageCount(
@@ -93,6 +94,7 @@ export function signalLogImagePageCount(
 ): number {
   const channel = input.model.channels[input.category];
   if (input.view === "versions") return paginateSegments(channel.segments).length;
+  if (input.view === "cycles") return input.cycles ? Math.max(1, Math.ceil(posterPityCycles(input).length / CYCLE_PAGE_SIZE)) : 1;
   if (input.view !== "wall") return 1;
   return wallPageCount(channel.entries.length, channel.currentPity !== null);
 }

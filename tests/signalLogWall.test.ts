@@ -64,7 +64,7 @@ describe("wall", () => {
     await expect(renderSignalLogImage({ uid: "1", view: "wall", page: 99, category: "character_up", model: modelWith(3, { currentPity: 1 }) })).resolves.toBeInstanceOf(Buffer);
   });
 
-  it("rejects views that are not built yet", async () => {
-    await expect(renderSignalLogImage({ uid: "1", view: "cycles", page: 0, category: "character_up", model: modelWith(0, { currentPity: null }) })).rejects.toThrow("view not implemented");
+  it("rejects the cycles view when its input is missing", async () => {
+    await expect(renderSignalLogImage({ uid: "1", view: "cycles", page: 0, category: "character_up", model: modelWith(0, { currentPity: null }) })).rejects.toThrow();
   });
 });
