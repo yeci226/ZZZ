@@ -5,6 +5,7 @@ import { overviewMetrics, overviewStatCards, hasTopBadge, renderSignalOverview, 
 import { wallPageCount, type LegacySignalLogView, type SignalLogView } from "./signalLogPagination.js";
 import type { GachaStatCategory } from "./gachaStatApi.js";
 import type { SignalLogModel } from "./signalLogModel.js";
+import { renderSignalHome } from "./signalLogHome.js";
 import { renderSignalWall } from "./signalLogWall.js";
 import {
   bannerUpItems,
@@ -80,6 +81,7 @@ export interface SignalLogImageInput {
 }
 
 export async function renderSignalLogImage(input: SignalLogImageInput): Promise<Buffer> {
+  if (input.view === "home") return renderSignalHome(input);
   if (input.view === "wall") return renderSignalWall(input);
   throw new Error("view not implemented");
 }
