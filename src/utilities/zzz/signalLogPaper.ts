@@ -1,8 +1,8 @@
 import { createCanvas, loadImage, type Image, type SKRSContext2D } from "@napi-rs/canvas";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { normalizeRank, type AnalyzedGachaRecord } from "./gachaAnalysis.js";
-import { getZzzOfficialFont, getZzzOfficialNumberFont, normalizeZzzLocale } from "./canvasFonts.js";
+import type { AnalyzedGachaRecord } from "./gachaAnalysis.js";
+import { getZzzOfficialFont, getZzzOfficialNumberFont } from "./canvasFonts.js";
 import { resolveGachaWeaponIcon } from "./gachaWeaponIcons.js";
 import { resolveGachaBangbooIcon } from "./gachaBangbooIcons.js";
 import {
@@ -12,14 +12,10 @@ import {
   type GtCardKind,
   type GtCardRank,
 } from "./gtCardRenderer.js";
-import { getPaperAccent, safeAccent } from "./profileColors.js";
-import { signalCategoryText, signalText } from "./recordText.js";
-import type { SignalLogRenderInput } from "./signalLogRenderer.js";
 
 export const WIDTH = 1000;
 export const OUTPUT_SCALE = 2;
 export const IMAGE_DIR = join(".", "src", "assets", "images");
-const PORTRAIT_DIR = join(".", "src", "assets", "gacha-simulation", "ui", "characters");
 const OFFICIAL_CDN = "https://act-webstatic.hoyoverse.com/game_record/zzzv2";
 const remoteImageCache = new Map<string, Promise<Image | null>>();
 
@@ -228,48 +224,6 @@ export function fittedNumberSize(
   return 10;
 }
 
-interface WrappedName {
-  lines: string[];
-  size: number;
-  lineHeight: number;
-}
-
-function wrapNameLines(ctx: SKRSContext2D, value: unknown, width: number, size: number): string[] {
-  const source = String(value ?? "").trim();
-  if (!source) return [""];
-  ctx.font = `${size}px ${getZzzOfficialFont("tw")}`;
-  const lines: string[] = [];
-  let line = "";
-  for (const character of Array.from(source)) {
-    const candidate = `${line}${character}`;
-    if (line && ctx.measureText(candidate).width > width) {
-      lines.push(line.trimEnd());
-      line = character.trimStart();
-    } else {
-      line = candidate;
-    }
-  }
-  if (line || !lines.length) lines.push(line.trimEnd());
-  return lines;
-}
-
-function wrappedName(
-  ctx: SKRSContext2D,
-  value: unknown,
-  width: number,
-  preferredSize: number,
-  maxLines: number,
-  minimumSize: number,
-): WrappedName {
-  for (let size = preferredSize; size >= minimumSize; size -= 1) {
-    const lines = wrapNameLines(ctx, value, width, size);
-    if (lines.length <= maxLines || size === minimumSize) {
-      return { lines, size, lineHeight: Math.ceil(size * 1.25) };
-    }
-  }
-  return { lines: [String(value ?? "")], size: minimumSize, lineHeight: Math.ceil(minimumSize * 1.25) };
-}
-
 export function itemIcon(record: AnalyzedGachaRecord): string {
   const id = Number(record.itemId);
   if (!Number.isFinite(id) || id <= 0) return "";
@@ -293,24 +247,6 @@ export async function remoteImage(url: string): Promise<Image | null> {
   })();
   remoteImageCache.set(url, request);
   return request;
-}
-
-export function bannerUpItems(input: SignalLogRenderInput) {
-  if (input.category === "bangboo") {
-    if (input.headerItem) return [input.headerItem];
-    const latest = input.summary.sRecords.find((record) =>
-      gtCardKind(record.itemType, String(record.itemId ?? "")) === "bangboo");
-    return latest ? [{
-      id: String(latest.itemId ?? ""),
-      name: latest.name,
-      itemType: "bangboo" as const,
-      rarity: "S" as const,
-      icon: "",
-    }] : [];
-  }
-  const items = input.banner?.upItems ?? [];
-  const sItems = items.filter((item) => item.rarity !== undefined && normalizeRank(item.rarity) === "S");
-  return sItems.length ? sItems : items.slice(0, 1);
 }
 
 interface GtCardSourceItem {
@@ -372,25 +308,7 @@ async function loadSquareItemImage(item: GtCardSourceItem): Promise<Image | null
   return remoteImage(itemIcon({ itemId: item.id, itemType: item.itemType } as AnalyzedGachaRecord));
 }
 
-export function gtCardSource(
-  input: SignalLogRenderInput,
-  value: GtCardSourceItem,
-): GtCardSourceItem {
-  const metadata = input.banner?.upItems.find((item) => String(item.id) === value.id);
-  return {
-    ...value,
-    icon: metadata?.icon || value.icon,
-    elementType: metadata?.elementType ?? value.elementType,
-    subElementType: metadata?.subElementType ?? value.subElementType,
-    profession: metadata?.profession ?? value.profession,
-  };
-}
-
-export async function prepareGtCard(
-  input: SignalLogRenderInput,
-  value: GtCardSourceItem,
-) {
-  const source = gtCardSource(input, value);
+export async function prepareGtCard(source: GtCardSourceItem) {
   const item: GtCardItem = {
     id: source.id,
     rarity: source.rarity,
@@ -412,138 +330,5 @@ export async function prepareGtCard(
 /** Square-art card source for one S entry (no banner metadata). */
 export function prepareSCard(entry: { itemId: string; kind: string }) {
   const itemType = entry.kind === "character" || entry.kind === "weapon" || entry.kind === "bangboo" ? entry.kind : "";
-  return prepareGtCard({} as SignalLogRenderInput, { id: entry.itemId, itemType, rarity: "S" });
-}
-
-function formatDate(value?: string | null, withTime = true, locale?: string): string {
-  if (!value) return signalText(locale).notSynced;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  const intlLocale: Record<string, string> = { tw: "zh-TW", cn: "zh-CN", jp: "ja-JP", kr: "ko-KR", fr: "fr-FR", vi: "vi-VN", en: "en-US" };
-  return new Intl.DateTimeFormat(intlLocale[normalizeZzzLocale(locale)] ?? "en-US", {
-    timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit",
-    ...(withTime ? { hour: "2-digit", minute: "2-digit", hour12: false } : {}),
-  }).format(date);
-}
-
-export function signalAccent(input: SignalLogRenderInput): string {
-  const elementType = input.banner?.upItems[0]?.elementType;
-  return elementType === undefined ? PAPER.defaultAccent : getPaperAccent(safeAccent(undefined, elementType));
-}
-
-async function localImage(file: string): Promise<Image | null> {
-  return existsSync(file) ? safeGtCardImage(file) : null;
-}
-
-async function bangbooArt(id: string): Promise<Image | null> {
-  const source = await resolveGachaBangbooIcon(id);
-  if (!source) return null;
-  return /^https?:\/\//i.test(source) ? remoteImage(source) : safeGtCardImage(source);
-}
-
-/** Banner art by pool type, then the newest S agent's portrait, else null (plain paper). */
-export async function resolveHeroArt(input: SignalLogRenderInput): Promise<Image | null> {
-  const up = bannerUpItems(input)[0];
-  const id = String(up?.id ?? "");
-  let art: Image | null = null;
-  if (input.category === "character_up" || input.category === "character_return") art = await sItemArt("character", id);
-  else if (input.category === "weapon_up" || input.category === "weapon_return") art = await sItemArt("weapon", id);
-  else if (input.category === "bangboo") art = await sItemArt("bangboo", id);
-  if (art) return art;
-  // Newest S with art first: new agents can lack a portrait asset.
-  for (const record of input.summary.sRecords) {
-    art = await sItemArt(gtCardKind(record.itemType, record.itemId), String(record.itemId ?? ""));
-    if (art) return art;
-  }
-  return null;
-}
-
-function sItemArt(kind: GtCardKind, id: string): Promise<Image | null> {
-  if (!id) return Promise.resolve(null);
-  if (kind === "character") return localImage(join(PORTRAIT_DIR, `${id}.png`));
-  if (kind === "weapon") return localImage(join(IMAGE_DIR, "icons", "gacha", "weapon-big", `${id}.webp`));
-  return bangbooArt(id);
-}
-
-/** One banner height for every page, with or without art. */
-export const HERO_HEIGHT = 120;
-
-function heroTitle(input: SignalLogRenderInput): string {
-  const upNames = bannerUpItems(input).slice(0, 3).map((item) => item.name).filter(Boolean).join("／");
-  const categoryLabel = signalCategoryText(input.locale, input.category);
-  const genericName = input.banner?.name && !categoryLabel.includes(input.banner.name) ? input.banner.name : "";
-  return upNames || genericName || input.bannerLabel;
-}
-
-export async function drawHeroBanner(
-  ctx: SKRSContext2D,
-  input: SignalLogRenderInput,
-  subtitle: string,
-): Promise<void> {
-  const height = HERO_HEIGHT;
-  const accent = signalAccent(input);
-  const copy = signalText(input.locale);
-  ctx.fillStyle = PAPER.paperBright;
-  ctx.fillRect(0, 0, WIDTH, height);
-  ctx.save();
-  ctx.globalAlpha = .9;
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(WIDTH * .68, 0);
-  ctx.lineTo(WIDTH * .6, height);
-  ctx.lineTo(0, height);
-  ctx.closePath();
-  ctx.fillStyle = accent;
-  ctx.fill();
-  ctx.restore();
-
-  const art = await resolveHeroArt(input);
-  if (art) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, WIDTH, height);
-    ctx.clip();
-    if (art.width > art.height * 1.2) {
-      // Wide agent portraits: fill the width and keep the face band in view.
-      const drawHeight = WIDTH * art.height / art.width;
-      // The short banner only fits the eyes, so lift the portrait.
-      ctx.drawImage(art, 0, -drawHeight * .3, WIDTH, drawHeight);
-    } else {
-      const size = height * 1.15;
-      ctx.drawImage(art, WIDTH * .58 - size / 2, (height - size) / 2, size, size);
-    }
-    ctx.restore();
-  }
-  const fade = ctx.createLinearGradient(0, height * .5, 0, height);
-  fade.addColorStop(0, "rgba(251,247,240,0)");
-  fade.addColorStop(1, "rgba(251,247,240,.88)");
-  ctx.fillStyle = fade;
-  ctx.fillRect(0, height * .5, WIDTH, height * .5);
-
-  const titleSize = 36;
-  const title = wrappedName(ctx, heroTitle(input), WIDTH * .55, titleSize, 1, 22);
-  const titleY = height - 30 - titleSize * .55;
-  ctx.font = `bold ${title.size}px ${getZzzOfficialFont(input.locale)}`;
-  ctx.fillStyle = PAPER.ink;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  const titleText = fitWithFont(ctx, title.lines[0] ?? "", WIDTH * .55, title.size);
-  ctx.font = `bold ${title.size}px ${getZzzOfficialFont(input.locale)}`;
-  ctx.fillText(titleText, 24, titleY);
-  const titleWidth = ctx.measureText(titleText).width;
-  ctx.font = `italic ${Math.round(titleSize * .55)}px ${NUMBER_FONT}, ${getZzzOfficialFont(input.locale)}`;
-  ctx.fillStyle = accent;
-  ctx.fillText(fitWithFont(ctx, subtitle, Math.max(80, WIDTH * .6 - titleWidth - 50), Math.round(titleSize * .55)), 24 + titleWidth + 14, titleY + 4);
-  ctx.fillStyle = accent;
-  ctx.fillRect(0, height - 10, WIDTH * .6, 10);
-
-  const cardWidth = 250;
-  drawGlassCard(ctx, WIDTH - cardWidth - 16, 16, cardWidth, 74, { radius: 12 });
-  const right = WIDTH - 30;
-  text(ctx, fitWithFont(ctx, input.playerName || copy.recordTitle, cardWidth - 28, 17), right, 33, 17, PAPER.ink, "right");
-  text(ctx, `UID ${input.uid}`, right, 54, 13, PAPER.muted, "right", true);
-  const update = input.stale
-    ? `${copy.syncFailed} · ${formatDate(input.archivedAt, true, input.locale)}`
-    : `${copy.updatedAt} ${formatDate(input.archivedAt, true, input.locale)}`;
-  text(ctx, fitWithFont(ctx, update, cardWidth - 28, 12), right, 74, 12, input.stale ? PAPER.lost : PAPER.muted, "right");
+  return prepareGtCard({ id: entry.itemId, itemType, rarity: "S" });
 }

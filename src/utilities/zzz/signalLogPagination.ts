@@ -1,10 +1,4 @@
-import type { GachaSummary } from "./gachaAnalysis.js";
-import { buildPityCycles } from "./signalLogCycleData.js";
-
 export type SignalLogView = "home" | "wall" | "versions" | "cycles";
-/** The two-view model the old renderer understands; removed with it. */
-export type LegacySignalLogView = "overview" | "records";
-export const SIGNAL_LOG_PAGE_SIZE = 10;
 export const WALL_PAGE_SIZE = 35;
 export const CYCLE_PAGE_SIZE = 10;
 
@@ -31,19 +25,6 @@ export function paginateSignalBannerChoicesWithPinned(
 ): { items: SignalBannerChoice[]; page: number; pages: number } {
   const pagination = paginateSignalBannerChoices(choices, requestedPage, 24);
   return { ...pagination, items: [pinned, ...pagination.items] };
-}
-
-export function signalLogPageCount(summary: GachaSummary, view: LegacySignalLogView, pityEstimated?: boolean, openIsLive?: boolean): number {
-  const items = view === "records" ? buildPityCycles(summary, pityEstimated, openIsLive).length : summary.sRecords.length;
-  return Math.max(1, Math.ceil(items / SIGNAL_LOG_PAGE_SIZE));
-}
-
-export function switchSignalLogView(view: LegacySignalLogView): { view: LegacySignalLogView; page: 0 } {
-  return { view: view === "overview" ? "records" : "overview", page: 0 };
-}
-
-export function toLegacySignalLogView(view: SignalLogView): LegacySignalLogView {
-  return view === "cycles" ? "records" : "overview";
 }
 
 export function normalizeSignalLogView(value: unknown): SignalLogView {

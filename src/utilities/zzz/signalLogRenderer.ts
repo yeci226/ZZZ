@@ -1,66 +1,12 @@
-import type { GachaArchiveBanner, GachaArchiveSource, GachaChannelCategory } from "./gachaArchive.js";
+import type { GachaArchiveBanner } from "./gachaArchive.js";
 import type { GachaSummary } from "./gachaAnalysis.js";
-import { cycleTrackCells, posterPityCycles, renderSignalCycles, renderSignalCyclesPoster } from "./signalLogCycles.js";
-import { overviewMetrics, overviewStatCards, hasTopBadge, renderSignalOverview, sItemCounts, statsEntries } from "./signalLogOverview.js";
-import { CYCLE_PAGE_SIZE, wallPageCount, type LegacySignalLogView, type SignalLogView } from "./signalLogPagination.js";
+import { posterPityCycles, renderSignalCyclesPoster } from "./signalLogCycles.js";
+import { CYCLE_PAGE_SIZE, wallPageCount, type SignalLogView } from "./signalLogPagination.js";
 import type { GachaStatCategory } from "./gachaStatApi.js";
 import type { SignalLogModel } from "./signalLogModel.js";
 import { renderSignalHome } from "./signalLogHome.js";
 import { renderSignalVersions, paginateSegments } from "./signalLogVersions.js";
 import { renderSignalWall } from "./signalLogWall.js";
-import {
-  bannerUpItems,
-  fittedNumberSize,
-  gtCardKind,
-  gtCardSource,
-  itemIcon,
-  OUTPUT_SCALE,
-} from "./signalLogPaper.js";
-
-export interface SignalLogRenderInput {
-  locale?: string;
-  source: GachaArchiveSource;
-  uid: string;
-  playerName?: string | null;
-  archivedAt?: string | null;
-  stale?: boolean;
-  category: GachaChannelCategory;
-  bannerLabel: string;
-  banner?: Pick<GachaArchiveBanner, "name" | "version" | "channelCategory" | "upItems">;
-  headerItem?: {
-    id: string;
-    name: string;
-    itemType: "bangboo";
-    rarity: "S";
-    icon?: string;
-  };
-  summary: GachaSummary;
-  view: LegacySignalLogView;
-  page: number;
-  details?: any;
-  pityEstimated?: boolean;
-  /** False when a past-banner filter ends before the channel's newest pull. Defaults to true. */
-  openCycleIsLive?: boolean;
-}
-
-export async function renderSignalLog(input: SignalLogRenderInput): Promise<Buffer> {
-  return input.view === "records" ? renderSignalCycles(input) : renderSignalOverview(input);
-}
-
-export const __signalLogRendererInternals = {
-  itemIcon,
-  sItemCounts,
-  bannerUpItems,
-  gtCardKind,
-  gtCardSource,
-  fittedNumberSize,
-  statsEntries,
-  overviewStatCards,
-  overviewMetrics,
-  cycleTrackCells,
-  hasTopBadge,
-  outputScale: OUTPUT_SCALE,
-};
 
 export interface SignalLogImageInput {
   locale?: string;

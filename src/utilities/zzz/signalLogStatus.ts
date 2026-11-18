@@ -9,8 +9,10 @@ import {
   localeText,
   NUMBER_FONT,
   numberText,
+  PAGE_MARGIN,
   PAPER,
   pityTone,
+  WIDTH,
 } from "./signalLogPaper.js";
 
 const PITY_HEIGHT = 84;
@@ -122,4 +124,49 @@ export function drawChannelStatus(
       localeText(ctx, locale, tile.unit, x + 19 + numberWidth(ctx, tile.value, 30), y + 56, 14, PAPER.muted);
     }
   });
+}
+
+export function sinceMonth(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit" })
+    .format(date).replace("-", "/");
+}
+
+export interface ChannelFooterParts { since: string | null; page: string; stale: boolean }
+
+/** Texts of the shared channel footer: records-since (null when unknown), page label and the stale flag. */
+export function channelFooterParts(input: {
+  locale?: string;
+  firstRecordAt: string | null;
+  page: number;
+  pageCount: number;
+  stale?: boolean;
+}): ChannelFooterParts {
+  const copy = signalText(input.locale);
+  const since = sinceMonth(input.firstRecordAt);
+  return {
+    since: since ? copy.recordsSince.replace("{date}", since) : null,
+    page: copy.pageOf.replace("{page}", String(input.page + 1)).replace("{pages}", String(input.pageCount)),
+    stale: input.stale === true,
+  };
+}
+
+/** Right-aligned footer of the channel views: `<records since | sync failed> · <page>`. */
+export function drawChannelFooter(
+  ctx: SKRSContext2D,
+  input: { locale?: string; height: number; channel: SignalChannelModel; page: number; pageCount: number; stale?: boolean },
+): void {
+  const { locale } = input;
+  const parts = channelFooterParts({
+    locale, firstRecordAt: input.channel.firstRecordAt, page: input.page, pageCount: input.pageCount, stale: input.stale,
+  });
+  const y = input.height - 22;
+  let right = WIDTH - PAGE_MARGIN - 6;
+  right -= localeText(ctx, locale, parts.page, right, y, 13, PAPER.muted, { align: "right" });
+  const lead = parts.stale ? signalText(locale).syncFailed : parts.since;
+  if (!lead) return;
+  right -= localeText(ctx, locale, " · ", right, y, 13, PAPER.muted, { align: "right" });
+  localeText(ctx, locale, lead, right, y, 13, parts.stale ? RED : PAPER.muted, { align: "right", bold: parts.stale });
 }

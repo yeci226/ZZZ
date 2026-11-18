@@ -49,20 +49,17 @@ describe("ZZZ official static visual baselines", () => {
     },
   );
 
-  it("keeps both Signal Log layouts below 2%", async () => {
-    const overview = "signal-log-design/官方限定總覽.png";
-    const records = "signal-log-design/保底週期.png";
-    await expect(
-      pixelDifferenceRatio(
-        readFileSync(join(actualRoot, overview)),
-        readFileSync(join(root, "previews", overview)),
-      ),
-    ).resolves.toBeLessThanOrEqual(0.02);
-    await expect(
-      pixelDifferenceRatio(
-        readFileSync(join(actualRoot, records)),
-        readFileSync(join(root, "previews", records)),
-      ),
-    ).resolves.toBeLessThanOrEqual(0.02);
+  it("keeps the Signal Log previews below 2%", async () => {
+    const files = [
+      "首頁", "首頁-無紀錄", "S牆-全身立繪", "S牆-退回半身圖", "S牆-音擎", "S牆-邦布", "依版本", "保底週期", "S牆-fr",
+    ].map((name) => `signal-log-design/${name}.png`);
+    for (const file of files) {
+      await expect(
+        pixelDifferenceRatio(
+          readFileSync(join(actualRoot, file)),
+          readFileSync(join(root, "previews", file)),
+        ),
+      ).resolves.toBeLessThanOrEqual(0.02);
+    }
   });
 });

@@ -2,7 +2,7 @@ import { loadImage } from "@napi-rs/canvas";
 import type { GachaStatCategory } from "../src/utilities/zzz/gachaStatApi.js";
 import { emptyChannel, type SignalChannelModel, type SignalLogModel, type SignalSEntry } from "../src/utilities/zzz/signalLogModel.js";
 import { renderSignalLogImage, signalLogImagePageCount } from "../src/utilities/zzz/signalLogRenderer.js";
-import { statusTiles } from "../src/utilities/zzz/signalLogStatus.js";
+import { channelFooterParts, statusTiles } from "../src/utilities/zzz/signalLogStatus.js";
 import { wallHeight } from "../src/utilities/zzz/signalLogWall.js";
 
 const CATEGORIES: GachaStatCategory[] = ["character_up", "character_return", "weapon_up", "weapon_return", "standard", "bangboo"];
@@ -66,5 +66,23 @@ describe("wall", () => {
 
   it("rejects the cycles view when its input is missing", async () => {
     await expect(renderSignalLogImage({ uid: "1", view: "cycles", page: 0, category: "character_up", model: modelWith(0, { currentPity: null }) })).rejects.toThrow();
+  });
+});
+
+describe("channel footer parts", () => {
+  const base = { locale: "tw", page: 0, pageCount: 2 };
+
+  it("joins the records-since month with the page label", () => {
+    expect(channelFooterParts({ ...base, firstRecordAt: "2025-06-12T08:00:00.000Z" }))
+      .toEqual({ since: "紀錄自 2025/06", page: "第 1 / 2 頁", stale: false });
+  });
+
+  it("leaves out records-since when there is no first record date", () => {
+    expect(channelFooterParts({ ...base, firstRecordAt: null })).toEqual({ since: null, page: "第 1 / 2 頁", stale: false });
+  });
+
+  it("flags a stale sync and keeps the page label", () => {
+    expect(channelFooterParts({ ...base, page: 1, firstRecordAt: "2025-06-12T08:00:00.000Z", stale: true }))
+      .toMatchObject({ page: "第 2 / 2 頁", stale: true });
   });
 });

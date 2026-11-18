@@ -20,7 +20,7 @@ import {
   WIDTH,
 } from "./signalLogPaper.js";
 import { drawPoster, resolvePosterSubject } from "./signalLogPoster.js";
-import { drawChannelStatus, STATUS_HEIGHT } from "./signalLogStatus.js";
+import { drawChannelFooter, drawChannelStatus, STATUS_HEIGHT } from "./signalLogStatus.js";
 import type { SignalLogImageInput } from "./signalLogRenderer.js";
 
 export const S_CELL = { columns: 7, gap: 9, avatar: 76, pill: 27, height: 126 } as const;
@@ -79,14 +79,6 @@ export function drawLiveCell(
   drawPityPill(ctx, x + 9, y + S_CELL.avatar + 14, width - 18, S_CELL.pill, String(pity), pityTone(pity, hardPity));
 }
 
-function sinceMonth(value: string | null): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit" })
-    .format(date).replace("-", "/");
-}
-
 export async function renderSignalWall(input: SignalLogImageInput): Promise<Buffer> {
   const locale = input.locale;
   const copy = signalText(locale);
@@ -140,17 +132,6 @@ export async function renderSignalWall(input: SignalLogImageInput): Promise<Buff
     }
   }
 
-  const footerY = height - 22;
-  const right = WIDTH - PAGE_MARGIN - 6;
-  const pageLabel = copy.pageOf.replace("{page}", String(page + 1)).replace("{pages}", String(pages));
-  const pageWidth = localeText(ctx, locale, pageLabel, right, footerY, 13, PAPER.muted, { align: "right" });
-  if (input.stale) {
-    localeText(ctx, locale, copy.syncFailed, right - pageWidth - 14, footerY, 13, "#d9473b", { align: "right", bold: true });
-  } else {
-    const since = sinceMonth(channel.firstRecordAt);
-    if (since) {
-      localeText(ctx, locale, copy.recordsSince.replace("{date}", since), right - pageWidth - 14, footerY, 13, PAPER.muted, { align: "right" });
-    }
-  }
+  drawChannelFooter(ctx, { locale, height, channel, page, pageCount: pages, stale: input.stale });
   return canvas.toBuffer("image/png");
 }

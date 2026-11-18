@@ -17,7 +17,7 @@ import {
   WIDTH,
 } from "./signalLogPaper.js";
 import { drawPoster, resolvePosterSubject } from "./signalLogPoster.js";
-import { drawChannelStatus, STATUS_HEIGHT } from "./signalLogStatus.js";
+import { drawChannelFooter, drawChannelStatus, STATUS_HEIGHT } from "./signalLogStatus.js";
 import { drawSCell, S_CELL } from "./signalLogWall.js";
 import type { SignalLogImageInput } from "./signalLogRenderer.js";
 
@@ -81,14 +81,6 @@ function dayOf(value: string | null): string | null {
     .format(date).replace("-", "/");
 }
 
-function sinceMonth(value: string | null): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit" })
-    .format(date).replace("-", "/");
-}
-
 export function segmentTitle(segment: SignalSegment, _locale?: string): string {
   if (segment.key === UNCLASSIFIED_SEGMENT_KEY) return segment.upNames[0] ?? "";
   const start = dayOf(segment.startAt);
@@ -148,9 +140,7 @@ export async function renderSignalVersions(input: SignalLogImageInput): Promise<
   y += STATUS_HEIGHT + BLOCK_GAP;
 
   const right = WIDTH - PAGE_MARGIN - 6;
-  const pageLabel = copy.pageOf.replace("{page}", String(page + 1)).replace("{pages}", String(pages.length));
   localeText(ctx, locale, copy.viewVersions, CONTENT_X + 6, y + 21, 21, PAPER.ink, { bold: true });
-  localeText(ctx, locale, pageLabel, right, y + 22, 13, PAPER.muted, { align: "right" });
   y += SECTION_HEIGHT;
 
   if (slices.length === 0) {
@@ -184,14 +174,6 @@ export async function renderSignalVersions(input: SignalLogImageInput): Promise<
     }
   }
 
-  const footerY = height - 22;
-  if (input.stale) {
-    localeText(ctx, locale, copy.syncFailed, right, footerY, 13, "#d9473b", { align: "right", bold: true });
-  } else {
-    const since = sinceMonth(channel.firstRecordAt);
-    if (since) {
-      localeText(ctx, locale, copy.recordsSince.replace("{date}", since), right, footerY, 13, PAPER.muted, { align: "right" });
-    }
-  }
+  drawChannelFooter(ctx, { locale, height, channel, page, pageCount: pages.length, stale: input.stale });
   return canvas.toBuffer("image/png");
 }
