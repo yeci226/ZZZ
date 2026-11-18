@@ -246,6 +246,8 @@ export async function remoteImage(url: string): Promise<Image | null> {
     }
   })();
   remoteImageCache.set(url, request);
+  // Decoded images are large; keep only the most recent ones.
+  if (remoteImageCache.size > 64) remoteImageCache.delete(remoteImageCache.keys().next().value!);
   return request;
 }
 
