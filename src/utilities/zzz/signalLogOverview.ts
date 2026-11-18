@@ -25,7 +25,10 @@ import {
   text,
   WIDTH,
 } from "./signalLogPaper.js";
+import { TICKET_MATCHERS, ticketEntry, ticketValue } from "./signalLogModel.js";
 import type { SignalLogRenderInput } from "./signalLogRenderer.js";
+
+export { ticketValue };
 
 const ASSET_DIR = join(IMAGE_DIR, "zzz", "official-record");
 const MARGIN = 16;
@@ -38,22 +41,6 @@ const ROW_GAP = 10;
 const EMPTY_HEIGHT = 120;
 const FOOTER_HEIGHT = 44;
 const CONTENT_WIDTH = WIDTH - MARGIN * 2;
-
-const TICKET_MATCHERS = [
-  (type: string) => type.endsWith("POLYCHROME"),
-  (type: string) => type.endsWith("ENCRYPTED_MASTER_TAPE"),
-  (type: string) => type.endsWith("MASTER_TAPE") && !type.includes("ENCRYPTED"),
-  (type: string) => type.endsWith("BOOPON"),
-];
-
-function ticketEntry(details: any, matcher: (type: string) => boolean): any | undefined {
-  const tickets = Array.isArray(details?.tickets) ? details.tickets : [];
-  return tickets.find((item: any) => matcher(String(item?.ticket_type ?? "").toUpperCase()));
-}
-
-export function ticketValue(details: any, matcher: (type: string) => boolean): number {
-  return Number(ticketEntry(details, matcher)?.ticket_cnt ?? 0);
-}
 
 function hasResourceRow(input: SignalLogRenderInput): boolean {
   return input.source === "official" && Array.isArray(input.details?.tickets) && input.details.tickets.length > 0;
