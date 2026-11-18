@@ -1,10 +1,11 @@
-import { loadImage } from "@napi-rs/canvas";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { getZzzOfficialFont } from "../src/utilities/zzz/canvasFonts.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { GachaStatCategory } from "../src/utilities/zzz/gachaStatApi.js";
 import { createScaledCanvas } from "../src/utilities/zzz/signalLogPaper.js";
-import { drawPoster, loadPosterArt, resolvePosterSubject, type PosterSubject } from "../src/utilities/zzz/signalLogPoster.js";
+import { drawPoster, loadPosterArt, posterTitleLines, resolvePosterSubject, type PosterSubject } from "../src/utilities/zzz/signalLogPoster.js";
 import { emptyChannel, type SignalItemKind, type SignalLogModel, type SignalSEntry } from "../src/utilities/zzz/signalLogModel.js";
 
 const CATEGORIES: GachaStatCategory[] = ["character_up", "character_return", "weapon_up", "weapon_return", "standard", "bangboo"];
@@ -105,5 +106,38 @@ describe("drawPoster", () => {
       await drawPoster(ctx, 700, { subject, title: "Résonance Amplificateur", chip: "3.3 賽維里安／諾姆／很長的卡池名稱", playerName: "名字非常非常非常非常長的繩匠", uid: "1300000001", locale: "fr" });
       expect((await loadImage(canvas.toBuffer("image/png"))).width).toBe(2000);
     } finally { delete process.env.ZZZ_AGENT_ART_DIR; }
+  });
+});
+
+describe("posterTitleLines", () => {
+  const ctx = createCanvas(400, 100).getContext("2d");
+  const measure = (locale: string, line: string, size: number) => {
+    ctx.font = `bold ${size}px ${getZzzOfficialFont(locale)}`;
+    return ctx.measureText(line).width;
+  };
+
+  it("wraps a two-word English title instead of truncating", () => {
+    const { lines } = posterTitleLines(ctx, "en", "Exclusive Channel", 224);
+    expect(lines).toEqual(["Exclusive", "Channel"]);
+  });
+
+  it("keeps a short CJK title on one line at 46px", () => {
+    expect(posterTitleLines(ctx, "tw", "獨家頻道", 224)).toEqual({ lines: ["獨家頻道"], size: 46 });
+  });
+
+  it("wraps a long French title within the width", () => {
+    const { lines, size } = posterTitleLines(ctx, "fr", "Résonance Amplificateur", 224);
+    expect(lines).toHaveLength(2);
+    for (const line of lines) {
+      expect(line).not.toContain("…");
+      expect(measure("fr", line, size)).toBeLessThanOrEqual(224);
+    }
+  });
+
+  it("breaks between characters and truncates only the last line", () => {
+    const { lines, size } = posterTitleLines(ctx, "en", "W".repeat(60), 224);
+    expect(lines).toHaveLength(2);
+    for (const line of lines) expect(measure("en", line, size)).toBeLessThanOrEqual(224);
+    expect(lines[1]!.endsWith("…")).toBe(true);
   });
 });

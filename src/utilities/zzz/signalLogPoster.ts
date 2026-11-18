@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { GachaArchiveBanner } from "./gachaArchive.js";
 import type { GachaStatCategory } from "./gachaStatApi.js";
+import { getZzzOfficialFont } from "./canvasFonts.js";
 import { getPaperAccent, safeAccent } from "./profileColors.js";
 import {
   fitLocaleText,
@@ -180,6 +181,61 @@ function drawArt(ctx: SKRSContext2D, art: PosterArt, height: number, accent: str
   }
 }
 
+const TITLE_MAX = 46;
+const TITLE_MIN = 34;
+const TITLE_FLOOR = 28;
+
+/** One line at 46px, shrinking to 34px; otherwise at most two lines at 34px, truncating only what still overflows. */
+export function posterTitleLines(
+  ctx: SKRSContext2D,
+  locale: string | undefined,
+  title: string,
+  maxWidth: number,
+): { lines: string[]; size: number } {
+  const family = getZzzOfficialFont(locale);
+  const width = (value: string, size: number) => {
+    ctx.font = `bold ${size}px ${family}`;
+    return ctx.measureText(value).width;
+  };
+  for (let size = TITLE_MAX; size >= TITLE_MIN; size -= 2) {
+    if (width(title, size) <= maxWidth) return { lines: [title], size };
+  }
+  // Two lines: stay at 34px unless a single word still overflows, then shrink to 28px before truncating.
+  const wrap = (size: number): { lines: string[]; clipped: boolean } => {
+    const truncate = (value: string) => {
+      if (width(value, size) <= maxWidth) return value;
+      const chars = Array.from(value);
+      while (chars.length > 1 && width(`${chars.join("")}…`, size) > maxWidth) chars.pop();
+      return `${chars.join("")}…`;
+    };
+    const chars = Array.from(title);
+    const spaced: Array<[string, string]> = [];
+    chars.forEach((char, index) => {
+      if (!/\s/u.test(char)) return;
+      const left = chars.slice(0, index).join("").trim();
+      const right = chars.slice(index + 1).join("").trim();
+      if (left && right) spaced.push([left, right]);
+    });
+    let pair: [string, string];
+    if (spaced.length) {
+      const fits = spaced.filter(([left, right]) => width(left, size) <= maxWidth && width(right, size) <= maxWidth);
+      const gap = (item: [string, string]) => Math.abs(width(item[0], size) - width(item[1], size));
+      pair = (fits.length ? fits : spaced).reduce((best, item) => (gap(item) < gap(best) ? item : best));
+    } else {
+      let cut = 1;
+      while (cut < chars.length && width(chars.slice(0, cut + 1).join(""), size) <= maxWidth) cut++;
+      pair = [chars.slice(0, cut).join(""), chars.slice(cut).join("")];
+    }
+    const lines = [truncate(pair[0]), truncate(pair[1])];
+    return { lines, clipped: lines.some((line) => line.endsWith("…") && !title.includes(line)) };
+  };
+  for (let size = TITLE_MIN; size > TITLE_FLOOR; size -= 2) {
+    const result = wrap(size);
+    if (!result.clipped) return { lines: result.lines, size };
+  }
+  return { lines: wrap(TITLE_FLOOR).lines, size: TITLE_FLOOR };
+}
+
 export async function drawPoster(
   ctx: SKRSContext2D,
   height: number,
@@ -225,7 +281,11 @@ export async function drawPoster(
   const chipPad = chipSize * .7;
   const chip = fitLocaleText(ctx, input.locale, input.chip, chipSize, true, textWidth - chipPad * 2);
   const chipHeight = chipSize * 1.9;
-  const chipY = height - 152;
+  const title = posterTitleLines(ctx, input.locale, input.title, textWidth);
+  const lineHeight = title.size * 1.12;
+  const titleBottom = height - 104;
+  const titleTop = titleBottom - (title.lines.length - 1) * lineHeight;
+  const chipY = titleTop - 48;
   ctx.beginPath();
   ctx.roundRect(20, chipY - chipHeight / 2, chip.width + chipPad * 2, chipHeight, chipHeight / 2);
   ctx.fillStyle = "#ffffff";
@@ -234,7 +294,10 @@ export async function drawPoster(
 
   ctx.save();
   ctx.transform(1, 0, -.1, 1, 0, 0);
-  localeText(ctx, input.locale, input.title, 20 + (height - 104) * .1, height - 104, 46, "#ffffff", { bold: true, maxWidth: textWidth });
+  title.lines.forEach((line, index) => {
+    const y = titleTop + index * lineHeight;
+    localeText(ctx, input.locale, line, 20 + y * .1, y, title.size, "#ffffff", { bold: true, maxWidth: textWidth });
+  });
   ctx.restore();
 
   ctx.fillStyle = "rgba(255,255,255,.35)";
