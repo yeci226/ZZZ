@@ -7,6 +7,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { QuickDB } from "quick.db";
+import { buildPrivateOption, privateReplyOptions } from "../../../utilities/shared/privateOption.js";
 import { getLegacyAccountAtIndex, getLegacyAccounts } from "../../../utilities/accountStore.js";
 import { getUserLang, getUserZZZData } from "../../../utilities/utilities.js";
 import { canViewPrivateGacha } from "../../../utilities/zzz/gachaPrivacy.js";
@@ -37,7 +38,8 @@ export default {
         .setAutocomplete(true))
       .addUserOption((option) => option
         .setName("user").setDescription("User")
-        .setNameLocalizations({ "zh-TW": "使用者", "zh-CN": "用户", ja: "ユーザー", ko: "사용자", fr: "utilisateur", vi: "ngườidùng" } as LocalizationMap)))
+        .setNameLocalizations({ "zh-TW": "使用者", "zh-CN": "用户", ja: "ユーザー", ko: "사용자", fr: "utilisateur", vi: "ngườidùng" } as LocalizationMap))
+      .addBooleanOption(buildPrivateOption))
     .addSubcommand((subcommand) => subcommand
       .setName("import")
       .setDescription("Import Signal Search history")
@@ -98,7 +100,7 @@ export default {
     let accountIndex = archiveUid ? 0 : Math.max(0, Number.parseInt(rawAccount, 10) || 0);
     const locale = (await getUserLang(interaction.user.id)) || "tw";
     const actionCopy = signalActionText(locale);
-    await interaction.deferReply();
+    await interaction.deferReply(privateReplyOptions(interaction));
     try {
       if (!(await canViewPrivateGacha(db, interaction.user.id, target.id))) {
         throw new Error(actionCopy.privateDisabled);

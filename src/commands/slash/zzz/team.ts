@@ -8,6 +8,7 @@ import {
 import { getUserZZZData, getUserLang } from "../../../utilities/utilities.js";
 import { handleTeamDraw } from "../../../utilities/zzz/team.js";
 import { QuickDB } from "quick.db";
+import { buildPrivateOption, privateReplyOptions } from "../../../utilities/shared/privateOption.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -68,7 +69,7 @@ export default {
         .setRequired(false)
         .setAutocomplete(true)
     )
-    ,
+    .addBooleanOption(buildPrivateOption),
 
   async execute(
     _client: Client,
@@ -103,7 +104,7 @@ export default {
     );
     if (!zzz) return;
 
-    await interaction.deferReply();
+    await interaction.deferReply(privateReplyOptions(interaction));
 
     const agentIds = [agent1Id, agent2Id, agent3Id].filter(Boolean) as string[];
     handleTeamDraw(interaction, tr, zzz, agentIds, bangbooId, paintingMode, rankDependentPainting, [], "current", interaction.user.id);

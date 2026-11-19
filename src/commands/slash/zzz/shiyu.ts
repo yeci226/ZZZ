@@ -2,11 +2,13 @@ import {
   ChatInputCommandInteraction,
   Client,
   LocalizationMap,
+  MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
 import { handleShiyuDraw } from "../../../utilities/zzz/shiyu/index.js";
 import { getUserZZZData, getUserLang } from "../../../utilities/utilities.js";
 import { QuickDB } from "quick.db";
+import { buildPrivateOption, privateReplyOptions } from "../../../utilities/shared/privateOption.js";
 import {
   getZzzHistoryEntry,
   parseHistorySchedule,
@@ -69,7 +71,8 @@ export default {
         } as LocalizationMap)
         .setRequired(false)
         .setAutocomplete(true)
-    ),
+    )
+    .addBooleanOption(buildPrivateOption),
   async execute(
     _client: Client,
     interaction: ChatInputCommandInteraction,
@@ -96,11 +99,11 @@ export default {
       if (!cached) {
         await interaction.reply({
           content: tr("NonData") || "找不到已儲存的式輿紀錄。",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
-      await interaction.deferReply();
+      await interaction.deferReply(privateReplyOptions(interaction));
       await handleShiyuDraw(
         interaction,
         tr,
@@ -128,7 +131,7 @@ export default {
     );
     if (zzz == null) return;
 
-    await interaction.deferReply();
+    await interaction.deferReply(privateReplyOptions(interaction));
     await handleShiyuDraw(interaction, tr, targetUser, zzz, schedule, {
       db,
       accountIndex,

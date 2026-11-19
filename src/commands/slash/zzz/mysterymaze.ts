@@ -6,6 +6,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { QuickDB } from "quick.db";
+import { buildPrivateOption, privateReplyOptions } from "../../../utilities/shared/privateOption.js";
 
 import { getUserLang } from "../../../utilities/utilities.js";
 import { buildMysteryMazeMessage } from "../../../utilities/zzz/mysteryMazeView.js";
@@ -30,7 +31,8 @@ export default {
         .setName("user")
         .setDescription("User")
         .setNameLocalizations({ "zh-TW": "使用者" } as LocalizationMap),
-    ),
+    )
+    .addBooleanOption(buildPrivateOption),
 
   async execute(
     _client: Client,
@@ -45,7 +47,7 @@ export default {
       10,
     );
     const locale = (await getUserLang(interaction.user.id)) || "tw";
-    await interaction.deferReply();
+    await interaction.deferReply(privateReplyOptions(interaction));
     try {
       const payload = await buildMysteryMazeMessage(interaction, tr, locale, {
         invokerId: interaction.user.id,
