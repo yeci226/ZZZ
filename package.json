@@ -7,7 +7,7 @@
     "test:telemetry": "node tests/telemetry.smoke.mjs dist/telemetry.js",
     "start": "npm run build && node --env-file=.env dist/cluster.js",
     "dev": "yarn build && cross-env NODE_ENV=dev node dist/cluster.js",
-    "build": "tsc",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "fmt": "prettier --write src/**/*.{ts,js,json,yaml,yml}",
