@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 export const REDEEM_POLICY = {
   concurrency: 3, globalGap: 1000, accountGap: 10000, timeout: 10000,
   retryDelays: [30000, 90000], retryCycle: 15 * 60000, maxRetry: 6 * 3600000,
-  invalidRetry: 24 * 3600000,
+  invalidRetry: 24 * 3600000, pruneAge: 30 * 24 * 3600000, pruneEvery: 3600000,
 };
 export type Outcome = "success" | "already" | "invalid" | "auth" | "retry" | "unknown";
 export interface Code { code: string; [key: string]: any }
@@ -63,7 +63,9 @@ export class RedeemStore {
       updated_at INTEGER NOT NULL DEFAULT 0, error_code INTEGER, notify INTEGER NOT NULL DEFAULT 0,
       notify_at INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1,
       PRIMARY KEY(uid,code));
-      CREATE INDEX IF NOT EXISTS auto_redeem_due ON auto_redeem_v2(updated_at,uid,code) WHERE status NOT IN ('success','already');
+      DROP INDEX IF EXISTS auto_redeem_due;
+      CREATE INDEX IF NOT EXISTS auto_redeem_due2 ON auto_redeem_v2(updated_at,uid,code)
+        WHERE status NOT IN ('success','already') AND (status NOT IN ('invalid','legacy') OR active=1);
       CREATE INDEX IF NOT EXISTS auto_redeem_notify ON auto_redeem_v2(notify,notify_at);
       CREATE TABLE IF NOT EXISTS auto_redeem_accounts (
         uid TEXT PRIMARY KEY, next_at INTEGER NOT NULL DEFAULT 0, refresh_at INTEGER NOT NULL DEFAULT 0);`);
@@ -116,6 +118,11 @@ export class RedeemStore {
           .run(uid, JSON.stringify(value));
       })();
     }
+  }
+  /** Drops long-dead rows: code left the public list (active=0) and its last result was a permanent 'invalid'.
+   * success/already rows are kept: claimed() reads them and record() treats them as monotonic. */
+  prune(now: number, maxAge = REDEEM_POLICY.pruneAge): number {
+    return this.sql.prepare("DELETE FROM auto_redeem_v2 WHERE active=0 AND status='invalid' AND notify=0 AND updated_at<?").run(now - maxAge).changes;
   }
   due(now: number): any[] {
     return this.sql.prepare(`SELECT r.* FROM auto_redeem_v2 r LEFT JOIN auto_redeem_accounts a ON a.uid=r.uid
@@ -182,6 +189,8 @@ export class RedeemEngine {
   private discovering = false;
   private discoverAgain = false;
   private nextRequest = 0;
+  private lastPrune = 0;
+  private lastSummary = "";
   private requestGate: Promise<void> = Promise.resolve();
   private timer: ReturnType<typeof setTimeout> | undefined;
   constructor(private adapter: Adapter, private now = Date.now) { this.store = redeemStore(adapter.db); }
@@ -211,7 +220,13 @@ export class RedeemEngine {
         this.store.sql.prepare("UPDATE auto_redeem_v2 SET status='pending',next_at=0,round=0 WHERE uid=? AND status='auth'").run(uid);
       }
       const summary = this.store.sql.prepare("SELECT status,COUNT(*) count,MIN(updated_at) oldest FROM auto_redeem_v2 GROUP BY status").all();
-      this.adapter.log(`兌換佇列: ${JSON.stringify(summary)}`);
+      const summaryText = JSON.stringify(summary);
+      if (summaryText !== this.lastSummary) { this.lastSummary = summaryText; this.adapter.log(`兌換佇列: ${summaryText}`); }
+      if (this.now() - this.lastPrune >= REDEEM_POLICY.pruneEvery) {
+        this.lastPrune = this.now();
+        const removed = this.store.prune(this.now());
+        if (removed) this.adapter.log(`清除過期失效兌換紀錄: ${removed}`);
+      }
     } finally {
       this.discovering = false; this.pump();
       if (this.discoverAgain) {
