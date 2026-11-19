@@ -34,6 +34,16 @@ export function reconcileWeeklyArchiveAccounts(
 }
 
 export async function listGloballyEnabledOwners(db: any): Promise<string[]> {
+  // Targeted query: db.all() would load and JSON-parse the whole quick.db table.
+  const sql = db?.driver?.database;
+  if (typeof sql?.prepare === "function" && typeof db.tableName === "string" && /^[A-Za-z_][A-Za-z0-9_]*$/.test(db.tableName)) {
+    try {
+      const rows = sql.prepare(`SELECT ID FROM ${db.tableName} WHERE CASE WHEN json_valid(json) THEN json_type(json,'$.gachaWeeklyArchive')='true' END`).all();
+      return rows.map((row: any) => String(row.ID ?? "")).filter(Boolean);
+    } catch {
+      // Fall through to the generic path if the handle or schema is not what we expect.
+    }
+  }
   if (typeof db?.all !== "function") return [];
   const rows = await db.all();
   return (Array.isArray(rows) ? rows : [])
