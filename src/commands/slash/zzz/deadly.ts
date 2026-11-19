@@ -2,11 +2,13 @@ import {
     ChatInputCommandInteraction,
     Client,
     LocalizationMap,
+    MessageFlags,
     SlashCommandBuilder,
 } from "discord.js";
 import { handleDeadlyDraw } from "../../../utilities/zzz/deadly.js";
 import { getUserZZZData, getUserLang } from "../../../utilities/utilities.js";
 import { QuickDB } from "quick.db";
+import { buildPrivateOption, privateReplyOptions } from "../../../utilities/shared/privateOption.js";
 import { getZzzHistoryEntry, parseHistorySchedule } from "../../../utilities/zzz/recordCache.js";
 
 export default {
@@ -66,7 +68,8 @@ export default {
                 } as LocalizationMap)
                 .setRequired(false)
                 .setAutocomplete(true)
-        ),
+        )
+        .addBooleanOption(buildPrivateOption),
     async execute(_client: Client, interaction: ChatInputCommandInteraction, _args: any[], tr: any, db: QuickDB, emoji: any) {
         const accountIndex = parseInt(interaction.options.getString("account") || "0");
         const targetUser = interaction.options.getUser("user") || interaction.user;
@@ -84,11 +87,11 @@ export default {
             if (!cached) {
                 await interaction.reply({
                     content: tr("NonData") || "找不到已儲存的危局紀錄。",
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 });
                 return;
             }
-            await interaction.deferReply();
+            await interaction.deferReply(privateReplyOptions(interaction));
             await handleDeadlyDraw(
                 interaction,
                 tr,
@@ -118,7 +121,7 @@ export default {
         );
         if (zzz == null) return;
 
-        await interaction.deferReply();
+        await interaction.deferReply(privateReplyOptions(interaction));
         await handleDeadlyDraw(
             interaction,
             tr,

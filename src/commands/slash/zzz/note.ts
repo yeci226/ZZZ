@@ -8,6 +8,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { QuickDB } from "quick.db";
+import { buildPrivateOption, privateReplyOptions } from "../../../utilities/shared/privateOption.js";
 import { getUserLang, getUserZZZData } from "../../../utilities/utilities.js";
 import { loadOfficialNoteData } from "../../../utilities/zzz/officialRecordApi.js";
 import { renderOfficialNote } from "../../../utilities/zzz/noteRenderer.js";
@@ -33,7 +34,8 @@ export default {
         .addUserOption((option) =>
           option.setName("user").setDescription("User")
             .setNameLocalizations({ "zh-TW": "使用者", "zh-CN": "用户", ja: "ユーザー", ko: "사용자", fr: "utilisateur", vi: "ngườidùng" } as LocalizationMap),
-        ),
+        )
+        .addBooleanOption(buildPrivateOption),
     ),
 
   async execute(
@@ -49,7 +51,7 @@ export default {
     const zzz = await getUserZZZData(interaction, tr, targetUser.id, locale, accountIndex);
     if (!zzz) return;
 
-    await interaction.deferReply();
+    await interaction.deferReply(privateReplyOptions(interaction));
     try {
       const { note, calendar } = await loadOfficialNoteData(zzz);
       const account = await getLegacyAccountAtIndex(_db as any, targetUser.id, accountIndex);

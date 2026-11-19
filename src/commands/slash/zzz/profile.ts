@@ -2,6 +2,7 @@ import { ChatInputCommandInteraction, Client, LocalizationMap, SlashCommandBuild
 import { getUserZZZData, getUserLang } from "../../../utilities/utilities.js";
 import { handleProfileDraw } from "../../../utilities/zzz/profile.js";
 import { QuickDB } from "quick.db";
+import { buildPrivateOption, privateReplyOptions } from "../../../utilities/shared/privateOption.js";
 
 export default {
     data: new SlashCommandBuilder()
@@ -39,7 +40,8 @@ export default {
                     fr: "utilisateur",
                 } as LocalizationMap)
                 .setRequired(false)
-        ),
+        )
+        .addBooleanOption(buildPrivateOption),
     async execute(_client: Client, interaction: ChatInputCommandInteraction, _args: any[], tr: any, db: QuickDB, emoji: any) {
         const targetUser = interaction.options.getUser("user") || interaction.user;
         const accountIndex = parseInt(interaction.options.getString("account") || "0");
@@ -55,7 +57,7 @@ export default {
         );
         if (!zzz) return;
 
-        await interaction.deferReply();
+        await interaction.deferReply(privateReplyOptions(interaction));
         handleProfileDraw(interaction, tr, targetUser, zzz, accountIndex, usePainting, rankDependentPainting);
     },
 };
