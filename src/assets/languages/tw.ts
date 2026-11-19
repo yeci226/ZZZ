@@ -23,7 +23,11 @@ const langs = {
   NoSetAccount: "這位繩匠尚未設置帳號，所以無法使用此指令！",
   AccountNotFound: "找不到這位繩匠！",
   AccountNotFoundDesc:
-    "### 請確認以下資料是否已設置及是否正確\n- Cookie： `<hasCookie>`\n- UID： `<hasUid>`",
+    "### 請確認以下資料是否已設置及是否正確\n- Cookie： `<hasCookie>`\n- UID： `<hasUid>`\n\n請使用 `/account` 設定或更新帳號，也可以用 `/setup` 快速設定。",
+  error_NoAccount: "尚未設置帳號",
+  error_NoAccountDesc:
+    "請先使用 `/account` 設定帳號與 Cookie（或用 `/setup` 快速設定）後再使用此指令",
+  account_nonAcc: "尚未設置帳號，請先使用 /account 新增",
   Searching: "搜尋資料中，主人請稍等～",
   DrawInQueue: "正在排隊中，目前排隊位置：<position>",
   DrawError: "繪製失敗",
@@ -40,6 +44,9 @@ const langs = {
   PeriodZoneLayer: "式與防衛戰防線",
   InterKnotReputation: "繩網聲望",
 
+  team_NoAgent: "請至少選擇一位代理人。",
+  team_NoAgentData: "無法取得代理人資料。",
+
   //Commands
   news_Notice: "公告",
   news_Events: "活動",
@@ -55,13 +62,16 @@ const langs = {
     "此帳號的 HoYoLAB 登入狀態已過期，請重新綁定 Cookie 後再使用簽到與查詢功能。",
   daily_Signed: "繩匠，你今天已經簽到過了～",
   daily_SignSuccess: "簽到成功！",
+  daily_Success: "簽到成功！",
+  daily_AlreadySigned: "今天已經簽到過了",
   daily_Description: "您已獲得今日獎勵 <a>",
   daily_DescriptionTmr: "明日獎勵為 <b>",
   daily_Month: "月份簽到",
   daily_SignedDay: "已簽到天數：<z>",
   daily_MissedDay: "漏簽天數：<z>",
   daily_NonAccount: "尚未設置帳號",
-  daily_NonAccountDesc: "請先設定帳號後再使用此指令",
+  daily_NonAccountDesc:
+    "請先使用 `/account` 設定帳號（或用 `/setup` 快速設定）後再使用此指令",
   autoDaily_Off: "已關閉自動簽到",
   autoDaily_On: "已開啟自動簽到",
   autoDaily_Time: "自動簽到時間：<time>",

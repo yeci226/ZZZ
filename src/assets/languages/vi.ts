@@ -24,7 +24,11 @@ const langs = {
     "Không sử dụng được lệnh này do Người Kết Nỗi vẫn chưa thiết lập tài khoản!",
   AccountNotFound: "Không tìm thấy thông tin tài khoản!",
   AccountNotFoundDesc:
-    "### Vui lòng kiểm tra lại các thông tin sau đã được thiết lập đúng hay chưa:\n- Cookie： `<hasCookie>`\n- UID： `<hasUid>`",
+    "### Vui lòng kiểm tra lại các thông tin sau đã được thiết lập đúng hay chưa:\n- Cookie： `<hasCookie>`\n- UID： `<hasUid>`\n\nHãy dùng `/account` để thiết lập hoặc cập nhật tài khoản, hoặc dùng `/setup` để thiết lập nhanh.",
+  error_NoAccount: "Bạn vẫn chưa thiết lập tài khoản!",
+  error_NoAccountDesc:
+    "Hãy thiết lập tài khoản và Cookie bằng `/account` (hoặc `/setup`) trước khi dùng lệnh này!",
+  account_nonAcc: "Chưa thiết lập tài khoản. Hãy dùng /account để thêm",
   Searching: "Đang tìm kiếm, Chủ nhân vui lòng đợi ~",
   DrawInQueue: "Đang trong hàng đợi, vị trí hàng đợi hiện tại: ：<position>",
   DrawError: "Lỗi",
@@ -42,6 +46,9 @@ const langs = {
   PeriodZoneLayer: "Phòng Tuyến Bảo Vệ Trụ Shiyu",
   InterKnotReputation: "Danh vọng Inter-Knot",
 
+  team_NoAgent: "Vui lòng chọn ít nhất một người đại diện.",
+  team_NoAgentData: "Không thể lấy dữ liệu người đại diện.",
+
   //news
   news_Notice: "Thông báo",
   news_Events: "Hoạt động",
@@ -50,11 +57,15 @@ const langs = {
   news_SelectPost: "🐣 Vui lòng chọn một bài viết",
 
   daily_Failed: "Điểm danh thất bại",
+  daily_MissingRoleDesc:
+    "HoYoLAB không tìm thấy nhân vật Zenless Zone Zero của tài khoản này (-10002). Hãy kiểm tra bạn đã liên kết đúng tài khoản HoYoLAB dùng để chơi ZZZ và đã tạo nhân vật trong game. Sau khi xử lý, hãy thử lại bằng `/daily`. Điểm danh tự động sẽ kiểm tra lại mỗi 24 giờ và không thông báo lại lỗi này trong thời gian đó.",
   daily_AuthExpiredTitle: "Đăng nhập tài khoản HoYoLAB đã hết hạn",
   daily_AuthExpiredDesc:
     "Phiên đăng nhập HoYoLAB của tài khoản này đã hết hạn. Vui lòng liên kết Cookie mới trước khi điểm danh hoặc tra cứu.",
   daily_Signed: "Proxy, hôm nay bạn đã điểm danh rồi nha ~",
   daily_SignSuccess: "Đã điểm danh thành công!",
+  daily_Success: "Đã điểm danh thành công!",
+  daily_AlreadySigned: "Hôm nay bạn đã điểm danh rồi",
   daily_Description: "Đã nhận phần thưởng của ngày hôm nay <a>",
   daily_DescriptionTmr: "Phần thưởng ngày mai là <b>",
   daily_Month: "Điểm danh hàng tháng",
@@ -62,7 +73,7 @@ const langs = {
   daily_MissedDay: "Số ngày chưa điểm danh：<z>",
   daily_NonAccount: "Bạn vẫn chưa thiết lập tài khoản nào cả!",
   daily_NonAccountDesc:
-    "Bạn cần thiết lập tài khoản để có thể sử dụng lệnh này!",
+    "Hãy thiết lập tài khoản bằng `/account` (hoặc `/setup` để thiết lập nhanh) trước khi dùng lệnh này!",
   autoDaily_Off: "Tính năng điểm danh tự động: Tắt",
   autoDaily_On: "Tính năng điểm danh tự động: Bật",
   autoDaily_Time: "Cài đặt thời gian điểm danh tự động：<time>",
@@ -70,6 +81,15 @@ const langs = {
   autoDaily_NotifyType: "Kênh thông báo：<z>",
   autoDaily_NotifyType_DM: "Tin nhắn riêng",
   autoDaily_NotifyType_Channel: "Kênh",
+  autoDaily_GeetestTitle:
+    "<uid> Vui lòng hoàn thành Geetest để tiếp tục điểm danh tự động!",
+
+  card_TodayReward: "Phần thưởng hôm nay",
+  card_TomorrowReward: "Phần thưởng ngày mai",
+  card_MonthSignIn: "Điểm danh trong tháng",
+  card_MonthMissed: "Số ngày bỏ lỡ",
+
+  redeem_AllRedeemed: "Đã đổi tất cả <count> mã quà tặng",
   account_QuickLink: "① Đăng nhập tài khoản (Khuyến nghị)",
   account_QuickLinkModal: "Đăng nhập tài khoản nhanh",
   account_QuickLinkDesc:
