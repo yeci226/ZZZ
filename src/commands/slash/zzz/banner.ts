@@ -13,6 +13,7 @@ import { renderOfficialBanner } from "../../../utilities/zzz/bannerRenderer.js";
 import { canViewPrivateGacha } from "../../../utilities/zzz/gachaPrivacy.js";
 import { calendarBannerMetadata } from "../../../utilities/zzz/gachaSync.js";
 import { cacheSimulationCalendar } from "../../../utilities/zzz/gachaSimulationCatalog.js";
+import { buildPrivateOption, privateReplyOptions } from "../../../utilities/shared/privateOption.js";
 import { bannerRegionLabel, cachePublicBannerCalendar, getPublicBannerCalendar } from "../../../utilities/zzz/bannerCalendarCache.js";
 
 export default {
@@ -24,12 +25,13 @@ export default {
     .addStringOption((option) => option.setName("account").setDescription("Account")
       .setNameLocalizations({ "zh-TW": "帳號" } as LocalizationMap).setAutocomplete(true))
     .addUserOption((option) => option.setName("user").setDescription("User")
-      .setNameLocalizations({ "zh-TW": "使用者" } as LocalizationMap)),
+      .setNameLocalizations({ "zh-TW": "使用者" } as LocalizationMap))
+    .addBooleanOption(buildPrivateOption),
 
   async execute(_client: Client, interaction: ChatInputCommandInteraction, _args: any[], _tr: any, db: QuickDB) {
     const target = interaction.options.getUser("user") || interaction.user;
     const accountIndex = Number.parseInt(interaction.options.getString("account") || "0", 10);
-    if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
+    if (!interaction.deferred && !interaction.replied) await interaction.deferReply(privateReplyOptions(interaction));
     try {
       const locale = (await getUserLang(interaction.user.id)) || "tw";
       const lang = getZzzClientLanguage(locale);
