@@ -3,7 +3,12 @@ import { loadImage, type Image } from "@napi-rs/canvas";
 const NONE_IMAGE = "./src/assets/images/None.png";
 const FETCH_TIMEOUT_MS = 8_000;
 const MAX_ENTRIES = 200;
-const MAX_BYTES = 256 * 1024 * 1024;
+// Budget for DECODED pixels (width * height * 4) per process; every cluster has its own cache.
+const MAX_BYTES = 64 * 1024 * 1024;
+
+/** Memory a cached Image really holds: decoded RGBA, not the compressed download. */
+const decodedSize = (image: Image, fallback: number) =>
+  image.width * image.height * 4 || fallback;
 const SUCCESS_TTL_MS = 30 * 60_000;
 const FAILURE_TTL_MS = 30_000;
 
@@ -39,7 +44,8 @@ async function fetchImage(url: string): Promise<{ image: Image; size: number }> 
   const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const buffer = Buffer.from(await response.arrayBuffer());
-  return { image: await loadImage(buffer), size: buffer.length };
+  const image = await loadImage(buffer);
+  return { image, size: decodedSize(image, buffer.length) };
 }
 
 /**
@@ -76,7 +82,7 @@ export function loadImageCached(
         return image;
       }
       const image = await loadImage(target);
-      entry.size = image.width * image.height;
+      entry.size = decodedSize(image, 0);
       return image;
     } catch (error) {
       entry.failed = true;
