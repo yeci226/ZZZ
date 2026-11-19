@@ -45,8 +45,8 @@ const langs = {
   PeriodZoneLayer: "形式と防衛戦線",
   InterKnotReputation: "ネットワークの評判",
 
-  team_NoAgent: "代理人を1人以上選択してください。",
-  team_NoAgentData: "代理人のデータを取得できませんでした。",
+  team_NoAgent: "エージェントを1人以上選択してください。",
+  team_NoAgentData: "エージェントのデータを取得できませんでした。",
 
   // Commands
   news_Notice: "お知らせ",
