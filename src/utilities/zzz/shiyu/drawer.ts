@@ -54,6 +54,15 @@ export async function drawShiyuCanvas(
     team3,
   } = assets;
 
+  // Warm the cache so the per-node monster loads below do not fetch one by one.
+  await Promise.all(
+    floors.flatMap((floor) =>
+      floor.nodes
+        .filter((node) => node.monster_pic)
+        .map((node) => loadImageAsync(node.monster_pic!).catch(() => null)),
+    ),
+  );
+
   const layerRatingImages = {
     S: ratingCornerS,
     A: ratingCornerA,

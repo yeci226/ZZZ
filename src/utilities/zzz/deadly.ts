@@ -380,6 +380,51 @@ async function drawDeadlyLegacyImage(
     const bossBgImages: Record<string, Image> = {};
     const raceIcons: Record<string, Image> = {};
 
+    // 先並行暖機快取（同 URL 與 fallback 與下方相同），下方原本的循序載入就只是命中快取
+    const prewarm: Promise<unknown>[] = [];
+    for (const { battle } of battleEntries) {
+      for (const avatar of battle.avatar_list ?? []) {
+        if (avatar.role_square_url)
+          prewarm.push(
+            loadImageAsync(
+              avatar.role_square_url,
+              `./src/assets/images/agents/${avatar.id}.webp`,
+            ).catch(() => null),
+          );
+      }
+      if (battle.buddy?.id && battle.buddy.bangboo_rectangle_url)
+        prewarm.push(
+          loadImageAsync(
+            battle.buddy.bangboo_rectangle_url,
+            `./src/assets/images/bangboos/${battle.buddy.id}.png`,
+          ).catch(() => null),
+        );
+      for (const boss of battle.boss ?? []) {
+        if (!boss.icon) continue;
+        prewarm.push(
+          loadImageAsync(
+            boss.icon,
+            `./src/assets/images/bosses/default.png`,
+          ).catch(() => null),
+        );
+        if (boss.bg_icon)
+          prewarm.push(
+            loadImageAsync(
+              boss.bg_icon,
+              `./src/assets/images/bosses/bg_default.png`,
+            ).catch(() => null),
+          );
+        if (boss.race_icon)
+          prewarm.push(
+            loadImageAsync(
+              boss.race_icon,
+              `./src/assets/images/bosses/race_default.png`,
+            ).catch(() => null),
+          );
+      }
+    }
+    await Promise.all(prewarm);
+
     // 预加载所有角色、助手和Boss图像
     if (battleEntries.length > 0) {
       for (const { battle } of battleEntries) {

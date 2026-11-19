@@ -7,6 +7,7 @@ import {
 import { createCanvas, loadImage, SKRSContext2D, Image } from "@napi-rs/canvas";
 import { ZenlessZoneZero } from "@yeci226/hoyoapi";
 import { drawQueue, drawTimeoutNotifier } from "../canvas/drawQueue.js";
+import { loadImageCached } from "../canvas/remoteImage.js";
 import { downloadPaintingCache, getFacePos } from "./autoDownloadIcons.js";
 import {
   getUserLang,
@@ -201,11 +202,9 @@ const propLabels: Record<number, string> = {
 
 // ── Image loaders ───────────────────────────────────────────────────────────
 async function loadImg(url: string) {
+  // Shared loader: 8s fetch timeout, in-memory LRU, in-flight sharing.
   try {
-    return await loadImage(await downloadPaintingCache(url));
-  } catch {}
-  try {
-    return await loadImage(url);
+    return await loadImageCached(url, downloadPaintingCache);
   } catch {}
   return null;
 }
@@ -239,12 +238,12 @@ async function drawMindscapePainting(
   w: number,
   h: number,
 ) {
-  const img0 = painting.paths[0] ? await loadImg(painting.paths[0]) : null;
-  const img1 = painting.paths[1] ? await loadImg(painting.paths[1]) : null;
-  const img2 = painting.paths[2] ? await loadImg(painting.paths[2]) : null;
-  const fallback = painting.fallbackUrl
-    ? await loadImg(painting.fallbackUrl)
-    : null;
+  const [img0, img1, img2, fallback] = await Promise.all([
+    painting.paths[0] ? loadImg(painting.paths[0]) : null,
+    painting.paths[1] ? loadImg(painting.paths[1]) : null,
+    painting.paths[2] ? loadImg(painting.paths[2]) : null,
+    painting.fallbackUrl ? loadImg(painting.fallbackUrl) : null,
+  ]);
   const rank = painting.rank ?? 0;
   const base0 = img0 ?? fallback;
   const base1 = img1 ?? base0;
@@ -1570,6 +1569,8 @@ async function drawTeamHeader(
       if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
       return String(n);
     }
+    // Warm the cache so the loop below does not fetch one medal at a time.
+    await Promise.all(medals.map((m) => loadImg(m.medal_icon)));
     for (let i = 0; i < medals.length; i++) {
       const medal = medals[i];
       const mx = medalStartX + i * (medalSize + 8);
