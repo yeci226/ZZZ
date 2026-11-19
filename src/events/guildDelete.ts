@@ -1,6 +1,5 @@
 import { client } from "../index.js";
 import { Events, WebhookClient, EmbedBuilder, ActivityType } from "discord.js";
-import moment from "moment";
 import { getConfig } from "../utilities/core/config.js";
 import Logger from "../utilities/core/logger.js";
 import { disableDestinationsMatching } from "../utilities/core/notificationDestination.js";
@@ -52,7 +51,7 @@ client.on(Events.GuildDelete, async (guild) => {
           })
           .addFields({
             name: "建立時間",
-            value: `<t:${moment(guild.createdAt).unix()}:F>`,
+            value: `<t:${Math.floor(guild.createdAt.getTime() / 1000)}:F>`,
             inline: false,
           })
           .addFields({
