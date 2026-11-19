@@ -6,15 +6,26 @@ const config = getConfig();
 
 const webhook = config.ERRWEBHOOK ? new WebhookClient({ url: config.ERRWEBHOOK }) : null;
 
-client.on(Events.Error, async (error: Error) => {
+// 非 Error 的值（字串、undefined 等）也要能安全取得訊息；空字串會讓 embed 送出失敗
+function errorMessage(error: unknown): string {
+  const message = (error as Error | undefined)?.message ?? String(error);
+  return String(message).slice(0, 4000) || "(無訊息)";
+}
+
+// webhook 失敗只在本機記錄，絕不重送，避免 unhandledRejection 迴圈
+function sendFailed(e: unknown) {
+  console.error("[error webhook] send failed:", (e as Error)?.message ?? e);
+}
+
+client.on(Events.Error,async (error: Error) => {
   console.log(error);
-  new Logger("系統").error(`錯誤訊息：${error.message}`);
+  new Logger("系統").error(`錯誤訊息：${errorMessage(error)}`);
   if (webhook) {
     webhook.send({
       embeds: [
-        new EmbedBuilder().setTimestamp().setDescription(`${error.message}`),
+        new EmbedBuilder().setTimestamp().setDescription(errorMessage(error)),
       ],
-    });
+    }).catch(sendFailed);
   }
 });
 
@@ -24,13 +35,13 @@ client.on("warn", (error) => {
 
 process.on("unhandledRejection", (error) => {
   console.log(error);
-  new Logger("系統").error(`錯誤訊息：${(error as Error).message}`);
+  new Logger("系統").error(`錯誤訊息：${errorMessage(error)}`);
   if (webhook) {
     webhook.send({
       embeds: [
-        new EmbedBuilder().setTimestamp().setDescription(`${(error as Error).message}`),
+        new EmbedBuilder().setTimestamp().setDescription(errorMessage(error)),
       ],
-    });
+    }).catch(sendFailed);
   }
 });
 
