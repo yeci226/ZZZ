@@ -14,6 +14,7 @@ import {
   formatBattleRecordTime,
 } from "./recordDisplay.js";
 import { drawMindscapeBadge } from "./gtCardRenderer.js";
+import { deadlyPeriodNumber } from "./recordCache.js";
 
 const WIDTH = 1200;
 const HEIGHT = 1440;
@@ -1136,7 +1137,7 @@ export async function drawDeadlyCombinedImage(
   ctx.font = `bold 42px ${font}`;
   ctx.textAlign = "left";
   const period =
-    Number(deadlyData?.zone_id ?? deadlyData?.schedule_id ?? 0) % 100;
+    deadlyPeriodNumber(deadlyData?.zone_id ?? deadlyData?.schedule_id) ?? 0;
   const normalizedLocale = userLocale.toLowerCase();
   const title =
     normalizedLocale === "tw" || normalizedLocale === "zh-tw"

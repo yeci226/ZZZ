@@ -4,6 +4,7 @@ import {
   getZzzScheduleAutocompleteChoices,
   saveDeadlyHistory,
   saveShiyuHistory,
+  deadlyPeriodNumber,
 } from "../src/utilities/zzz/recordCache.js";
 
 class MemoryDb {
@@ -135,5 +136,25 @@ describe("ZZZ record history cache", () => {
     expect(choice.name).toContain("絕境654321分3星");
     expect(choice.name).toContain("試煉123456分9星");
     expect(choice.name.length).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("deadlyPeriodNumber", () => {
+  it("drops the trailing server digit from Deadly Assault IDs", () => {
+    expect(deadlyPeriodNumber(690491)).toBe(49);
+    expect(deadlyPeriodNumber(690481)).toBe(48);
+    expect(deadlyPeriodNumber("690491")).toBe(49);
+    expect(deadlyPeriodNumber(undefined)).toBeNull();
+  });
+
+  it("labels live and saved Deadly Assault choices with the real period", async () => {
+    const live = formatZzzLiveScheduleChoice("deadly", 1, "tw", { zone_id: 690491 });
+    expect(live.name).toContain("49期");
+    expect(live.name).not.toContain("91期");
+
+    const db = new MemoryDb();
+    await saveDeadlyHistory(db, "user", 1, 2, deadly(690481, 30000));
+    const choices = await getZzzScheduleAutocompleteChoices(db, "deadly", "user", 1, "tw");
+    expect(choices.some((choice) => choice.name.includes("48期"))).toBe(true);
   });
 });

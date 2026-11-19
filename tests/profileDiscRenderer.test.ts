@@ -28,8 +28,12 @@ async function decode(buffer: Buffer | null) {
     height: img.height,
     orangeXs: (y: number) => {
       const pixels = ctx.getImageData(0, y, img.width, 1).data;
-      return Array.from({ length: img.width }, (_, x) => x).filter(x =>
-        pixels[x * 4] === 168 && pixels[x * 4 + 1] === 75 && pixels[x * 4 + 2] === 18);
+      return Array.from({ length: img.width }, (_, x) => x).filter(
+        (x) =>
+          pixels[x * 4] === 168 &&
+          pixels[x * 4 + 1] === 75 &&
+          pixels[x * 4 + 2] === 18,
+      );
     },
     pixel: (x: number, y: number) =>
       Array.from(ctx.getImageData(x, y, 1, 1).data).slice(0, 3),
@@ -89,27 +93,75 @@ it("stacks cards using their expanded measured heights", async () => {
   expect(result.pixel(52, 678 + 18 + 608)).toEqual([168, 75, 18]);
 });
 
-it.each([false, true])("shows the effective roll total at the bottom left (empty=%s)", async empty => {
+it.each([false, true])(
+  "shows the effective roll total at the bottom left (empty=%s)",
+  async (empty) => {
+    const prototype = Object.getPrototypeOf(
+      createCanvas(1, 1).getContext("2d"),
+    );
+    const fillText = jest.spyOn(prototype, "fillText");
+    try {
+      const character = formalDiscCharacter(1251, "青衣");
+      character.equip = empty
+        ? []
+        : ([
+            {
+              ...character.equip[0],
+              // Main stats do not contribute; only the first two substats are effective.
+              main_properties: [{ property_id: 2, base: "999" }],
+              properties: [
+                { system_id: 121, property_id: 2, base: "19", add: 0 },
+                { system_id: 121, property_id: 2, base: "12%", add: 3 },
+                { system_id: 201, property_id: 5, base: "28.8%", add: 5 },
+              ],
+            },
+          ] as any);
+      await drawFormalCharacterProfile(
+        createTranslator("tw"),
+        "tw",
+        "test",
+        character,
+      );
+      expect(fillText).toHaveBeenCalledWith("總有效詞條數", 25, 667);
+      const footerValue = fillText.mock.calls.find(
+        (call) => call[0] === (empty ? "0" : "5") && call[2] === 667,
+      );
+      expect(footerValue).toBeDefined();
+      expect(footerValue![1]).toBeLessThan(300);
+    } finally {
+      fillText.mockRestore();
+    }
+  },
+);
+
+it("renders two-piece Puffer PEN and counts only the exact effective ATK variant", async () => {
   const prototype = Object.getPrototypeOf(createCanvas(1, 1).getContext("2d"));
   const fillText = jest.spyOn(prototype, "fillText");
   try {
-    const character = formalDiscCharacter(1251, "青衣");
-    character.equip = empty ? [] : [{
-      ...character.equip[0],
-      // Main stats do not contribute; only the first two substats are effective.
-      main_properties: [{ property_id: 2, base: "999" }],
+    const character: any = formalDiscCharacter(1251, "青衣");
+    character.equip_plan_info.plan_effective_property_list = [
+      { id: 12102, system_id: 121 },
+    ];
+    character.equip = character.equip.slice(0, 2).map((disc: any) => ({
+      ...disc,
+      equip_suit: { suit_id: 31100 },
       properties: [
-        { system_id: 121, property_id: 2, base: "19", add: 0 },
-        { system_id: 121, property_id: 2, base: "12%", add: 3 },
-        { system_id: 201, property_id: 5, base: "28.8%", add: 5 },
+        { property_id: 12102, system_id: 121, base: "12%", add: 3 },
+        { property_id: 12103, system_id: 121, base: "57", add: 2 },
       ],
-    }] as any;
-    await drawFormalCharacterProfile(createTranslator("tw"), "tw", "test", character);
-    expect(fillText).toHaveBeenCalledWith("總有效詞條數", 25, 667);
-    const footerValue = fillText.mock.calls.find(call =>
-      call[0] === (empty ? "0" : "5") && call[2] === 667);
-    expect(footerValue).toBeDefined();
-    expect(footerValue![1]).toBeLessThan(300);
+    }));
+    await drawFormalCharacterProfile(
+      createTranslator("tw"),
+      "tw",
+      "test",
+      character,
+      null,
+    );
+    expect(fillText.mock.calls.some((call) => call[0] === "8.0%")).toBe(true);
+    expect(fillText.mock.calls.some((call) => call[0] === "0.0%")).toBe(false);
+    expect(
+      fillText.mock.calls.some((call) => call[0] === "8" && call[2] === 667),
+    ).toBe(true);
   } finally {
     fillText.mockRestore();
   }

@@ -1,9 +1,6 @@
 import { commandTipContent } from "../core/commandTips.js";
 import { client } from "../../index.js";
-import {
-  EmbedBuilder,
-  AttachmentBuilder,
-} from "discord.js";
+import { EmbedBuilder, AttachmentBuilder } from "discord.js";
 import Queue from "queue";
 import {
   getRandomColor,
@@ -27,11 +24,15 @@ import {
   type ZzzProfileStyle,
 } from "./profileStyle.js";
 import { drawOfficialMainProfile } from "./profileMain.js";
-import { loadProfileMainData, type ProfileMainData } from "./profileMainData.js";
+import {
+  loadProfileMainData,
+  type ProfileMainData,
+} from "./profileMainData.js";
 import { getElementIconPath } from "./elements.js";
 import { queueProfileDiscSync } from "./discProfileSync.js";
 import { discContent } from "./discLeaderboardCopy.js";
 import { buildProfileCharacterSelectRows } from "./profileCharacterSelectMenu.js";
+import { buildAnalyticsEntry } from "./analyticsReference.js";
 import {
   createCanvas,
   loadImage,
@@ -237,9 +238,24 @@ export async function handleProfileDraw(
       );
 
       await interaction.editReply({
-        content: commandTipContent(interaction, "profile", userLocale, user.id === interaction.user.id ? discContent(userLocale, "syncStarted") : ""),
+        content: commandTipContent(
+          interaction,
+          "profile",
+          userLocale,
+          user.id === interaction.user.id
+            ? discContent(userLocale, "syncStarted")
+            : "",
+        ),
         embeds: [],
-        components: [...rowSelects],
+        components: [
+          ...rowSelects,
+          ...buildAnalyticsEntry(
+            interaction.user.id,
+            userLocale,
+            [],
+            characters,
+          ),
+        ],
         files: [image],
       });
       queueProfileDiscSync(interaction, user.id, zzz, characters, userLocale);
@@ -306,12 +322,7 @@ export async function drawCharacterImage(
 ) {
   void interaction;
   if (normalizeZzzProfileStyle(profileStyle) === "formal") {
-    return drawFormalCharacterProfile(
-      tr,
-      userLocale,
-      uid,
-      characterDataInput,
-    );
+    return drawFormalCharacterProfile(tr, userLocale, uid, characterDataInput);
   }
   return drawOfficialCharacterProfile(
     tr,
@@ -960,7 +971,7 @@ async function drawAgentHeader(
   }
 
   const iconSpacer = 12;
-  let row2IconsWidth = iconSpacer; 
+  let row2IconsWidth = iconSpacer;
   metaItems.forEach((item, idx) => {
     row2IconsWidth += item.size + (idx < metaItems.length - 1 ? iconSpacer : 0);
   });

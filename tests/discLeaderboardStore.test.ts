@@ -102,11 +102,23 @@ test("global and server population is per character and per server query", () =>
 });
 test("the displayed UID always belongs to the account whose build won the player's seat", () => {
   const lower = structuredClone(character);
-  lower.equip.forEach(disc => { disc.properties = []; });
+  lower.equip.forEach((disc) => {
+    disc.properties = [];
+  });
   store.record(input("1", "100", { character: lower }));
   store.record(input("1", "101"));
-  expect(store.page("1581", "1").viewer).toMatchObject({ ownerId: "1", uid: "101", total: 490.5 });
-  store.record(input("1", "101", { requestedAt: 300, requestId: "300", character: { ...character, equip: [] } }));
+  expect(store.page("1581", "1").viewer).toMatchObject({
+    ownerId: "1",
+    uid: "101",
+    total: 490.5,
+  });
+  store.record(
+    input("1", "101", {
+      requestedAt: 300,
+      requestId: "300",
+      character: { ...character, equip: [] },
+    }),
+  );
   expect(store.page("1581", "1").viewer?.uid).toBe("100");
 });
 test("pagination clamps pages and always returns the viewer outside the page", () => {
@@ -143,7 +155,10 @@ test("scoring snapshot includes no credentials or unrelated profile data", () =>
 test("ranking stores the character card's effective rolls and never turns missing metadata into zero", () => {
   const detailed = structuredClone(character) as any;
   detailed.equip_plan_info = {
-    plan_effective_property_list: [{ system_id: 121 }],
+    plan_effective_property_list: [
+      { id: 12102, system_id: 121 },
+      { id: 12103, system_id: 121 },
+    ],
   };
   for (const disc of detailed.equip)
     for (const property of disc.properties) {
@@ -197,6 +212,37 @@ test("ranking stores the character card's effective rolls and never turns missin
       .effectiveRolls,
   ).toBeNull();
 });
+test("old aggregated counts stay unknown until new roll metadata arrives", () => {
+  store.record(
+    input("1", "100", {
+      character: { ...character, equip_plan_info: { valid_property_cnt: 36 } },
+    }),
+  );
+  const db = (store as any).db;
+  const old = JSON.parse(
+    db.prepare("SELECT raw_json FROM disc_entries").get().raw_json,
+  );
+  delete old.effectiveRollsVersion;
+  db.prepare("UPDATE disc_entries SET raw_json=?").run(JSON.stringify(old));
+  expect(store.page("1581", "1").viewer?.effectiveRolls).toBeNull();
+  store.record(input("1", "100", { requestedAt: 200, requestId: "200" }));
+  expect(store.page("1581", "1").viewer?.effectiveRolls).toBeNull();
+  store.record(
+    input("1", "100", {
+      requestedAt: 300,
+      requestId: "300",
+      character: {
+        ...character,
+        equip_plan_info: {
+          plan_effective_property_list: [{ id: 12102, system_id: 121 }],
+        },
+      },
+    }),
+  );
+  // ATK% is 3% + 9% + 9% + 9% = 10 rolls; the 7 flat ATK rolls are excluded.
+  expect(store.page("1581", "1").viewer?.effectiveRolls).toBe(10);
+});
+
 test("multiple connections share latest scores, privacy, and restarts", () => {
   const folder = mkdtempSync(join(tmpdir(), "disc-rank-")),
     filename = join(folder, "rank.sqlite");

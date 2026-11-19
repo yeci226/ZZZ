@@ -10,8 +10,10 @@ import { getScoringStore } from "./combat/scoringStore.js";
 import { resolveCharacterPortrait } from "./characterPortrait.js";
 import {
   countEffectiveRolls,
-  getCharacterEffectiveSystemIds,
+  getCharacterEffectivePropertyIds,
 } from "./profileRolls.js";
+
+const EFFECTIVE_ROLLS_VERSION = 2;
 
 export interface DiscEnrollment {
   ownerId: string;
@@ -59,7 +61,7 @@ export function scoringInput(character: any) {
       value: p.value,
     };
   const discs = Array.isArray(character.equip) ? character.equip : [];
-  const effectiveIds = getCharacterEffectiveSystemIds(character, discs);
+  const effectiveIds = getCharacterEffectivePropertyIds(character, discs);
   const hasRolls =
     effectiveIds.size > 0 ||
     discs.some((disc: any) =>
@@ -75,6 +77,7 @@ export function scoringInput(character: any) {
   return {
     id: character.id,
     element_type: character.element_type,
+    effectiveRollsVersion: EFFECTIVE_ROLLS_VERSION,
     effectiveRolls:
       Number.isInteger(rolls) && rolls >= 0 && rolls <= 54
         ? (rolls as number)
@@ -333,6 +336,7 @@ export class DiscLeaderboardStore {
             const old = JSON.parse(previous.raw_json);
             if (
               raw.effectiveRolls === null &&
+              old.effectiveRollsVersion === raw.effectiveRollsVersion &&
               JSON.stringify(raw.equip) === JSON.stringify(old.equip)
             )
               raw.effectiveRolls = old.effectiveRolls ?? null;
@@ -412,7 +416,11 @@ export class DiscLeaderboardStore {
         grade: r.grade,
         updatedAt: r.updated_at,
         rank: r.rank,
-        effectiveRolls: JSON.parse(r.raw_json).effectiveRolls ?? null,
+        effectiveRolls:
+          JSON.parse(r.raw_json).effectiveRollsVersion ===
+          EFFECTIVE_ROLLS_VERSION
+            ? (JSON.parse(r.raw_json).effectiveRolls ?? null)
+            : null,
         portraitColor: JSON.parse(r.raw_json).portraitColor ?? null,
       });
       const entries = this.db

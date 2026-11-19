@@ -21,10 +21,11 @@ import {
 } from "./mindscapeComposition.js";
 import {
   countEffectiveRolls,
-  getCharacterEffectiveSystemIds,
+  getCharacterEffectivePropertyIds,
   isCharacterEffectiveProperty,
   isEffectiveProperty,
 } from "./profileRolls.js";
+import { getProfilePanelProperties } from "./profilePanel.js";
 import { getPaperAccent } from "./profileColors.js";
 import { getFlatSuitIcon } from "./profileSuitIcons.js";
 import { profileScore } from "./combat/render.js";
@@ -517,19 +518,12 @@ function rarityGrade(value: unknown): "S" | "A" | "B" | "C" {
 }
 
 function isPeloyisCharacter(character: any): boolean {
-  const id = Number(character?.id ?? character?.avatar_id ?? character?.agent_id);
+  const id = Number(
+    character?.id ?? character?.avatar_id ?? character?.agent_id,
+  );
   if (id === 1551) return true;
-  return [
-    character?.name,
-    character?.name_mi18n,
-    character?.name_cn,
-    character?.name_tw,
-    character?.name_en,
-  ]
-    .filter((value) => typeof value === "string")
-    .join(" ")
-    .toLowerCase()
-    .includes("peloyis") || [
+  return (
+    [
       character?.name,
       character?.name_mi18n,
       character?.name_cn,
@@ -538,7 +532,19 @@ function isPeloyisCharacter(character: any): boolean {
     ]
       .filter((value) => typeof value === "string")
       .join(" ")
-      .includes("佩洛伊斯");
+      .toLowerCase()
+      .includes("peloyis") ||
+    [
+      character?.name,
+      character?.name_mi18n,
+      character?.name_cn,
+      character?.name_tw,
+      character?.name_en,
+    ]
+      .filter((value) => typeof value === "string")
+      .join(" ")
+      .includes("佩洛伊斯")
+  );
 }
 
 async function loadCharacterRarityIcon(character: any): Promise<Image | null> {
@@ -944,7 +950,13 @@ async function drawIdentityAndStats(
   let itemX = nameX + nameWidth + gap;
   const rarityImage = await loadCharacterRarityIcon(character);
   if (rarityImage)
-    ctx.drawImage(rarityImage, itemX, nameY - raritySize + 1, raritySize, raritySize);
+    ctx.drawImage(
+      rarityImage,
+      itemX,
+      nameY - raritySize + 1,
+      raritySize,
+      raritySize,
+    );
   itemX += raritySize + gap;
 
   if (special?.title) {
@@ -1023,7 +1035,7 @@ async function drawIdentityAndStats(
     true,
   );
   const preferredPropertyOrder = [1, 2, 3, 4, 5, 6, 8, 7, 9, 10];
-  const allProps = [...(character.properties ?? [])];
+  const allProps = getProfilePanelProperties(character);
   const props = [
     ...preferredPropertyOrder
       .map((propertyId) =>
@@ -1292,7 +1304,11 @@ async function drawWeapon(
     ctx.fillText(propertyText, propertyTextX, detailY + 16);
     ctx.font = `900 italic 15px ${NUM_FONT}`;
     ctx.fillStyle = INK;
-    ctx.fillText(String(prop.base ?? prop.final ?? ""), propertyTextX, detailY + 36);
+    ctx.fillText(
+      String(prop.base ?? prop.final ?? ""),
+      propertyTextX,
+      detailY + 36,
+    );
   }
 
   const effectX = effectDividerX;
@@ -1317,7 +1333,8 @@ async function drawWeapon(
     (color) => {
       const normalized = color.toLowerCase();
       if (normalized === "#fff" || normalized === "#ffffff") return INK;
-      if (normalized === "#2bad00" || normalized === "#98eff0") return paperAccent;
+      if (normalized === "#2bad00" || normalized === "#98eff0")
+        return paperAccent;
       return color;
     },
   );
@@ -1334,7 +1351,7 @@ async function drawDisc(
   accent: string,
   accentLight: string,
   font: string,
-  effectiveSystemIds: ReadonlySet<number>,
+  effectivePropertyIds: ReadonlySet<number>,
   T: CharacterText,
   discScore: DiscScore | undefined,
 ) {
@@ -1407,7 +1424,9 @@ async function drawDisc(
     : 0;
   const separatorGap = enhancementText ? 8 : 0;
   const enhancementRight = x + width - 13;
-  const topX = scoreLabel ? x + 48 : enhancementRight - slotWidth - separatorGap - enhancementWidth;
+  const topX = scoreLabel
+    ? x + 48
+    : enhancementRight - slotWidth - separatorGap - enhancementWidth;
   const topY = y + (scoreLabel ? 10 : 16);
   ctx.textAlign = "left";
   ctx.fillStyle = "#b9bdbd";
@@ -1415,7 +1434,12 @@ async function drawDisc(
   if (enhancementText) {
     const separatorX = topX + slotWidth + 3;
     ctx.fillStyle = "#8f8174";
-    ctx.fillRect(separatorX, topY - (scoreLabel ? 8 : 11), 1, scoreLabel ? 8 : 12);
+    ctx.fillRect(
+      separatorX,
+      topY - (scoreLabel ? 8 : 11),
+      1,
+      scoreLabel ? 8 : 12,
+    );
     ctx.fillStyle = ORANGE;
     ctx.fillText(enhancementText, separatorX + 5, topY);
   }
@@ -1423,18 +1447,14 @@ async function drawDisc(
     drawDiscScore(ctx, discScore, x + width - 7, y + 14, "dark");
   }
 
-  const validCount = String(countEffectiveRolls(disc, effectiveSystemIds));
+  const validCount = String(countEffectiveRolls(disc, effectivePropertyIds));
   ctx.font = `900 italic 21px ${NUM_FONT}`;
   const validCountWidth = ctx.measureText(validCount).width;
   ctx.font = `500 9px ${font}`;
   const validRight = x + width - 7;
   ctx.textAlign = "right";
   ctx.fillStyle = "#b9bdbd";
-  ctx.fillText(
-    T.validRolls,
-    validRight - validCountWidth - 5,
-    y + 38,
-  );
+  ctx.fillText(T.validRolls, validRight - validCountWidth - 5, y + 38);
   ctx.font = `900 italic 21px ${NUM_FONT}`;
   ctx.fillStyle = accentLight;
   ctx.fillText(validCount, validRight, y + 40);
@@ -1463,7 +1483,7 @@ async function drawDisc(
     const row = Math.floor(index / 2);
     const sx = x + 7 + col * (subWidth + subGapX);
     const sy = subY + row * (subHeight + subGapY);
-    const effective = isEffectiveProperty(prop, effectiveSystemIds);
+    const effective = isEffectiveProperty(prop, effectivePropertyIds);
     ctx.fillStyle = DISC_SUB;
     ctx.fillRect(sx, sy, subWidth, subHeight);
     if (effective) {
@@ -1585,19 +1605,15 @@ async function drawSetCard(
       (color) => {
         const normalized = color.toLowerCase();
         if (normalized === "#fff" || normalized === "#ffffff") return INK;
-        if (normalized === "#2bad00" || normalized === "#98eff0") return paperAccent;
+        if (normalized === "#2bad00" || normalized === "#98eff0")
+          return paperAccent;
         return color;
       },
     );
   };
   if (set.count >= 4) {
     const firstLines = drawSetEffect(T.twoPiece, set.desc1, y + 42, 2);
-    drawSetEffect(
-      T.fourPiece,
-      set.desc2,
-      y + 42 + firstLines * 12.5 + 4,
-      4,
-    );
+    drawSetEffect(T.fourPiece, set.desc2, y + 42 + firstLines * 12.5 + 4, 4);
   } else {
     drawSetEffect(T.twoPiece, set.desc1, y + 42, 6);
   }
@@ -1636,12 +1652,17 @@ async function drawDiscs(
   const slots = Array.from({ length: 6 }, (_, index) =>
     discs.find((disc: any) => Number(disc.equipment_type) === index + 1),
   );
-  const effectiveSystemIds = getCharacterEffectiveSystemIds(character, slots);
+  const effectivePropertyIds = getCharacterEffectivePropertyIds(
+    character,
+    slots,
+  );
   const total = slots.reduce(
-    (sum, disc) => sum + countEffectiveRolls(disc, effectiveSystemIds),
+    (sum, disc) => sum + countEffectiveRolls(disc, effectivePropertyIds),
     0,
   );
-  const scoreWidth = score ? drawTotalScore(ctx, score, 0, 0, font, userLocale, "dark", true) : 0;
+  const scoreWidth = score
+    ? drawTotalScore(ctx, score, 0, 0, font, userLocale, "dark", true)
+    : 0;
   const scoreSpace = scoreWidth ? scoreWidth + 18 : 0;
   ctx.font = `500 9px ${font}`;
   ctx.fillStyle = "#b9bdbd";
@@ -1651,7 +1672,15 @@ async function drawDiscs(
   ctx.fillStyle = accentLight;
   ctx.fillText(String(total), x + width - 12 - scoreSpace, y + 31);
   if (score) {
-    drawTotalScore(ctx, score, x + width - 12 - scoreWidth, y + 29, font, userLocale, "dark");
+    drawTotalScore(
+      ctx,
+      score,
+      x + width - 12 - scoreWidth,
+      y + 29,
+      font,
+      userLocale,
+      "dark",
+    );
   }
 
   const gridX = x + 12;
@@ -1673,7 +1702,7 @@ async function drawDiscs(
       accent,
       accentLight,
       font,
-      effectiveSystemIds,
+      effectivePropertyIds,
       T,
       score?.discs.find((item) => item.slot === index + 1),
     );

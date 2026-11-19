@@ -1,7 +1,11 @@
 import { commandTipContent } from "../utilities/core/commandTips.js";
+import { buildAnalyticsEntry } from "../utilities/zzz/analyticsReference.js";
 import { isNewsInteraction } from "../utilities/news/wizard.js";
 import { client } from "../index.js";
-import { buildDiscLeaderboardEntry, recordDiscCharacters } from "../utilities/zzz/discLeaderboard.js";
+import {
+  buildDiscLeaderboardEntry,
+  recordDiscCharacters,
+} from "../utilities/zzz/discLeaderboard.js";
 import Logger from "../utilities/core/logger.js";
 import {
   Events,
@@ -51,7 +55,10 @@ import {
   resolveProfileCharacterSelection,
 } from "../utilities/zzz/profileCharacterSelect.js";
 import { handleDeadlyDraw } from "../utilities/zzz/deadly.js";
-import { formatSignalAction, signalActionText } from "../utilities/zzz/signalActionText.js";
+import {
+  formatSignalAction,
+  signalActionText,
+} from "../utilities/zzz/signalActionText.js";
 import {
   DeadlyAssaultViewMode,
   parseDeadlyModeCustomId,
@@ -60,11 +67,23 @@ import {
 const drawQueue = new Queue({ autostart: true });
 
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
-  if ("customId" in interaction && typeof interaction.customId === "string" && isNewsInteraction(interaction.customId)) return;
+  if (
+    "customId" in interaction &&
+    typeof interaction.customId === "string" &&
+    isNewsInteraction(interaction.customId)
+  )
+    return;
   if (!interaction.isButton()) return;
+  if (interaction.customId.startsWith("zref:")) return;
   if (interaction.customId.startsWith("zdisc:")) return;
   if (interaction.customId.startsWith("zcombat:")) return;
-  if ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:")) || interaction.customId.startsWith("gsim:") || interaction.customId.startsWith("ik:")) return;
+  if (
+    interaction.customId.startsWith("settingui:") ||
+    interaction.customId.startsWith("reminder:") ||
+    interaction.customId.startsWith("gsim:") ||
+    interaction.customId.startsWith("ik:")
+  )
+    return;
   const buttonInteraction = interaction as ButtonInteraction;
   const { locale, customId } = buttonInteraction;
   const userLocale =
@@ -81,7 +100,8 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     });
   }
   if (customId.startsWith("gacha-url-")) {
-    const { handleManualGachaImportButton } = await import("../utilities/zzz/manualGachaImportFlow.js");
+    const { handleManualGachaImportButton } =
+      await import("../utilities/zzz/manualGachaImportFlow.js");
     await handleManualGachaImportButton(buttonInteraction);
     return;
   }
@@ -112,7 +132,14 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     handleProfileMainPage(buttonInteraction, tr, userLocale);
   }
 
-  if (["settings_togglePainting", "settings_toggleRankPainting", "settings_toggleGachaPublic", "settings_toggleGachaWeekly"].includes(customId)) {
+  if (
+    [
+      "settings_togglePainting",
+      "settings_toggleRankPainting",
+      "settings_toggleGachaPublic",
+      "settings_toggleGachaWeekly",
+    ].includes(customId)
+  ) {
     await handleSettingsToggle(buttonInteraction, customId, tr);
     return;
   }
@@ -122,23 +149,40 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (customId.startsWith("settings_gachaArchivePage:")) {
     handleSettingsArchivePage(buttonInteraction, customId);
   }
-  if (customId.startsWith("maze-page:") || customId.startsWith("maze-map-page:")) {
+  if (
+    customId.startsWith("maze-page:") ||
+    customId.startsWith("maze-map-page:")
+  ) {
     handleMysteryMazeInteraction(buttonInteraction, customId);
   }
   if (customId.startsWith("glog-") || customId.startsWith("signal-open:")) {
     handleSignalLogButton(buttonInteraction, customId);
   }
   if (customId === "settings_cancelGachaClear") {
-    await buttonInteraction.editReply({ content: "已取消清除。", embeds: [], components: [] });
+    await buttonInteraction.editReply({
+      content: "已取消清除。",
+      embeds: [],
+      components: [],
+    });
   }
 });
 
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
-  if ("customId" in interaction && typeof interaction.customId === "string" && isNewsInteraction(interaction.customId)) return;
+  if (
+    "customId" in interaction &&
+    typeof interaction.customId === "string" &&
+    isNewsInteraction(interaction.customId)
+  )
+    return;
   if (!interaction.isStringSelectMenu()) return;
   if (interaction.customId.startsWith("zdisc:")) return;
   if (interaction.customId.startsWith("zcombat:")) return;
-  if ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:")) || interaction.customId.startsWith("ik:")) return;
+  if (
+    interaction.customId.startsWith("settingui:") ||
+    interaction.customId.startsWith("reminder:") ||
+    interaction.customId.startsWith("ik:")
+  )
+    return;
   const selectInteraction = interaction as StringSelectMenuInteraction;
   const { locale, customId, values } = selectInteraction;
   const userLocale =
@@ -148,7 +192,8 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   const tr = createTranslator(userLocale);
 
   if (customId.startsWith("rng-import-profile:")) {
-    const { handleRngMoeProfileSelect } = await import("../utilities/zzz/rngMoeImportFlow.js");
+    const { handleRngMoeProfileSelect } =
+      await import("../utilities/zzz/rngMoeImportFlow.js");
     await handleRngMoeProfileSelect(selectInteraction);
     return;
   }
@@ -171,7 +216,10 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
 
   if (customId === "settings_selectGachaClear")
     handleGachaClearSelect(selectInteraction, values[0]);
-  if (customId.startsWith("maze-map:") || customId.startsWith("maze-difficulty:"))
+  if (
+    customId.startsWith("maze-map:") ||
+    customId.startsWith("maze-difficulty:")
+  )
     handleMysteryMazeInteraction(selectInteraction, customId, values[0]);
   if (customId.startsWith("deadly-mode:"))
     handleDeadlyModeSelect(
@@ -182,48 +230,90 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
       values[0],
     );
   if (customId.startsWith("glog-")) {
-    const { handleSignalLogComponent } = await import("../utilities/zzz/signalLogView.js");
+    const { handleSignalLogComponent } =
+      await import("../utilities/zzz/signalLogView.js");
     await handleSignalLogComponent(selectInteraction);
   }
 });
 
-async function handleSignalLogButton(interaction: ButtonInteraction, customId: string) {
+async function handleSignalLogButton(
+  interaction: ButtonInteraction,
+  customId: string,
+) {
   const locale = (await getUserLang(interaction.user.id)) || "tw";
   const actionCopy = signalActionText(locale);
   try {
     if (customId.startsWith("signal-open:")) {
-      const [, invokerId, ownerId, accountIndexRaw, rawSource] = customId.split(":");
+      const [, invokerId, ownerId, accountIndexRaw, rawSource] =
+        customId.split(":");
       if (interaction.user.id !== invokerId) {
-        await interaction.followUp({ content: actionCopy.onlyInvoker, flags: MessageFlags.Ephemeral });
+        await interaction.followUp({
+          content: actionCopy.onlyInvoker,
+          flags: MessageFlags.Ephemeral,
+        });
         return;
       }
       const source = rawSource === "manual" ? "manual" : "official";
-      if (!(await (await import("../utilities/zzz/gachaPrivacy.js")).canViewPrivateGacha(client.db, interaction.user.id, ownerId!))) {
-        await interaction.followUp({ content: actionCopy.privateDisabled, flags: MessageFlags.Ephemeral });
+      if (
+        !(await (
+          await import("../utilities/zzz/gachaPrivacy.js")
+        ).canViewPrivateGacha(client.db, interaction.user.id, ownerId!))
+      ) {
+        await interaction.followUp({
+          content: actionCopy.privateDisabled,
+          flags: MessageFlags.Ephemeral,
+        });
         return;
       }
       const tr = createTranslator(locale);
       const accountIndex = Math.max(0, Number(accountIndexRaw) || 0);
-      const account = await getLegacyAccountAtIndex(client.db, ownerId!, accountIndex);
+      const account = await getLegacyAccountAtIndex(
+        client.db,
+        ownerId!,
+        accountIndex,
+      );
       const uid = String(account?.uid ?? "");
-      const { getGachaArchiveStore } = await import("../utilities/zzz/gachaArchive.js");
-      const hasArchive = !!uid && getGachaArchiveStore().countRecords({ ownerId: ownerId!, uid }) > 0;
-      const zzz = await getUserZZZData(interaction as any, tr, ownerId!, locale, accountIndex, { authMode: hasArchive ? "optional" : "required" });
+      const { getGachaArchiveStore } =
+        await import("../utilities/zzz/gachaArchive.js");
+      const hasArchive =
+        !!uid &&
+        getGachaArchiveStore().countRecords({ ownerId: ownerId!, uid }) > 0;
+      const zzz = await getUserZZZData(
+        interaction as any,
+        tr,
+        ownerId!,
+        locale,
+        accountIndex,
+        { authMode: hasArchive ? "optional" : "required" },
+      );
       if (!zzz && !hasArchive) return;
-      const { createSignalLogSession, buildSignalLogMessage } = await import("../utilities/zzz/signalLogView.js");
+      const { createSignalLogSession, buildSignalLogMessage } =
+        await import("../utilities/zzz/signalLogView.js");
       const session = await createSignalLogSession({
-        interaction: interaction as any, ownerId: ownerId!, accountIndex, source, zzz,
-        uid: String(zzz?.uid ?? uid), playerName: account?.nickname ?? (zzz as any)?.nickname,
-        linked: !!account, region: String(account?.region ?? (zzz as any)?.region ?? ""),
+        interaction: interaction as any,
+        ownerId: ownerId!,
+        accountIndex,
+        source,
+        zzz,
+        uid: String(zzz?.uid ?? uid),
+        playerName: account?.nickname ?? (zzz as any)?.nickname,
+        linked: !!account,
+        region: String(account?.region ?? (zzz as any)?.region ?? ""),
       });
-      await interaction.editReply({ ...(await buildSignalLogMessage(session)), attachments: [] });
+      await interaction.editReply({
+        ...(await buildSignalLogMessage(session)),
+        attachments: [],
+      });
       return;
     }
-    const { handleSignalLogComponent } = await import("../utilities/zzz/signalLogView.js");
+    const { handleSignalLogComponent } =
+      await import("../utilities/zzz/signalLogView.js");
     await handleSignalLogComponent(interaction);
   } catch (error: any) {
     await interaction.followUp({
-      content: formatSignalAction(actionCopy.updateFailed, { error: `\`${String(error?.message || error)}\`` }),
+      content: formatSignalAction(actionCopy.updateFailed, {
+        error: `\`${String(error?.message || error)}\``,
+      }),
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -259,14 +349,7 @@ async function handleDeadlyModeSelect(
   if (!zzz) return;
 
   // 全域 StringSelect handler 已 deferUpdate；此處直接重抓 API 並更新原訊息。
-  await handleDeadlyDraw(
-    interaction,
-    tr,
-    zzz,
-    context.schedule,
-    context,
-    mode,
-  );
+  await handleDeadlyDraw(interaction, tr, zzz, context.schedule, context, mode);
 }
 
 async function handleSettingsToggle(
@@ -286,8 +369,10 @@ async function handleSettingsToggle(
   const current: boolean = (await client.db.get(dbKey)) ?? defaultValue;
   await client.db.set(dbKey, !current);
   if (customId === "settings_toggleGachaWeekly") {
-    const { getGachaArchiveStore } = await import("../utilities/zzz/gachaArchive.js");
-    const { reconcileWeeklyArchiveAccounts } = await import("../utilities/zzz/gachaArchiveMaintenance.js");
+    const { getGachaArchiveStore } =
+      await import("../utilities/zzz/gachaArchive.js");
+    const { reconcileWeeklyArchiveAccounts } =
+      await import("../utilities/zzz/gachaArchiveMaintenance.js");
     reconcileWeeklyArchiveAccounts(
       userId,
       !current,
@@ -296,7 +381,8 @@ async function handleSettingsToggle(
     );
   }
 
-  const { openGeneralSettings } = await import("../utilities/settings/general.js");
+  const { openGeneralSettings } =
+    await import("../utilities/settings/general.js");
   await openGeneralSettings(client, interaction, client.db);
 }
 
@@ -317,16 +403,26 @@ async function handleGachaClearSelect(
   }
   await interaction.followUp({
     flags: MessageFlags.Ephemeral,
-    embeds: [new EmbedBuilder()
-      .setColor("#E76161")
-      .setTitle("確認刪除抽卡紀錄")
-      .setDescription(`UID \`${uid}\` 已儲存在機器人的全部抽卡紀錄會永久刪除，且無法復原。此操作不會更動遊戲帳號。`)],
-    components: [new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`settings_confirmGachaClear:${uid}:${source}`)
-        .setLabel("永久清除").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId("settings_cancelGachaClear")
-        .setLabel("取消").setStyle(ButtonStyle.Secondary),
-    )],
+    embeds: [
+      new EmbedBuilder()
+        .setColor("#E76161")
+        .setTitle("確認刪除抽卡紀錄")
+        .setDescription(
+          `UID \`${uid}\` 已儲存在機器人的全部抽卡紀錄會永久刪除，且無法復原。此操作不會更動遊戲帳號。`,
+        ),
+    ],
+    components: [
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`settings_confirmGachaClear:${uid}:${source}`)
+          .setLabel("永久清除")
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId("settings_cancelGachaClear")
+          .setLabel("取消")
+          .setStyle(ButtonStyle.Secondary),
+      ),
+    ],
   });
 }
 
@@ -344,10 +440,13 @@ async function handleGachaClearConfirm(
     });
     return;
   }
-  const { getGachaArchiveStore } = await import("../utilities/zzz/gachaArchive.js");
+  const { getGachaArchiveStore } =
+    await import("../utilities/zzz/gachaArchive.js");
   const removed = getGachaArchiveStore().clear(interaction.user.id, uid);
   await interaction.editReply({
-    content: removed ? `已永久清除 UID \`${uid}\` 已儲存在機器人的抽卡紀錄。` : "找不到這個帳號已儲存的抽卡紀錄。",
+    content: removed
+      ? `已永久清除 UID \`${uid}\` 已儲存在機器人的抽卡紀錄。`
+      : "找不到這個帳號已儲存的抽卡紀錄。",
     embeds: [],
     components: [],
   });
@@ -358,7 +457,8 @@ async function handleSettingsArchivePage(
   customId: string,
 ) {
   const page = Math.max(0, Number(customId.split(":")[1]) || 0);
-  const { openGeneralSettings } = await import("../utilities/settings/general.js");
+  const { openGeneralSettings } =
+    await import("../utilities/settings/general.js");
   await openGeneralSettings(client, interaction, client.db, page);
 }
 
@@ -372,7 +472,10 @@ async function handleMysteryMazeInteraction(
   const context = parseMysteryMazeContext(customId);
   if (!context) return;
   if (interaction.user.id !== context.invokerId) {
-    await interaction.followUp({ content: "只有發起指令的使用者可以操作這份迷宮紀錄。", flags: MessageFlags.Ephemeral });
+    await interaction.followUp({
+      content: "只有發起指令的使用者可以操作這份迷宮紀錄。",
+      flags: MessageFlags.Ephemeral,
+    });
     return;
   }
   if (customId.startsWith("maze-map:")) {
@@ -389,7 +492,12 @@ async function handleMysteryMazeInteraction(
   const locale = (await getUserLang(interaction.user.id)) || "tw";
   const tr = createTranslator(locale);
   try {
-    const payload = await buildMysteryMazeMessage(interaction, tr, locale, context);
+    const payload = await buildMysteryMazeMessage(
+      interaction,
+      tr,
+      locale,
+      context,
+    );
     if (payload) await interaction.editReply({ ...payload, attachments: [] });
   } catch (error: any) {
     await interaction.followUp({
@@ -407,7 +515,8 @@ async function handleSettingsLocale(
   const userId = interaction.user.id;
   await client.db.set(`${userId}.locale`, locale);
 
-  const { openGeneralSettings } = await import("../utilities/settings/general.js");
+  const { openGeneralSettings } =
+    await import("../utilities/settings/general.js");
   await openGeneralSettings(client, interaction, client.db);
 }
 
@@ -420,7 +529,8 @@ async function handleSettingsProfileStyle(
   const profileStyle = normalizeZzzProfileStyle(rawStyle);
   await client.db.set(`${userId}.profileStyle`, profileStyle);
 
-  const { openGeneralSettings } = await import("../utilities/settings/general.js");
+  const { openGeneralSettings } =
+    await import("../utilities/settings/general.js");
   await openGeneralSettings(client, interaction, client.db);
 }
 
@@ -465,7 +575,10 @@ async function handleProfileMainPage(
 
     await interaction.editReply({
       embeds: [],
-      components: rowSelects,
+      components: [
+        ...rowSelects,
+        ...buildAnalyticsEntry(interaction.user.id, userLocale, [], characters),
+      ],
       files: [image],
     });
   } catch (error) {
@@ -497,8 +610,7 @@ async function handleSelectCharacter(
       }
       const firstCharacterValue =
         values.find(
-          (value) =>
-            extractProfileCharacterIdFromOptionValue(value) !== null,
+          (value) => extractProfileCharacterIdFromOptionValue(value) !== null,
         ) ?? "";
       const legacyParts = firstCharacterValue
         .split("-")
@@ -561,8 +673,7 @@ async function handleSelectCharacter(
           } else if (resolution.kind === "empty") {
             await interaction.followUp({
               content:
-                tr("profile_SelectCharacterRequired") ||
-                "請至少選擇一位角色。",
+                tr("profile_SelectCharacterRequired") || "請至少選擇一位角色。",
               flags: MessageFlags.Ephemeral,
             });
           }
@@ -621,7 +732,16 @@ async function handleSelectCharacter(
           null,
           usePainting,
           rankPainting,
-          [...rowSelects, rowButtons],
+          [
+            ...rowSelects,
+            rowButtons,
+            ...buildAnalyticsEntry(
+              interaction.user.id,
+              userLocale,
+              agentIds.map((id) => ({ id })),
+              characters,
+            ),
+          ],
           profileStyle,
           userId,
         );
@@ -686,8 +806,24 @@ async function handleSelectCharacter(
 
       // ── Single-character view only needs a Homepage button. ──
       const components: any[] = [...rowSelects];
-      if (selectedCharacter) components.push(...buildCombatEntry(interaction.user.id, userLocale, [selectedCharacter]));
-      if (selectedCharacter) components.push(...buildDiscLeaderboardEntry([selectedCharacter], userLocale));
+      if (selectedCharacter)
+        components.push(
+          ...buildCombatEntry(interaction.user.id, userLocale, [
+            selectedCharacter,
+          ]),
+        );
+      if (selectedCharacter)
+        components.push(
+          ...buildDiscLeaderboardEntry([selectedCharacter], userLocale),
+        );
+      components.push(
+        ...buildAnalyticsEntry(
+          interaction.user.id,
+          userLocale,
+          selectedCharacter ? [{ id: String(selectedCharacter.id) }] : [],
+          characters,
+        ),
+      );
       if (characterId !== "main") {
         components.push(
           new ActionRowBuilder().addComponents(
@@ -700,7 +836,20 @@ async function handleSelectCharacter(
       }
 
       await interaction.editReply({
-        content: commandTipContent(interaction, "profile", userLocale, selectedCharacter ? recordDiscCharacters(interaction, userId, String(zzz.uid || ""), [selectedCharacter], userLocale) : ""),
+        content: commandTipContent(
+          interaction,
+          "profile",
+          userLocale,
+          selectedCharacter
+            ? recordDiscCharacters(
+                interaction,
+                userId,
+                String(zzz.uid || ""),
+                [selectedCharacter],
+                userLocale,
+              )
+            : "",
+        ),
         embeds: [],
         components,
         files: [image],

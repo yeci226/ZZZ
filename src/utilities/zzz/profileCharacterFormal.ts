@@ -11,10 +11,19 @@ import {
   downloadPaintingCache,
   getWikiM6Painting,
 } from "./autoDownloadIcons.js";
+import {
+  countEffectiveRolls,
+  getCharacterEffectivePropertyIds,
+  isEffectiveProperty,
+} from "./profileRolls.js";
+import { getProfilePanelProperties } from "./profilePanel.js";
 import { getFlatSuitIcon } from "./profileSuitIcons.js";
 import { ensureZzzCanvasFonts, getZzzCanvasFont } from "./canvasFonts.js";
 import { getPaperAccent, safeAccent } from "./profileColors.js";
-import { DISC_SUBSTAT_STYLE, discEnhancementCount, getDiscSubstatLayout } from "./profileDiscEnhancement.js";
+import {
+  DISC_SUBSTAT_STYLE,
+  getDiscSubstatLayout,
+} from "./profileDiscEnhancement.js";
 import { profileScore } from "./combat/render.js";
 import { drawDiscScore, drawTotalScore } from "./discScorePresentation.js";
 import type { ProfileScore } from "./combat/scoring.js";
@@ -358,14 +367,6 @@ function isGeneralEffective(
   return generalId !== null && ids.has(generalId);
 }
 
-function isSubEffective(
-  property: any,
-  ids: ReadonlySet<number>,
-): boolean {
-  const systemId = canonicalSystemId(property?.system_id);
-  return systemId !== null && ids.has(systemId);
-}
-
 function valueOf(property: any): string {
   return String(property?.final ?? property?.base ?? "");
 }
@@ -445,7 +446,13 @@ async function loadFormalCharacterArt(character: any): Promise<{
   for (const source of candidates.slice(0, 1)) {
     if (source.startsWith("/") && !fs.existsSync(source)) continue;
     const image = await loadAny(source);
-    if (image) return { image, source, preferred, identity: identifyFormalArt(source, "local-m6") };
+    if (image)
+      return {
+        image,
+        source,
+        preferred,
+        identity: identifyFormalArt(source, "local-m6"),
+      };
   }
 
   // A missing hand-reviewed cutout must fall back to the official Wiki M6
@@ -453,7 +460,13 @@ async function loadFormalCharacterArt(character: any): Promise<{
   const wikiM6 = await getWikiM6Painting(character);
   if (wikiM6) {
     const image = await loadAny(wikiM6);
-    if (image) return { image, source: wikiM6, preferred, identity: identifyFormalArt(wikiM6, "wiki") };
+    if (image)
+      return {
+        image,
+        source: wikiM6,
+        preferred,
+        identity: identifyFormalArt(wikiM6, "wiki"),
+      };
   }
 
   // Keep the portrait only as an emergency availability fallback when an
@@ -461,7 +474,13 @@ async function loadFormalCharacterArt(character: any): Promise<{
   for (const source of candidates.slice(1)) {
     if (source.startsWith("/") && !fs.existsSync(source)) continue;
     const image = await loadAny(source);
-    if (image) return { image, source, preferred, identity: identifyFormalArt(source, "portrait") };
+    if (image)
+      return {
+        image,
+        source,
+        preferred,
+        identity: identifyFormalArt(source, "portrait"),
+      };
   }
   return { image: null, source: null, preferred, identity: null };
 }
@@ -470,7 +489,8 @@ function discSlotData(character: any): any[] {
   const discs = Array.isArray(character?.equip)
     ? [...character.equip].sort(
         (left, right) =>
-          Number(left?.equipment_type ?? 0) - Number(right?.equipment_type ?? 0),
+          Number(left?.equipment_type ?? 0) -
+          Number(right?.equipment_type ?? 0),
       )
     : [];
   const typed = discs.some((disc) => Number(disc?.equipment_type) > 0);
@@ -486,7 +506,12 @@ async function loadDiscImage(disc: any): Promise<any | null> {
   if (!disc?.id) return null;
   const code = String(disc.id).slice(0, 3);
   const rarity = String(disc.rarity ?? "S");
-  const local = localAsset("images", "icons", "diskdrives", `${code}_${rarity}.webp`);
+  const local = localAsset(
+    "images",
+    "icons",
+    "diskdrives",
+    `${code}_${rarity}.webp`,
+  );
   if (fs.existsSync(local)) return loadAny(local);
   const suitId = disc.equip_suit?.suit_id;
   if (suitId) {
@@ -506,11 +531,7 @@ function propertyIconName(property: any): string {
   if (name.includes("穿透值")) {
     return "penvalue";
   }
-  return (
-    PROPERTY_ICON[propertyId] ??
-    PROPERTY_ICON[systemId] ??
-    "atk"
-  );
+  return PROPERTY_ICON[propertyId] ?? PROPERTY_ICON[systemId] ?? "atk";
 }
 
 export async function drawFormalCharacterProfile(
@@ -548,7 +569,11 @@ export async function drawFormalCharacterProfile(
     );
     const accent = rawAccent;
     const paperAccent = getPaperAccent(rawAccent);
-    const layout = resolveFormalCharacterLayout(character, cutout, characterArt.identity);
+    const layout = resolveFormalCharacterLayout(
+      character,
+      cutout,
+      characterArt.identity,
+    );
     const mirrored = layout.infoSide === "left";
     const names = effectivePropertyNames(character);
     const ids = effectiveSystemIds(character);
@@ -575,10 +600,14 @@ export async function drawFormalCharacterProfile(
           )
         : null;
     const discs = discSlotData(character);
-    const discImages = await Promise.all(discs.map((disc) => loadDiscImage(disc)));
+    const effectiveIds = getCharacterEffectivePropertyIds(character, discs);
+    const discImages = await Promise.all(
+      discs.map((disc) => loadDiscImage(disc)),
+    );
     const skillData = Array.isArray(character.skills)
       ? [...character.skills].sort(
-          (left, right) => Number(left?.skill_type ?? 0) - Number(right?.skill_type ?? 0),
+          (left, right) =>
+            Number(left?.skill_type ?? 0) - Number(right?.skill_type ?? 0),
         )
       : [];
     const skillImages = await Promise.all(
@@ -594,9 +623,7 @@ export async function drawFormalCharacterProfile(
       ),
     );
 
-    const attrs = Array.isArray(character.properties)
-      ? character.properties
-      : [];
+    const attrs = getProfilePanelProperties(character);
     const propertyRowHeight = 29;
     const basePropertyRows = 5;
     const propertyRows = Math.max(
@@ -608,16 +635,14 @@ export async function drawFormalCharacterProfile(
     const metadataStageBottom = 451 + lowerShift;
     const artDrawWidth = FORMAL_ART_PLACEMENT.width;
     const artDrawHeight =
-      artDrawWidth * (Number(cutout.height) / Math.max(1, Number(cutout.width)));
+      artDrawWidth *
+      (Number(cutout.height) / Math.max(1, Number(cutout.width)));
     // Wiki paintings are usually taller than the reviewed 2080×870 cutouts.
     // Keep their aspect ratio and let the art continue behind the Disc row.
     // The Disc paper stays at its original boundary and is drawn afterward.
     const driveDiscBackgroundTop = metadataStageBottom;
     const stageBottom = driveDiscBackgroundTop;
-    const canvasHeight = Math.max(
-      H + lowerShift,
-      Math.ceil(artDrawHeight),
-    );
+    const canvasHeight = Math.max(H + lowerShift, Math.ceil(artDrawHeight));
     const attrPanelY = 16;
     const attrPanelHeight = 174 + lowerShift;
     const moduleGap = 10;
@@ -647,15 +672,34 @@ export async function drawFormalCharacterProfile(
     ctx.fillStyle = C.paper;
     ctx.fillRect(0, 0, W, canvasHeight);
 
-    polygon(ctx, [[0, 0], [690, 0], [610, stageBottom], [0, stageBottom]], accent);
     polygon(
       ctx,
-      [[0, 0], [690, 0], [640, 54], [0, 175]],
+      [
+        [0, 0],
+        [690, 0],
+        [610, stageBottom],
+        [0, stageBottom],
+      ],
+      accent,
+    );
+    polygon(
+      ctx,
+      [
+        [0, 0],
+        [690, 0],
+        [640, 54],
+        [0, 175],
+      ],
       "rgba(251,247,240,0.16)",
     );
     polygon(
       ctx,
-      [[0, 350], [610, 290], [575, stageBottom], [0, stageBottom]],
+      [
+        [0, 350],
+        [610, 290],
+        [575, stageBottom],
+        [0, stageBottom],
+      ],
       rgbaFromHex(accent, 0.34),
     );
     line(ctx, 620, 0, 574, stageBottom, "rgba(23,23,25,0.25)", 1);
@@ -742,7 +786,10 @@ export async function drawFormalCharacterProfile(
     }
 
     const weaponEffects = weapon
-      ? [...(weapon.main_properties ?? []), ...(weapon.properties ?? [])].slice(0, 2)
+      ? [...(weapon.main_properties ?? []), ...(weapon.properties ?? [])].slice(
+          0,
+          2,
+        )
       : [];
     const slotX = moduleX;
     const slotW = moduleW;
@@ -761,7 +808,8 @@ export async function drawFormalCharacterProfile(
     const weaponName = weapon?.name ? String(weapon.name) : "";
     ctx.font = cjkFont(userLocale, 20, 400);
     const weaponNameWidth = ctx.measureText(weaponName).width;
-    if (weaponName) text(ctx, weaponName, weaponTextX, slotY + 32, 20, C.ink, font);
+    if (weaponName)
+      text(ctx, weaponName, weaponTextX, slotY + 32, 20, C.ink, font);
     if (weapon?.level !== undefined && weapon?.level !== null) {
       numericText(
         ctx,
@@ -784,7 +832,14 @@ export async function drawFormalCharacterProfile(
       );
     }
     if (weaponStar && weaponName) {
-      fit(ctx, weaponStar, weaponTextX + weaponNameWidth + 8, slotY + 15, 46, 17);
+      fit(
+        ctx,
+        weaponStar,
+        weaponTextX + weaponNameWidth + 8,
+        slotY + 15,
+        46,
+        17,
+      );
     }
     const effectY = slotY + 62;
     const effectAreaW = slotW - (weaponTextX - slotX) - 14;
@@ -902,7 +957,10 @@ export async function drawFormalCharacterProfile(
     const gap = 10;
     const x0 = 25;
     const discY = 474 + lowerShift;
-    let totalValidRolls = 0;
+    const totalValidRolls = discs.reduce(
+      (sum, disc) => sum + countEffectiveRolls(disc, effectiveIds),
+      0,
+    );
     for (let index = 0; index < discs.length; index += 1) {
       const disc = discs[index];
       const x = x0 + index * (cellW + gap);
@@ -929,7 +987,13 @@ export async function drawFormalCharacterProfile(
       }
 
       if (disc) {
-        drawDiscScore(ctx, score?.discs.find((item) => item.slot === index + 1), x + cellW - 2, discY + 7, "paper");
+        drawDiscScore(
+          ctx,
+          score?.discs.find((item) => item.slot === index + 1),
+          x + cellW - 2,
+          discY + 7,
+          "paper",
+        );
         const main = disc.main_properties?.[0];
         if (main) {
           const active = isGeneralEffective(main, names, ids);
@@ -953,8 +1017,7 @@ export async function drawFormalCharacterProfile(
         for (let subIndex = 0; subIndex < 4; subIndex += 1) {
           const property = subs[subIndex];
           if (!property) continue;
-          const active = isSubEffective(property, ids);
-          if (active) totalValidRolls += 1 + discEnhancementCount(property.add);
+          const active = isEffectiveProperty(property, effectiveIds);
           const layout = getDiscSubstatLayout(x, discY, subIndex, property.add);
           drawIcon(
             ctx,
@@ -981,7 +1044,8 @@ export async function drawFormalCharacterProfile(
       } else {
         text(
           ctx,
-          tr("profileCharacter_SlotUnequipped", { slot: index + 1 }) || "未裝備",
+          tr("profileCharacter_SlotUnequipped", { slot: index + 1 }) ||
+            "未裝備",
           x + cellW / 2,
           discY + 105,
           11,
@@ -1008,15 +1072,28 @@ export async function drawFormalCharacterProfile(
     const totalLabel = tr("profileCharacter_TotalValidRolls") || "總有效詞條數";
     text(ctx, totalLabel, x0, footerY, 12, C.ink, font, 600);
     const totalLabelWidth = ctx.measureText(totalLabel).width;
-    numericText(ctx, totalValidRolls, x0 + totalLabelWidth + 8, footerY, 16, paperAccent);
-    const scoreX = x0 + totalLabelWidth + 8 + ctx.measureText(String(totalValidRolls)).width + 18;
+    numericText(
+      ctx,
+      totalValidRolls,
+      x0 + totalLabelWidth + 8,
+      footerY,
+      16,
+      paperAccent,
+    );
+    const scoreX =
+      x0 +
+      totalLabelWidth +
+      8 +
+      ctx.measureText(String(totalValidRolls)).width +
+      18;
     let scoreRight = W - x0;
 
     const hasSubstats = discs.some((disc) =>
       (disc?.properties ?? []).slice(0, 4).some(Boolean),
     );
     if (hasSubstats) {
-      const legend = tr("profileCharacter_EnhancementDotLegend") || "＝副屬性強化一次";
+      const legend =
+        tr("profileCharacter_EnhancementDotLegend") || "＝副屬性強化一次";
       text(ctx, legend, W - x0, footerY, 11, "#625b55", font, 400, "right");
       const legendWidth = ctx.measureText(legend).width;
       scoreRight = W - x0 - legendWidth - 24;
@@ -1027,7 +1104,16 @@ export async function drawFormalCharacterProfile(
     }
 
     if (score) {
-      const scoreWidth = drawTotalScore(ctx, score, 0, 0, font, userLocale, "paper", true);
+      const scoreWidth = drawTotalScore(
+        ctx,
+        score,
+        0,
+        0,
+        font,
+        userLocale,
+        "paper",
+        true,
+      );
       if (scoreWidth <= scoreRight - scoreX) {
         drawTotalScore(ctx, score, scoreX, footerY, font, userLocale, "paper");
       } else {

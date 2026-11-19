@@ -255,6 +255,19 @@ function periodNumber(value: unknown): number | null {
   return normalized >= 100 ? normalized % 100 : normalized;
 }
 
+/** 危局強襲戰 ID 尾碼為伺服器位，期數為十位與百位，例如 690491 → 49。 */
+export function deadlyPeriodNumber(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  const normalized = Math.abs(Math.trunc(numeric));
+  return normalized >= 1000 ? Math.trunc(normalized / 10) % 100 : normalized;
+}
+
+function kindPeriodNumber(kind: ZzzHistoryKind, value: unknown): number | null {
+  return kind === "deadly" ? deadlyPeriodNumber(value) : periodNumber(value);
+}
+
 function periodId(kind: ZzzHistoryKind, data: any, schedule: number): string {
   const source = kind === "shiyu" ? data?.hadal_info_v2 : data;
   const id = source?.zone_id ?? source?.period_id ?? source?.schedule_id;
@@ -286,7 +299,10 @@ function normalizeStore(value: unknown, kind: ZzzHistoryKind): ZzzHistoryStore {
         ...entry,
         periodId: String(entry.periodId),
         schedule: Number(entry.schedule) === 2 ? 2 : 1,
-        periodNumber: periodNumber(entry.periodNumber),
+        periodNumber:
+          kind === "deadly" && /^\d+$/.test(String(entry.periodId))
+            ? deadlyPeriodNumber(entry.periodId)
+            : periodNumber(entry.periodNumber),
       }))
       .sort((a, b) => entrySortValue(b) - entrySortValue(a))
       .slice(0, MAX_ENTRIES),
@@ -338,7 +354,7 @@ export async function saveDeadlyHistory(
   const entry: ZzzHistoryEntry = {
     kind: "deadly",
     periodId: periodId("deadly", data, schedule),
-    periodNumber: periodNumber(data?.zone_id ?? data?.schedule_id),
+    periodNumber: deadlyPeriodNumber(data?.zone_id ?? data?.schedule_id),
     schedule: schedule === 2 ? 2 : 1,
     startTime: compactTime(data?.start_time ?? data?.begin_time),
     endTime: compactTime(data?.end_time),
@@ -477,7 +493,7 @@ export function formatZzzLiveScheduleChoice(
     periodId: String(
       source?.zone_id ?? source?.schedule_id ?? `schedule-${schedule}`,
     ),
-    periodNumber: periodNumber(source?.zone_id ?? source?.schedule_id),
+    periodNumber: kindPeriodNumber(kind, source?.zone_id ?? source?.schedule_id),
     schedule: schedule === 2 ? 2 : 1,
     startTime: compactTime(
       kind === "shiyu"

@@ -27,7 +27,7 @@ import {
 } from "@napi-rs/canvas";
 import { join } from "path";
 import { drawDeadlyCombinedImage } from "./deadlyCombined.js";
-import { saveDeadlyHistory } from "./recordCache.js";
+import { deadlyPeriodNumber, saveDeadlyHistory } from "./recordCache.js";
 const drawQueue = new Queue({ autostart: true });
 const DEADLY_DETAIL_V2_API =
   "https://sg-public-api.hoyolab.com/event/game_record_zzz/api/zzz/hadal_mem_detail_v2";
@@ -478,7 +478,7 @@ async function drawDeadlyLegacyImage(
     ctx.fillStyle = "white";
     ctx.textAlign = "center";
     ctx.font = `48px ${selectedFont}`;
-    const period = deadlyData.zone_id % 100;
+    const period = deadlyPeriodNumber(deadlyData?.zone_id) ?? 0;
     const title =
       tr("DeadlyAssault_Period", { period }) ||
       tr("DeadlyAssault") ||
@@ -862,7 +862,7 @@ export async function drawDeadlyExtremeImage(
   ctx.fillStyle = "#FFFFFF";
   ctx.textAlign = "center";
   ctx.font = `bold 48px ${selectedFont}`;
-  const period = Number(deadlyData?.zone_id || 0) % 100;
+  const period = deadlyPeriodNumber(deadlyData?.zone_id) ?? 0;
   const title =
     tr("DeadlyAssault_Period", { period }) ||
     tr("DeadlyAssault") ||

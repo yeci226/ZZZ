@@ -36,16 +36,52 @@ const webhook = config.CMDWEBHOOK
 const localeCache = new TtlCache<string, string>(120000, 10000);
 
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
-  if ("customId" in interaction && typeof interaction.customId === "string" && interaction.customId.startsWith("zdisc:")) return;
-  if (interaction.isAutocomplete() && interaction.commandName === "leaderboard") return;
-  if ("customId" in interaction && typeof interaction.customId === "string" && interaction.customId.startsWith("zcombat:")) return;
-  if (interaction.isAutocomplete() && ["gacha-simulate", "gacha-simulation-settings", "gacha-simulation-details"].includes(interaction.commandName)) return;
-  if ("customId" in interaction && typeof interaction.customId === "string" && isNewsInteraction(interaction.customId)) return;
+  if (
+    "customId" in interaction &&
+    typeof interaction.customId === "string" &&
+    interaction.customId.startsWith("zref:")
+  )
+    return;
+  if (
+    "customId" in interaction &&
+    typeof interaction.customId === "string" &&
+    interaction.customId.startsWith("zdisc:")
+  )
+    return;
+  if (interaction.isAutocomplete() && interaction.commandName === "leaderboard")
+    return;
+  if (
+    "customId" in interaction &&
+    typeof interaction.customId === "string" &&
+    interaction.customId.startsWith("zcombat:")
+  )
+    return;
+  if (
+    interaction.isAutocomplete() &&
+    [
+      "gacha-simulate",
+      "gacha-simulation-settings",
+      "gacha-simulation-details",
+    ].includes(interaction.commandName)
+  )
+    return;
+  if (
+    "customId" in interaction &&
+    typeof interaction.customId === "string" &&
+    isNewsInteraction(interaction.customId)
+  )
+    return;
   // Reminder components have their own router so modal-opening actions are
   // never acknowledged by this generic listener first.
-  if ("customId" in interaction
-    && typeof interaction.customId === "string"
-    && ((interaction.customId.startsWith("settingui:") || interaction.customId.startsWith("reminder:")) || interaction.customId.startsWith("gsim:") || interaction.customId.startsWith("ik:"))) return;
+  if (
+    "customId" in interaction &&
+    typeof interaction.customId === "string" &&
+    (interaction.customId.startsWith("settingui:") ||
+      interaction.customId.startsWith("reminder:") ||
+      interaction.customId.startsWith("gsim:") ||
+      interaction.customId.startsWith("ik:"))
+  )
+    return;
   // DM interactions are valid Discord interactions. Commands that truly need
   // a guild must validate that requirement in their own command handler.
   // lookups as well as before the pending-login network query.
@@ -62,8 +98,13 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     !chatInputInteraction.replied
   ) {
     try {
-      const earlyCommand = client.commands.slash.get(chatInputInteraction.commandName);
-      await ensureDeferredReply(interaction, getCommandAckPlan(earlyCommand, { defaultEphemeral: true }).ephemeral);
+      const earlyCommand = client.commands.slash.get(
+        chatInputInteraction.commandName,
+      );
+      await ensureDeferredReply(
+        interaction,
+        getCommandAckPlan(earlyCommand, { defaultEphemeral: true }).ephemeral,
+      );
     } catch (error: any) {
       new Logger("指令").error(`初始 ACK 失敗：${error?.message ?? error}`);
       return;
@@ -74,10 +115,12 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   const finalLocale = earlyPreflight?.skipLocaleLookup
     ? fallbackLocale
     : await resolveInteractionLocale({
-        loadCached: async () => (await getUserLang(interaction.user.id)) || undefined,
+        loadCached: async () =>
+          (await getUserLang(interaction.user.id)) || undefined,
         setupDefault: () =>
           setupDefaultLang(interaction.user.id, interaction.locale),
-        reload: async () => (await getUserLang(interaction.user.id)) || undefined,
+        reload: async () =>
+          (await getUserLang(interaction.user.id)) || undefined,
         fallbackLocale,
         onError: (error) =>
           new Logger("指令").error(
@@ -87,9 +130,11 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   localeCache.set(interaction.user.id, finalLocale);
   const i18n = createTranslator(finalLocale);
 
-  if (interaction.isButton()
-    && !interaction.customId.startsWith("glog-import:")
-    && !interaction.customId.startsWith("gacha-url-")) {
+  if (
+    interaction.isButton() &&
+    !interaction.customId.startsWith("glog-import:") &&
+    !interaction.customId.startsWith("gacha-url-")
+  ) {
     const buttonInteraction = interaction as ButtonInteraction;
     await buttonInteraction.deferUpdate().catch(() => {});
   }
@@ -144,14 +189,16 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
         await ensureDeferredReply(chatInteraction, ackPlan.ephemeral);
       }
 
-      await trackCommand(interaction, async () => (command as any).execute(
-        client,
-        chatInteraction,
-        args,
-        i18n,
-        client.db,
-        emoji,
-      ));
+      await trackCommand(interaction, async () =>
+        (command as any).execute(
+          client,
+          chatInteraction,
+          args,
+          i18n,
+          client.db,
+          emoji,
+        ),
+      );
       const time = `花費 ${(
         (Date.now() - interaction.createdTimestamp) /
         1000
@@ -207,10 +254,12 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
     const command = client.commands.slash.get(interaction.commandName);
     if (!command) return;
     try {
-      await trackCommand(interaction, async () => (command as any).execute(
-        client,
-        interaction as ContextMenuCommandInteraction,
-      ));
+      await trackCommand(interaction, async () =>
+        (command as any).execute(
+          client,
+          interaction as ContextMenuCommandInteraction,
+        ),
+      );
     } catch (e: any) {
       new Logger("指令").error(`錯誤訊息：${e.message}`);
       await replyOrFollowUp(interaction, {
