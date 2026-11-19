@@ -14,6 +14,8 @@ export class MimoStore {
       CREATE TABLE IF NOT EXISTS mimo_purchases (id TEXT PRIMARY KEY, ltuid TEXT NOT NULL, data TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS mimo_purchase_account ON mimo_purchases(ltuid);
       CREATE TABLE IF NOT EXISTS mimo_results (id TEXT PRIMARY KEY, ltuid TEXT NOT NULL, owner TEXT NOT NULL, created_at INTEGER NOT NULL, sent INTEGER NOT NULL DEFAULT 0, data TEXT NOT NULL);
+      CREATE INDEX IF NOT EXISTS mimo_results_ltuid ON mimo_results(ltuid,created_at);
+      CREATE INDEX IF NOT EXISTS mimo_results_pending ON mimo_results(ltuid,created_at) WHERE sent=0;
       CREATE TABLE IF NOT EXISTS mimo_leases (ltuid TEXT PRIMARY KEY, until_at INTEGER NOT NULL);`);
   }
   get(ltuid: string): MimoConfig | undefined { const row = this.sql.prepare("SELECT data FROM mimo_configs WHERE ltuid=?").get(ltuid); return row ? JSON.parse(row.data) : undefined; }
@@ -50,5 +52,9 @@ export class MimoStore {
     return id;
   }
   results(ltuid: string, pending = false): any[] { return this.sql.prepare(`SELECT * FROM mimo_results WHERE ltuid=? ${pending ? "AND sent=0" : ""} ORDER BY created_at DESC LIMIT 20`).all(ltuid).map((r: any) => ({ ...r, ...JSON.parse(r.data) })); }
+  /** Accounts that still have an undelivered result; one indexed query instead of one per config. */
+  pendingLtuids(): Set<string> { return new Set(this.sql.prepare("SELECT DISTINCT ltuid FROM mimo_results WHERE sent=0").all().map((r: any) => String(r.ltuid))); }
+  /** Deletes delivered results older than maxAge. Undelivered results and mimo_purchases (persisted purchase intent) are never touched. */
+  prune(now: number, maxAge = 30 * 24 * 3600000): number { return this.sql.prepare("DELETE FROM mimo_results WHERE sent=1 AND created_at<?").run(now - maxAge).changes; }
   delivered(id: string) { this.sql.prepare("UPDATE mimo_results SET sent=1 WHERE id=?").run(id); }
 }

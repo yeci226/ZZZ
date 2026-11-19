@@ -48,6 +48,12 @@ async function updatePresence() {
 
 client.once(Events.ClientReady, async () => {
   new Logger("系統").success(`${client.user?.tag} 已經上線！`);
+  // 先註冊 presence 計時器，避免下方啟動流程卡住時狀態永遠不更新
+  setInterval(() => {
+    updatePresence().catch((error) =>
+      new Logger("系統").error(`更新狀態失敗: ${String(error?.message || error)}`),
+    );
+  }, 300_000);
   if (client.cluster.id == 0) {
     startWebLoginSync();
     const mimoTick = () => { void runAutoMimo(client, client.db).catch(() => new Logger("Mimo").error("Mimo background check failed")); };
@@ -93,12 +99,14 @@ client.once(Events.ClientReady, async () => {
     runGachaArchiveMaintenanceJob();
     await runAutoRedeem();
     // 啟動時先做一次 Cookie 刷新
-    await refreshAllCookies(client);
+    // 不 await：Cookie 刷新可能很久，不應阻塞 ready 流程
+    void refreshAllCookies(client).catch((error) =>
+      new Logger("Cookie更新").error(`啟動時 Cookie 刷新失敗: ${String(error?.message || error)}`),
+    );
   }
 
   // 每天 07:50 刷新 Cookie，為自動兌換做準備
   // 每小時 20 分檢查新兌換碼；每天 08:00 刷新壁紙
-  setInterval(updatePresence, 300_000);
 });
 
 async function runNoteReminderJob() {

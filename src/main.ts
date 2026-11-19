@@ -18,6 +18,14 @@ const __dirname = path.dirname(__filename);
 
 // Client Variables
 client.db = new QuickDB();
+// 所有 worker thread 共用 json.sqlite：啟用 WAL 並設定忙碌等待，避免 SQLITE_BUSY
+try {
+  const sqlite = (client.db as any).driver.database;
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("busy_timeout = 5000");
+} catch (error) {
+  new Logger("系統").error(`資料庫 WAL 設定失敗: ${String((error as Error)?.message || error)}`);
+}
 client.cluster = new ClusterClient(client as unknown as Client); // Cast to Client if needed or augment correctly
 client.commands = {
   slash: new Collection(),
@@ -104,7 +112,16 @@ export async function load(client: Client) {
   );
 
   client.on("clientReady", async () => {
-    await client.application?.commands.set(slashCommands);
+    // 指令註冊只需在 cluster 0 執行一次，避免每個 cluster 重複呼叫 Discord API
+    if (client.cluster.id !== 0) return;
+    try {
+      await client.application?.commands.set(slashCommands);
+    } catch (error) {
+      new Logger("系統").error(
+        `全域指令註冊失敗: ${String((error as Error)?.message || error)}`,
+      );
+      return;
+    }
     if (client.application) {
       await syncGuildCommandOverrides(client.application, slashCommands).catch(() =>
         new Logger("系統").error("伺服器指令同步失敗；全域指令已同步"),

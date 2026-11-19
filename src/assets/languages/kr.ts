@@ -24,7 +24,11 @@ const langs = {
     "이 계정은 아직 설정되지 않았으므로 이 명령어를 사용할 수 없습니다!",
   AccountNotFound: "해당 계정을 찾을 수 없습니다!",
   AccountNotFoundDesc:
-    "### 아래 정보가 설정되었는지 확인하세요\n- 쿠키: `<hasCookie>`\n- UID: `<hasUid>`",
+    "### 아래 정보가 설정되었는지 확인하세요\n- 쿠키: `<hasCookie>`\n- UID: `<hasUid>`\n\n`/account`로 계정을 설정하거나 갱신하세요. `/setup`으로 빠르게 설정할 수도 있습니다.",
+  error_NoAccount: "아직 계정이 설정되지 않았습니다",
+  error_NoAccountDesc:
+    "먼저 `/account`(또는 `/setup`)로 계정과 쿠키를 설정한 후 이 명령어를 사용하세요",
+  account_nonAcc: "계정이 설정되지 않았습니다. /account로 추가하세요",
   Searching: "데이터 검색 중입니다. 잠시 기다려 주세요.",
   DrawInQueue: "대기열에 있습니다. 현재 대기열 위치: <position>",
   DrawError: "그리기 실패",
@@ -41,6 +45,9 @@ const langs = {
   PeriodZoneLayer: "형식과 방어 전선",
   InterKnotReputation: "인터넷 명성",
 
+  team_NoAgent: "에이전트를 한 명 이상 선택하세요.",
+  team_NoAgentData: "에이전트 데이터를 가져올 수 없습니다.",
+
   // Commands
   news_Notice: "공지",
   news_Events: "이벤트",
@@ -49,22 +56,39 @@ const langs = {
   news_SelectPost: "🐣 기사를 선택하세요",
 
   daily_Failed: "출석 체크 실패",
+  daily_MissingRoleDesc:
+    "HoYoLAB에서 이 계정의 젠레스 존 제로 캐릭터를 찾을 수 없습니다(-10002). 젠레스 존 제로를 플레이하는 HoYoLAB 계정을 연결했는지, 게임 내에서 캐릭터를 생성했는지 확인하세요. 해결한 후 `/daily`로 다시 시도할 수 있습니다. 자동 출석 체크는 24시간마다 다시 확인하며, 그동안 이 오류는 다시 알리지 않습니다.",
   daily_AuthExpiredTitle: "HoYoLAB 계정 로그인이 만료되었습니다",
   daily_AuthExpiredDesc:
     "이 HoYoLAB 계정의 로그인 상태가 만료되었습니다. 출석 체크나 조회를 사용하려면 Cookie를 다시 연결하세요.",
   daily_Signed: "오늘 이미 출석 체크를 했습니다",
   daily_SignSuccess: "출석 체크 성공!",
+  daily_Success: "출석 체크 성공!",
+  daily_AlreadySigned: "오늘 이미 출석 체크를 했습니다",
   daily_Description: "오늘의 보상을 받았습니다 <a>",
   daily_DescriptionTmr: "내일의 보상은 <b>",
   daily_Month: "월간 출석 체크",
   daily_SignedDay: "출석 체크 일수: <z>",
   daily_MissedDay: "누락된 출석 체크 일수: <z>",
   daily_NonAccount: "아직 계정이 설정되지 않았습니다",
-  daily_NonAccountDesc: "계정을 설정한 후에 이 명령어를 사용하세요",
+  daily_NonAccountDesc:
+    "먼저 `/account`(또는 `/setup`으로 빠른 설정)로 계정을 설정한 후 이 명령어를 사용하세요",
   autoDaily_Off: "자동 출석 체크가 꺼졌습니다",
   autoDaily_On: "자동 출석 체크가 켜졌습니다",
   autoDaily_Time: "자동 출석 체크 시간: <time>",
   autoDaily_Tag: "출석 체크 시 태그: <z>",
+  autoDaily_NotifyType: "알림 채널: <z>",
+  autoDaily_NotifyType_DM: "개인 메시지",
+  autoDaily_NotifyType_Channel: "채널",
+  autoDaily_GeetestTitle:
+    "<uid> 자동 출석 체크를 계속하려면 Geetest를 완료하세요!",
+
+  card_TodayReward: "오늘의 보상",
+  card_TomorrowReward: "내일의 보상",
+  card_MonthSignIn: "이번 달 출석",
+  card_MonthMissed: "이번 달 누락",
+
+  redeem_AllRedeemed: "<count>개의 기프트 코드를 모두 교환했습니다",
   account_QuickLink: "① 계정 로그인 (추천)",
   account_QuickLinkModal: "빠른 계정 로그인",
   account_QuickLinkDesc:

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pixelDifferenceRatio } from "../src/utilities/canvas/visualDiff.js";
@@ -7,7 +7,20 @@ import { pixelDifferenceRatio } from "../src/utilities/canvas/visualDiff.js";
 const root = process.cwd();
 let actualRoot = "";
 
-describe("ZZZ official static visual baselines", () => {
+// Baseline PNGs live under previews/ but are gitignored, so a fresh checkout has none.
+const hasPng = (dir: string) =>
+  existsSync(join(root, "previews", dir)) &&
+  readdirSync(join(root, "previews", dir)).some((name) => name.endsWith(".png"));
+const baselinesPresent =
+  existsSync(join(root, "previews", "zzz-note-official-preview.png")) &&
+  ["banner-design", "mystery-maze-design", "signal-log-design"].every(hasPng);
+if (!baselinesPresent)
+  console.warn(
+    "Skipping ZZZ official visual regression: baseline PNGs under previews/ are missing (they are gitignored).",
+  );
+const describeIfBaselines = baselinesPresent ? describe : describe.skip;
+
+describeIfBaselines("ZZZ official static visual baselines", () => {
   jest.setTimeout(60_000);
 
   beforeAll(() => {
