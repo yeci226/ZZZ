@@ -192,7 +192,8 @@ export default {
               vi: "Nhập mã code bạn muốn đổi thưởng tại đây",
               fr: "Entrer le code",
             } as LocalizationMap)
-            .setRequired(true),
+            .setRequired(true)
+            .setAutocomplete(true),
         )
         .addStringOption((option) =>
           option
@@ -322,10 +323,11 @@ export default {
       const redeemAllAccount = await getLegacyAccountAtIndex(db as any, targetUser.id, accountIndex);
       const redeemAllCookie = redeemAllAccount?.cookie;
       if (!redeemAllCookie) {
-        return failedReply(interaction, tr("error_NoAccount"));
+        return failedReply(interaction, tr("error_NoAccount"), tr("error_NoAccountDesc"));
       }
       const uid = await getUserUid(targetUser.id, accountIndex);
-      const codes = await getRedeemCodes();
+      // getRedeemCodes() returns a cache shared by all users; copy before mutating status/message.
+      const codes = (await getRedeemCodes()).map((c: any) => ({ ...c }));
       let userRedeemedCodes: string[] =
         await recordedRedeemCodes(db, String(uid));
       const noRedeemedCodes = codes.filter(
@@ -461,7 +463,7 @@ export default {
       const uid = await getUserUid(targetUser.id, accountIndex);
 
       if (!uid) {
-        return failedReply(interaction, tr("error_NoAccount"));
+        return failedReply(interaction, tr("error_NoAccount"), tr("error_NoAccountDesc"));
       }
 
       const userAccount = await getLegacyAccountAtIndex(
@@ -473,7 +475,7 @@ export default {
       if (await blockExpiredAccount(interaction, db, { ownerId: targetUser.id, accountIndex, account: userAccount, scope: "redeem" })) return;
 
       if (!userAccount?.cookie) {
-        return failedReply(interaction, tr("error_NoAccount"));
+        return failedReply(interaction, tr("error_NoAccount"), tr("error_NoAccountDesc"));
       }
 
       let userRedeemedCodes: string[] =

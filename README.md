@@ -8,8 +8,8 @@
 
 [![Discord](https://img.shields.io/badge/加入支援伺服器-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/mPCEATJDve)
 
-![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=flat-square&logo=node.js&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
 </div>
@@ -54,7 +54,7 @@
 
 ### 前置需求
 
-- [Node.js](https://nodejs.org/) 18 或更高版本
+- [Node.js](https://nodejs.org/) 22 或更高版本
 - [yarn](https://yarnpkg.com/)
 
 ### 安裝步驟
@@ -67,9 +67,9 @@ cd ZZZ
 # 2. 安裝依賴
 yarn install
 
-# 3. 設定設定檔
-cp config.example.json config.json
-# 填入你的 Bot Token 等資訊
+# 3. 設定環境變數
+cp .env.example .env
+# 編輯 .env，填入 TOKEN 等資訊（啟動時以 node --env-file=.env 載入）
 
 # 4. 啟動
 yarn start

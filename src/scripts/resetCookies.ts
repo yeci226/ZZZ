@@ -1,6 +1,5 @@
 import { QuickDB } from "quick.db";
 import Logger from "../utilities/core/logger.js";
-import colors from "colors";
 import { getLegacyAccounts, updateLegacyAccountAtIndex } from "../utilities/accountStore.js";
 
 async function resetCookies() {
@@ -49,5 +48,5 @@ async function resetCookies() {
 }
 
 resetCookies().catch((err) => {
-  console.error(colors.red("執行腳本時發生錯誤:"), err);
+  console.error("執行腳本時發生錯誤:", err);
 });

@@ -234,3 +234,44 @@ it.each(["event:1:7200", "event:1:1790049600"])(
     expect(mockRender).not.toHaveBeenCalled();
   },
 );
+
+describe("failure backoff and request timeout", () => {
+  it("backs off 6h after an authentication error and 1h after other errors", async () => {
+    const { service, stored } = setup();
+    mockLoadNote.mockRejectedValue(Object.assign(new Error("Please login"), { code: -100 }));
+    await service.run(morning);
+    expect((stored.get(stateKey) as ReminderState).failureCooldownUntil).toBe(morning + 6 * 3600_000);
+    mockLoadNote.mockClear();
+    await service.run(morning + 3600_000);
+    expect(mockLoadNote).not.toHaveBeenCalled();
+
+    stored.delete(stateKey);
+    mockLoadNote.mockRejectedValue(new Error("socket hang up"));
+    await service.run(morning);
+    expect((stored.get(stateKey) as ReminderState).failureCooldownUntil).toBe(morning + 3600_000);
+    mockLoadNote.mockClear();
+    await service.run(morning + 1800_000);
+    expect(mockLoadNote).not.toHaveBeenCalled();
+    mockLoadNote.mockRejectedValue(new Error("socket hang up"));
+    await service.run(morning + 3600_001);
+    expect(mockLoadNote).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives up on a hung note request so the next run is not blocked", async () => {
+    jest.useFakeTimers();
+    try {
+      const { service, stored } = setup();
+      mockLoadNote.mockReturnValue(new Promise(() => {}));
+      const first = service.run(morning);
+      await jest.advanceTimersByTimeAsync(20_001);
+      await first;
+      expect((stored.get(stateKey) as ReminderState).failureCooldownUntil).toBe(morning + 3600_000);
+      mockLoadNote.mockClear();
+      mockLoadNote.mockResolvedValue({ note: { }, calendar: { activity_list: [] } });
+      await service.run(morning + 3600_001);
+      expect(mockLoadNote).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});

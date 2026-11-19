@@ -23,7 +23,11 @@ const langs = {
   NoSetAccount: "这位绳匠尚未设置帐号，所以无法使用此指令！",
   AccountNotFound: "找不到这位绳匠！",
   AccountNotFoundDesc:
-    "### 请确认以下资料是否已设置及是否正确\n- Cookie： `<hasCookie>`\n- UID： `<hasUid>`",
+    "### 请确认以下资料是否已设置及是否正确\n- Cookie： `<hasCookie>`\n- UID： `<hasUid>`\n\n请使用 `/account` 设定或更新帐号，也可以用 `/setup` 快速设置。",
+  error_NoAccount: "尚未设置帐号",
+  error_NoAccountDesc:
+    "请先使用 `/account` 设定帐号与 Cookie（或用 `/setup` 快速设置）后再使用此指令",
+  account_nonAcc: "尚未设置帐号，请先使用 /account 新增",
   Searching: "搜寻资料中，主人请稍等～",
   DrawInQueue: "正在排队中，目前排隊位置：<position>",
   DrawError: "绘制失败",
@@ -40,6 +44,9 @@ const langs = {
   PeriodZoneLayer: "式与防卫战防线",
   InterKnotReputation: "绳网声望",
 
+  team_NoAgent: "请至少选择一位代理人。",
+  team_NoAgentData: "无法获取代理人数据。",
+
   //Commands
   news_Notice: "公告",
   news_Events: "活动",
@@ -48,18 +55,23 @@ const langs = {
   news_SelectPost: "🐣 请选择一篇文章",
 
   daily_Failed: "签到失败",
+  daily_MissingRoleDesc:
+    "HoYoLAB 找不到此帐号的绝区零游戏角色（-10002）。请确认绑定的是游玩绝区零的 HoYoLAB 帐号，且已在游戏内创建角色。处理后可使用 `/daily` 重试；自动签到会每 24 小时检查一次，期间不再重复通知此错误。",
   daily_AuthExpiredTitle: "HoYoLAB 帐号登入已失效",
   daily_AuthExpiredDesc:
     "此帐号的 HoYoLAB 登入状态已过期，请重新绑定 Cookie 后再使用签到与查询功能。",
   daily_Signed: "绳匠，你今天已经签到过了～",
   daily_SignSuccess: "签到成功！",
+  daily_Success: "签到成功！",
+  daily_AlreadySigned: "今天已经签到过了",
   daily_Description: "您已获得今日奖励 <a>",
   daily_DescriptionTmr: "明日奖励为 <b>",
   daily_Month: "月份签到",
   daily_SignedDay: "已签到天数：<z>",
   daily_MissedDay: "漏签天数：<z>",
   daily_NonAccount: "尚未设置帐号",
-  daily_NonAccountDesc: "请先设定帐号后再使用此指令",
+  daily_NonAccountDesc:
+    "请先使用 `/account` 设定帐号（或用 `/setup` 快速设置）后再使用此指令",
   autoDaily_Off: "已关闭自动签到",
   autoDaily_On: "已开启自动签到",
   autoDaily_Time: "自动签到时间：<time>",
@@ -67,6 +79,14 @@ const langs = {
   autoDaily_NotifyType: "通知管道：<z>",
   autoDaily_NotifyType_DM: "私讯",
   autoDaily_NotifyType_Channel: "频道",
+  autoDaily_GeetestTitle: "<uid> 请先通过 Geetest 来继续自动签到！",
+
+  card_TodayReward: "今日奖励",
+  card_TomorrowReward: "明日奖励",
+  card_MonthSignIn: "本月签到",
+  card_MonthMissed: "本月漏签",
+
+  redeem_AllRedeemed: "<count> 个礼包码已全部兑换",
   account_QuickLink: "① 帐号登入 (推荐)",
   account_QuickLinkModal: "快速帐号登入",
   account_QuickLinkDesc: "使用帐号密码快速登入并绑定帐号",

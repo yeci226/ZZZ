@@ -1,6 +1,7 @@
 import Logger from "../core/logger.js";
 import { getLegacyAccounts } from "../accountStore.js";
 import { getUserLang } from "../utilities.js";
+import { isExplicitAuthenticationError } from "./autoDailyAuth.js";
 import { createZzzClient, getZzzClientLanguage } from "./clientFactory.js";
 import { loadOfficialNoteData } from "./officialRecordApi.js";
 import { renderOfficialNote } from "./noteRenderer.js";
@@ -24,6 +25,20 @@ type DeliveryResult =
   | { delivered: true }
   | { delivered: false; permanent: true; reason: NotificationInvalidReason }
   | { delivered: false; permanent: false; error: string };
+
+const NOTE_LOAD_TIMEOUT_MS = 20_000;
+const AUTH_FAILURE_COOLDOWN_MS = 6 * 3600_000;
+const ERROR_COOLDOWN_MS = 3600_000;
+
+/** A hung HoYoLAB request must not stall the whole reminder loop (the job's `running` flag is only reset in finally). */
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Note request timed out after ${ms}ms`)), ms);
+    timer.unref?.();
+  });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
+}
 
 async function deliverReminder(
   client: any,
@@ -147,7 +162,7 @@ export class NoteReminderService {
               lang: getZzzClientLanguage(locale),
               uid: Number(account.uid),
             } as any) as any;
-            const { note, calendar } = await loadOfficialNoteData(zzz);
+            const { note, calendar } = await withTimeout(loadOfficialNoteData(zzz), NOTE_LOAD_TIMEOUT_MS);
             const evaluation = evaluateNoteReminder(note, calendar, config, {
               now,
               region: String(account.region ?? zzz.region ?? ""),
@@ -181,6 +196,11 @@ export class NoteReminderService {
             }
           } catch (error: any) {
             failed++;
+            // Back off so expired cookies and persistent errors are not re-requested every poll.
+            try {
+              state.failureCooldownUntil = now + (isExplicitAuthenticationError(error) ? AUTH_FAILURE_COOLDOWN_MS : ERROR_COOLDOWN_MS);
+              await this.client.db.set(stateKey, state);
+            } catch { /* state persistence is best-effort here */ }
             this.logger.error(`用戶 ${userId} UID ${account.uid} 提醒檢查失敗: ${String(error?.message || error)}`);
           }
         }
