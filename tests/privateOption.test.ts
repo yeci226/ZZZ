@@ -4,6 +4,7 @@ for (const path of [
   "zzz/profile", "zzz/team", "zzz/shiyu/index", "zzz/deadly", "zzz/recordCache", "zzz/mysteryMazeView",
   "zzz/gachaPrivacy", "zzz/signalLogView", "zzz/signalActionText", "zzz/gachaArchive",
   "zzz/rngMoeImportFlow", "zzz/manualGachaImportFlow",
+  "zzz/clientFactory", "zzz/bannerRenderer", "zzz/gachaSync", "zzz/gachaSimulationCatalog", "zzz/bannerCalendarCache",
 ]) jest.mock(`../src/utilities/${path}.js`, () => ({}));
 
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
@@ -19,6 +20,7 @@ import mysterymaze from "../src/commands/slash/zzz/mysterymaze";
 import shiyu from "../src/commands/slash/zzz/shiyu";
 import deadly from "../src/commands/slash/zzz/deadly";
 import team from "../src/commands/slash/zzz/team";
+import banner from "../src/commands/slash/zzz/banner";
 
 const asked = (value: boolean | null) => ({ options: { getBoolean: () => value } });
 
@@ -49,6 +51,7 @@ const commands: Array<[string, any, string | null]> = [
   ["shiyudefense", shiyu, null],
   ["deadlyassault", deadly, null],
   ["team", team, null],
+  ["banner", banner, null],
 ];
 
 describe.each(commands)("%s command data", (_label, command, subcommand) => {

@@ -3,6 +3,7 @@ import { discLeaderboardChoices } from "../utilities/zzz/discLeaderboard.js";
 import { simulationBannerChoices } from "../utilities/zzz/gachaSimulationCatalog.js";
 import { Events, AutocompleteInteraction } from "discord.js";
 import { drainPendingLogins } from "../utilities/webhookLogin.js";
+import { drainPendingLoginsBounded } from "../utilities/shared/interactionPreflight.js";
 import { createZzzClient, getZzzClientLanguage } from "../utilities/zzz/clientFactory.js";
 import type { ZenlessZoneZero } from "@yeci226/hoyoapi";
 import { getRedeemCodes, getUserLang } from "../utilities/utilities.js";
@@ -218,7 +219,8 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
 
   if (optionName == "account") {
     // Drain any pending web-logins so newly bound accounts appear immediately.
-    try { await drainPendingLogins(interaction.user.id); } catch {}
+    // Bounded so a slow queue cannot make the autocomplete miss its 3s window.
+    await drainPendingLoginsBounded(() => drainPendingLogins(interaction.user.id));
 
     const supportsTargetUser = ["signal", "banner", "note", "mysterymaze"].includes(autocompleteInteraction.commandName);
     const targetUserId = supportsTargetUser
