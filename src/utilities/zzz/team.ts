@@ -23,7 +23,10 @@ import { ELEMENT_ICON_BY_TYPE, getElementIconPath } from "./elements.js";
 import { drawFormalCharacterProfileStack } from "./profileCharacterStack.js";
 import type { ZzzProfileStyle } from "./profileStyle.js";
 import { buildCombatEntry } from "./combat/workbench.js";
-import { buildDiscLeaderboardEntry, recordDiscCharacters } from "./discLeaderboard.js";
+import {
+  buildDiscLeaderboardEntry,
+  recordDiscCharacters,
+} from "./discLeaderboard.js";
 
 type TeamPaintingInfo = {
   entryId: string;
@@ -162,7 +165,7 @@ const propLabels: Record<number, string> = {
   4: "衝擊力",
   5: "暴擊率",
   6: "暴擊傷害",
-  7: "衝擊力",
+  7: "異常掌控",
   8: "異常精通",
   9: "穿透率",
   10: "能量回復",
@@ -188,7 +191,7 @@ const propLabels: Record<number, string> = {
   23103: "穿透率",
   23203: "穿透值",
   31203: "異常精通",
-  31402: "衝擊力",
+  31402: "異常掌控",
   30502: "能量回復",
   31503: "物理傷害",
   31603: "火屬傷害",
@@ -1685,8 +1688,14 @@ export async function handleTeamDraw(
         return;
       }
 
-      components = [...components, ...buildCombatEntry(interaction.user.id, userLocale, agents)].slice(0, 5);
-      components = [...components, ...buildDiscLeaderboardEntry(agents, userLocale)].slice(0, 5);
+      components = [
+        ...components,
+        ...buildCombatEntry(interaction.user.id, userLocale, agents),
+      ].slice(0, 5);
+      components = [
+        ...components,
+        ...buildDiscLeaderboardEntry(agents, userLocale),
+      ].slice(0, 5);
       if (profileStyle === "formal") {
         const formalBuffer = await drawFormalCharacterProfileStack(
           tr,
@@ -1698,7 +1707,20 @@ export async function handleTeamDraw(
           throw new Error(tr("profile_NoImageData"));
         }
         await interaction.editReply({
-          content: commandTipContent(interaction, "team", userLocale, ownerId ? recordDiscCharacters(interaction, ownerId, String(zzz.uid || ""), agents, userLocale) : ""),
+          content: commandTipContent(
+            interaction,
+            "team",
+            userLocale,
+            ownerId
+              ? recordDiscCharacters(
+                  interaction,
+                  ownerId,
+                  String(zzz.uid || ""),
+                  agents,
+                  userLocale,
+                )
+              : "",
+          ),
           files: [
             new AttachmentBuilder(formalBuffer, {
               name: `CharacterProfiles_${zzz.uid}.png`,
@@ -1802,7 +1824,20 @@ export async function handleTeamDraw(
 
       const buf = (canvas as any).toBuffer("image/png");
       await interaction.editReply({
-        content: commandTipContent(interaction, "team", userLocale, ownerId ? recordDiscCharacters(interaction, ownerId, String(zzz.uid || ""), agents, userLocale) : ""),
+        content: commandTipContent(
+          interaction,
+          "team",
+          userLocale,
+          ownerId
+            ? recordDiscCharacters(
+                interaction,
+                ownerId,
+                String(zzz.uid || ""),
+                agents,
+                userLocale,
+              )
+            : "",
+        ),
         files: [new AttachmentBuilder(buf, { name: "team.png" })],
         embeds: [],
         components,

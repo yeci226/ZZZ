@@ -244,6 +244,8 @@ export function startTelemetry(client: any, cluster: any, botId: string, botName
   client.on('shardResume', recovered);
   client.on('shardReady', recovered);
   if (cluster && cluster.id !== 0) return;
+  // Website history sync was removed; drop the queue it left behind.
+  try { db.db.prepare('DELETE FROM rollups').run(); } catch {}
   db.db.prepare("UPDATE reports SET state='unknown' WHERE state='sending'").run();
   let busy = false;
   let lastCleanup = 0;
@@ -269,7 +271,6 @@ export function startTelemetry(client: any, cluster: any, botId: string, botName
       const currentStats=db.metrics(now,snapshot);
       currentStats.v2.runtime=runtime;
       if(!combined) currentStats.v2.quality.push('incomplete_shards');
-      db.buildRollups(botId,now);
       // Freeze the completed day before any network request. Restart cannot create a second report.
       const end = taipeiDay(now);
       const started = (db.db.prepare('SELECT started FROM totals WHERE id=1').get() as { started: number }).started;
@@ -305,30 +306,12 @@ export function startTelemetry(client: any, cluster: any, botId: string, botName
         }
       }
       const latest=db.db.prepare('SELECT day,state FROM reports ORDER BY day DESC LIMIT 1').get() as any;
-      currentStats.v2.pipeline={...pipeline,webhook:!hook?'not_configured':latest?.state || 'waiting',reportDay:latest?.day ?? null,
-        historyPending:(db.db.prepare('SELECT count(*) n FROM rollups WHERE synced=0').get() as any).n};
-      const api = process.env.STATS_API_URL, token = process.env.STATS_API_TOKEN;
-      if (api && token) {
-        try {
-          const headers={'Content-Type':'application/json',Authorization:`Bearer ${token}`};
-          const response=await fetch(api,{method:'POST',headers,body:JSON.stringify({botId,botName,timestamp:now,stats:currentStats}),signal:AbortSignal.timeout(10000)});
-          if(!response.ok) throw new Error('Stats sync failed');
-          const pending=db.db.prepare('SELECT grain,start,revision,payload FROM rollups WHERE synced=0 ORDER BY start DESC,grain LIMIT 8').all() as any[];
-          for(const row of pending) {
-            const result=await fetch(api.replace(/\/$/,'')+'/history',{method:'POST',headers,body:row.payload,signal:AbortSignal.timeout(10000)});
-            if(!result.ok) throw new Error('History sync failed');
-            db.db.prepare('UPDATE rollups SET synced=1 WHERE grain=? AND start=? AND revision=?').run(row.grain,row.start,row.revision);
-          }
-          pipeline.lastSyncSuccess=Date.now(); pipeline.consecutiveFailures=0;
-          if(!synced) { console.info(`[Telemetry] v2 website synced servers=${currentStats.totalServers}`); synced=true; }
-        } catch { pipeline.lastSyncFailure=Date.now(); pipeline.consecutiveFailures++; console.warn('[Telemetry] website/history sync failed; retained for retry'); }
-        db.meta('pipeline',pipeline);
-      }
+      currentStats.v2.pipeline={...pipeline,webhook:!hook?'not_configured':latest?.state || 'waiting',reportDay:latest?.day ?? null};
       if (now - lastCleanup > DAY) { db.cleanup(now); lastCleanup = now; }
     } catch { console.error('[Telemetry] collection/sync failed; local records retained'); }
     finally { busy = false; }
   };
-  console.info(`[Telemetry] enabled bot=${botId} webhook=${!!(webhook || process.env.JLWEBHOOK || process.env.JL_WEBHOOK)} website=${!!(process.env.STATS_API_URL && process.env.STATS_API_TOKEN)}`);
+  console.info(`[Telemetry] enabled bot=${botId} webhook=${!!(webhook || process.env.JLWEBHOOK || process.env.JL_WEBHOOK)}`);
   client.once('clientReady', () => { void tick(); });
   client.once('ready', () => { void tick(); });
   setInterval(() => { void tick(); }, 60000).unref();

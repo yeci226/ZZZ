@@ -4,8 +4,14 @@ import fetch from "node-fetch";
 import axios from "axios";
 import Logger from "../core/logger.js";
 import { findWikiElementIcons } from "./elements.js";
-import { getGachaWeaponIconMap, weaponIconLocalPath } from "./gachaWeaponIcons.js";
-import { bangbooIconLocalPath, getGachaBangbooIconMap } from "./gachaBangbooIcons.js";
+import {
+  getGachaWeaponIconMap,
+  weaponIconLocalPath,
+} from "./gachaWeaponIcons.js";
+import {
+  bangbooIconLocalPath,
+  getGachaBangbooIconMap,
+} from "./gachaBangbooIcons.js";
 
 const WIKI_PAINTINGS_DIR = "src/assets/images/zzz/wiki_paintings";
 const FACE_CACHE_FILE = path.resolve(WIKI_PAINTINGS_DIR, "face_cache.json");
@@ -229,7 +235,11 @@ async function cacheWikiPaintingUrls(
   return cached;
 }
 
-const wikiM6PaintingCache: Record<string, string | null> = {};
+const WIKI_PAINTING_RETRY_MS = 5 * 60 * 1000;
+const wikiM6PaintingCache: Record<
+  string,
+  { source: string | null; expiresAt: number }
+> = {};
 
 function normalizeWikiName(value: unknown): string {
   return String(value ?? "")
@@ -283,7 +293,9 @@ async function findRemoteWikiEntryId(names: string[]): Promise<string | null> {
         list.find((item) => normalizeWikiName(item?.name) === normalized) ??
         list.find((item) => {
           const candidate = normalizeWikiName(item?.name);
-          return candidate.includes(normalized) || normalized.includes(candidate);
+          return (
+            candidate.includes(normalized) || normalized.includes(candidate)
+          );
         }) ??
         list[0];
       if (entry) return String(entry.entry_page_id ?? entry.id);
@@ -295,37 +307,48 @@ async function findRemoteWikiEntryId(names: string[]): Promise<string | null> {
 }
 
 /** Resolve the official Wiki image for fixed M6 (影畫), never based on user rank. */
-export async function getWikiM6Painting(character: any): Promise<string | null> {
+export async function getWikiM6Painting(
+  character: any,
+): Promise<string | null> {
   const names = characterWikiNames(character);
   const cacheKey = `${String(character?.id ?? "")}:${names.join("|")}`;
-  if (Object.prototype.hasOwnProperty.call(wikiM6PaintingCache, cacheKey)) {
-    return wikiM6PaintingCache[cacheKey];
-  }
-
+  // New downloads must take precedence over a cached miss or fallback image.
   let entryId = findLocalWikiEntryId(names);
+  const localM6 = entryId
+    ? path.resolve(WIKI_PAINTINGS_DIR, entryId, "2.png")
+    : null;
+  if (localM6 && fs.existsSync(localM6)) return localM6;
+
+  const previous = wikiM6PaintingCache[cacheKey];
+  if (previous && previous.expiresAt > Date.now()) return previous.source;
+
   if (!entryId) entryId = await findRemoteWikiEntryId(names);
   if (!entryId) {
-    wikiM6PaintingCache[cacheKey] = null;
+    wikiM6PaintingCache[cacheKey] = {
+      source: null,
+      expiresAt: Date.now() + WIKI_PAINTING_RETRY_MS,
+    };
     return null;
   }
 
-  const localM6 = path.resolve(WIKI_PAINTINGS_DIR, entryId, "2.png");
-  if (fs.existsSync(localM6)) {
-    wikiM6PaintingCache[cacheKey] = localM6;
-    return localM6;
-  }
+  const resolvedM6 = path.resolve(WIKI_PAINTINGS_DIR, entryId, "2.png");
+  if (fs.existsSync(resolvedM6)) return resolvedM6;
 
   const remote = await fetchWikiPaintingUrls(entryId);
   const cached = await cacheWikiPaintingUrls(entryId, remote);
   const result =
     cached[2] ??
-    (fs.existsSync(localM6) ? localM6 : null) ??
+    (fs.existsSync(resolvedM6) ? resolvedM6 : null) ??
     remote[2] ??
     cached[cached.length - 1] ??
     remote[remote.length - 1] ??
     remote[0] ??
     null;
-  wikiM6PaintingCache[cacheKey] = result;
+  wikiM6PaintingCache[cacheKey] = {
+    source: result,
+    expiresAt:
+      cached[2] || remote[2] ? Infinity : Date.now() + WIKI_PAINTING_RETRY_MS,
+  };
   return result;
 }
 
@@ -440,7 +463,9 @@ export async function downloadAllWeaponIcons(): Promise<void> {
       logger.error(`Failed W-Engine ${itemId}: ${e?.message ?? e}`);
     }
   }
-  logger.success(`音擎圖示更新完成：新增 ${downloaded} 個，略過 ${skipped} 個已存在`);
+  logger.success(
+    `音擎圖示更新完成：新增 ${downloaded} 個，略過 ${skipped} 個已存在`,
+  );
 }
 
 /** Download every Bangboo portrait used by signal records. */
@@ -472,7 +497,9 @@ export async function downloadAllBangbooIcons(): Promise<void> {
       logger.error(`Failed Bangboo ${itemId}: ${e?.message ?? e}`);
     }
   }
-  logger.success(`邦布圖示更新完成：新增 ${downloaded} 個，略過 ${skipped} 個已存在`);
+  logger.success(
+    `邦布圖示更新完成：新增 ${downloaded} 個，略過 ${skipped} 個已存在`,
+  );
 }
 
 /** Fetch disc icon map: { "338_S": "https://static.nanoka.cc/assets/zzz/ItemSuitXxx_S.webp", ... } */

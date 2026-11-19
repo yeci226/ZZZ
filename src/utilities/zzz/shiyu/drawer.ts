@@ -93,10 +93,10 @@ export async function drawShiyuCanvas(
         const estimatedHeight = estimateTextHeight(
           tempCtx,
           buff.text,
-          canvasWidth - 120,
+          canvasWidth - 140,
           selectedFont,
         );
-        const buffBoxHeight = Math.max(120, estimatedHeight + 40);
+        const buffBoxHeight = Math.max(120, estimatedHeight + 70);
         layoutY += buffBoxHeight + 20;
       }
       layoutY += 100; // Floor Title Box
@@ -116,7 +116,7 @@ export async function drawShiyuCanvas(
             nodeWidth - 40,
             selectedFont,
           );
-          const buffBoxHeight = Math.max(120, estimatedHeight + 40);
+          const buffBoxHeight = Math.max(120, estimatedHeight + 70);
           if (buffBoxHeight > rowMaxBufferHeight)
             rowMaxBufferHeight = buffBoxHeight;
         }
@@ -286,13 +286,13 @@ export async function drawShiyuCanvas(
         const estimatedHeight = estimateTextHeight(
           ctx,
           buff.text,
-          canvas.width - 120,
+          canvas.width - 140,
           selectedFont,
         );
-        const buffBoxHeight = Math.max(120, estimatedHeight + 40);
+        const buffBoxHeight = Math.max(120, estimatedHeight + 70);
         const verticalOffset = Math.max(
           0,
-          (buffBoxHeight - (estimatedHeight + 50)) / 2,
+          (buffBoxHeight - (estimatedHeight + 70)) / 2,
         );
 
         drawRoundedRect(
@@ -317,9 +317,9 @@ export async function drawShiyuCanvas(
         drawBuffText(
           ctx,
           buff.text,
-          65,
+          70,
           currentY + 62.5 + verticalOffset,
-          canvas.width + 600,
+          canvas.width - 140,
           selectedFont,
         );
         currentY += buffBoxHeight + 20;
@@ -398,7 +398,7 @@ export async function drawShiyuCanvas(
             currentNodeWidth - 40,
             selectedFont,
           );
-          const buffBoxHeight = Math.max(120, estimatedHeight + 40);
+          const buffBoxHeight = Math.max(120, estimatedHeight + 70);
           if (buffBoxHeight > rowMaxBufferHeight)
             rowMaxBufferHeight = buffBoxHeight;
         }
@@ -492,7 +492,7 @@ async function drawNode(
         width - 40,
         selectedFont,
       );
-      buffBoxHeight = Math.max(120, estimatedHeight + 40);
+      buffBoxHeight = Math.max(120, estimatedHeight + 70);
     }
     const estimatedHeightForOffset = estimateTextHeight(
       ctx,
@@ -501,7 +501,7 @@ async function drawNode(
       selectedFont,
     );
     const verticalOffset =
-      (buffBoxHeight - (estimatedHeightForOffset + 50)) / 2;
+      (buffBoxHeight - (estimatedHeightForOffset + 70)) / 2;
     const finalOffset = Math.max(0, verticalOffset);
 
     drawRoundedRect(ctx, x, drawY + 110, width, buffBoxHeight, 15, boxColor);
@@ -522,9 +522,9 @@ async function drawNode(
     drawBuffText(
       ctx,
       nodeBuffer.text,
-      x + 15,
+      x + 20,
       drawY + 110 + 62.5 + finalOffset,
-      width * 2 - 60,
+      width - 40,
       selectedFont,
     );
 

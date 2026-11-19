@@ -148,18 +148,27 @@ test("leaving a shared board opts out only the player who clicked, not its origi
   expect(store.enabled("1")).toBe(true);
   expect(store.enabled("2")).toBe(false);
   expect(store.page("1581", "1").viewer?.ownerId).toBe("1");
-  expect(jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0]).toMatchObject({
-    participantCount: 1, viewer: undefined,
+  expect(
+    jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0],
+  ).toMatchObject({
+    participantCount: 1,
+    viewer: undefined,
   });
-  const join = i.editReply.mock.calls[0][0].components[1].toJSON().components[2];
+  const join =
+    i.editReply.mock.calls[0][0].components[1].toJSON().components[2];
   expect(join.custom_id).toContain("zdisc:panel:2:1581:g:1:join");
   // Reusing an old leave button is idempotent, never a toggle based on another user's state.
   await handleDiscLeaderboardInteraction(interaction("2", i.customId), db);
   expect(store.enabled("2")).toBe(false);
-  await handleDiscLeaderboardInteraction(interaction("2", "zdisc:panel:1:1581:g:1:join"), db);
+  await handleDiscLeaderboardInteraction(
+    interaction("2", "zdisc:panel:1:1581:g:1:join"),
+    db,
+  );
   expect(store.enabled("1")).toBe(true);
   expect(store.enabled("2")).toBe(true);
-  expect(jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0].viewer).toMatchObject({ ownerId: "2", isViewer: true });
+  expect(
+    jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0].viewer,
+  ).toMatchObject({ ownerId: "2", isViewer: true });
 });
 test.each([
   ["global", "s", null, 1],
@@ -167,18 +176,38 @@ test.each([
   ["refresh", "g", null, 3],
   ["previous", "g", null, 2],
   ["next", "g", null, 4],
-] as const)("any player can use %s and the refreshed board shows their own rank", async (action, scope, guildId, page) => {
-  recordDiscCharacters(interaction("1"), "1", "100", [character], "en", store);
-  recordDiscCharacters(interaction("2"), "2", "200", [character], "en", store);
-  const read = jest.spyOn(store, "page"), write = jest.spyOn(store, "setEnabled");
-  const i = interaction("2", `zdisc:panel:1:1581:${scope}:3:${action}:0`);
-  await handleDiscLeaderboardInteraction(i, db);
-  expect(i.reply).not.toHaveBeenCalled();
-  expect(i.deferUpdate).toHaveBeenCalled();
-  expect(read).toHaveBeenCalledWith("1581", "2", guildId, page);
-  expect(write).not.toHaveBeenCalled();
-  expect(jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0].viewer).toMatchObject({ ownerId: "2", isViewer: true });
-});
+] as const)(
+  "any player can use %s and the refreshed board shows their own rank",
+  async (action, scope, guildId, page) => {
+    recordDiscCharacters(
+      interaction("1"),
+      "1",
+      "100",
+      [character],
+      "en",
+      store,
+    );
+    recordDiscCharacters(
+      interaction("2"),
+      "2",
+      "200",
+      [character],
+      "en",
+      store,
+    );
+    const read = jest.spyOn(store, "page"),
+      write = jest.spyOn(store, "setEnabled");
+    const i = interaction("2", `zdisc:panel:1:1581:${scope}:3:${action}:0`);
+    await handleDiscLeaderboardInteraction(i, db);
+    expect(i.reply).not.toHaveBeenCalled();
+    expect(i.deferUpdate).toHaveBeenCalled();
+    expect(read).toHaveBeenCalledWith("1581", "2", guildId, page);
+    expect(write).not.toHaveBeenCalled();
+    expect(
+      jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0].viewer,
+    ).toMatchObject({ ownerId: "2", isViewer: true });
+  },
+);
 test("leave and rejoin persist through stateless component interactions", async () => {
   recordDiscCharacters(interaction(), "1", "100", [character], "en", store);
   await handleDiscLeaderboardInteraction(
@@ -211,7 +240,10 @@ test("settings opt-out belongs to its owner and refreshes settings", async () =>
   await handleDiscLeaderboardInteraction(other, db);
   expect(store.enabled("1")).toBe(false);
   expect(store.enabled("2")).toBe(true);
-  expect(other.reply).toHaveBeenCalledWith({ content: discContent("en", "forbidden"), flags: MessageFlags.Ephemeral });
+  expect(other.reply).toHaveBeenCalledWith({
+    content: discContent("en", "forbidden"),
+    flags: MessageFlags.Ephemeral,
+  });
   expect(other.deferUpdate).not.toHaveBeenCalled();
 });
 test("DM server control is disabled, invalid server requests receive a localized explanation", async () => {
@@ -283,20 +315,53 @@ test("boards use official per-character colors even before any build is enrolled
 });
 test("game nicknames match the ranked UID while retaining Discord names and reading each owner once", async () => {
   const lower = structuredClone(character);
-  lower.equip.forEach(disc => { disc.properties = []; });
+  lower.equip.forEach((disc) => {
+    disc.properties = [];
+  });
   recordDiscCharacters(interaction("1"), "1", "100", [lower], "en", store);
   recordDiscCharacters(interaction("1"), "1", "101", [character], "en", store);
   recordDiscCharacters(interaction("2"), "2", "200", [character], "en", store);
   const values: Record<string, unknown> = {
-    "1.hoyolabs": [{ cookie: "never-render-this-secret", characters: [{ uid: "100", nickname: "Wrong account" }, { uid: "101", nickname: "  遊戲暱稱  " }] }],
+    "1.hoyolabs": [
+      {
+        cookie: "never-render-this-secret",
+        characters: [
+          { uid: "100", nickname: "Wrong account" },
+          { uid: "101", nickname: "  遊戲暱稱  " },
+        ],
+      },
+    ],
     "1.account": [{ uid: "101", nickname: "Stale nickname" }],
-    "2.hoyolabs": { hoyolabs: [{ characters: [{ uid: "200", nickname: "第二位玩家" }] }] },
+    "2.hoyolabs": {
+      hoyolabs: [{ characters: [{ uid: "200", nickname: "第二位玩家" }] }],
+    },
   };
-  const accounts = { get: jest.fn(async (key: string): Promise<any> => values[key]), set: jest.fn(), delete: jest.fn() };
-  await discLeaderboardPayload("1", "1581", "global", null, 1, store, "en", undefined, accounts);
+  const accounts = {
+    get: jest.fn(async (key: string): Promise<any> => values[key]),
+    set: jest.fn(),
+    delete: jest.fn(),
+  };
+  await discLeaderboardPayload(
+    "1",
+    "1581",
+    "global",
+    null,
+    1,
+    store,
+    "en",
+    undefined,
+    accounts,
+  );
   const rendered = jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0];
-  expect(rendered.viewer).toMatchObject({ uid: "101", nickname: "遊戲暱稱", playerName: "Example" });
-  expect(rendered.entries.find(entry => entry.uid === "200")).toMatchObject({ nickname: "第二位玩家", playerName: "Example" });
+  expect(rendered.viewer).toMatchObject({
+    uid: "101",
+    nickname: "遊戲暱稱",
+    playerName: "Example",
+  });
+  expect(rendered.entries.find((entry) => entry.uid === "200")).toMatchObject({
+    nickname: "第二位玩家",
+    playerName: "Example",
+  });
   expect(accounts.get).toHaveBeenCalledTimes(4);
   expect(accounts.set).not.toHaveBeenCalled();
   expect(accounts.delete).not.toHaveBeenCalled();
@@ -304,15 +369,44 @@ test("game nicknames match the ranked UID while retaining Discord names and read
 });
 test("legacy names and missing account data remain readable without migrating the account store", async () => {
   recordDiscCharacters(interaction("1"), "1", "100", [character], "en", store);
-  const accounts = { get: jest.fn(async (key: string): Promise<any> => {
-    if (key.endsWith(".hoyolabs")) throw new Error("Temporarily unavailable");
-    return [{ uid: "999", nickname: "Unrelated account" }, { uid: 100, nickname: "Legacy player" }];
-  }) };
-  await discLeaderboardPayload("1", "1581", "global", null, 1, store, "en", undefined, accounts);
-  expect(jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0].viewer).toMatchObject({ uid: "100", nickname: "Legacy player" });
+  const accounts = {
+    get: jest.fn(async (key: string): Promise<any> => {
+      if (key.endsWith(".hoyolabs")) throw new Error("Temporarily unavailable");
+      return [
+        { uid: "999", nickname: "Unrelated account" },
+        { uid: 100, nickname: "Legacy player" },
+      ];
+    }),
+  };
+  await discLeaderboardPayload(
+    "1",
+    "1581",
+    "global",
+    null,
+    1,
+    store,
+    "en",
+    undefined,
+    accounts,
+  );
+  expect(
+    jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0].viewer,
+  ).toMatchObject({ uid: "100", nickname: "Legacy player" });
   accounts.get.mockResolvedValue([]);
-  await discLeaderboardPayload("1", "1581", "global", null, 1, store, "en", undefined, accounts);
-  expect(jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0].viewer).toMatchObject({ uid: "100", nickname: undefined, playerName: "Example" });
+  await discLeaderboardPayload(
+    "1",
+    "1581",
+    "global",
+    null,
+    1,
+    store,
+    "en",
+    undefined,
+    accounts,
+  );
+  expect(
+    jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0].viewer,
+  ).toMatchObject({ uid: "100", nickname: undefined, playerName: "Example" });
 });
 function selectInteraction(
   page = 0,
@@ -361,7 +455,10 @@ test("selector pages reach every scoreable character without exceeding Discord's
       page,
     ).row.toJSON().components[0];
     expect(menu.options.length).toBeLessThanOrEqual(25);
-    for (const option of menu.options.filter(o => /^\d{4}$/.test(o.value))) expect(option.emoji?.id).toMatch(/^\d+$/);
+    // Newly scored agents remain selectable before element metadata is refreshed.
+    for (const option of menu.options.filter((o) => /^\d{4}$/.test(o.value))) {
+      if (option.emoji) expect(option.emoji.id).toMatch(/^\d+$/);
+    }
     expect(menu.max_values).toBe(1);
     expect(menu.custom_id.length).toBeLessThanOrEqual(100);
     seen.push(
@@ -372,50 +469,56 @@ test("selector pages reach every scoreable character without exceeding Discord's
   expect(seen).toEqual(expected);
   expect(new Set(seen).size).toBe(expected.length);
 });
-test.each(["1", "2"])("player %s can browse agent pages while preserving the ranking page, scope and PNG", async actor => {
-  const i = selectInteraction(0, "server", 3);
-  i.user.id = actor;
-  i.values = [PROFILE_SELECT_NEXT_PAGE];
-  await handleDiscLeaderboardInteraction(i, db);
-  const payload = i.editReply.mock.calls[0][0];
-  expect(Object.keys(payload)).toEqual(["components"]);
-  expect(payload.components[2].components[0].custom_id).toBe(
-    "zdisc:select:1:1581:s:3:1",
-  );
-  expect(payload.components[0].components[2].custom_id).toBe(
-    "zdisc:panel:1:1581:s:3:refresh:1",
-  );
-  expect(renderDiscLeaderboard).not.toHaveBeenCalled();
-  expect(store.page("1581", "1").participantCount).toBe(0);
-});
-test.each(["1", "2"])("player %s can change character while preserving scope and selector page", async actor => {
-  const menu = leaderboardCharacterSelect(
-    "1",
-    "1581",
-    "server",
-    3,
-    "en",
-    1,
-  ).row.toJSON().components[0];
-  const target = menu.options.find((o) => /^\d{4}$/.test(o.value))!.value;
-  const i = selectInteraction(1, "server", 3);
-  i.user.id = actor;
-  i.values = [target];
-  await handleDiscLeaderboardInteraction(i, db);
-  expect(
-    jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0],
-  ).toMatchObject({
-    characterId: target,
-    page: 1,
-    scopeLabel: discText("en", "server"),
-  });
-  const payload = i.editReply.mock.calls[0][0];
-  expect(payload.components[2].toJSON().components[0].custom_id).toBe(
-    `zdisc:select:${actor}:${target}:s:1:1`,
-  );
-  expect(i.reply).not.toHaveBeenCalled();
-  expect(store.page("1581", "1").participantCount).toBe(0);
-});
+test.each(["1", "2"])(
+  "player %s can browse agent pages while preserving the ranking page, scope and PNG",
+  async (actor) => {
+    const i = selectInteraction(0, "server", 3);
+    i.user.id = actor;
+    i.values = [PROFILE_SELECT_NEXT_PAGE];
+    await handleDiscLeaderboardInteraction(i, db);
+    const payload = i.editReply.mock.calls[0][0];
+    expect(Object.keys(payload)).toEqual(["components"]);
+    expect(payload.components[2].components[0].custom_id).toBe(
+      "zdisc:select:1:1581:s:3:1",
+    );
+    expect(payload.components[0].components[2].custom_id).toBe(
+      "zdisc:panel:1:1581:s:3:refresh:1",
+    );
+    expect(renderDiscLeaderboard).not.toHaveBeenCalled();
+    expect(store.page("1581", "1").participantCount).toBe(0);
+  },
+);
+test.each(["1", "2"])(
+  "player %s can change character while preserving scope and selector page",
+  async (actor) => {
+    const menu = leaderboardCharacterSelect(
+      "1",
+      "1581",
+      "server",
+      3,
+      "en",
+      1,
+    ).row.toJSON().components[0];
+    const target = menu.options.find((o) => /^\d{4}$/.test(o.value))!.value;
+    const i = selectInteraction(1, "server", 3);
+    i.user.id = actor;
+    i.values = [target];
+    await handleDiscLeaderboardInteraction(i, db);
+    expect(
+      jest.mocked(renderDiscLeaderboard).mock.calls.at(-1)![0],
+    ).toMatchObject({
+      characterId: target,
+      page: 1,
+      scopeLabel: discText("en", "server"),
+    });
+    const payload = i.editReply.mock.calls[0][0];
+    expect(payload.components[2].toJSON().components[0].custom_id).toBe(
+      `zdisc:select:${actor}:${target}:s:1:1`,
+    );
+    expect(i.reply).not.toHaveBeenCalled();
+    expect(store.page("1581", "1").participantCount).toBe(0);
+  },
+);
 test("invalid selections from any player cannot change the panel", async () => {
   for (const [owner, value] of [
     ["2", PROFILE_SELECT_PREVIOUS_PAGE],
@@ -429,31 +532,64 @@ test("invalid selections from any player cannot change the panel", async () => {
     expect(i.editReply).not.toHaveBeenCalled();
   }
 });
-test.each(["zdisc:panel:1:9999:g:1:leave", "zdisc:panel:1:1581:g:1:invalid", "zdisc:panel:bad:1581:g:1:leave"])("invalid shared control %s cannot change participation", async customId => {
-  const write = jest.spyOn(store, "setEnabled");
-  const i = interaction("2", customId);
-  await handleDiscLeaderboardInteraction(i, db);
-  expect(i.reply).toHaveBeenCalledWith({ content: discContent("en", "expired"), flags: MessageFlags.Ephemeral });
-  expect(write).not.toHaveBeenCalled();
-  expect(i.deferUpdate).not.toHaveBeenCalled();
-});
+test.each([
+  "zdisc:panel:1:9999:g:1:leave",
+  "zdisc:panel:1:1581:g:1:invalid",
+  "zdisc:panel:bad:1581:g:1:leave",
+])(
+  "invalid shared control %s cannot change participation",
+  async (customId) => {
+    const write = jest.spyOn(store, "setEnabled");
+    const i = interaction("2", customId);
+    await handleDiscLeaderboardInteraction(i, db);
+    expect(i.reply).toHaveBeenCalledWith({
+      content: discContent("en", "expired"),
+      flags: MessageFlags.Ephemeral,
+    });
+    expect(write).not.toHaveBeenCalled();
+    expect(i.deferUpdate).not.toHaveBeenCalled();
+  },
+);
 test("server actions from a DM are rejected before any participation changes", async () => {
   const write = jest.spyOn(store, "setEnabled");
   const i = interaction("2", "zdisc:panel:1:1581:s:1:leave");
   i.guildId = null;
   await handleDiscLeaderboardInteraction(i, db);
-  expect(i.reply).toHaveBeenCalledWith({ content: discContent("en", "guildOnly"), flags: MessageFlags.Ephemeral });
+  expect(i.reply).toHaveBeenCalledWith({
+    content: discContent("en", "guildOnly"),
+    flags: MessageFlags.Ephemeral,
+  });
   expect(write).not.toHaveBeenCalled();
 });
 
 test("player menu lists only the current rank page and keeps Discord component limits", async () => {
-  for (let n = 1; n <= 12; n++) recordDiscCharacters(interaction(String(n)), String(n), String(100 + n), [character], "en", store);
+  for (let n = 1; n <= 12; n++)
+    recordDiscCharacters(
+      interaction(String(n)),
+      String(n),
+      String(100 + n),
+      [character],
+      "en",
+      store,
+    );
   for (const page of [1, 2]) {
-    const payload = await discLeaderboardPayload("1", "1581", "global", null, page, store, "en");
+    const payload = await discLeaderboardPayload(
+      "1",
+      "1581",
+      "global",
+      null,
+      page,
+      store,
+      "en",
+    );
     expect(payload.components).toHaveLength(4);
     const menu: any = payload.components[3].toJSON().components[0];
     expect(menu.custom_id).toBe(`zdisc:player:1:1581:g:${page}`);
-    expect(menu.options.map((o: any) => o.value)).toEqual(store.page("1581", "1", null, page).entries.map(e => `${e.ownerId}:${e.uid}`));
+    expect(menu.options.map((o: any) => o.value)).toEqual(
+      store
+        .page("1581", "1", null, page)
+        .entries.map((e) => `${e.ownerId}:${e.uid}`),
+    );
     expect(menu.options).toHaveLength(page === 1 ? 10 : 2);
     expect(menu.min_values).toBe(1);
     expect(menu.max_values).toBe(1);
@@ -461,12 +597,31 @@ test("player menu lists only the current rank page and keeps Discord component l
 });
 
 test("empty boards omit the player selector; long identities fit in all seven languages", async () => {
-  const empty = await discLeaderboardPayload("1", "1581", "global", null, 1, store, "en");
+  const empty = await discLeaderboardPayload(
+    "1",
+    "1581",
+    "global",
+    null,
+    1,
+    store,
+    "en",
+  );
   expect(empty.components).toHaveLength(3);
   recordDiscCharacters(interaction(), "1", "100", [character], "en", store);
-  const entry = { ...store.page("1581", "1").entries[0], nickname: "遊戲\n暱稱".repeat(40), playerName: "Long Discord name\n".repeat(40) };
+  const entry = {
+    ...store.page("1581", "1").entries[0],
+    nickname: "遊戲\n暱稱".repeat(40),
+    playerName: "Long Discord name\n".repeat(40),
+  };
   for (const locale of DISC_LOCALES) {
-    const menu: any = leaderboardPlayerSelect("1", "1581", "global", 1, [entry], locale)[0].toJSON().components[0];
+    const menu: any = leaderboardPlayerSelect(
+      "1",
+      "1581",
+      "global",
+      1,
+      [entry],
+      locale,
+    )[0].toJSON().components[0];
     expect(menu.placeholder).toBe(discText(locale, "selectPlayer"));
     expect(menu.placeholder.length).toBeLessThanOrEqual(150);
     expect(menu.options[0].label).toContain("#1 遊戲 暱稱");
@@ -479,8 +634,19 @@ test("empty boards omit the player selector; long identities fit in all seven la
 
 async function playerInteraction(scope: "global" | "server" = "global") {
   recordDiscCharacters(interaction(), "1", "100", [character], "en", store);
-  const payload = await discLeaderboardPayload("1", "1581", scope, "123", 1, store, "en");
-  const i = interaction("2", `zdisc:player:1:1581:${scope === "global" ? "g" : "s"}:1`);
+  const payload = await discLeaderboardPayload(
+    "1",
+    "1581",
+    scope,
+    "123",
+    1,
+    store,
+    "en",
+  );
+  const i = interaction(
+    "2",
+    `zdisc:player:1:1581:${scope === "global" ? "g" : "s"}:1`,
+  );
   i.isButton = () => false;
   i.isStringSelectMenu = () => true;
   i.values = ["1:100"];
@@ -488,17 +654,37 @@ async function playerInteraction(scope: "global" | "server" = "global") {
   return i;
 }
 
-test.each(["global", "server"] as const)("any viewer can open a player privately from a %s board without updating the shared message", async scope => {
-  const i = await playerInteraction(scope);
-  await handleDiscLeaderboardInteraction(i, db);
-  expect(showDiscLeaderboardPlayer).toHaveBeenCalledWith(i, db,
-    { agentId: "1581", ownerId: "1", uid: "100", guildId: scope === "server" ? "123" : null }, store, "en");
-  expect(i.deferUpdate).not.toHaveBeenCalled();
-  expect(i.editReply).not.toHaveBeenCalled();
-  expect(store.page("1581", "2").participantCount).toBe(1);
-});
+test.each(["global", "server"] as const)(
+  "any viewer can open a player privately from a %s board without updating the shared message",
+  async (scope) => {
+    const i = await playerInteraction(scope);
+    await handleDiscLeaderboardInteraction(i, db);
+    expect(showDiscLeaderboardPlayer).toHaveBeenCalledWith(
+      i,
+      db,
+      {
+        agentId: "1581",
+        ownerId: "1",
+        uid: "100",
+        guildId: scope === "server" ? "123" : null,
+      },
+      store,
+      "en",
+    );
+    expect(i.deferUpdate).not.toHaveBeenCalled();
+    expect(i.editReply).not.toHaveBeenCalled();
+    expect(store.page("1581", "2").participantCount).toBe(1);
+  },
+);
 
-test.each(["unoffered", "multi", "malformed", "dm-server", "zero-page", "missing-menu"])("rejects %s player selections", async kind => {
+test.each([
+  "unoffered",
+  "multi",
+  "malformed",
+  "dm-server",
+  "zero-page",
+  "missing-menu",
+])("rejects %s player selections", async (kind) => {
   const i = await playerInteraction(kind === "dm-server" ? "server" : "global");
   if (kind === "unoffered") i.values = ["2:200"];
   if (kind === "multi") i.values = ["1:100", "2:200"];
@@ -507,7 +693,10 @@ test.each(["unoffered", "multi", "malformed", "dm-server", "zero-page", "missing
   if (kind === "zero-page") i.customId = "zdisc:player:1:1581:g:0";
   if (kind === "missing-menu") i.message.components = [];
   await handleDiscLeaderboardInteraction(i, db);
-  expect(i.reply).toHaveBeenCalledWith({ content: discContent("en", "expired"), flags: MessageFlags.Ephemeral });
+  expect(i.reply).toHaveBeenCalledWith({
+    content: discContent("en", "expired"),
+    flags: MessageFlags.Ephemeral,
+  });
   expect(showDiscLeaderboardPlayer).not.toHaveBeenCalled();
 });
 

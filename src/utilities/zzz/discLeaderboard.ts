@@ -63,7 +63,9 @@ function agentName(id: string, locale: string, fallback: string) {
 let catalog: Array<{ id: string; name: string; image: string }> | undefined;
 let agentElements: Record<string, { elementType: number }> | undefined;
 function agentElementEmoji(id: string): string | undefined {
-  agentElements ??= JSON.parse(readFileSync("src/assets/disc-leaderboard-elements.json", "utf8")).agents;
+  agentElements ??= JSON.parse(
+    readFileSync("src/assets/disc-leaderboard-elements.json", "utf8"),
+  ).agents;
   const key = getElementEmojiKey(agentElements![id]?.elementType, id);
   return key ? emoji[key as keyof typeof emoji] : undefined;
 }
@@ -81,19 +83,17 @@ export function discLeaderboardAgents() {
       }));
   }
   // Scorable released agents can appear in profiles before the gacha art catalog is refreshed.
-  for (const id of Object.keys(getScoringStore().snapshot().agents)) {
-    if (catalog!.some((item) => item.id === id)) continue;
-    const name = translatedAgent(id, "tw")?.name;
-    if (name) {
+  const missing = Object.entries(getScoringStore().snapshot().agents)
+    .filter(([id]) => !catalog!.some((item) => item.id === id))
+    .map(([id, agent]) => {
       const icon = `src/assets/images/icons/roleCircle/${id}.webp`;
-      catalog!.push({
+      return {
         id,
-        name,
+        name: translatedAgent(id, "tw")?.name || agent.name,
         image: existsSync(icon) ? icon : "src/assets/images/None.png",
-      });
-    }
-  }
-  return catalog;
+      };
+    });
+  return [...catalog, ...missing];
 }
 export function discLeaderboardChoices(query: string, locale = "tw") {
   const needle = query.toLowerCase().trim(),
@@ -180,7 +180,8 @@ export function recordDiscCharacters(
     );
     if (statuses.some((status) => status === "recorded"))
       return discContent(locale, "enrolled");
-    if (statuses.includes("other-owner")) return discContent(locale, "duplicate");
+    if (statuses.includes("other-owner"))
+      return discContent(locale, "duplicate");
     return "";
   } catch {
     console.warn("[disc-leaderboard] enrollment failed");
@@ -313,40 +314,77 @@ export function leaderboardPlayerSelect(
 ) {
   if (!entries.length) return [];
   const line = (value: string) => value.replace(/\s+/g, " ").trim();
-  return [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`zdisc:player:${owner}:${agent}:${scope === "global" ? "g" : "s"}:${page}`)
-      .setPlaceholder(discText(locale, "selectPlayer"))
-      .setMinValues(1).setMaxValues(1)
-      .addOptions(entries.slice(0, 10).map(entry => ({
-        label: `#${entry.rank} ${line(entry.nickname || entry.playerName)}`.slice(0, 100),
-        description: `UID ${entry.uid} · ${entry.total.toFixed(1)} / 600 · ${line(entry.playerName)}`.slice(0, 100),
-        value: `${entry.ownerId}:${entry.uid}`,
-      })))),
+  return [
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(
+          `zdisc:player:${owner}:${agent}:${scope === "global" ? "g" : "s"}:${page}`,
+        )
+        .setPlaceholder(discText(locale, "selectPlayer"))
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addOptions(
+          entries.slice(0, 10).map((entry) => ({
+            label:
+              `#${entry.rank} ${line(entry.nickname || entry.playerName)}`.slice(
+                0,
+                100,
+              ),
+            description:
+              `UID ${entry.uid} · ${entry.total.toFixed(1)} / 600 · ${line(entry.playerName)}`.slice(
+                0,
+                100,
+              ),
+            value: `${entry.ownerId}:${entry.uid}`,
+          })),
+        ),
+    ),
   ];
 }
 
 /** Resolve only display names for the ranked UID, without migrating or changing account data. */
-async function leaderboardNicknames(entries: RankedDiscEntry[], db?: Pick<DbAdapter, "get">) {
+async function leaderboardNicknames(
+  entries: RankedDiscEntry[],
+  db?: Pick<DbAdapter, "get">,
+) {
   const names = new Map<string, string>();
   if (!db) return names;
-  await Promise.all([...new Set(entries.map(entry => entry.ownerId))].map(async owner => {
-    const results = await Promise.allSettled([
-      Promise.resolve().then(() => db.get(`${owner}.hoyolabs`)),
-      Promise.resolve().then(() => db.get(`${owner}.account`)),
-    ]);
-    const grouped: any = results[0].status === "fulfilled" ? results[0].value : null;
-    const legacy: any = results[1].status === "fulfilled" ? results[1].value : null;
-    const hoyolabs = Array.isArray(grouped) ? grouped : Array.isArray(grouped?.hoyolabs) ? grouped.hoyolabs : [];
-    const accounts = [
-      ...hoyolabs.flatMap((h: any) => Array.isArray(h?.characters) ? h.characters : []),
-      ...(Array.isArray(legacy) ? legacy : []),
-    ];
-    for (const entry of entries.filter(entry => entry.ownerId === owner)) {
-      const account = accounts.find((a: any) => String(a?.uid) === entry.uid && typeof a?.nickname === "string" && a.nickname.trim());
-      if (account) names.set(`${owner}/${entry.uid}`, account.nickname.trim().replace(/\s+/g, " ").slice(0, 100));
-    }
-  }));
+  await Promise.all(
+    [...new Set(entries.map((entry) => entry.ownerId))].map(async (owner) => {
+      const results = await Promise.allSettled([
+        Promise.resolve().then(() => db.get(`${owner}.hoyolabs`)),
+        Promise.resolve().then(() => db.get(`${owner}.account`)),
+      ]);
+      const grouped: any =
+        results[0].status === "fulfilled" ? results[0].value : null;
+      const legacy: any =
+        results[1].status === "fulfilled" ? results[1].value : null;
+      const hoyolabs = Array.isArray(grouped)
+        ? grouped
+        : Array.isArray(grouped?.hoyolabs)
+          ? grouped.hoyolabs
+          : [];
+      const accounts = [
+        ...hoyolabs.flatMap((h: any) =>
+          Array.isArray(h?.characters) ? h.characters : [],
+        ),
+        ...(Array.isArray(legacy) ? legacy : []),
+      ];
+      for (const entry of entries.filter((entry) => entry.ownerId === owner)) {
+        const account = accounts.find(
+          (a: any) =>
+            String(a?.uid) === entry.uid &&
+            typeof a?.nickname === "string" &&
+            a.nickname.trim(),
+        );
+        if (account)
+          names.set(
+            `${owner}/${entry.uid}`,
+            account.nickname.trim().replace(/\s+/g, " ").slice(0, 100),
+          );
+      }
+    }),
+  );
   return names;
 }
 
@@ -432,21 +470,33 @@ export async function discLeaderboardPayload(
   });
   const notice = discText(locale, ranking.enabled ? "guide" : "hiddenGuide");
   return {
-    content: messageSubtext(`${notice}${scope === "server" ? ` ${discText(locale, "serverGuide")}` : ""}${ranking.scoringHash !== scoring.hash ? ` ${discText(locale, "updating")}` : ""}`),
+    content: messageSubtext(
+      `${notice}${scope === "server" ? ` ${discText(locale, "serverGuide")}` : ""}${ranking.scoringHash !== scoring.hash ? ` ${discText(locale, "updating")}` : ""}`,
+    ),
     embeds: [],
     attachments: [],
     files: [new AttachmentBuilder(buffer, { name: "disc-leaderboard.png" })],
-    components: [...leaderboardControls(
-      owner,
-      agentId,
-      scope,
-      ranking.page,
-      ranking.pageCount,
-      Boolean(guildId),
-      ranking.enabled,
-      locale,
-      selectorPage,
-    ), ...leaderboardPlayerSelect(owner, agentId, scope, ranking.page, ranking.entries.map(row), locale)],
+    components: [
+      ...leaderboardControls(
+        owner,
+        agentId,
+        scope,
+        ranking.page,
+        ranking.pageCount,
+        Boolean(guildId),
+        ranking.enabled,
+        locale,
+        selectorPage,
+      ),
+      ...leaderboardPlayerSelect(
+        owner,
+        agentId,
+        scope,
+        ranking.page,
+        ranking.entries.map(row),
+        locale,
+      ),
+    ],
     allowedMentions: { parse: [] as never[] },
   };
 }
@@ -516,9 +566,7 @@ export async function handleDiscLeaderboardInteraction(
     return;
   }
   // Shared leaderboard controls are public; the private settings panel still belongs to its owner.
-  if (
-    parts[1] === "settings" && parts[2] !== interaction.user.id
-  ) {
+  if (parts[1] === "settings" && parts[2] !== interaction.user.id) {
     await interaction.reply({
       content: discContent(locale, "forbidden"),
       flags: MessageFlags.Ephemeral,
@@ -529,26 +577,46 @@ export async function handleDiscLeaderboardInteraction(
   if (parts[1] === "player" && interaction.isStringSelectMenu()) {
     const [, , , agent, scopeCode, pageRaw] = parts;
     const value = interaction.values[0] ?? "";
-    const offered = interaction.message.components.some(row => {
+    const offered = interaction.message.components.some((row) => {
       const json: any = row.toJSON();
-      return json.components?.some((component: any) =>
-        component.custom_id === interaction.customId &&
-        component.options?.some((option: any) => option.value === value));
+      return json.components?.some(
+        (component: any) =>
+          component.custom_id === interaction.customId &&
+          component.options?.some((option: any) => option.value === value),
+      );
     });
-    if (parts.length !== 6 || !/^\d{4}$/.test(agent) ||
-      !discLeaderboardAgents().some(item => item.id === agent) ||
-      !["g", "s"].includes(scopeCode) || !/^[1-9]\d{0,7}$/.test(pageRaw) ||
+    if (
+      parts.length !== 6 ||
+      !/^\d{4}$/.test(agent) ||
+      !discLeaderboardAgents().some((item) => item.id === agent) ||
+      !["g", "s"].includes(scopeCode) ||
+      !/^[1-9]\d{0,7}$/.test(pageRaw) ||
       (scopeCode === "s" && !interaction.guildId) ||
-      interaction.values.length !== 1 || !/^\d{1,20}:\d{1,20}$/.test(value) || !offered) {
-      await interaction.reply({ content: discContent(locale, "expired"), flags: MessageFlags.Ephemeral });
+      interaction.values.length !== 1 ||
+      !/^\d{1,20}:\d{1,20}$/.test(value) ||
+      !offered
+    ) {
+      await interaction.reply({
+        content: discContent(locale, "expired"),
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
     const [targetOwner, uid] = value.split(":");
-    const { showDiscLeaderboardPlayer } = await import("./discLeaderboardPlayer.js");
-    await showDiscLeaderboardPlayer(interaction, db, {
-      agentId: agent, ownerId: targetOwner, uid,
-      guildId: scopeCode === "s" ? interaction.guildId : null,
-    }, store, locale);
+    const { showDiscLeaderboardPlayer } =
+      await import("./discLeaderboardPlayer.js");
+    await showDiscLeaderboardPlayer(
+      interaction,
+      db,
+      {
+        agentId: agent,
+        ownerId: targetOwner,
+        uid,
+        guildId: scopeCode === "s" ? interaction.guildId : null,
+      },
+      store,
+      locale,
+    );
     return;
   }
   if (parts[1] === "select" && interaction.isStringSelectMenu()) {

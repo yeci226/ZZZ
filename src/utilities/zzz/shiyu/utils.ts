@@ -22,7 +22,7 @@ export function drawRoundedRect(
   radius: number,
   color: string,
   outlineWidth = 0,
-  outlineColor = "black"
+  outlineColor = "black",
 ) {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -48,7 +48,7 @@ export function drawRoundedRectPath(
   y: number,
   width: number,
   height: number,
-  radius: number
+  radius: number,
 ) {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -65,7 +65,7 @@ export function drawCircleImage(
   x: number,
   y: number,
   size: number,
-  scaleFactor = 1.2
+  scaleFactor = 1.2,
 ) {
   ctx.save();
 
@@ -91,54 +91,60 @@ export function drawCircleImage(
   ctx.restore();
 }
 
+const BUFF_FONT_SIZE = 18;
+const BUFF_LINE_HEIGHT = 23;
+const BUFF_TEXT_COLOR = "#E3E3E3";
+
+// Keep colors attached to code points so wrapping cannot shift color ranges.
+function layoutBuffText(ctx: any, text: string, maxWidth: number) {
+  const glyphs: { char: string; color: string; x: number; line: number }[] = [];
+  const colors = [BUFF_TEXT_COLOR];
+  let line = 0;
+  let x = 0;
+  const tokens =
+    text
+      .replace(/\\n/g, "\n")
+      .match(/<color=#[a-f0-9]+>|<\/color>|[^<]+|</gi) || [];
+
+  for (const token of tokens) {
+    const opening = token.match(/^<color=(#[a-f0-9]+)>$/i);
+    if (opening) {
+      colors.push(opening[1]);
+      continue;
+    }
+    if (token.toLowerCase() === "</color>") {
+      if (colors.length > 1) colors.pop();
+      continue;
+    }
+    for (const char of token) {
+      if (char === "\n") {
+        line++;
+        x = 0;
+        continue;
+      }
+      const width = ctx.measureText(char).width;
+      if (x > 0 && x + width > maxWidth) {
+        line++;
+        x = 0;
+      }
+      glyphs.push({ char, color: colors[colors.length - 1], x, line });
+      x += width;
+    }
+  }
+  return { glyphs, lineCount: line + 1 };
+}
+
 export function estimateTextHeight(
   ctx: any,
   text: string,
   maxWidth: number,
-  fontFamily: string
+  fontFamily: string,
 ) {
   const originalFont = ctx.font;
-  ctx.font = `18px ${fontFamily}`;
-  const lineHeight = 18;
-
-  text = text.replace(/\\n/g, "\n");
-  let plainText = text.replace(/<color=#[A-Fa-f0-9]+>|<\/color>/g, "");
-
-  const lines = plainText.split("\n");
-  let totalLines = 0;
-
-  for (const line of lines) {
-    const chars = Array.from(line);
-    let currentLine = "";
-
-    for (const char of chars) {
-      const testLine = currentLine + char;
-      const metrics = ctx.measureText(testLine);
-      const isPunctuation = /[。，、,.!?：；;:！?]/.test(char);
-      const isLastChar =
-        currentLine.length + chars.slice(chars.indexOf(char) + 1).length ===
-        plainText.length; // Approximate check?
-      // Better: check if we are at the very end of the string loop.
-      // But we are looping `chars` of `line`. `lines` splits by newline.
-      // So checking if it is the last char of `line` (paragraph segment).
-
-      const isLastOfSegment = chars.indexOf(char) === chars.length - 1;
-
-      if (metrics.width > maxWidth && !isPunctuation && !isLastOfSegment) {
-        currentLine = char;
-        totalLines++;
-      } else {
-        currentLine = testLine;
-      }
-    }
-    totalLines++;
-  }
-
+  ctx.font = `${BUFF_FONT_SIZE}px ${fontFamily}`;
+  const { lineCount } = layoutBuffText(ctx, text, maxWidth);
   ctx.font = originalFont;
-  // Match drawBuffText lineHeight = 23
-  const drawLineHeight = 23;
-  // Height = (lines - 1) * drawLineHeight + fontSize (18)
-  return totalLines > 0 ? (totalLines - 1) * drawLineHeight + 18 : 0;
+  return (lineCount - 1) * BUFF_LINE_HEIGHT + BUFF_FONT_SIZE;
 }
 
 export function drawBuffText(
@@ -147,148 +153,19 @@ export function drawBuffText(
   x: number,
   y: number,
   maxWidth: number,
-  fontFamily: string
+  fontFamily: string,
 ) {
-  text = text.replace(/\\n/g, "\n");
-
   const originalFillStyle = ctx.fillStyle;
-  const originalFont = ctx.font;
-
-  ctx.font = `18px ${fontFamily}`;
-  ctx.fillStyle = "#E3E3E3";
-  const lineHeight = 23;
-
-  const lines = text.split("\n");
-  let currentY = y;
-
-  function drawColoredLine(
-    ctx: any,
-    line: string,
-    lineX: number,
-    lineY: number,
-    colorSegments: any[],
-    startIndex: number
-  ) {
-    let currentX = lineX;
-    const chars = Array.from(line);
-
-    for (let i = 0; i < chars.length; i++) {
-      const charIndex = startIndex + i;
-      const char = chars[i];
-
-      let charColor = "#E3E3E3";
-      for (const segment of colorSegments) {
-        if (charIndex >= segment.start && charIndex < segment.end) {
-          charColor = segment.color;
-          break;
-        }
-      }
-
-      ctx.fillStyle = charColor;
-      ctx.fillText(char, currentX, lineY);
-      currentX += ctx.measureText(char).width;
-    }
-    ctx.fillStyle = "#E3E3E3";
+  ctx.save();
+  ctx.font = `${BUFF_FONT_SIZE}px ${fontFamily}`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  const { glyphs, lineCount } = layoutBuffText(ctx, text, maxWidth);
+  for (const glyph of glyphs) {
+    ctx.fillStyle = glyph.color;
+    ctx.fillText(glyph.char, x + glyph.x, y + glyph.line * BUFF_LINE_HEIGHT);
   }
-
-  for (const line of lines) {
-    const colorSegments = [];
-    let plainText = "";
-    let remainingText = line;
-    let offset = 0;
-
-    while (remainingText.length > 0) {
-      const colorTagMatch = remainingText.match(/<color=#([A-Fa-f0-9]+)>/);
-
-      if (!colorTagMatch) {
-        plainText += remainingText;
-        break;
-      }
-
-      const beforeColorText = remainingText.substring(0, colorTagMatch.index);
-      plainText += beforeColorText;
-      offset += beforeColorText.length;
-
-      const endTagIndex = remainingText.indexOf(
-        "</color>",
-        colorTagMatch.index!
-      );
-      if (endTagIndex === -1) {
-        plainText += remainingText.substring(
-          colorTagMatch.index! + colorTagMatch[0].length
-        );
-        break;
-      }
-
-      const coloredText = remainingText.substring(
-        colorTagMatch.index! + colorTagMatch[0].length,
-        endTagIndex
-      );
-      plainText += coloredText;
-
-      colorSegments.push({
-        start: offset,
-        end: offset + coloredText.length,
-        color: `#${colorTagMatch[1]}`,
-      });
-
-      offset += coloredText.length;
-      remainingText = remainingText.substring(endTagIndex + 8);
-    }
-
-    const chars = Array.from(plainText);
-    let currentLine = "";
-    let currentX = x;
-    let currentCharIndex = 0;
-
-    for (let i = 0; i < chars.length; i++) {
-      const char = chars[i];
-      const testLine = currentLine + char;
-      const metrics = ctx.measureText(testLine);
-      const isPunctuation = /[。，、,.!?：；;:！?]/.test(char);
-      const isLastOfSegment = i === chars.length - 1;
-
-      if (
-        currentX + metrics.width > x + maxWidth &&
-        !isPunctuation &&
-        !isLastOfSegment
-      ) {
-        drawColoredLine(
-          ctx,
-          currentLine,
-          currentX - ctx.measureText(currentLine).width,
-          currentY,
-          colorSegments,
-          currentCharIndex - currentLine.length
-        );
-
-        currentLine = char;
-        currentX = x + ctx.measureText(char).width;
-        currentY += lineHeight;
-        currentCharIndex = i;
-      } else {
-        currentLine += char;
-        currentX = x + metrics.width;
-        currentCharIndex++;
-      }
-    }
-
-    if (currentLine) {
-      drawColoredLine(
-        ctx,
-        currentLine,
-        x,
-        currentY,
-        colorSegments,
-        currentCharIndex - currentLine.length
-      );
-    }
-
-    currentY += lineHeight;
-  }
-
+  ctx.restore();
   ctx.fillStyle = originalFillStyle;
-  ctx.font = originalFont;
-
-  return currentY;
+  return y + lineCount * BUFF_LINE_HEIGHT;
 }
