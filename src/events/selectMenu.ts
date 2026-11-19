@@ -37,7 +37,7 @@ import { drawMainImage, drawCharacterImage } from "../utilities/zzz/profile.js";
 import { loadProfileMainData } from "../utilities/zzz/profileMainData.js";
 import { handleTeamDraw } from "../utilities/zzz/team.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
-import { drawQueue } from "../utilities/canvas/drawQueue.js";
+import { drawQueue, drawTimeoutNotifier } from "../utilities/canvas/drawQueue.js";
 import {
   deleteLegacyAccountAtIndex,
   getLegacyAccounts,
@@ -870,7 +870,7 @@ async function handleSelectCharacter(
     }
   };
 
-  drawQueue.push(drawTask);
+  drawQueue.push(drawTask, drawTimeoutNotifier(interaction, tr));
 
   if (drawQueue.length !== 1) {
     drawInQueueReply(
