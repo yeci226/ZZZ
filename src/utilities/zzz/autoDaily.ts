@@ -34,7 +34,14 @@ import {
   normalizeAutoDailyNotifyType,
   resolveAndPersistAutoDailyGuildId,
 } from "../core/autoDailyNotification.js";
-import { shouldMarkAutoDailyProcessed } from "./autoDailyPolicy.js";
+import {
+  AUTO_DAILY_RETRY_BACKOFF_MS,
+  classifyAutoDailyFailure,
+  isAutoDailyInBackoff,
+  normalizeAutoDailyRetryState,
+  shouldMarkAutoDailyProcessed,
+  type AutoDailyFailureEntry,
+} from "./autoDailyPolicy.js";
 import {
   classifyPermanentNotificationError,
   disableNotificationDestination,
@@ -46,6 +53,7 @@ const CONFIG = {
   TAIPEI_TIMEZONE: "Asia/Taipei",
   API_TIMEOUT: 15000,
   USER_TIMEOUT: 60000,
+  USER_CONCURRENCY: 3,
   MAX_RETRIES: 3,
   MISSING_ROLE_RETRY_MS: 24 * 60 * 60 * 1000,
   DEFAULT_LANGUAGE: "tw",
@@ -71,6 +79,17 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     if (timeout) clearTimeout(timeout);
   }
 }
+
+/** Set when a user's run timed out; later side effects of that run must not happen. */
+interface CancelToken {
+  cancelled: boolean;
+}
+
+const taipeiToday = () =>
+  moment().tz(CONFIG.TAIPEI_TIMEZONE).format("YYYY-MM-DD");
+
+/** Per-user failure/backoff state, next to `<userId>.lastAutoDaily`. */
+const retryStateKey = (userId: string) => `${userId}.autoDailyRetry`;
 
 const LANGUAGE_MAPPING = {
   tw: LanguageEnum.TRADIIONAL_CHINESE,
@@ -154,7 +173,7 @@ export class AutoDailyService {
       if (!dailyData) return;
 
       const userIds = Object.keys(dailyData);
-      const today = moment().tz(CONFIG.TAIPEI_TIMEZONE).format("YYYY-MM-DD");
+      const today = taipeiToday();
 
       const stats = {
         total: 0,
@@ -164,7 +183,8 @@ export class AutoDailyService {
         skipped: 0,
       };
 
-      for (const userId of userIds) {
+      const processOne = async (userId: string) => {
+        const token: CancelToken = { cancelled: false };
         try {
           const result = await withTimeout(
             (async () => {
@@ -186,10 +206,20 @@ export class AutoDailyService {
               );
               if (lastProcessed === today) return null;
 
-              const processed = await this.processUser(userId, config, {
-                allowLegacyInvalidRecovery: currentHour === scheduledHour,
-              });
-              if (processed?.shouldMarkProcessed) {
+              // All accounts failed earlier today: wait out the backoff window.
+              const retryState = normalizeAutoDailyRetryState(
+                await this.db.get(retryStateKey(userId)),
+              );
+              if (isAutoDailyInBackoff(retryState, today, Date.now()))
+                return null;
+
+              const processed = await this.processUser(
+                userId,
+                config,
+                { allowLegacyInvalidRecovery: currentHour === scheduledHour },
+                token,
+              );
+              if (processed?.shouldMarkProcessed && !token.cancelled) {
                 // Mark as processed only when at least one account was actually handled.
                 await this.db.set(`${userId}.lastAutoDaily`, today);
               }
@@ -197,19 +227,35 @@ export class AutoDailyService {
             })(),
             CONFIG.USER_TIMEOUT,
           );
-          if (!result) continue;
+          if (!result) return;
 
+          // No await between these updates, so concurrent workers cannot interleave.
           stats.total += result.total;
           stats.success += result.success;
           stats.alreadySigned += result.alreadySigned;
           stats.failed += result.failed;
           stats.skipped += result.skipped;
         } catch (error: any) {
+          // The timed-out processUser keeps running; stop its further side effects.
+          token.cancelled = true;
           this.logger.error(
             `用戶 ${userId} 自動簽到逾時或失敗，已跳過本輪: ${error?.message || error}`,
           );
         }
-      }
+      };
+
+      // Bounded concurrency across users; accounts of one user stay serial.
+      let nextIndex = 0;
+      await Promise.all(
+        Array.from(
+          { length: Math.min(CONFIG.USER_CONCURRENCY, userIds.length) },
+          async () => {
+            while (nextIndex < userIds.length) {
+              await processOne(userIds[nextIndex++]);
+            }
+          },
+        ),
+      );
 
       await withTimeout(
         this.updateStatistics(stats, startTime, currentHour),
@@ -228,10 +274,22 @@ export class AutoDailyService {
     options: { allowLegacyInvalidRecovery?: boolean } = {
       allowLegacyInvalidRecovery: false,
     },
+    token: CancelToken = { cancelled: false },
   ) {
+    // Abort at the next checkpoint once the caller's timeout has fired.
+    const guard = () => {
+      if (token.cancelled) throw new Error("auto daily run cancelled");
+    };
+    const today = taipeiToday();
     const userLang = (await getUserLang(userId)) || "tw";
     const accounts = await getLegacyAccounts(this.db as any, userId);
     const tr = createTranslator(userLang);
+    const retryState = normalizeAutoDailyRetryState(
+      await this.db.get(retryStateKey(userId)),
+    );
+    const failedEntries: Record<string, AutoDailyFailureEntry> = {};
+    const notifiedKeys: string[] = [];
+    guard();
 
     const stats: ProcessUserStats = {
       total: 0,
@@ -254,6 +312,7 @@ export class AutoDailyService {
     const results: SignInResult[] = [];
 
     for (let i = 0; i < accounts.length; i++) {
+      guard();
       const account = accounts[i];
       const accountKey = getDailyAuthAccountKey(
         String(account.cookie),
@@ -308,6 +367,7 @@ export class AutoDailyService {
         });
 
         const signResult = await resolveDailySignIn(zzz.daily);
+        guard();
         if (missingRoleState) await this.db.delete(missingRoleKey);
 
         if (shouldRestoreGeneralValidity(signResult.status)) {
@@ -337,6 +397,7 @@ export class AutoDailyService {
               getAllGameRoles(String(account.cookie)),
               CONFIG.API_TIMEOUT,
             );
+            guard();
 
             const zzzRole = (roles ?? []).find(
               (role: any) =>
@@ -371,6 +432,7 @@ export class AutoDailyService {
           }
         }
 
+        guard();
         const rewards = signResult.rewards;
         if (!rewards.awards.length)
           this.logger.warn(
@@ -400,6 +462,7 @@ export class AutoDailyService {
         if (signResult.status === "success") stats.success++;
         else stats.alreadySigned++;
       } catch (error: any) {
+        if (token.cancelled) throw error;
         const errorMessage = error?.message || String(error);
         const authenticationError = isExplicitAuthenticationError(error);
         const missingRoleError = isDailyRoleMissingError(error);
@@ -417,9 +480,23 @@ export class AutoDailyService {
             retryAfter: Date.now() + CONFIG.MISSING_ROLE_RETRY_MS,
           });
         }
-        const notifyFailure =
+        const notifyEligible =
           !(legacyProbe && authenticationError) &&
           !(missingRoleError && missingRoleState);
+
+        // Tell the user / error webhook about a given failure type at most once
+        // per server day, however many hourly retries happen.
+        const sig = classifyAutoDailyFailure({
+          authenticationError,
+          missingRoleError,
+          message: errorMessage,
+        });
+        const prevEntry = retryState?.accounts?.[accountKey];
+        const entry: AutoDailyFailureEntry =
+          prevEntry && prevEntry.sig === sig ? { ...prevEntry } : { sig };
+        failedEntries[accountKey] = entry;
+        const notifyFailure = notifyEligible && entry.notifiedDay !== today;
+        const postWebhook = notifyEligible && entry.webhookDay !== today;
 
         // Legacy invalid accounts are probed once to classify old shared auth
         // state. If Daily itself confirms an explicit auth failure, persist the
@@ -430,6 +507,7 @@ export class AutoDailyService {
         // Transient/non-auth legacy probe failures are also still notified and
         // remain retryable.
         if (notifyFailure) {
+          notifiedKeys.push(accountKey);
           results.push({
             uid: account.uid,
             nickname: account.nickname || "Unknown",
@@ -446,6 +524,7 @@ export class AutoDailyService {
         // Only a direct authentication failure invalidates the general
         // account. Redeem-scoped failures never reach this path.
         if (authenticationError) {
+          guard();
           await markGeneralInvalid(this.db as any, userId, String(account.uid));
           await markLegacyInvalidProbeCompleted(this.db, userId, accountKey);
           if (legacyProbe) {
@@ -453,7 +532,9 @@ export class AutoDailyService {
           }
         }
 
-        if (this.errorWebhook && notifyFailure) {
+        if (this.errorWebhook && postWebhook) {
+          guard();
+          entry.webhookDay = today;
           const errorEmbed = new EmbedBuilder()
             .setColor("#E76161")
             .setTitle(`[自動簽到失敗] 用戶: ${userId}`)
@@ -469,11 +550,12 @@ export class AutoDailyService {
       }
     }
 
+    guard();
     let notificationDelivered = results.length === 0;
     try {
       if (results.length > 0) {
         notificationDelivered = await withTimeout(
-          this.sendNotification(userId, config, results, tr),
+          this.sendNotification(userId, config, results, tr, token),
           CONFIG.USER_TIMEOUT,
         );
       }
@@ -488,6 +570,21 @@ export class AutoDailyService {
       notificationDelivered,
     });
 
+    guard();
+    if (notificationDelivered) {
+      for (const key of notifiedKeys) failedEntries[key].notifiedDay = today;
+    }
+    if (stats.shouldMarkProcessed) {
+      if (retryState) await this.db.delete(retryStateKey(userId));
+    } else if (stats.failed > 0) {
+      // Nobody signed in: keep retrying, but not before the backoff elapses.
+      await this.db.set(retryStateKey(userId), {
+        day: today,
+        nextTryAt: Date.now() + AUTO_DAILY_RETRY_BACKOFF_MS,
+        accounts: failedEntries,
+      });
+    }
+
     return stats;
   }
 
@@ -496,8 +593,10 @@ export class AutoDailyService {
     config: AutoDailyConfig,
     results: SignInResult[],
     tr: any,
+    token: CancelToken = { cancelled: false },
   ): Promise<boolean> {
     if (!isNotificationEnabled(config)) return true;
+    if (token.cancelled) return false;
 
     const tag =
       config.tag === "true" || config.tag === true ? `<@${userId}>` : "";
@@ -549,6 +648,7 @@ export class AutoDailyService {
     const cardFiles: { buffer: string; name: string }[] = [];
     const canvasFallbackEmbeds: object[] = [];
     for (let i = 0; i < signedResults.length; i++) {
+      if (token.cancelled) return false;
       const res = signedResults[i];
       try {
         const buf = await buildZZZDailyCard({
@@ -720,6 +820,7 @@ export class AutoDailyService {
 
     let permanentlyDisabled = false;
     const attemptDelivery = async (msgPayload: any): Promise<boolean> => {
+      if (token.cancelled) return false;
       try {
         await sendPayload(msgPayload);
         delivered = true;
