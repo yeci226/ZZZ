@@ -18,6 +18,14 @@ const __dirname = path.dirname(__filename);
 
 // Client Variables
 client.db = new QuickDB();
+// 所有 worker thread 共用 json.sqlite：啟用 WAL 並設定忙碌等待，避免 SQLITE_BUSY
+try {
+  const sqlite = (client.db as any).driver.database;
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("busy_timeout = 5000");
+} catch (error) {
+  new Logger("系統").error(`資料庫 WAL 設定失敗: ${String((error as Error)?.message || error)}`);
+}
 client.cluster = new ClusterClient(client as unknown as Client); // Cast to Client if needed or augment correctly
 client.commands = {
   slash: new Collection(),
