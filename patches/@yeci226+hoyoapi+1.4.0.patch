@@ -64,6 +64,236 @@ index 92dec84..70bca6b 100644
        try {
          const data = JSON.parse(text);
          if (data.retcode === 0)
+diff --git a/node_modules/@yeci226/hoyoapi/dist/cjs/request/request.js b/node_modules/@yeci226/hoyoapi/dist/cjs/request/request.js
+index 308048f..2fd3a98 100644
+--- a/node_modules/@yeci226/hoyoapi/dist/cjs/request/request.js
++++ b/node_modules/@yeci226/hoyoapi/dist/cjs/request/request.js
+@@ -74,6 +74,14 @@ class HTTPRequest {
+      */
+     __publicField(this, "retries", 1);
+     __publicField(this, "http");
++    /** Overall per-attempt deadline (ms); the request is destroyed when it elapses. */
++    __publicField(this, "timeoutMs", 15e3);
++    /** Max attempts for retryable retcodes (initial try included). */
++    __publicField(this, "maxAttempts", 3);
++    /** Base backoff in ms (doubles per attempt: 1s, 2s, 4s). */
++    __publicField(this, "retryBaseMs", 1e3);
++    /** Upper bound for any retry wait, Retry-After included (ms). */
++    __publicField(this, "retryMaxWaitMs", 1e4);
+     if (cookie) {
+       this.headers.Cookie = cookie;
+     }
+@@ -151,7 +159,21 @@ class HTTPRequest {
+    */
+   async send(url, method = "GET", ttl = 60) {
+     const fetch = (url2, method2) => {
+-      return new Promise((resolve, reject) => {
++      return new Promise((resolve0, reject0) => {
++        let settled = false;
++        let timer;
++        const resolve = (v) => {
++          if (settled) return;
++          settled = true;
++          clearTimeout(timer);
++          resolve0(v);
++        };
++        const reject = (e) => {
++          if (settled) return;
++          settled = true;
++          clearTimeout(timer);
++          reject0(e);
++        };
+         const hostname = new URL(url2);
+         const queryParams = new URLSearchParams(hostname.searchParams);
+         Object.keys(this.params).forEach((val) => {
+@@ -164,6 +186,14 @@ class HTTPRequest {
+           headers: this.headers
+         };
+         const client = (0, import_https.request)(hostname, options, (res) => {
++          res.on("aborted", () => {
++            reject(new import_error.HoyoAPIError("Response aborted before completion"));
++          });
++          res.on("close", () => {
++            if (!res.complete) {
++              reject(new import_error.HoyoAPIError("Connection closed before the response completed"));
++            }
++          });
+           if (res.statusCode === 429) {
+             return resolve({
+               response: {
+@@ -200,6 +230,7 @@ class HTTPRequest {
+             stream.push(chunk);
+           });
+           res.on("end", () => {
++            try {
+             var _a, _b, _c, _d;
+             let buffer = Buffer.concat(stream);
+             const encoding = res.headers["content-encoding"];
+@@ -253,11 +284,23 @@ class HTTPRequest {
+                 )
+               );
+             }
++            } catch (err) {
++              reject(new import_error.HoyoAPIError(err && err.message ? err.message : String(err)));
++            }
+           });
+           res.on("error", (err) => {
+             reject(new import_error.HoyoAPIError(err.message));
+           });
+         });
++        client.on("error", (err) => {
++          reject(new import_error.HoyoAPIError(err && err.message ? err.message : String(err)));
++        });
++        const timeoutMs = this.timeoutMs;
++        timer = setTimeout(() => {
++          const err = new import_error.HoyoAPIError("Request timeout after " + timeoutMs + "ms");
++          reject(err);
++          client.destroy(err);
++        }, timeoutMs);
+         if (method2 === "POST") {
+           client.write(JSON.stringify(this.body));
+         }
+@@ -279,11 +322,20 @@ class HTTPRequest {
+     if (this.ds) {
+       this.headers.DS = (0, import_request.generateDS)();
+     }
+-    const req = await fetch(url, method);
+-    if ([-1004, -2016, -500004, 429].includes(req.response.retcode) && this.retries <= 120) {
+-      this.retries++;
+-      await (0, import_request.delay)(1);
+-      return this.send(url, method);
++    let req = await fetch(url, method);
++    let attempt = 1;
++    while ([-1004, -2016, -500004, 429].includes(req.response.retcode) && attempt < this.maxAttempts) {
++      let waitMs = this.retryBaseMs * 2 ** (attempt - 1);
++      const ra = req.headers && req.headers["retry-after"];
++      if (ra !== void 0 && ra !== "") {
++        const secs = Number(ra);
++        const parsed = Number.isFinite(secs) ? secs * 1e3 : Date.parse(String(ra)) - Date.now();
++        if (Number.isFinite(parsed) && parsed >= 0) waitMs = parsed;
++      }
++      waitMs = Math.min(waitMs, this.retryMaxWaitMs);
++      attempt++;
++      await new Promise((r) => setTimeout(r, waitMs));
++      req = await fetch(url, method);
+     }
+     this.retries = 1;
+     this.body = {};
+diff --git a/node_modules/@yeci226/hoyoapi/dist/esm/chunk-FMPTW7AC.mjs b/node_modules/@yeci226/hoyoapi/dist/esm/chunk-FMPTW7AC.mjs
+index 1a13530..ec1a593 100644
+--- a/node_modules/@yeci226/hoyoapi/dist/esm/chunk-FMPTW7AC.mjs
++++ b/node_modules/@yeci226/hoyoapi/dist/esm/chunk-FMPTW7AC.mjs
+@@ -320,6 +320,14 @@ var HTTPRequest = class {
+      */
+     __publicField(this, "retries", 1);
+     __publicField(this, "http");
++    /** Overall per-attempt deadline (ms); the request is destroyed when it elapses. */
++    __publicField(this, "timeoutMs", 15e3);
++    /** Max attempts for retryable retcodes (initial try included). */
++    __publicField(this, "maxAttempts", 3);
++    /** Base backoff in ms (doubles per attempt: 1s, 2s, 4s). */
++    __publicField(this, "retryBaseMs", 1e3);
++    /** Upper bound for any retry wait, Retry-After included (ms). */
++    __publicField(this, "retryMaxWaitMs", 1e4);
+     if (cookie) {
+       this.headers.Cookie = cookie;
+     }
+@@ -397,7 +405,21 @@ var HTTPRequest = class {
+    */
+   async send(url, method = "GET", ttl = 60) {
+     const fetch = (url2, method2) => {
+-      return new Promise((resolve, reject) => {
++      return new Promise((resolve0, reject0) => {
++        let settled = false;
++        let timer;
++        const resolve = (v) => {
++          if (settled) return;
++          settled = true;
++          clearTimeout(timer);
++          resolve0(v);
++        };
++        const reject = (e) => {
++          if (settled) return;
++          settled = true;
++          clearTimeout(timer);
++          reject0(e);
++        };
+         const hostname = new URL(url2);
+         const queryParams = new URLSearchParams(hostname.searchParams);
+         Object.keys(this.params).forEach((val) => {
+@@ -410,6 +432,14 @@ var HTTPRequest = class {
+           headers: this.headers
+         };
+         const client = request(hostname, options, (res) => {
++          res.on("aborted", () => {
++            reject(new HoyoAPIError("Response aborted before completion"));
++          });
++          res.on("close", () => {
++            if (!res.complete) {
++              reject(new HoyoAPIError("Connection closed before the response completed"));
++            }
++          });
+           if (res.statusCode === 429) {
+             return resolve({
+               response: {
+@@ -446,6 +476,7 @@ var HTTPRequest = class {
+             stream.push(chunk);
+           });
+           res.on("end", () => {
++            try {
+             var _a, _b, _c, _d;
+             let buffer = Buffer.concat(stream);
+             const encoding = res.headers["content-encoding"];
+@@ -499,11 +530,23 @@ var HTTPRequest = class {
+                 )
+               );
+             }
++            } catch (err) {
++              reject(new HoyoAPIError(err && err.message ? err.message : String(err)));
++            }
+           });
+           res.on("error", (err) => {
+             reject(new HoyoAPIError(err.message));
+           });
+         });
++        client.on("error", (err) => {
++          reject(new HoyoAPIError(err && err.message ? err.message : String(err)));
++        });
++        const timeoutMs = this.timeoutMs;
++        timer = setTimeout(() => {
++          const err = new HoyoAPIError("Request timeout after " + timeoutMs + "ms");
++          reject(err);
++          client.destroy(err);
++        }, timeoutMs);
+         if (method2 === "POST") {
+           client.write(JSON.stringify(this.body));
+         }
+@@ -525,11 +568,20 @@ var HTTPRequest = class {
+     if (this.ds) {
+       this.headers.DS = generateDS();
+     }
+-    const req = await fetch(url, method);
+-    if ([-1004, -2016, -500004, 429].includes(req.response.retcode) && this.retries <= 120) {
+-      this.retries++;
+-      await delay(1);
+-      return this.send(url, method);
++    let req = await fetch(url, method);
++    let attempt = 1;
++    while ([-1004, -2016, -500004, 429].includes(req.response.retcode) && attempt < this.maxAttempts) {
++      let waitMs = this.retryBaseMs * 2 ** (attempt - 1);
++      const ra = req.headers && req.headers["retry-after"];
++      if (ra !== void 0 && ra !== "") {
++        const secs = Number(ra);
++        const parsed = Number.isFinite(secs) ? secs * 1e3 : Date.parse(String(ra)) - Date.now();
++        if (Number.isFinite(parsed) && parsed >= 0) waitMs = parsed;
++      }
++      waitMs = Math.min(waitMs, this.retryMaxWaitMs);
++      attempt++;
++      await new Promise((r) => setTimeout(r, waitMs));
++      req = await fetch(url, method);
+     }
+     this.retries = 1;
+     this.body = {};
 diff --git a/node_modules/@yeci226/hoyoapi/dist/esm/index.mjs b/node_modules/@yeci226/hoyoapi/dist/esm/index.mjs
 index 3678465..8bb1cae 100644
 --- a/node_modules/@yeci226/hoyoapi/dist/esm/index.mjs
