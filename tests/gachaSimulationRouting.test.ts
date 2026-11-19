@@ -16,7 +16,7 @@ jest.mock("../src/utilities/zzz/profileMainData.js", () => ({}));
 jest.mock("../src/utilities/zzz/team.js", () => ({}));
 jest.mock("../src/utilities/zzz/deadly.js", () => ({}));
 jest.mock("../src/utilities/accountStore.js", () => ({}));
-jest.mock("queue", () => ({ __esModule: true, default: class {} }));
+jest.mock("../src/utilities/canvas/drawQueue.js", () => ({ drawQueue: { push: jest.fn(), length: 1 } }));
 
 import "../src/events/selectMenu.js";
 import "../src/events/gachaSimulationInteraction.js";
