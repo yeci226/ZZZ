@@ -112,7 +112,16 @@ export async function load(client: Client) {
   );
 
   client.on("clientReady", async () => {
-    await client.application?.commands.set(slashCommands);
+    // 指令註冊只需在 cluster 0 執行一次，避免每個 cluster 重複呼叫 Discord API
+    if (client.cluster.id !== 0) return;
+    try {
+      await client.application?.commands.set(slashCommands);
+    } catch (error) {
+      new Logger("系統").error(
+        `全域指令註冊失敗: ${String((error as Error)?.message || error)}`,
+      );
+      return;
+    }
     if (client.application) {
       await syncGuildCommandOverrides(client.application, slashCommands).catch(() =>
         new Logger("系統").error("伺服器指令同步失敗；全域指令已同步"),
