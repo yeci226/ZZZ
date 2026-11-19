@@ -23,7 +23,11 @@ import {
   TtlCache,
   fireAndForget,
 } from "../utilities/shared/index.js";
-import { getInteractionPreflight } from "../utilities/shared/interactionPreflight.js";
+import {
+  drainPendingLoginsBounded,
+  earlyAckEphemeral,
+  getInteractionPreflight,
+} from "../utilities/shared/interactionPreflight.js";
 import { resolveInteractionLocale } from "../utilities/core/interactionLocale.js";
 
 // Use client.db directly
@@ -33,7 +37,10 @@ const config = getConfig();
 const webhook = config.CMDWEBHOOK
   ? new WebhookClient({ url: config.CMDWEBHOOK })
   : null;
-const localeCache = new TtlCache<string, string>(120000, 10000);
+// The language is written by the settings select menu (selectMenu.ts), which
+// cannot invalidate this cache, so keep the TTL short: a language change shows
+// up within a minute at most.
+const localeCache = new TtlCache<string, string>(60_000, 10000);
 
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (
@@ -103,7 +110,11 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
       );
       await ensureDeferredReply(
         interaction,
-        getCommandAckPlan(earlyCommand, { defaultEphemeral: true }).ephemeral,
+        earlyAckEphemeral(
+          getCommandAckPlan(earlyCommand, { defaultEphemeral: true })
+            .ephemeral,
+          chatInputInteraction,
+        ),
       );
     } catch (error: any) {
       new Logger("指令").error(`初始 ACK 失敗：${error?.message ?? error}`);
@@ -112,28 +123,45 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   }
 
   const fallbackLocale = toI18nLang(interaction.locale) || "en";
-  const finalLocale = earlyPreflight?.skipLocaleLookup
-    ? fallbackLocale
-    : await resolveInteractionLocale({
-        loadCached: async () =>
-          (await getUserLang(interaction.user.id)) || undefined,
-        setupDefault: () =>
-          setupDefaultLang(interaction.user.id, interaction.locale),
-        reload: async () =>
-          (await getUserLang(interaction.user.id)) || undefined,
-        fallbackLocale,
-        onError: (error) =>
-          new Logger("指令").error(
-            `locale 初始化失敗：${error instanceof Error ? error.message : String(error)}`,
-          ),
-      });
-  localeCache.set(interaction.user.id, finalLocale);
+  let finalLocale: string;
+  const cachedLocale = earlyPreflight?.skipLocaleLookup
+    ? undefined
+    : localeCache.get(interaction.user.id);
+  if (earlyPreflight?.skipLocaleLookup) {
+    finalLocale = fallbackLocale;
+  } else if (cachedLocale) {
+    finalLocale = cachedLocale;
+  } else {
+    // Only a locale that really came from the database is cached; the
+    // interaction-locale fallback must not stick for the whole TTL.
+    let fromDb = false;
+    const readLang = async () => {
+      const lang = (await getUserLang(interaction.user.id)) || undefined;
+      if (lang) fromDb = true;
+      return lang;
+    };
+    finalLocale = await resolveInteractionLocale({
+      loadCached: readLang,
+      setupDefault: () =>
+        setupDefaultLang(interaction.user.id, interaction.locale),
+      reload: readLang,
+      fallbackLocale,
+      onError: (error) =>
+        new Logger("指令").error(
+          `locale 初始化失敗：${error instanceof Error ? error.message : String(error)}`,
+        ),
+    });
+    if (fromDb) localeCache.set(interaction.user.id, finalLocale);
+  }
   const i18n = createTranslator(finalLocale);
 
   if (
     interaction.isButton() &&
     !interaction.customId.startsWith("glog-import:") &&
-    !interaction.customId.startsWith("gacha-url-")
+    !interaction.customId.startsWith("gacha-url-") &&
+    // These answer with showModal / update, which a deferUpdate would break.
+    interaction.customId !== "account_OpenEmailVerifyModal" &&
+    !interaction.customId.startsWith("contact-dev:")
   ) {
     const buttonInteraction = interaction as ButtonInteraction;
     await buttonInteraction.deferUpdate().catch(() => {});
@@ -176,13 +204,16 @@ client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
       }
 
       if (!preflight.skipPendingLoginDrain) {
-        try {
-          // Drain any pending web-logins from Supabase before the command.
-          // This runs only after the affected command has been acknowledged.
-          await drainPendingLogins(interaction.user.id);
-        } catch {
-          // Never block a command on a queue read failure.
-        }
+        // Drain pending web-logins, but never wait on Supabase or a bind for
+        // more than the budget: a slow drain continues in the background and
+        // the command runs now (a just-bound account may need a rerun).
+        await drainPendingLoginsBounded(
+          () => drainPendingLogins(interaction.user.id),
+          (error) =>
+            new Logger("指令").error(
+              `待處理登入佇列失敗：${error instanceof Error ? error.message : String(error)}`,
+            ),
+        );
       }
 
       if (ackPlan.shouldDefer) {

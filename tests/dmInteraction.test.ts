@@ -50,11 +50,19 @@ jest.mock("../src/utilities/shared/index.js", () => ({
     async getOrSetAsync(_key: string, loader: () => Promise<string>) {
       return loader();
     }
+    get() {
+      return undefined;
+    }
     set() {}
   },
   fireAndForget: jest.fn(),
 }));
 jest.mock("../src/utilities/shared/interactionPreflight.js", () => ({
+  drainPendingLoginsBounded: async (drain: () => Promise<unknown>) => {
+    await drain();
+    return true;
+  },
+  earlyAckEphemeral: (value: boolean) => value,
   getInteractionPreflight: () => ({
     deferBeforeDrain: false,
     skipPendingLoginDrain: false,
