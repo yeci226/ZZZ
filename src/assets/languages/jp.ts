@@ -24,7 +24,11 @@ const langs = {
     "このアカウントはまだ設定されていないため、このコマンドは使用できません！",
   AccountNotFound: "このアカウントが見つかりません！",
   AccountNotFoundDesc:
-    "### 以下の情報が設定されているか、および正しいか確認してください\n- クッキー： `<hasCookie>`\n- UID： `<hasUid>`",
+    "### 以下の情報が設定されているか、および正しいか確認してください\n- クッキー： `<hasCookie>`\n- UID： `<hasUid>`\n\n`/account` でアカウントを設定・更新するか、`/setup` でかんたん設定を行ってください。",
+  error_NoAccount: "アカウントが設定されていません",
+  error_NoAccountDesc:
+    "先に `/account`（または `/setup`）でアカウントとクッキーを設定してから、このコマンドを使用してください",
+  account_nonAcc: "アカウント未設定です。/account で追加してください",
   Searching: "データを検索中です。しばらくお待ちください。",
   DrawInQueue: "キューに並んでいます。現在のキュー位置：<position>",
   DrawError: "描画に失敗しました",
@@ -41,6 +45,9 @@ const langs = {
   PeriodZoneLayer: "形式と防衛戦線",
   InterKnotReputation: "ネットワークの評判",
 
+  team_NoAgent: "エージェントを1人以上選択してください。",
+  team_NoAgentData: "エージェントのデータを取得できませんでした。",
+
   // Commands
   news_Notice: "お知らせ",
   news_Events: "イベント",
@@ -49,11 +56,15 @@ const langs = {
   news_SelectPost: "🐣 記事を選択してください",
 
   daily_Failed: "サインインに失敗しました",
+  daily_MissingRoleDesc:
+    "HoYoLABでこのアカウントのゼンレスゾーンゼロのキャラクターが見つかりませんでした（-10002）。ゼンレスゾーンゼロをプレイしているHoYoLABアカウントを連携していること、ゲーム内でキャラクターを作成済みであることを確認してください。対応後は `/daily` で再試行できます。自動サインインは24時間ごとに再確認し、その間このエラーは再通知されません。",
   daily_AuthExpiredTitle: "HoYoLABアカウントのログインが期限切れです",
   daily_AuthExpiredDesc:
     "このHoYoLABアカウントのログイン状態が期限切れです。サインインや照会を使うにはCookieを再連携してください。",
   daily_Signed: "今日は既にサインイン済みです",
   daily_SignSuccess: "サインイン成功！",
+  daily_Success: "サインイン成功！",
+  daily_AlreadySigned: "今日は既にサインイン済みです",
   daily_Description: "今日の報酬を獲得しました <a>",
   daily_DescriptionTmr: "明日の報酬は <b>",
   daily_Month: "月間サインイン",
@@ -61,11 +72,23 @@ const langs = {
   daily_MissedDay: "未サインイン日数：<z>",
   daily_NonAccount: "アカウントが設定されていません",
   daily_NonAccountDesc:
-    "アカウントを設定してからこのコマンドを使用してください",
+    "先に `/account`（または `/setup` でかんたん設定）でアカウントを設定してから、このコマンドを使用してください",
   autoDaily_Off: "自動サインインがオフになりました",
   autoDaily_On: "自動サインインがオンになりました",
   autoDaily_Time: "自動サインイン時間：<time>",
   autoDaily_Tag: "サインイン時にタグ付け：<z>",
+  autoDaily_NotifyType: "通知チャンネル：<z>",
+  autoDaily_NotifyType_DM: "ダイレクトメッセージ",
+  autoDaily_NotifyType_Channel: "チャンネル",
+  autoDaily_GeetestTitle:
+    "<uid> 自動サインインを続けるにはGeetestを完了してください！",
+
+  card_TodayReward: "今日の報酬",
+  card_TomorrowReward: "明日の報酬",
+  card_MonthSignIn: "今月のサインイン",
+  card_MonthMissed: "今月の未サインイン",
+
+  redeem_AllRedeemed: "<count> 件のギフトコードをすべて交換済みです",
   account_QuickLink: "① アカウントログイン (推奨)",
   account_QuickLinkModal: "クイックアカウントログイン",
   account_QuickLinkDesc:

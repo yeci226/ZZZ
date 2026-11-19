@@ -37,13 +37,17 @@ const clusterManager = new ClusterManager(`${__dirname}/index.js`, {
 });
 
 clusterManager.extend(
-  new HeartbeatManager({ interval: 2000, maxMissedHeartbeats: 5 }),
+  new HeartbeatManager({ interval: 2000, maxMissedHeartbeats: 15 }),
 );
 
 clusterManager.on("clusterCreate", (cluster) => {
+  // 每個 cluster 只保留一個記憶體記錄計時器（重啟時會再次觸發 ready）
+  let memoryTimer: NodeJS.Timeout | undefined;
+
   cluster.on("ready", () => {
     new Logger("分片").info(`已啟動分片 #${cluster.id}`);
-    setInterval(
+    if (memoryTimer) clearInterval(memoryTimer);
+    memoryTimer = setInterval(
       () => {
         const memory = process.memoryUsage();
         new Logger("系統").info(
@@ -60,7 +64,10 @@ clusterManager.on("clusterCreate", (cluster) => {
 
   cluster.on("death", () => {
     new Logger("分片").info(`重新啟動分片 ${cluster.id}`);
-    clusterManager.recluster?.start();
+    if (memoryTimer) {
+      clearInterval(memoryTimer);
+      memoryTimer = undefined;
+    }
   });
 });
 

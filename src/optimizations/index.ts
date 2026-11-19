@@ -106,6 +106,8 @@ export class OptimizationManager {
 
       // 設置 flush 回調，定期保存統計到數據庫
       this.commandUsageTracker.onFlush(async (stats: CommandStats) => {
+        // 沒有統計資料就不寫入，避免每分鐘新增一筆空資料列
+        if (!stats || Object.keys(stats).length === 0) return;
         try {
           const timestamp = Date.now();
           await this.db.set(`stats.commands.${timestamp}`, stats);

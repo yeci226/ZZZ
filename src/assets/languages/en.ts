@@ -24,7 +24,11 @@ const langs = {
     "This proxy has not yet set up an account, so this command cannot be used!",
   AccountNotFound: "The proxy cannot be found!",
   AccountNotFoundDesc:
-    "### Please confirm whether the following information has been set and correct\n- Cookie: `<hasCookie>`\n- UID: `<hasUid>`",
+    "### Please confirm whether the following information has been set and correct\n- Cookie: `<hasCookie>`\n- UID: `<hasUid>`\n\nUse `/account` to set up or update your account, or `/setup` for quick setup.",
+  error_NoAccount: "Account has not been set up",
+  error_NoAccountDesc:
+    "Please set up your account and Cookie with `/account` (or `/setup` for quick setup) before using this command",
+  account_nonAcc: "No account set up yet. Use /account to add one",
   Searching: "Searching for information, please wait~",
   DrawInQueue: "In queue, current queue position: <position>",
   DrawError: "Drawing failed",
@@ -42,6 +46,9 @@ const langs = {
   PeriodZoneLayer: "Shiyu Defense Frontiers",
   InterKnotReputation: "Inter-Knot Reputation",
 
+  team_NoAgent: "Please select at least one agent.",
+  team_NoAgentData: "Could not retrieve agent data.",
+
   //Commands
   news_Notice: "Announcement",
   news_Events: "Activities",
@@ -57,13 +64,16 @@ const langs = {
     "This HoYoLAB account login has expired. Please bind a new Cookie before using check-in or account queries.",
   daily_Signed: "Proxy, you have already signed in today~",
   daily_SignSuccess: "Sign in successfully!",
+  daily_Success: "Sign-in successful!",
+  daily_AlreadySigned: "Already signed in today",
   daily_Description: "You have received today's reward <a>",
   daily_DescriptionTmr: "Tomorrow's reward is <b>",
   daily_Month: "monthly check-in",
   daily_SignedDay: "Number of days signed in: <z>",
   daily_MissedDay: "Number of missed days: <z>",
   daily_NonAccount: "Account has not been set up",
-  daily_NonAccountDesc: "Please set up an account before using this command",
+  daily_NonAccountDesc:
+    "Please set up an account with `/account` (or `/setup` for quick setup) before using this command",
   autoDaily_Off: "Automatic check-in is turned off",
   autoDaily_On: "Automatic check-in is turned on",
   autoDaily_Time: "Automatic check-in time: <time>",
