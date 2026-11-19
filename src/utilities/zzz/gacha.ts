@@ -15,7 +15,7 @@ import {
   getWeaponData,
   getBangbooData,
 } from "../utilities.js";
-import Queue from "queue";
+import { drawQueue, drawTimeoutNotifier } from "../canvas/drawQueue.js";
 import {
   createCanvas,
   loadImage,
@@ -34,7 +34,6 @@ interface Agent {
   count?: number;
 }
 
-const drawQueue = new Queue({ autostart: true });
 
 const fontPaths = {
   EN: "en-us.ttf",
@@ -404,7 +403,7 @@ export async function handleSignalLogDraw(
       });
     }
   };
-  drawQueue.push(drawTask);
+  drawQueue.push(drawTask, drawTimeoutNotifier(interaction, tr));
 
   if (drawQueue.length !== 1) {
     drawInQueueReply(

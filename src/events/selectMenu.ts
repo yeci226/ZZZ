@@ -37,7 +37,7 @@ import { drawMainImage, drawCharacterImage } from "../utilities/zzz/profile.js";
 import { loadProfileMainData } from "../utilities/zzz/profileMainData.js";
 import { handleTeamDraw } from "../utilities/zzz/team.js";
 import { createTranslator, toI18nLang } from "../utilities/core/i18n.js";
-import Queue from "queue";
+import { drawQueue } from "../utilities/canvas/drawQueue.js";
 import {
   deleteLegacyAccountAtIndex,
   getLegacyAccounts,
@@ -64,7 +64,6 @@ import {
   parseDeadlyModeCustomId,
 } from "../utilities/zzz/deadlyMode.js";
 // Use client.db directly
-const drawQueue = new Queue({ autostart: true });
 
 client.on(Events.InteractionCreate, async (interaction: BaseInteraction) => {
   if (

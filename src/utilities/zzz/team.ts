@@ -6,7 +6,7 @@ import {
 } from "discord.js";
 import { createCanvas, loadImage, SKRSContext2D, Image } from "@napi-rs/canvas";
 import { ZenlessZoneZero } from "@yeci226/hoyoapi";
-import Queue from "queue";
+import { drawQueue, drawTimeoutNotifier } from "../canvas/drawQueue.js";
 import { downloadPaintingCache, getFacePos } from "./autoDownloadIcons.js";
 import {
   getUserLang,
@@ -35,7 +35,6 @@ type TeamPaintingInfo = {
   fallbackUrl?: string;
 };
 
-const drawQueue = new Queue({ autostart: true });
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const CARD_W = 480;
@@ -1857,5 +1856,5 @@ export async function handleTeamDraw(
         /* ignore */
       }
     }
-  });
+  }, drawTimeoutNotifier(interaction, tr));
 }

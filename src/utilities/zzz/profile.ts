@@ -1,7 +1,7 @@
 import { commandTipContent } from "../core/commandTips.js";
 import { client } from "../../index.js";
 import { EmbedBuilder, AttachmentBuilder } from "discord.js";
-import Queue from "queue";
+import { drawQueue, drawTimeoutNotifier } from "../canvas/drawQueue.js";
 import {
   getRandomColor,
   drawInQueueReply,
@@ -43,7 +43,6 @@ import {
 import fs from "fs";
 import { join } from "path";
 // Use client.db directly
-const drawQueue = new Queue({ autostart: true });
 
 const offsetCharacter: Record<
   string,
@@ -292,7 +291,7 @@ export async function handleProfileDraw(
     }
   };
 
-  drawQueue.push(drawTask);
+  drawQueue.push(drawTask, drawTimeoutNotifier(interaction, tr));
 
   if (drawQueue.length !== 1) {
     drawInQueueReply(

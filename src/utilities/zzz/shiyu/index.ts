@@ -6,7 +6,7 @@ import {
   User,
 } from "discord.js";
 import { ZenlessZoneZero } from "@yeci226/hoyoapi";
-import Queue from "queue";
+import { drawQueue, drawTimeoutNotifier } from "../../canvas/drawQueue.js";
 import {
   getRandomColor,
   drawInQueueReply,
@@ -21,7 +21,6 @@ import { drawShiyuCanvas } from "./drawer.js";
 import { ShiyuContext } from "./types.js";
 import { saveShiyuHistory } from "../recordCache.js";
 import { getZzzCanvasFont } from "../canvasFonts.js";
-const drawQueue = new Queue({ autostart: true });
 
 function buildShiyuCanvasTranslator(
   tr: (key: string, args?: any) => string,
@@ -164,7 +163,7 @@ export async function handleShiyuDraw(
     }
   };
 
-  drawQueue.push(drawTask);
+  drawQueue.push(drawTask, drawTimeoutNotifier(interaction, tr));
 
   if (drawQueue.length !== 1) {
     drawInQueueReply(

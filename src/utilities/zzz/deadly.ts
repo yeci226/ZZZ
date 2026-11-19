@@ -4,7 +4,7 @@ import {
   EmbedBuilder,
   StringSelectMenuBuilder,
 } from "discord.js";
-import Queue from "queue";
+import { drawQueue, drawTimeoutNotifier } from "../canvas/drawQueue.js";
 import { toI18nLang } from "../core/i18n.js";
 import { ELEMENT_TYPES, getElementIconPath } from "./elements.js";
 import {
@@ -28,7 +28,6 @@ import {
 import { join } from "path";
 import { drawDeadlyCombinedImage } from "./deadlyCombined.js";
 import { deadlyPeriodNumber, saveDeadlyHistory } from "./recordCache.js";
-const drawQueue = new Queue({ autostart: true });
 const DEADLY_DETAIL_V2_API =
   "https://sg-public-api.hoyolab.com/event/game_record_zzz/api/zzz/hadal_mem_detail_v2";
 const DEADLY_ABSTRACT_INFO_API =
@@ -244,7 +243,7 @@ export async function handleDeadlyDraw(
     }
   };
 
-  drawQueue.push(drawTask);
+  drawQueue.push(drawTask, drawTimeoutNotifier(interaction, tr));
 
   if (drawQueue.length !== 1) {
     drawInQueueReply(
