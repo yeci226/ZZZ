@@ -5,7 +5,7 @@ import { Events, AutocompleteInteraction } from "discord.js";
 import { drainPendingLogins } from "../utilities/webhookLogin.js";
 import { createZzzClient, getZzzClientLanguage } from "../utilities/zzz/clientFactory.js";
 import type { ZenlessZoneZero } from "@yeci226/hoyoapi";
-import { getUserLang } from "../utilities/utilities.js";
+import { getRedeemCodes, getUserLang } from "../utilities/utilities.js";
 import { inspectAccountAccess } from "../utilities/accountAccess.js";
 import { getLegacyAccounts } from "../utilities/accountStore.js";
 import {
@@ -82,6 +82,41 @@ async function resolveZzzClient(
   return createZzzClient({ cookie, lang, uid } as any);
 }
 
+// Agent / bangboo autocomplete fires on every keystroke; HoYoLAB only needs to be asked
+// once per (user, account) every few minutes. In-flight requests are shared too.
+const RECORD_CACHE_TTL = 5 * 60_000;
+const RECORD_CACHE_MAX = 500;
+const recordCache = new Map<string, { expiresAt: number; data: Promise<any> }>();
+
+async function cachedZzzRecord(
+  interaction: AutocompleteInteraction,
+  userId: string,
+  kind: "characters" | "records",
+): Promise<any | null> {
+  const accountIndex = parseInt(interaction.options.getString("account") || "0");
+  const key = `${kind}:${userId}:${accountIndex}`;
+  const now = Date.now();
+  const hit = recordCache.get(key);
+  if (hit && hit.expiresAt > now) return hit.data;
+  recordCache.delete(key);
+
+  const data = (async () => {
+    const zzz = await resolveZzzClient(interaction, userId);
+    if (!zzz) return null;
+    return kind === "characters" ? await zzz.record.characters() : await zzz.record.records();
+  })();
+  recordCache.set(key, { expiresAt: now + RECORD_CACHE_TTL, data });
+  // Never keep failures or "no account" results; let the next keystroke retry.
+  const forget = () => { if (recordCache.get(key)?.data === data) recordCache.delete(key); };
+  data.then((value) => { if (value == null) forget(); }, forget);
+  while (recordCache.size > RECORD_CACHE_MAX) {
+    const oldest = recordCache.keys().next().value;
+    if (oldest === undefined) break;
+    recordCache.delete(oldest);
+  }
+  return data;
+}
+
 client.on(Events.InteractionCreate, async (interaction: any) => {
   if (!interaction.isAutocomplete()) return;
   const autocompleteInteraction = interaction as AutocompleteInteraction;
@@ -149,6 +184,38 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
     return;
   }
 
+  if (optionName === "code" && autocompleteInteraction.commandName === "codes") {
+    // Known codes only come from the cached code list; a free-typed code is still accepted by Discord.
+    let choices: Array<{ name: string; value: string }> = [];
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const query = String(focusedValue || "").trim().toLowerCase();
+      // Autocomplete must answer within ~3s; do not wait for a slow code-list refresh.
+      const codes: any[] = await Promise.race([
+        getRedeemCodes(),
+        new Promise<any[]>((resolve) => { timer = setTimeout(() => resolve([]), 2000); }),
+      ]);
+      choices = codes
+        .filter((item: any) => typeof item?.code === "string" && (!query || item.code.toLowerCase().includes(query)))
+        .map((item: any) => {
+          const rewards = (Array.isArray(item.rewards) ? item.rewards : [item.rewards])
+            .filter((reward: any) => typeof reward === "string" && reward.trim())
+            .join(", ");
+          return {
+            name: (rewards ? `${item.code} - ${rewards}` : item.code).slice(0, 100),
+            value: String(item.code).slice(0, 100),
+          };
+        })
+        .slice(0, 25);
+    } catch (err) {
+      console.error(`[autoComplete/${optionName}] Error:`, err);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    try { await autocompleteInteraction.respond(choices); } catch {}
+    return;
+  }
+
   if (optionName == "account") {
     // Drain any pending web-logins so newly bound accounts appear immediately.
     try { await drainPendingLogins(interaction.user.id); } catch {}
@@ -175,20 +242,20 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
       }
     }
     const query = String(focusedValue || "").toLowerCase();
-    await autocompleteInteraction.respond(choices.filter((choice) =>
-      !query || choice.name.toLowerCase().includes(query) || choice.value.toLowerCase().includes(query)).slice(0, 25));
+    try {
+      await autocompleteInteraction.respond(choices.filter((choice) =>
+        !query || choice.name.toLowerCase().includes(query) || choice.value.toLowerCase().includes(query)).slice(0, 25));
+    } catch {}
   }
 
   if (optionName === "agent1" || optionName === "agent2" || optionName === "agent3") {
     try {
       const userId = interaction.user.id;
-      const zzz = await resolveZzzClient(autocompleteInteraction, userId);
-      if (!zzz) {
+      const characters = await cachedZzzRecord(autocompleteInteraction, userId, "characters");
+      if (!characters) {
         await autocompleteInteraction.respond([]);
         return;
       }
-
-      const characters = await zzz.record.characters();
 
       // Exclude already-selected agents
       const otherAgentFields = ["agent1", "agent2", "agent3"].filter((f) => f !== optionName);
@@ -230,13 +297,11 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
   if (optionName === "bangboo") {
     try {
       const userId = interaction.user.id;
-      const zzz = await resolveZzzClient(autocompleteInteraction, userId);
-      if (!zzz) {
+      const record = await cachedZzzRecord(autocompleteInteraction, userId, "records");
+      if (!record) {
         await autocompleteInteraction.respond([]);
         return;
       }
-
-      const record = await zzz.record.records();
 
       const buddyList: any[] = (record as any).buddy_list ?? [];
       const query = (focusedValue as string).toLowerCase();

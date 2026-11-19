@@ -24,7 +24,12 @@ const langs = {
     "Cet Inter-nœud n'a pas fixé son compte, impossible d'utiliser cette commande!",
   AccountNotFound: "Impossible de trouver cet Inter-nœud!",
   AccountNotFoundDesc:
-    "### Veuillez vérifier si les données suivantes sont correctes\n- Cookie: `<hasCookie>`\n- UID: `<hasUid>`",
+    "### Veuillez vérifier si les données suivantes sont correctes\n- Cookie: `<hasCookie>`\n- UID: `<hasUid>`\n\nUtilisez `/account` pour configurer ou mettre à jour votre compte, ou `/setup` pour une configuration rapide.",
+  error_NoAccount: "Compte non configuré.",
+  error_NoAccountDesc:
+    "Veuillez configurer votre compte et votre Cookie avec `/account` (ou `/setup`) avant d'utiliser cette commande.",
+  account_nonAcc:
+    "Aucun compte configuré. Utilisez /account pour en ajouter un.",
   Searching: "Recherche de données, veuillez attendre patiemment.",
   DrawInQueue: "En attente, Current en file d'attente: <position>",
   DrawError: "La génération a échoué",
@@ -42,6 +47,9 @@ const langs = {
   PeriodZoneLayer: "Défense de shiyu",
   InterKnotReputation: "Réputation sur Inter-nœud",
 
+  team_NoAgent: "Veuillez sélectionner au moins un agent.",
+  team_NoAgentData: "Impossible de récupérer les données de l'agent.",
+
   //Commands
   news_Notice: "Annonces",
   news_Events: "Événements",
@@ -50,11 +58,15 @@ const langs = {
   news_SelectPost: "🐣 Veuillez sélectionner un article.",
 
   daily_Failed: "Le connexion a échoué.",
+  daily_MissingRoleDesc:
+    "HoYoLAB n'a trouvé aucun personnage Zenless Zone Zero pour ce compte (-10002). Vérifiez que vous avez relié le compte HoYoLAB utilisé pour ZZZ et que vous avez créé un personnage en jeu. Une fois corrigé, réessayez avec `/daily`. La connexion automatique revérifiera toutes les 24 heures, sans répéter cette notification d'erreur.",
   daily_AuthExpiredTitle: "La connexion du compte HoYoLAB a expiré",
   daily_AuthExpiredDesc:
     "La session HoYoLAB de ce compte a expiré. Veuillez relier un nouveau Cookie avant d'utiliser la connexion ou les recherches.",
   daily_Signed: "Vous avez déjà signé.",
   daily_SignSuccess: "Connectez-vous avec succès.",
+  daily_Success: "Connexion réussie.",
+  daily_AlreadySigned: "Déjà connecté aujourd'hui.",
   daily_Description: "Vous avez reçu la récompense d'aujourd'hui. <a>",
   daily_DescriptionTmr: "Récompense de connexion de demain <b>",
   daily_Month: "Connexion mensuelle",
@@ -62,11 +74,23 @@ const langs = {
   daily_MissedDay: "Jours manqués: <z>",
   daily_NonAccount: "Compte non réglé.",
   daily_NonAccountDesc:
-    "Veuillez définir le compte avant d'utiliser cette commande.",
+    "Veuillez configurer votre compte avec `/account` (ou `/setup` pour une configuration rapide) avant d'utiliser cette commande.",
   autoDaily_Off: "Le signé automatique est désactivé",
   autoDaily_On: "Le signé automatique est activée",
   autoDaily_Time: "Le temps de signé automatiquement: <time>",
   autoDaily_Tag: "Tag lorsqu'il est connecté: <z>",
+  autoDaily_NotifyType: "Canal de notification: <z>",
+  autoDaily_NotifyType_DM: "Message privé",
+  autoDaily_NotifyType_Channel: "Salon",
+  autoDaily_GeetestTitle:
+    "<uid> Veuillez réussir le Geetest pour continuer la connexion automatique!",
+
+  card_TodayReward: "Récompense du jour",
+  card_TomorrowReward: "Récompense de demain",
+  card_MonthSignIn: "Connexions du mois",
+  card_MonthMissed: "Jours manqués",
+
+  redeem_AllRedeemed: "Les <count> codes cadeaux ont tous été échangés",
   account_QuickLink: "① Connexion par compte (Recommandé)",
   account_QuickLinkModal: "Connexion rapide par compte",
   account_QuickLinkDesc:
