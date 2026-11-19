@@ -14,14 +14,20 @@ export interface MimoAdapter {
 }
 export class MimoEngine {
   private running = false;
+  private lastPrune = 0;
   constructor(readonly store: MimoStore, private adapter: MimoAdapter, private now = Date.now) {}
   async tick() {
     if (this.running) return; this.running = true;
     try {
+      if (this.now() - this.lastPrune >= 3600000) { this.lastPrune = this.now(); try { this.store.prune(this.now()); } catch { /* retention is best-effort */ } }
+      const pending = this.store.pendingLtuids();
       for (const config of this.store.configs()) {
+        let ran = false;
         if (config.enabled && config.nextAt <= this.now() && this.store.lease(config.ltuid, this.now())) {
+          ran = true;
           try { await this.run(config); } catch { this.store.state(config.ltuid, { reason: "redeemFailed", nextAt: this.now() + 3600000 }); } finally { this.store.unlock(config.ltuid); }
         }
+        if (!ran && !pending.has(config.ltuid)) continue;
         const current = this.store.get(config.ltuid)!;
         for (const r of this.store.results(config.ltuid, true).reverse()) {
           if (current.notifyType === "off") { this.store.delivered(r.id); continue; }
