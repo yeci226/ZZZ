@@ -21,7 +21,7 @@
   "type": "module",
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@napi-rs/canvas": "^0.1.88",
     "@supabase/supabase-js": "^2.104.1",
