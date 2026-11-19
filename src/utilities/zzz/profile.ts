@@ -2,6 +2,7 @@ import { commandTipContent } from "../core/commandTips.js";
 import { client } from "../../index.js";
 import { EmbedBuilder, AttachmentBuilder } from "discord.js";
 import { drawQueue, drawTimeoutNotifier } from "../canvas/drawQueue.js";
+import { loadImageAsync as loadSharedImage } from "../canvas/remoteImage.js";
 import {
   getRandomColor,
   drawInQueueReply,
@@ -169,22 +170,9 @@ const fonts = {
   default: "EN",
 };
 
-async function loadImageAsync(url: string, fallbackUrl?: string) {
-  try {
-    const localPath = await downloadPaintingCache(url);
-    return await loadImage(localPath);
-  } catch {
-    try {
-      if (fallbackUrl) {
-        const localFallback = await downloadPaintingCache(fallbackUrl);
-        return await loadImage(localFallback);
-      }
-      return await loadImage("./src/assets/images/None.png");
-    } catch {
-      return await loadImage("./src/assets/images/None.png");
-    }
-  }
-}
+// Keep the on-disk painting cache in front of the shared in-memory loader.
+const loadImageAsync = (url: string, fallbackUrl?: string) =>
+  loadSharedImage(url, fallbackUrl, downloadPaintingCache);
 
 export async function handleProfileDraw(
   interaction: any,

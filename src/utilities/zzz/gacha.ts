@@ -16,6 +16,7 @@ import {
   getBangbooData,
 } from "../utilities.js";
 import { drawQueue, drawTimeoutNotifier } from "../canvas/drawQueue.js";
+import { loadImageAsync } from "../canvas/remoteImage.js";
 import {
   createCanvas,
   loadImage,
@@ -92,23 +93,6 @@ const countColor = [
   { threshold: 70, color: "#FFBB5C" },
   { threshold: 90, color: "#FF6969" },
 ];
-
-async function loadImageAsync(url: string, fallbackUrl?: string) {
-  try {
-    return await loadImage(url);
-  } catch {
-    try {
-      if (fallbackUrl) {
-        // Check if fallbackUrl is provided
-        return await loadImage(fallbackUrl);
-      } else {
-        return await loadImage("./src/assets/images/None.png");
-      }
-    } catch {
-      return await loadImage("./src/assets/images/None.png");
-    }
-  }
-}
 
 async function fetchSignalData(
   query: URLSearchParams,

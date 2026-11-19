@@ -1,17 +1,4 @@
-import { loadImage } from "@napi-rs/canvas";
-
-export async function loadImageAsync(url: string, fallbackUrl?: string) {
-  try {
-    return await loadImage(url);
-  } catch {
-    try {
-      if (fallbackUrl) return await loadImage(fallbackUrl);
-      return await loadImage("./src/assets/images/None.png");
-    } catch {
-      return await loadImage("./src/assets/images/None.png");
-    }
-  }
-}
+export { loadImageAsync } from "../../canvas/remoteImage.js";
 
 export function drawRoundedRect(
   ctx: any,

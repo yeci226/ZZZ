@@ -5,6 +5,7 @@ import {
   StringSelectMenuBuilder,
 } from "discord.js";
 import { drawQueue, drawTimeoutNotifier } from "../canvas/drawQueue.js";
+import { loadImageAsync } from "../canvas/remoteImage.js";
 import { toI18nLang } from "../core/i18n.js";
 import { ELEMENT_TYPES, getElementIconPath } from "./elements.js";
 import {
@@ -115,19 +116,6 @@ const fonts = {
   fr: "FR",
   default: "EN",
 };
-
-async function loadImageAsync(url: string, fallbackUrl?: string) {
-  try {
-    return await loadImage(url);
-  } catch {
-    try {
-      if (fallbackUrl) return await loadImage(fallbackUrl);
-      throw new Error();
-    } catch {
-      return await loadImage("./src/assets/images/None.png");
-    }
-  }
-}
 
 export async function handleDeadlyDraw(
   interaction: any,
