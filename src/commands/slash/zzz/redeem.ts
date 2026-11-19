@@ -26,7 +26,7 @@ import { getLegacyAccountAtIndex } from "../../../utilities/accountStore.js";
 import { blockExpiredAccount } from "../../../utilities/accountAccess.js";
 import { resolveZzzRegion } from "../../../utilities/zzz/region.js";
 
-async function redeemCodeDirect(
+export async function redeemCodeDirect(
   uid: string,
   cookie: string,
   code: string,
@@ -579,7 +579,7 @@ export default {
   },
 };
 
-async function handleRedeemResult(
+export async function handleRedeemResult(
   code: string,
   res: any,
   userRedeemedCodes: any[],
