@@ -47,7 +47,7 @@ describe("驅動盤圖示資料欄位解析", () => {
       "12013": "https://static.nanoka.cc/assets/zzz/Weapon_B_Common_13Big.webp",
       "13010": "https://static.nanoka.cc/assets/zzz/Weapon_A_Common_10Big.webp",
     });
-    expect(weaponIconLocalPath("12008")).toMatch(/icons\/gacha\/weapon-big\/12008\.webp$/);
+    expect(weaponIconLocalPath("12008").replace(/\\/g, "/")).toMatch(/icons\/gacha\/weapon-big\/12008\.webp$/);
   });
 
   it("遇到無法辨識的 manifest 時安全回傳空對照", () => {
@@ -69,7 +69,7 @@ describe("驅動盤圖示資料欄位解析", () => {
       "54010": "https://static.nanoka.cc/assets/zzz/BangbooGarageRole46.webp",
       "54023": "https://static.nanoka.cc/assets/zzz/BangbooGarageRole48.webp",
     });
-    expect(bangbooIconLocalPath("54023")).toMatch(/icons\/gacha\/bangboo\/54023\.webp$/);
+    expect(bangbooIconLocalPath("54023").replace(/\\/g, "/")).toMatch(/icons\/gacha\/bangboo\/54023\.webp$/);
   });
 
   it("邦布 manifest 缺少 ID 或完整立繪欄位時安全回傳空對照", () => {

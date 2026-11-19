@@ -35,7 +35,7 @@ test.each([
     path: unknown,
     ...args: unknown[]
   ) => {
-    if (String(path).endsWith("/scoring-release.json")) {
+    if (/[\\/]scoring-release\.json$/.test(String(path))) {
       if (value === null) throw new Error("Missing config");
       return value;
     }
