@@ -3,7 +3,6 @@ import {
   ELEMENT_ICON_FILE_BY_TYPE,
   ELEMENT_TYPES,
   SPECIAL_ELEMENT_BY_CHARACTER_ID,
-  findWikiElementIcons,
   getElementEmojiKey,
   getElementIconPath,
 } from "../src/utilities/zzz/elements.js";
@@ -34,21 +33,5 @@ describe("ZZZ 屬性圖示映射", () => {
     expect(getElementEmojiKey(200, 1431)).toBe("honededge");
     expect(getElementEmojiKey(204, 9999)).toBe("wind");
     expect(getElementEmojiKey(300, 9999)).toBe("lumen");
-  });
-  it("從 HoYoLAB Wiki agent_stats filter 找到官方 Wind 與 Lumen 圖", () => {
-    const filters = [
-      {
-        key: "agent_stats",
-        values: [
-          { value: "風屬性", enum_string: "wind", icon: "https://hoyo/wind.png" },
-          { value: "流明", enum_string: "", icon: "https://hoyo/lumen.png" },
-        ],
-      },
-    ];
-
-    expect(findWikiElementIcons(filters)).toEqual({
-      "wind.png": "https://hoyo/wind.png",
-      "lumen.png": "https://hoyo/lumen.png",
-    });
   });
 });

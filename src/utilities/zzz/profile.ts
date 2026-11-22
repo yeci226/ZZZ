@@ -29,7 +29,7 @@ import {
   loadProfileMainData,
   type ProfileMainData,
 } from "./profileMainData.js";
-import { getElementIconPath } from "./elements.js";
+import { getElementIconPath, getProfessionIconPath } from "./elements.js";
 import { queueProfileDiscSync } from "./discProfileSync.js";
 import { discContent } from "./discLeaderboardCopy.js";
 import { buildProfileCharacterSelectRows } from "./profileCharacterSelectMenu.js";
@@ -47,14 +47,14 @@ import { join } from "path";
 
 const offsetCharacter: Record<
   string,
-  { x?: number; y?: number; title?: string; element?: string }
+  { x?: number; y?: number; title?: string }
 > = {
-  // Default { x: 0, y: 0, title: "", element: "" }
-  1091: { title: "VoidHunter", element: "frost" }, // Miyabi
+  // Default { x: 0, y: 0, title: "" }
+  1091: { title: "VoidHunter" }, // Miyabi
 
-  1371: { title: "GrandMaster", element: "auricink" }, // Yixuan
+  1371: { title: "GrandMaster" }, // Yixuan
 
-  1431: { title: "VoidHunter", element: "honededge" }, // YeShunguang
+  1431: { title: "VoidHunter" }, // YeShunguang
 };
 const offsetCharacterSkin = {};
 
@@ -443,10 +443,12 @@ export async function drawCharacterImage(
       finalMindScapeImagePath,
       characterPath, // characterImage (Index 1)
       characterSpecificImagePath, // characterRankImage (Index 2)
-      (offsetCharacter as any)[character.id]?.element
-        ? `./src/assets/images/icons/element/${(offsetCharacter as any)[character.id].element}.webp`
-        : getElementIconPath(character.element_type),
-      `./src/assets/images/icons/profession/${professionId[character.avatar_profession as keyof typeof professionId]}.webp`,
+      getElementIconPath(
+        character.element_type,
+        character.sub_element_type,
+        character.id,
+      ),
+      getProfessionIconPath(character.avatar_profession) ?? "",
       `${character.weapon?.icon}`,
       `./src/assets/images/icons/weapon/role-star-${character.weapon?.star}.png`,
       // 加載角色屬性圖示

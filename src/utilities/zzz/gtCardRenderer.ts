@@ -3,6 +3,8 @@ import { join } from "node:path";
 import {
   ELEMENT_ICON_FILE_BY_TYPE,
   SPECIAL_ELEMENT_BY_CHARACTER_ID,
+  getElementIconPath,
+  getProfessionIconPath,
 } from "./elements.js";
 
 const OFFICIAL_CARD_SIZE = 48;
@@ -148,36 +150,29 @@ export function loadGtCardAssets(): Promise<GtCardAssets> {
 }
 
 function elementIconPath(item: GtCardItem): string | null {
-  const special = SPECIAL_ELEMENT_BY_CHARACTER_ID[item.id];
-  if (special) return join(ICON_DIR, "element", `${special}.webp`);
-  const filename =
-    item.elementType == null
-      ? undefined
-      : ELEMENT_ICON_FILE_BY_TYPE[item.elementType];
-  return filename ? join(ICON_DIR, "element", filename) : null;
+  if (item.elementType == null) {
+    const special = SPECIAL_ELEMENT_BY_CHARACTER_ID[item.id];
+    return special ? join(ICON_DIR, "element", `${special}.webp`) : null;
+  }
+  if (!ELEMENT_ICON_FILE_BY_TYPE[item.elementType]) return null;
+  return getElementIconPath(item.elementType, item.subElementType, item.id);
 }
 
 function professionIconPath(value: unknown): string | null {
   const raw = String(value ?? "").toUpperCase();
-  const numeric: Record<string, string> = {
-    "1": "attack",
-    "2": "stun",
-    "3": "anomaly",
-    "4": "support",
-    "5": "defense",
-    "6": "rupture",
+  const byName: Record<string, number> = {
+    ATTACK: 1,
+    STUN: 2,
+    ANOMALY: 3,
+    SUPPORT: 4,
+    DEFENSE: 5,
+    RUPTURE: 6,
+    ARMERO: 7,
   };
-  const key =
-    numeric[raw] ??
-    ["ATTACK", "STUN", "ANOMALY", "SUPPORT", "DEFENSE", "RUPTURE"]
-      .find((name) => raw.includes(name))
-      ?.toLowerCase();
-  if (!key) return null;
-  return join(
-    ICON_DIR,
-    "profession",
-    `${key}.${key === "rupture" ? "webp" : "png"}`,
-  );
+  const id = /^\d+$/.test(raw)
+    ? Number(raw)
+    : byName[Object.keys(byName).find((name) => raw.includes(name)) ?? ""];
+  return getProfessionIconPath(id, ["png", "webp"]);
 }
 
 export async function loadGtCardMetadataImages(

@@ -20,6 +20,19 @@ import { getLegacyAccounts } from "../utilities/accountStore.js";
 import { AUTO_REDEEM_CRON } from "../utilities/core/redeemSchedule.js";
 import runNoteReminders from "../utilities/zzz/reminderService.js";
 import { runGachaArchiveMaintenance } from "../utilities/zzz/gachaArchiveMaintenance.js";
+import {
+  setElementEmojiApplication,
+  syncElementEmojis,
+} from "../utilities/zzz/elementEmoji.js";
+
+/** 補齊圖示後，把新屬性上傳成應用程式表情符號 */
+function refreshElementIcons() {
+  downloadAllElementIcons()
+    .then(() => syncElementEmojis(client))
+    .catch((error) =>
+      new Logger("屬性圖示").error(String(error?.message || error)),
+    );
+}
 
 let isRefreshingCookies = false;
 let isAutoRedeemRunning = false;
@@ -54,6 +67,7 @@ client.once(Events.ClientReady, async () => {
       new Logger("系統").error(`更新狀態失敗: ${String(error?.message || error)}`),
     );
   }, 300_000);
+  setElementEmojiApplication(client.application?.id ?? client.user?.id);
   if (client.cluster.id == 0) {
     startWebLoginSync();
     const mimoTick = () => { void runAutoMimo(client, client.db).catch(() => new Logger("Mimo").error("Mimo background check failed")); };
@@ -87,11 +101,14 @@ client.once(Events.ClientReady, async () => {
       runGachaArchiveMaintenanceJob();
     });
 
+    // 每天檢查 Wiki 是否新增屬性／特性圖示（新角色上線前後補上）
+    schedule.scheduleJob("40 8 * * *", refreshElementIcons);
+
     autoDailySign();
     // Fire background tasks immediately — don't wait for redeem/cookie flows
     startBotBannerRotation(client);
     downloadAllDiscIcons().catch(() => {});
-    downloadAllElementIcons().catch(() => {});
+    refreshElementIcons();
     downloadAllWeaponIcons().catch(() => {});
     downloadAllBangbooIcons().catch(() => {});
     downloadAllWikiPaintings().catch(() => {});

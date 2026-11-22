@@ -13,7 +13,7 @@ import {
   getLocalWikiPaintings,
   loadWikiIndex,
 } from "./autoDownloadIcons.js";
-import { getElementIconPath } from "./elements.js";
+import { getElementIconPath, getProfessionIconPath } from "./elements.js";
 import { resolveProfileFont } from "./profileLocale.js";
 import {
   getMindscapeComposition,
@@ -109,21 +109,13 @@ function getCharacterText(
 
 const specialCharacters: Record<
   string,
-  { title?: "VoidHunter" | "GrandMaster"; element?: string }
+  { title?: "VoidHunter" | "GrandMaster" }
 > = {
-  "1091": { title: "VoidHunter", element: "frost" },
-  "1371": { title: "GrandMaster", element: "auricink" },
-  "1431": { title: "VoidHunter", element: "honededge" },
+  "1091": { title: "VoidHunter" },
+  "1371": { title: "GrandMaster" },
+  "1431": { title: "VoidHunter" },
 };
 
-const professionIcons: Record<number, string> = {
-  1: "attack",
-  2: "stun",
-  3: "anomaly",
-  4: "support",
-  5: "defense",
-  6: "rupture",
-};
 
 const propertyIcons: Record<number, string> = {
   1: "hp",
@@ -979,14 +971,15 @@ async function drawIdentityAndStats(
   const levelX = rankX - numberGap - numberWidth;
   const metaY = numberY + 14;
   const iconMetaY = metaY + 6;
-  const specialElement = special?.element;
   const elementImage = await loadAny(
-    specialElement
-      ? `./src/assets/images/icons/element/${specialElement}.webp`
-      : getElementIconPath(Number(character.element_type)),
+    getElementIconPath(
+      Number(character.element_type),
+      character.sub_element_type,
+      character.id,
+    ),
   );
   const professionImage = await loadAny(
-    `./src/assets/images/icons/profession/${professionIcons[Number(character.avatar_profession)]}.webp`,
+    getProfessionIconPath(character.avatar_profession),
   );
   const groupImage = await loadAny(character.group_icon_path);
   let metaX = nameX;

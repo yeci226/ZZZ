@@ -3,7 +3,16 @@ import path from "path";
 import fetch from "node-fetch";
 import axios from "axios";
 import Logger from "../core/logger.js";
-import { findWikiElementIcons } from "./elements.js";
+import {
+  canonicalIconName,
+  findWikiIcons,
+  registerIconCodes,
+} from "./elements.js";
+import {
+  CHARACTER_BUILDER_URL,
+  findGtUiBundlePath,
+  parseGtUiIcons,
+} from "./gtUiIcons.js";
 import {
   getGachaWeaponIconMap,
   weaponIconLocalPath,
@@ -366,55 +375,111 @@ export function loadWikiIndex(): Record<string, string> {
   return {};
 }
 
-const ELEMENT_ICONS_DIR = "src/assets/images/icons/element";
+const ICON_DIRS = {
+  element: "src/assets/images/icons/element",
+  profession: "src/assets/images/icons/profession",
+} as const;
 const WIKI_MENU_FILTERS_URL =
   "https://sg-wiki-api.hoyolab.com/hoyowiki/zzz/wapi/get_menu_filters";
 
-async function fetchWikiElementIcons(): Promise<Record<string, string>> {
-  const res = await axios.get(WIKI_MENU_FILTERS_URL, {
-    params: { menu_id: "8", lang: "zh-tw" },
-    headers: WIKI_HEADERS,
-  });
-  if (res.data?.retcode !== 0) return {};
-  return findWikiElementIcons(res.data?.data?.filters ?? []);
-}
+type IconKind = keyof typeof ICON_DIRS;
+type IconStats = { downloaded: number; skipped: number };
 
-/** Download missing Wind/Lumen icons from HoYoLAB Wiki. */
-export async function downloadAllElementIcons(): Promise<void> {
-  const logger = new Logger("ElementIcons");
-  const dir = path.resolve(ELEMENT_ICONS_DIR);
+/** 下載本地缺少的圖示（{ 檔名: url }）；已存在任一副檔名者略過。 */
+async function saveMissingIcons(
+  kind: IconKind,
+  icons: Record<string, string>,
+  logger: Logger,
+  stats: IconStats,
+) {
+  const dir = path.resolve(ICON_DIRS[kind]);
   fs.mkdirSync(dir, { recursive: true });
-
-  let iconMap: Record<string, string>;
-  try {
-    iconMap = await fetchWikiElementIcons();
-  } catch (e: any) {
-    logger.error(`Failed to fetch official element icons: ${e?.message ?? e}`);
-    return;
-  }
-
-  let downloaded = 0;
-  let skipped = 0;
-  for (const [filename, url] of Object.entries(iconMap)) {
-    const dest = path.join(dir, filename);
-    if (fs.existsSync(dest)) {
-      skipped++;
+  const existing = new Set(
+    fs.readdirSync(dir).map((f) => path.parse(f).name.toLowerCase()),
+  );
+  for (const [name, url] of Object.entries(icons)) {
+    if (existing.has(name)) {
+      stats.skipped++;
       continue;
     }
+    const ext = path.extname(new URL(url).pathname).toLowerCase() || ".png";
+    const filename = `${name}${ext}`;
     try {
-      if (await downloadImage(url, dest)) {
-        downloaded++;
-        logger.info(`Downloaded ${filename}`);
+      if (await downloadImage(url, path.join(dir, filename))) {
+        stats.downloaded++;
+        existing.add(name);
+        logger.info(`Downloaded ${kind}/${filename}`);
       } else {
-        logger.warn(`Rejected invalid image for ${filename}`);
+        logger.warn(`Rejected invalid image for ${kind}/${filename}`);
       }
     } catch (e: any) {
-      logger.error(`Error downloading ${filename}: ${e?.message ?? e}`);
+      logger.error(`Error downloading ${kind}/${filename}: ${e?.message ?? e}`);
     }
   }
+}
 
+async function downloadWikiIcons(logger: Logger, stats: IconStats) {
+  try {
+    const res = await axios.get(WIKI_MENU_FILTERS_URL, {
+      params: { menu_id: "8", lang: "zh-tw" },
+      headers: WIKI_HEADERS,
+    });
+    if (res.data?.retcode !== 0) {
+      logger.warn(`Wiki 篩選資料回傳 retcode ${res.data?.retcode}`);
+      return;
+    }
+    const icons = findWikiIcons(res.data?.data?.filters ?? []);
+    await saveMissingIcons("element", icons.element, logger, stats);
+    await saveMissingIcons("profession", icons.profession, logger, stats);
+  } catch (e: any) {
+    logger.error(`無法取得 Wiki 圖示：${e?.message ?? e}`);
+  }
+}
+
+/** 養成計算機前端會比 Wiki 更早收錄新角色的屬性／特性圖示。 */
+async function downloadCharacterBuilderIcons(logger: Logger, stats: IconStats) {
+  try {
+    const html = await axios.get(`${CHARACTER_BUILDER_URL}index.html`, {
+      responseType: "text",
+    });
+    const bundlePath = findGtUiBundlePath(String(html.data));
+    if (!bundlePath) {
+      logger.warn("養成計算機頁面中找不到 gtUi bundle，略過");
+      return;
+    }
+    const bundle = await axios.get(`${CHARACTER_BUILDER_URL}${bundlePath}`, {
+      responseType: "text",
+    });
+    const parsed = parseGtUiIcons(String(bundle.data));
+    for (const kind of ["element", "profession"] as const) {
+      const codes: Record<string, string> = {};
+      const icons: Record<string, string> = {};
+      for (const [code, entry] of Object.entries(parsed[kind])) {
+        const name = canonicalIconName(entry.name);
+        codes[code] = name;
+        icons[name] = entry.url;
+      }
+      if (!Object.keys(codes).length) {
+        logger.warn(`養成計算機 ${kind} 圖示解析結果為空，略過`);
+        continue;
+      }
+      await saveMissingIcons(kind, icons, logger, stats);
+      const added = registerIconCodes(kind, codes);
+      if (added) logger.info(`記錄 ${added} 個新的 ${kind} 代碼`);
+    }
+  } catch (e: any) {
+    logger.error(`無法取得養成計算機圖示：${e?.message ?? e}`);
+  }
+}
+
+/** 從 HoYoWiki 與養成計算機補齊本地缺少的屬性與特性（職業）圖示。 */
+export async function downloadAllElementIcons(): Promise<void> {
+  const logger = new Logger("ElementIcons");
+  const stats: IconStats = { downloaded: 0, skipped: 0 };
+  await downloadWikiIcons(logger, stats);
+  await downloadCharacterBuilderIcons(logger, stats);
   logger.success(
-    `屬性圖示更新完成：新增 ${downloaded} 個，略過 ${skipped} 個已存在`,
+    `屬性／特性圖示更新完成：新增 ${stats.downloaded} 個，略過 ${stats.skipped} 個已存在`,
   );
 }
 

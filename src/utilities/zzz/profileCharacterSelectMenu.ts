@@ -2,8 +2,7 @@ import {
   ActionRowBuilder,
   StringSelectMenuBuilder,
 } from "discord.js";
-import emoji from "../../assets/emoji.js";
-import { getElementEmojiKey } from "./elements.js";
+import { elementEmoji } from "./elementEmoji.js";
 import {
   encodeProfileCharacterSelectCustomId,
   paginateProfileCharacters,
@@ -36,10 +35,7 @@ export function buildProfileCharacterSelectRows(
   const selected = new Set(selectedCharacterIds.map((id) => String(id)));
   const options: any[] = page.characters.map((character: any) => {
     const characterId = String(character.id);
-    const elementKey = getElementEmojiKey(
-      character.element_type,
-      character.id,
-    );
+
     const option: any = {
       label: String(character.name_mi18n ?? character.name ?? characterId),
       description: String(
@@ -50,9 +46,11 @@ export function buildProfileCharacterSelectRows(
       ),
       value: `${targetUserId}-${accountIndex}-${characterId}`,
     };
-    const characterEmoji = elementKey
-      ? (emoji as any)[elementKey]
-      : undefined;
+    const characterEmoji = elementEmoji(
+      character.element_type,
+      character.id,
+      character.sub_element_type,
+    );
     if (characterEmoji) option.emoji = characterEmoji;
     if (selected.has(characterId)) option.default = true;
     return option;

@@ -20,7 +20,11 @@ import {
   paintingIndexForRank,
 } from "./autoDownloadIcons.js";
 import { toI18nLang } from "../core/i18n.js";
-import { ELEMENT_ICON_BY_TYPE, getElementIconPath } from "./elements.js";
+import {
+  ELEMENT_ICON_BY_TYPE,
+  getElementIconPath,
+  getProfessionIconPath,
+} from "./elements.js";
 import { drawFormalCharacterProfileStack } from "./profileCharacterStack.js";
 import type { ZzzProfileStyle } from "./profileStyle.js";
 import { buildCombatEntry } from "./combat/workbench.js";
@@ -1050,24 +1054,14 @@ async function drawAgentCard(
   // ── Element + Profession icons (top-right) ──
   const ETAG = 28; // icon size
   const tagPad = 8;
-  const professionIconKey: Record<number, string> = {
-    1: "attack",
-    2: "stun",
-    3: "anomaly",
-    4: "support",
-    5: "defense",
-    6: "rupture",
-  };
   const elemKey = ELEMENT_ICON_BY_TYPE[agent.element_type as number];
-  const profKey =
-    professionIconKey[agent.avatar_profession as number] ??
-    professionIconKey[agent.profession as number];
+  const profPath =
+    getProfessionIconPath(agent.avatar_profession) ??
+    getProfessionIconPath(agent.profession);
   const elemIco = elemKey
     ? await loadLocal(getElementIconPath(agent.element_type as number))
     : null;
-  const profIco = profKey
-    ? await loadLocal(`./src/assets/images/icons/profession/${profKey}.webp`)
-    : null;
+  const profIco = profPath ? await loadLocal(profPath) : null;
 
   // draw element icon (top-right corner)
   if (elemIco) {

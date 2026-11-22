@@ -19,8 +19,7 @@ import { renderDiscLeaderboard } from "./discLeaderboardRenderer.js";
 import { getScoringStore } from "./combat/scoringStore.js";
 import { discContent, discText } from "./discLeaderboardCopy.js";
 import { messageSubtext } from "../core/messageSubtext.js";
-import emoji from "../../assets/emoji.js";
-import { getElementEmojiKey } from "./elements.js";
+import { elementEmoji } from "./elementEmoji.js";
 import { normalizeZzzLocale } from "./canvasFonts.js";
 import type { DbAdapter } from "../accountStore.js";
 import {
@@ -66,8 +65,7 @@ function agentElementEmoji(id: string): string | undefined {
   agentElements ??= JSON.parse(
     readFileSync("src/assets/disc-leaderboard-elements.json", "utf8"),
   ).agents;
-  const key = getElementEmojiKey(agentElements![id]?.elementType, id);
-  return key ? emoji[key as keyof typeof emoji] : undefined;
+  return elementEmoji(agentElements![id]?.elementType, id);
 }
 export function discLeaderboardAgents() {
   if (!catalog) {
